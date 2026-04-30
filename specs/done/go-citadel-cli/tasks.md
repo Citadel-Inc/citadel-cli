@@ -6,7 +6,7 @@ Status: **APPROVED** 292032ZAPR26 — execution authorised.
 
 - [x] A1. Scaffold `cmd/citadel-cli/`; pick CLI framework (cobra default).
 - [x] A2. `internal/clicfg` package — TOML config at `~/.config/citadel/config.toml`, 0600 enforced on every write.
-- [ ] A3. `make build-cli` target; CI matrix builds linux-amd64 / linux-arm64 / darwin-arm64.
+- [x] A3. `make build-cli` target; CI matrix builds linux-amd64 / linux-arm64 / darwin-arm64.
 
 ## P1
 
@@ -22,8 +22,8 @@ Status: **APPROVED** 292032ZAPR26 — execution authorised.
 
 ## P2
 
-- [ ] D1. Document install path in `docs/cli.md`.
+- [x] D1. Document install path in `docs/cli.md`.
 - [ ] D2. Local end-to-end smoke (login → issue → list → MCP call → revoke → logout).
 - [ ] D3. Production smoke against `api.src.land` + `mcp.src.land`.
-- [ ] D4. Move spec to `specs/done/` with retrospective.
+- [x] D4. Move spec to `specs/done/` with retrospective.
 - [ ] D5. Draft follow-on `go-citadel-cli-repo` spec for repo / namespace / agent CRUD verbs (carry-over from spec §Out of scope).
