@@ -1,0 +1,32 @@
+name: CLI Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build CLI (cross-compile)
+        run: make build-cli-all
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/cli/*
+          draft: false
+          prerelease: false
