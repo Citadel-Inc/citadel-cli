@@ -104,3 +104,25 @@ func (c Config) Save() error {
 	// Ensure final file has correct permissions (paranoia check)
 	return os.Chmod(path, 0600)
 }
+
+// ResolveServerURL picks the effective server URL with this precedence:
+//
+//	1. --server flag (passed as flagOverride; empty string = unset)
+//	2. CITADEL_SERVER env var
+//	3. stored config (c.ServerURL)
+//	4. default https://api.src.land
+//
+// Used by every subcommand that issues HTTP requests so the precedence
+// is consistent.
+func (c Config) ResolveServerURL(flagOverride string) string {
+	if flagOverride != "" {
+		return flagOverride
+	}
+	if env := os.Getenv("CITADEL_SERVER"); env != "" {
+		return env
+	}
+	if c.ServerURL != "" {
+		return c.ServerURL
+	}
+	return "https://api.src.land"
+}

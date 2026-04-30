@@ -58,10 +58,8 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	serverURL := cfg.ServerURL
-	if serverURL == "" {
-		serverURL = "https://api.src.land"
-	}
+	flagServer, _ := cmd.Flags().GetString("server")
+	serverURL := cfg.ResolveServerURL(flagServer)
 
 	// Extract Supabase URL from server URL (assumed to be https://api.src.land or similar)
 	supabaseURL := os.Getenv("SUPABASE_URL")

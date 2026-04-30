@@ -19,7 +19,10 @@ Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --s
 		Version: "0.0.1-alpha",
 	}
 
-	// Register subcommand groups
+	// --server flag + CITADEL_SERVER env var. Persistent so every subcommand
+	// inherits it. Resolved against cfg.ServerURL by clicfg.ResolveServerURL().
+	root.PersistentFlags().String("server", "", "Server URL (overrides CITADEL_SERVER env and stored config)")
+
 	root.AddCommand(cmd.AuthCmd)
 	root.AddCommand(cmd.TokenCmd)
 	root.AddCommand(cmd.McpCmd)

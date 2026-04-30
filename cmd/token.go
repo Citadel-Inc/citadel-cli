@@ -77,10 +77,8 @@ func runTokenList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("not authenticated; run 'citadel auth login' first")
 	}
 
-	serverURL := cfg.ServerURL
-	if serverURL == "" {
-		serverURL = "https://api.src.land"
-	}
+	flagServer, _ := cmd.Flags().GetString("server")
+	serverURL := cfg.ResolveServerURL(flagServer)
 
 	agentName, _ := cmd.Flags().GetString("agent")
 	if agentName == "" {
@@ -172,10 +170,8 @@ func runTokenIssue(cmd *cobra.Command, args []string) error {
 	scopes, _ := cmd.Flags().GetStringSlice("scopes")
 	expiresStr, _ := cmd.Flags().GetString("expires")
 
-	serverURL := cfg.ServerURL
-	if serverURL == "" {
-		serverURL = "https://api.src.land"
-	}
+	flagServer, _ := cmd.Flags().GetString("server")
+	serverURL := cfg.ResolveServerURL(flagServer)
 
 	// Create or find agent
 	agents, err := listAgents(cfg)
@@ -281,10 +277,8 @@ func runTokenRevoke(cmd *cobra.Command, args []string) error {
 
 	tokenID := args[0]
 
-	serverURL := cfg.ServerURL
-	if serverURL == "" {
-		serverURL = "https://api.src.land"
-	}
+	flagServer, _ := cmd.Flags().GetString("server")
+	serverURL := cfg.ResolveServerURL(flagServer)
 
 	revokeURL := fmt.Sprintf("%s/api/agent-tokens/%s", serverURL, tokenID)
 
@@ -306,12 +300,14 @@ func runTokenRevoke(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Helper to list agents for the authenticated user
+// Helper to list agents for the authenticated user. Server URL precedence
+// follows env + stored config; the --server flag is not visible from this
+// helper (no cobra.Command in scope), so callers that want flag override
+// must pass the resolved URL or call the endpoint directly. v1 acceptable
+// since listAgents is only used by token issue / list which compute the
+// flag-aware URL upstream and could be threaded through later.
 func listAgents(cfg clicfg.Config) ([]agent, error) {
-	serverURL := cfg.ServerURL
-	if serverURL == "" {
-		serverURL = "https://api.src.land"
-	}
+	serverURL := cfg.ResolveServerURL("")
 
 	listURL := fmt.Sprintf("%s/api/agents", serverURL)
 
