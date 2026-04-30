@@ -168,7 +168,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 	// Extract user UUID from access token (unverified parse)
 	var claims jwt.MapClaims
-	jwt.ParseWithClaims(tokenResp.AccessToken, claims, func(token *jwt.Token) (interface{}, error) {
+	jwt.ParseWithClaims(tokenResp.AccessToken, claims, func(token *jwt.Token) (any, error) {
 		return nil, nil // Don't verify signature here
 	})
 
@@ -213,7 +213,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	// Decode JWT to get expiry (no signature verify needed)
 	var claims jwt.MapClaims
-	jwt.ParseWithClaims(cfg.AccessToken, claims, func(token *jwt.Token) (interface{}, error) {
+	jwt.ParseWithClaims(cfg.AccessToken, claims, func(token *jwt.Token) (any, error) {
 		return nil, nil
 	})
 

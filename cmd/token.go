@@ -54,7 +54,7 @@ type token struct {
 	CreatedAt time.Time       `json:"created_at"`
 	ExpiresAt *time.Time      `json:"expires_at,omitempty"`
 	RevokedAt *time.Time      `json:"revoked_at,omitempty"`
-	Scopes    interface{}     `json:"scopes"`
+	Scopes    any     `json:"scopes"`
 }
 
 type tokenWithCleartext struct {
