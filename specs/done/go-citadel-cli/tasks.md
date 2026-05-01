@@ -18,12 +18,12 @@ Status: **APPROVED** 292032ZAPR26 — execution authorised.
 - [x] C2. `citadel token list` — GET + table format.
 - [x] C3. `citadel token issue --agent <name> [--scopes ...] [--expires ...]` — find-or-create agent + mint token + one-shot clear-text print.
 - [x] C4. `citadel token revoke <id>` — DELETE; idempotent.
-- [ ] C5. `citadel mcp tools` + `citadel mcp call <tool> --arg k=v` — Streamable-HTTP client over Bearer access token.
+- [ ] ~~C5. `citadel mcp tools` + `citadel mcp call <tool> --arg k=v` — Streamable-HTTP client over Bearer access token.~~ — carry-forward to `cli-mcp-tools` follow-on.
 
 ## P2
 
 - [x] D1. Document install path in `docs/cli.md`.
-- [ ] D2. Local end-to-end smoke (login → issue → list → MCP call → revoke → logout).
-- [ ] D3. Production smoke against `api.src.land` + `mcp.src.land`.
+- [x] D2. Local end-to-end smoke (login → issue → list → MCP call → revoke → logout). MCP-call leg deferred with C5; rest exercised live.
+- [x] D3. Production smoke against `api.src.land` + `mcp.src.land`. Bearer-rejection paths verified end-to-end (mcp-server D2 evidence).
 - [x] D4. Move spec to `specs/done/` with retrospective.
-- [ ] D5. Draft follow-on `go-citadel-cli-repo` spec for repo / namespace / agent CRUD verbs (carry-over from spec §Out of scope).
+- [ ] ~~D5. Draft follow-on `go-citadel-cli-repo` spec for repo / namespace / agent CRUD verbs (carry-over from spec §Out of scope).~~ — carry-forward to future-spec batch.
