@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **APPROVED** by NOMAD 292032ZAPR26 (in-line with the B-track ratifications) |
+| Status | **DONE 292032ZAPR26** — shipped (in-line with the B-track ratifications) |
 | Authored | 292032ZAPR26 |
 | Approved | 292032ZAPR26 |
 | Owner | Bastion (J-3) |

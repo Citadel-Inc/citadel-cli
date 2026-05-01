@@ -1,6 +1,6 @@
 # Tasks — go-citadel-cli
 
-Status: **APPROVED** 292032ZAPR26 — execution authorised.
+Status: **DONE 292032ZAPR26** — shipped; all P0/P1/P2 closed.
 
 ## P0
 
