@@ -110,16 +110,95 @@ citadel token revoke 550e8400-e29b-41d4-a716-446655440000
 
 The CLI defaults to `https://api.src.land`. Override it via:
 
-1. **Environment variable**: `CITADEL_SERVER_URL`
-2. **Config file**: Edit `~/.config/citadel/config.toml` and set `server_url = "https://your-server.com"`
-3. **Command-line flag**: (not yet supported; defer to follow-on CLI enhancements)
+1. **`--server` flag** (highest precedence; persistent on the root command).
+2. **Environment variable**: `CITADEL_SERVER`.
+3. **Config file**: Edit `~/.config/citadel/config.toml` and set `server_url = "https://your-server.com"`.
 
 Example:
 
 ```bash
-export CITADEL_SERVER_URL=https://api.internal.example.com
+citadel --server http://localhost:8080 token list --agent my-app
+export CITADEL_SERVER=https://api.internal.example.com
 citadel token list --agent my-app
 ```
+
+## MCP tool calls
+
+The `citadel mcp` group speaks the [Streamable HTTP MCP protocol](https://modelcontextprotocol.io/specification/2025-11-25/server) against the Citadel MCP server. The server URL defaults to `https://mcp.src.land/mcp` (resolved from `--server` / `CITADEL_SERVER`; `api.src.land` is auto-swapped to `mcp.src.land`).
+
+Authentication uses your **Supabase JWT** from `citadel auth login` by default. Override with `--token` or `CITADEL_AGENT_TOKEN` for agent / CI workflows — both work because the MCP server's bearer-validator tries JWTs first and falls through to opaque agent tokens.
+
+### List tools
+
+```bash
+$ citadel mcp tools
+get_namespace	Look up a namespace by slug or path
+kg_find_symbol	Search the knowledge graph for symbols matching a query
+kg_list_files	List indexed files in a namespace
+kg_walk	Walk symbol edges from a starting symbol
+```
+
+### Call a tool
+
+```bash
+$ citadel mcp call get_namespace --arg path=damon
+{
+  "slug": "damon",
+  "kind": "user",
+  "owner_user_id": "..."
+}
+```
+
+Use `--json` for the raw JSON-RPC `tools/call` response (useful for scripting):
+
+```bash
+$ citadel mcp call get_namespace --arg path=damon --json
+```
+
+### Argument coercion
+
+`--arg key=value` coerces the value automatically. Use `--arg-string key=value` to opt out for a single argument.
+
+| Input form           | Coerced type | Example                          |
+|----------------------|--------------|----------------------------------|
+| `key=hello`          | string       | `"hello"`                        |
+| `key=true` / `false` | bool         | `true` / `false`                 |
+| `key=5`              | int64        | `5`                              |
+| `key=-7`             | int64        | `-7`                             |
+| `key=07823`          | string       | `"07823"` (leading zero kept)    |
+| `key=1.5`            | float64      | `1.5`                            |
+| `key=a,b,c`          | array        | `["a","b","c"]`                  |
+| `key=1,2,3`          | array of int | `[1, 2, 3]`                      |
+| `key=1,foo,true`     | mixed array  | `[1, "foo", true]`               |
+
+Edge cases that fall through to string: `.5`, `5.`, `1.2.3`, anything with non-digit non-dot non-comma characters.
+
+### Flags
+
+- `--server <url>` (root, persistent) — override server URL.
+- `--token <bearer>` (mcp group, persistent) — override default JWT.
+- `--timeout <secs>` (mcp group, persistent) — per-call HTTP timeout (default 60).
+- `--arg key=value` (call) — repeatable; coerced.
+- `--arg-string key=value` (call) — repeatable; raw string.
+- `--json` (call) — emit raw JSON-RPC result instead of pretty-printed text content.
+
+### Exit codes
+
+| Code | Meaning                                                                |
+|------|------------------------------------------------------------------------|
+| 0    | Success.                                                               |
+| 1    | Local error: bad flags, no token, transport failure, server JSON-RPC error. |
+| 2    | Tool returned `isError: true` (the call reached the tool; the tool failed).|
+
+### Auth failures
+
+A 401 / `-32001 unauthorized` from the server prints:
+
+```
+unauthorized: run `citadel auth login` to refresh your session, or pass --token / set CITADEL_AGENT_TOKEN
+```
+
+The CLI does **not** auto-refresh tokens. Re-authenticate explicitly.
 
 ## Agent token semantics
 
