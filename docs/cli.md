@@ -156,3 +156,38 @@ citadel auth login
 ```
 
 This will create a fresh config.
+
+## Distribution
+
+The CLI binary is built by the GitHub Actions release workflow on every annotated tag matching `citadel-cli-v*`, producing static binaries for `linux-amd64`, `linux-arm64`, and `darwin-arm64`. Channels:
+
+- **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Rethunk-Tech/citadel/releases/tag/<tag>` with the three binaries + a `SHA256SUMS` file. Manual download:
+
+  ```bash
+  # Replace v0.x.y with the latest tag.
+  curl -L -o citadel \
+    https://github.com/Rethunk-Tech/citadel/releases/download/citadel-cli-v0.x.y/citadel-linux-amd64
+  curl -L -o SHA256SUMS \
+    https://github.com/Rethunk-Tech/citadel/releases/download/citadel-cli-v0.x.y/SHA256SUMS
+  sha256sum -c SHA256SUMS --ignore-missing
+  chmod +x citadel
+  sudo mv citadel /usr/local/bin/
+  ```
+
+- **Homebrew tap (deferred).** Suggested formula path `rethunk-tech/tap/citadel`. Land when a second non-operator user adopts the CLI; until then, GH Releases is sufficient.
+
+- **Static mirror at `cli.src.land` (deferred).** Operator-managed mirror behind Caddy. Only worth standing up if GH Releases is unavailable to a target audience (corporate networks blocking github.com download paths). Not currently planned.
+
+### Versioning
+
+Until v1.0 the CLI versions in lockstep with the citadel binary; both bump together on every release. After v1.0 the CLI versions independently — server-side compatibility is JWT/JWKS-based, not version-pinned.
+
+### Verifying a download
+
+```bash
+# After downloading binary + SHA256SUMS for the same tag.
+sha256sum -c SHA256SUMS --ignore-missing
+# Expect: citadel-linux-amd64: OK
+```
+
+If verification fails, do not run the binary. Re-download from a fresh session and re-verify.
