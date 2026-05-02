@@ -82,7 +82,7 @@ R3. **Distribution mechanism.** GitHub Releases vs Homebrew tap vs static downlo
 |---|----------|----------|--------|
 | Q0 | Spec exists? | **Yes** — required by `go-mcp-server` Q3 token-issuance deferral. NOMAD authored the directive 292032ZAPR26. | NOMAD 292032ZAPR26 |
 | Q1 | CLI surface? | `auth login/status/logout`, `token list/issue/revoke`, `mcp tools/call`. Everything else deferred. | NOMAD 292032ZAPR26 |
-| Q2 | Config format? | TBD — Bastion picks during Phase A (TOML preferred for human readability + good Go libs). | Bastion-delegated |
+| Q2 | Config format? | **TOML** at `~/.config/citadel/config.toml` (mode **0600**); `internal/clicfg` load/save. | **Ratified 292941ZAPR26** (closure; retrospective confirms TOML) |
 | Q3 | OAuth provider? | Supabase Auth (already the project's identity layer). PKCE flow. | Bastion default; NOMAD overrides if otherwise |
 
 ## Retrospective
