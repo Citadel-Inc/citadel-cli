@@ -16,7 +16,7 @@ func TestSaveAndLoad(t *testing.T) {
 		if oldXDG != "" {
 			t.Setenv("XDG_CONFIG_HOME", oldXDG)
 		} else {
-			os.Unsetenv("XDG_CONFIG_HOME")
+			_ = os.Unsetenv("XDG_CONFIG_HOME")
 		}
 	}()
 
@@ -76,7 +76,7 @@ func TestLoadMissingFile(t *testing.T) {
 		if oldXDG != "" {
 			t.Setenv("XDG_CONFIG_HOME", oldXDG)
 		} else {
-			os.Unsetenv("XDG_CONFIG_HOME")
+			_ = os.Unsetenv("XDG_CONFIG_HOME")
 		}
 	}()
 
@@ -101,7 +101,7 @@ func TestSavePermissions(t *testing.T) {
 		if oldXDG != "" {
 			t.Setenv("XDG_CONFIG_HOME", oldXDG)
 		} else {
-			os.Unsetenv("XDG_CONFIG_HOME")
+			_ = os.Unsetenv("XDG_CONFIG_HOME")
 		}
 	}()
 
@@ -135,7 +135,7 @@ func TestSaveCreatesDirectory(t *testing.T) {
 		if oldXDG != "" {
 			t.Setenv("XDG_CONFIG_HOME", oldXDG)
 		} else {
-			os.Unsetenv("XDG_CONFIG_HOME")
+			_ = os.Unsetenv("XDG_CONFIG_HOME")
 		}
 	}()
 

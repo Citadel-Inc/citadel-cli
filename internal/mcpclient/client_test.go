@@ -35,7 +35,7 @@ func writeResult(w http.ResponseWriter, sessionID string, id int, result any) {
 	w.Header().Set("Content-Type", "application/json")
 	body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": id, "result": result})
 	w.WriteHeader(http.StatusOK)
-	w.Write(body)
+	_, _ = w.Write(body)
 }
 
 func writeError(w http.ResponseWriter, status, id, code int, message string) {
@@ -46,7 +46,7 @@ func writeError(w http.ResponseWriter, status, id, code int, message string) {
 		"error":   map[string]any{"code": code, "message": message},
 	})
 	w.WriteHeader(status)
-	w.Write(body)
+	_, _ = w.Write(body)
 }
 
 func TestInitializeAndToolsList(t *testing.T) {
@@ -176,7 +176,7 @@ func TestNoSessionHeader(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": req.ID, "result": map[string]any{"protocolVersion": ProtocolVersion}})
 		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		_, _ = w.Write(body)
 	})
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second)
