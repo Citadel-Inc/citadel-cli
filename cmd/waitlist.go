@@ -21,8 +21,9 @@ import (
 //
 // Per spec go-waitlist-email-allowlist Phase C2, these subcommands share
 // the same backend endpoints as the operator UI surface and require the
-// signed-in CLI user to satisfy auth.IsAdmin (verified email + domain
-// match). A non-admin sees the same 404 response that the UI gets.
+// signed-in CLI user to hold operator:waitlist:* grants on the system namespace
+// (same backend as the operator UI). Callers without grants see the same 404
+// response that the UI gets.
 var WaitlistCmd = &cobra.Command{
 	Use:   "waitlist",
 	Short: "Manage the per-email waitlist allowlist (admin-only)",
@@ -32,8 +33,8 @@ The domain-based gate stays in code; this surface is the explicit-grant
 path so trusted users on personal-domain mail (e.g. Gmail) can be granted
 access without a redeploy.
 
-Allowlist does NOT confer admin status — admin remains scoped to the
-domain list.`,
+Allowlist does NOT confer operator RBAC — operator atoms are granted only on the
+system namespace via SQL or citadel-cli grants tooling.`,
 }
 
 var waitlistGrantCmd = &cobra.Command{
