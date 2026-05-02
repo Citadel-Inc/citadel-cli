@@ -87,7 +87,7 @@ Token model clarification (010230Z): default Bearer = `cfg.AccessToken` (Supabas
 
 **Token-model deviation.** Original `mcp.go` deliberately rejected `cfg.AccessToken` (citing waitlist + OIDC concerns). Post-go-mcp-oauth A2 the MCP server's `verifyBearer` accepts JWTs first then opaque tokens; the docstring's premise no longer held. Spec ratification clarified this with a token-model note and the new code uses JWT-by-default with agent-token override.
 
-**HUMAN follow-up.** Positive production smoke (real JWT → `tools/list` → `tools/call get_namespace --arg path=damon`) requires interactive `citadel auth login` against the live Supabase, which the agent cannot drive. Filed as a HUMAN_BLOCKERS entry alongside the existing go-mcp-oauth Phase C entries.
+**HUMAN follow-up.** Positive production smoke (real JWT → `tools/list` → `tools/call get_namespace --arg path=damon`) requires interactive `citadel auth login` against the live Supabase, which the agent cannot drive. Tracked in `specs/HUMAN_BLOCKERS.md` §27 (see also **§08–09** for go-mcp-oauth inspector / consent flows).
 
 **Did NOT do.**
 - Token auto-refresh on 401 (Q3 ratified: out of scope).
