@@ -89,7 +89,7 @@ func runWaitlistGrant(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case http.StatusCreated:
@@ -123,7 +123,7 @@ func runWaitlistRevoke(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case http.StatusNoContent:
@@ -156,7 +156,7 @@ func runWaitlistList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return fmt.Errorf("admin required: this account does not have operator access")
@@ -177,15 +177,21 @@ func runWaitlistList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprint(w, "EMAIL\tGRANTED\tNOTE\n")
+	if _, err := fmt.Fprint(w, "EMAIL\tGRANTED\tNOTE\n"); err != nil {
+		return err
+	}
 	for _, e := range body.Entries {
 		note := e.Note
 		if len(note) > 40 {
 			note = note[:37] + "..."
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n", e.Email, e.GrantedAt.Format("2006-01-02 15:04Z"), note)
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\n", e.Email, e.GrantedAt.Format("2006-01-02 15:04Z"), note); err != nil {
+			return err
+		}
 	}
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		return err
+	}
 	return nil
 }
 

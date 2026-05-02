@@ -175,7 +175,7 @@ func (c *Client) call(ctx context.Context, method string, params any, out any) (
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", method, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	respBytes, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode == http.StatusUnauthorized {

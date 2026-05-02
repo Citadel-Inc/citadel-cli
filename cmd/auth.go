@@ -74,7 +74,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	port := listener.Addr().(*net.TCPAddr).Port
 	redirectURI := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
@@ -108,13 +108,13 @@ func runLogin(cmd *cobra.Command, args []string) error {
 			if c == "" {
 				errChan <- fmt.Errorf("missing code parameter")
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte("missing code"))
+				_, _ = w.Write([]byte("missing code"))
 				return
 			}
 			codeChan <- c
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Authentication successful! You can close this window."))
+			_, _ = w.Write([]byte("Authentication successful! You can close this window."))
 		})
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -124,7 +124,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			errChan <- fmt.Errorf("serve: %w", err)
 		}
-		server.Shutdown(ctx)
+		_ = server.Shutdown(ctx)
 	}()
 
 	select {
@@ -149,7 +149,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("token exchange: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -165,10 +165,12 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	}
 
 	// Extract user UUID from access token (unverified parse)
-	var claims jwt.MapClaims
-	jwt.ParseWithClaims(tokenResp.AccessToken, claims, func(token *jwt.Token) (any, error) {
+	claims := jwt.MapClaims{}
+	if _, err := jwt.ParseWithClaims(tokenResp.AccessToken, claims, func(token *jwt.Token) (any, error) {
 		return nil, nil // Don't verify signature here
-	})
+	}); err != nil {
+		return fmt.Errorf("parse access token: %w", err)
+	}
 
 	userUUID := ""
 	if sub, ok := claims["sub"]; ok {
@@ -210,10 +212,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	// Decode JWT to get expiry (no signature verify needed)
-	var claims jwt.MapClaims
-	jwt.ParseWithClaims(cfg.AccessToken, claims, func(token *jwt.Token) (any, error) {
+	claims := jwt.MapClaims{}
+	if _, err := jwt.ParseWithClaims(cfg.AccessToken, claims, func(token *jwt.Token) (any, error) {
 		return nil, nil
-	})
+	}); err != nil {
+		fmt.Printf("Warning: could not parse access token: %v\n", err)
+	}
 
 	var exp time.Time
 	if expFloat, ok := claims["exp"]; ok {

@@ -113,7 +113,7 @@ func runTokenList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -131,7 +131,9 @@ func runTokenList(cmd *cobra.Command, args []string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprint(w, "ID\tCREATED\tEXPIRES\tREVOKED\n")
+	if _, err := fmt.Fprint(w, "ID\tCREATED\tEXPIRES\tREVOKED\n"); err != nil {
+		return err
+	}
 	for _, t := range tokens {
 		expires := ""
 		if t.ExpiresAt != nil {
@@ -141,13 +143,17 @@ func runTokenList(cmd *cobra.Command, args []string) error {
 		if t.RevokedAt != nil {
 			revoked = t.RevokedAt.Format(time.RFC3339)
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 			t.ID.String()[:8],
 			t.CreatedAt.Format("2006-01-02 15:04:05"),
 			expires,
-			revoked)
+			revoked); err != nil {
+			return err
+		}
 	}
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -203,7 +209,7 @@ func runTokenIssue(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("create agent request failed: %w", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusCreated {
 			body, _ := io.ReadAll(resp.Body)
@@ -247,7 +253,7 @@ func runTokenIssue(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("issue token request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
@@ -289,7 +295,7 @@ func runTokenRevoke(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -318,7 +324,7 @@ func listAgents(cfg clicfg.Config) ([]agent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
