@@ -82,22 +82,22 @@ func (c Config) Save() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	enc := toml.NewEncoder(f)
 	if err := enc.Encode(c); err != nil {
-		os.Remove(tmpFile)
+		_ = f.Close()
+		_ = os.Remove(tmpFile)
 		return err
 	}
 
 	if err := f.Close(); err != nil {
-		os.Remove(tmpFile)
+		_ = os.Remove(tmpFile)
 		return err
 	}
 
 	// Atomic rename
 	if err := os.Rename(tmpFile, path); err != nil {
-		os.Remove(tmpFile)
+		_ = os.Remove(tmpFile)
 		return err
 	}
 
