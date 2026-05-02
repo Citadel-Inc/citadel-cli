@@ -17,7 +17,7 @@ import (
 	"github.com/Rethunk-Tech/citadel/internal/clicfg"
 )
 
-// WaitlistCmd is the parent for `citadel waitlist {grant,revoke,list}`.
+// WaitlistCmd is the parent for `citadel-cli waitlist {grant,revoke,list}`.
 //
 // Per spec go-waitlist-email-allowlist Phase C2, these subcommands share
 // the same backend endpoints as the operator UI surface and require the
@@ -201,7 +201,7 @@ func waitlistAuthCfg(cmd *cobra.Command) (clicfg.Config, string, error) {
 		return clicfg.Config{}, "", fmt.Errorf("load config: %w", err)
 	}
 	if cfg.AccessToken == "" {
-		return clicfg.Config{}, "", fmt.Errorf("not authenticated; run 'citadel auth login' first")
+		return clicfg.Config{}, "", fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
 	}
 	flagServer, _ := cmd.Flags().GetString("server")
 	return cfg, cfg.ResolveServerURL(flagServer), nil

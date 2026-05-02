@@ -16,11 +16,11 @@ import (
 	"github.com/Rethunk-Tech/citadel/internal/clicfg"
 )
 
-// McpCmd is the parent for `citadel mcp ...`. Speaks the MCP Streamable
+// McpCmd is the parent for `citadel-cli mcp ...`. Speaks the MCP Streamable
 // HTTP protocol against /mcp.
 //
 // Authentication: defaults to cfg.AccessToken (Supabase JWT from
-// `citadel auth login`). Override with --token or CITADEL_AGENT_TOKEN
+// `citadel-cli auth login`). Override with --token or CITADEL_AGENT_TOKEN
 // for agent / CI use. The MCP server's verifyBearer (per go-mcp-oauth
 // A2) tries JWT first then falls through to agent_tokens, so either
 // works at the resource-server boundary.
@@ -29,7 +29,7 @@ var McpCmd = &cobra.Command{
 	Short: "Interact with MCP tools",
 	Long: `Commands for listing and calling MCP tools via the Citadel MCP server.
 
-Authentication defaults to your Supabase JWT from 'citadel auth login'.
+Authentication defaults to your Supabase JWT from 'citadel-cli auth login'.
 Override with --token or CITADEL_AGENT_TOKEN for agent / CI workflows.`,
 }
 
@@ -128,7 +128,7 @@ func dialMCP(cmd *cobra.Command) (*mcpclient.Client, error) {
 	mcpURL := resolveMCPURL(cfg.ResolveServerURL(flagServer))
 	token := pickToken(flagToken, cfg.AccessToken)
 	if token == "" {
-		return nil, errors.New("no auth token: run `citadel auth login` (or pass --token / set CITADEL_AGENT_TOKEN)")
+		return nil, errors.New("no auth token: run `citadel-cli auth login` (or pass --token / set CITADEL_AGENT_TOKEN)")
 	}
 
 	c := mcpclient.New(mcpURL, token, time.Duration(timeoutSecs)*time.Second)
@@ -158,10 +158,10 @@ func pickToken(flagToken, jwt string) string {
 }
 
 // surfaceErr maps mcpclient errors to user copy. Auth failures point at
-// `citadel auth login` per spec §Auth; everything else passes through.
+// `citadel-cli auth login` per spec §Auth; everything else passes through.
 func surfaceErr(err error) error {
 	if mcpclient.IsUnauthorized(err) {
-		return errors.New("unauthorized: run `citadel auth login` to refresh your session, or pass --token / set CITADEL_AGENT_TOKEN")
+		return errors.New("unauthorized: run `citadel-cli auth login` to refresh your session, or pass --token / set CITADEL_AGENT_TOKEN")
 	}
 	return err
 }
@@ -274,7 +274,7 @@ func init() {
 	McpCmd.AddCommand(toolsCmd)
 	McpCmd.AddCommand(callCmd)
 
-	McpCmd.PersistentFlags().String("token", "", "Auth token (overrides CITADEL_AGENT_TOKEN env var; defaults to your `citadel auth login` session JWT)")
+	McpCmd.PersistentFlags().String("token", "", "Auth token (overrides CITADEL_AGENT_TOKEN env var; defaults to your `citadel-cli auth login` session JWT)")
 	McpCmd.PersistentFlags().Int("timeout", 60, "Per-call HTTP timeout in seconds")
 
 	callCmd.Flags().StringSlice("arg", []string{}, "Tool arguments as key=value pairs (digits→number, CSV→array, else string)")

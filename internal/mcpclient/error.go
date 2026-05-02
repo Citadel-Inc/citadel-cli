@@ -36,7 +36,7 @@ func (e *Error) Error() string { return e.Message }
 
 // IsUnauthorized is the canonical narrowing helper for the auth-failure
 // branch. Cobra cmd code uses this to decide whether to print
-// "Run `citadel auth login` to refresh your session."
+// "Run `citadel-cli auth login` to refresh your session."
 func IsUnauthorized(err error) bool {
 	e, ok := err.(*Error)
 	return ok && e.Kind == KindUnauthorized

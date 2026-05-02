@@ -1,6 +1,6 @@
 # Citadel CLI — Installation and usage
 
-`citadel` is a command-line client for managing authentication, agent tokens, and MCP tool interactions with the Citadel server. All commands authenticate via Supabase Auth (OAuth/PKCE) and store credentials locally in `~/.config/citadel/config.toml` (mode 0600).
+The **`citadel-cli`** binary is the command-line **client** for authentication, agent tokens, and MCP tool calls against the Citadel **server**. The server binary from this repo is **`citadel`** (`cmd/citadel` — HTTP, SSH, MCP); do not confuse the two names on disk. All CLI commands authenticate via Supabase Auth (OAuth/PKCE) and store credentials locally in `~/.config/citadel/config.toml` (mode 0600).
 
 ## Installation
 
@@ -11,7 +11,7 @@ If you have a local checkout:
 ```bash
 cd /path/to/citadel
 make build-cli
-cp ./citadel-cli /usr/local/bin/citadel
+cp ./citadel-cli /usr/local/bin/citadel-cli
 ```
 
 ### Via `go install` (latest)
@@ -31,7 +31,7 @@ Once v1 is stable, pre-built binaries for linux-amd64, linux-arm64, and darwin-a
 ### Login
 
 ```bash
-citadel auth login
+citadel-cli auth login
 ```
 
 This opens your default browser to Supabase's OAuth authorization endpoint. After you authenticate (GitHub or your configured provider), the browser redirects to a local loopback server running on your machine, which exchanges the authorization code for an access token and refresh token. Both are stored in `~/.config/citadel/config.toml` (mode 0600).
@@ -41,7 +41,7 @@ The CLI defaults to server URL `https://api.src.land`; if your server is at a di
 ### Check authentication status
 
 ```bash
-citadel auth status
+citadel-cli auth status
 ```
 
 Prints the authenticated user UUID, access token expiry time, and configured server URL. If not authenticated, prints "not authenticated" and exits 0.
@@ -49,7 +49,7 @@ Prints the authenticated user UUID, access token expiry time, and configured ser
 ### Logout
 
 ```bash
-citadel auth logout
+citadel-cli auth logout
 ```
 
 Removes the authentication session from the config file, preserving the server URL setting for future logins.
@@ -59,7 +59,7 @@ Removes the authentication session from the config file, preserving the server U
 ### List agent tokens
 
 ```bash
-citadel token list --agent <agent-name>
+citadel-cli token list --agent <agent-name>
 ```
 
 Lists all tokens (active and revoked) for the given agent. Columns: token ID, agent name, scopes, created_at, expires_at, revoked_at.
@@ -67,16 +67,16 @@ Lists all tokens (active and revoked) for the given agent. Columns: token ID, ag
 Example:
 
 ```bash
-citadel token list --agent my-app
+citadel-cli token list --agent my-app
 ```
 
 ### Issue a new agent token
 
 ```bash
-citadel token issue --agent <name> [--scopes <scope>[,<scope>...]] [--expires <duration>]
+citadel-cli token issue --agent <name> [--scopes <scope>[,<scope>...]] [--expires <duration>]
 ```
 
-Creates or finds an agent with the given name and issues a new token. Prints the clear-text token exactly once to stdout (with no debug output). Subsequent `citadel token list` calls will show only metadata, not the secret.
+Creates or finds an agent with the given name and issues a new token. Prints the clear-text token exactly once to stdout (with no debug output). Subsequent `citadel-cli token list` calls will show only metadata, not the secret.
 
 Parameters:
 - `--agent <name>` (required): Agent name; if the agent does not exist, it is created.
@@ -86,7 +86,7 @@ Parameters:
 Example:
 
 ```bash
-$ citadel token issue --agent my-indexer --scopes mcp:read --expires 7d
+$ citadel-cli token issue --agent my-indexer --scopes mcp:read --expires 7d
 sb_at_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
@@ -95,7 +95,7 @@ Save this token immediately — it is never displayed again. Store it in your ap
 ### Revoke an agent token
 
 ```bash
-citadel token revoke <token-id>
+citadel-cli token revoke <token-id>
 ```
 
 Sets the `revoked_at` timestamp on the token, deactivating it immediately. Revoked tokens are rejected on every MCP call. This command is idempotent — revoking an already-revoked token is a no-op.
@@ -103,7 +103,7 @@ Sets the `revoked_at` timestamp on the token, deactivating it immediately. Revok
 Example:
 
 ```bash
-citadel token revoke 550e8400-e29b-41d4-a716-446655440000
+citadel-cli token revoke 550e8400-e29b-41d4-a716-446655440000
 ```
 
 ## Server URL configuration
@@ -117,21 +117,21 @@ The CLI defaults to `https://api.src.land`. Override it via:
 Example:
 
 ```bash
-citadel --server http://localhost:8080 token list --agent my-app
+citadel-cli --server http://localhost:8080 token list --agent my-app
 export CITADEL_SERVER=https://api.internal.example.com
-citadel token list --agent my-app
+citadel-cli token list --agent my-app
 ```
 
 ## MCP tool calls
 
-The `citadel mcp` group speaks the [Streamable HTTP MCP protocol](https://modelcontextprotocol.io/specification/2025-11-25/server) against the Citadel MCP server. The server URL defaults to `https://mcp.src.land/mcp` (resolved from `--server` / `CITADEL_SERVER`; `api.src.land` is auto-swapped to `mcp.src.land`).
+The `citadel-cli mcp` group speaks the [Streamable HTTP MCP protocol](https://modelcontextprotocol.io/specification/2025-11-25/server) against the Citadel MCP server. The server URL defaults to `https://mcp.src.land/mcp` (resolved from `--server` / `CITADEL_SERVER`; `api.src.land` is auto-swapped to `mcp.src.land`).
 
-Authentication uses your **Supabase JWT** from `citadel auth login` by default. Override with `--token` or `CITADEL_AGENT_TOKEN` for agent / CI workflows — both work because the MCP server's bearer-validator tries JWTs first and falls through to opaque agent tokens.
+Authentication uses your **Supabase JWT** from `citadel-cli auth login` by default. Override with `--token` or `CITADEL_AGENT_TOKEN` for agent / CI workflows — both work because the MCP server's bearer-validator tries JWTs first and falls through to opaque agent tokens.
 
 ### List tools
 
 ```bash
-$ citadel mcp tools
+$ citadel-cli mcp tools
 get_namespace	Look up a namespace by slug or path
 kg_find_symbol	Search the knowledge graph for symbols matching a query
 kg_list_files	List indexed files in a namespace
@@ -141,7 +141,7 @@ kg_walk	Walk symbol edges from a starting symbol
 ### Call a tool
 
 ```bash
-$ citadel mcp call get_namespace --arg path=damon
+$ citadel-cli mcp call get_namespace --arg path=damon
 {
   "slug": "damon",
   "kind": "user",
@@ -152,7 +152,7 @@ $ citadel mcp call get_namespace --arg path=damon
 Use `--json` for the raw JSON-RPC `tools/call` response (useful for scripting):
 
 ```bash
-$ citadel mcp call get_namespace --arg path=damon --json
+$ citadel-cli mcp call get_namespace --arg path=damon --json
 ```
 
 ### Argument coercion
@@ -195,7 +195,7 @@ Edge cases that fall through to string: `.5`, `5.`, `1.2.3`, anything with non-d
 A 401 / `-32001 unauthorized` from the server prints:
 
 ```
-unauthorized: run `citadel auth login` to refresh your session, or pass --token / set CITADEL_AGENT_TOKEN
+unauthorized: run `citadel-cli auth login` to refresh your session, or pass --token / set CITADEL_AGENT_TOKEN
 ```
 
 The CLI does **not** auto-refresh tokens. Re-authenticate explicitly.
@@ -215,7 +215,7 @@ For hand-rolled token issuance (operator-only, until this CLI shipped), see [doc
 
 ### "not authenticated" after login
 
-The OAuth flow may have timed out or the browser may have closed. Try `citadel auth login` again.
+The OAuth flow may have timed out or the browser may have closed. Try `citadel-cli auth login` again.
 
 ### Token expires quickly
 
@@ -223,7 +223,7 @@ The default expiration is "no expiry" (tokens live until revoked). If you set `-
 
 ### Config file not found
 
-If `~/.config/citadel/` does not exist, `citadel auth login` creates it automatically with mode 0700 (directory) and 0600 (config file). If the file exists but is unreadable, check its permissions with `ls -la ~/.config/citadel/config.toml`.
+If `~/.config/citadel/` does not exist, `citadel-cli auth login` creates it automatically with mode 0700 (directory) and 0600 (config file). If the file exists but is unreadable, check its permissions with `ls -la ~/.config/citadel/config.toml`.
 
 ### "parse error in config"
 
@@ -231,7 +231,7 @@ The config file may be corrupted. Back it up and delete it:
 
 ```bash
 mv ~/.config/citadel/config.toml ~/.config/citadel/config.toml.bak
-citadel auth login
+citadel-cli auth login
 ```
 
 This will create a fresh config.
@@ -243,23 +243,23 @@ The CLI binary is built by the GitHub Actions release workflow on every annotate
 - **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Rethunk-Tech/citadel/releases/tag/<tag>` with the three binaries + a `SHA256SUMS` file. Manual download:
 
   ```bash
-  # Replace v0.x.y with the latest tag.
-  curl -L -o citadel \
+  # Replace v0.x.y with the latest tag. GitHub asset is named citadel-linux-amd64; install on PATH as citadel-cli.
+  curl -L -o citadel-linux-amd64 \
     https://github.com/Rethunk-Tech/citadel/releases/download/citadel-cli-v0.x.y/citadel-linux-amd64
   curl -L -o SHA256SUMS \
     https://github.com/Rethunk-Tech/citadel/releases/download/citadel-cli-v0.x.y/SHA256SUMS
   sha256sum -c SHA256SUMS --ignore-missing
-  chmod +x citadel
-  sudo mv citadel /usr/local/bin/
+  chmod +x citadel-linux-amd64
+  sudo mv citadel-linux-amd64 /usr/local/bin/citadel-cli
   ```
 
-- **Homebrew tap (deferred).** Suggested formula path `rethunk-tech/tap/citadel`. Land when a second non-operator user adopts the CLI; until then, GH Releases is sufficient.
+- **Homebrew tap (deferred).** Suggested formula path `rethunk-tech/tap/citadel-cli`. Land when a second non-operator user adopts the CLI; until then, GH Releases is sufficient.
 
 - **Static mirror at `cli.src.land` (deferred).** Operator-managed mirror behind Caddy. Only worth standing up if GH Releases is unavailable to a target audience (corporate networks blocking github.com download paths). Not currently planned.
 
 ### Versioning
 
-Until v1.0 the CLI versions in lockstep with the citadel binary; both bump together on every release. After v1.0 the CLI versions independently — server-side compatibility is JWT/JWKS-based, not version-pinned.
+Until v1.0 the **citadel-cli** release tags track the **citadel** server binary releases; both bump together on every release. After v1.0 the CLI versions independently — server-side compatibility is JWT/JWKS-based, not version-pinned.
 
 ### Verifying a download
 

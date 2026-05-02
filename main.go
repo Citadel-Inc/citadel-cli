@@ -10,10 +10,10 @@ import (
 
 func main() {
 	root := &cobra.Command{
-		Use:   "citadel",
+		Use:   "citadel-cli",
 		Short: "Citadel CLI — authentication, token, and MCP agent interface",
-		Long: `Citadel is a command-line client for managing authentication, agent tokens,
-and MCP tool interactions with the Citadel server.
+		Long: `citadel-cli is the command-line client for managing authentication, agent tokens,
+and MCP tool interactions against the Citadel server (the server binary is "citadel", cmd/citadel).
 
 Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --server.`,
 		Version: "0.0.1-alpha",

@@ -10,7 +10,7 @@ import (
 
 func TestRootCommandHelp(t *testing.T) {
 	root := &cobra.Command{
-		Use:   "citadel",
+		Use:   "citadel-cli",
 		Short: "Citadel CLI — authentication, token, and MCP agent interface",
 		Long: `Citadel is a command-line client for managing authentication, agent tokens,
 and MCP tool interactions with the Citadel server.

@@ -74,7 +74,7 @@ func runTokenList(cmd *cobra.Command, args []string) error {
 	}
 
 	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel auth login' first")
+		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
 	}
 
 	flagServer, _ := cmd.Flags().GetString("server")
@@ -165,7 +165,7 @@ func runTokenIssue(cmd *cobra.Command, args []string) error {
 	}
 
 	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel auth login' first")
+		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
 	}
 
 	agentName, _ := cmd.Flags().GetString("agent")
@@ -278,7 +278,7 @@ func runTokenRevoke(cmd *cobra.Command, args []string) error {
 	}
 
 	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel auth login' first")
+		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
 	}
 
 	tokenID := args[0]

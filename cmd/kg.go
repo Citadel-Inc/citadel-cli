@@ -13,16 +13,16 @@ import (
 	"github.com/Rethunk-Tech/citadel/internal/clicfg"
 )
 
-// KgCmd is the parent for `citadel kg ...`. Talks to the JWT-gated
+// KgCmd is the parent for `citadel-cli kg ...`. Talks to the JWT-gated
 // /api/kg/{slug}/* endpoints directly using cfg.AccessToken from
-// `citadel auth login`. Server URL precedence inherits from the root
+// `citadel-cli auth login`. Server URL precedence inherits from the root
 // `--server` flag + CITADEL_SERVER env var via clicfg.
 var KgCmd = &cobra.Command{
 	Use:   "kg",
 	Short: "Knowledge-graph queries (impact analysis)",
 	Long: `Commands for querying the knowledge-graph substrate populated by go-kg-indexer.
 
-Authentication uses your Supabase JWT from 'citadel auth login'.`,
+Authentication uses your Supabase JWT from 'citadel-cli auth login'.`,
 }
 
 var kgImpactCmd = &cobra.Command{
@@ -47,7 +47,7 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated: run `citadel auth login`")
+		return fmt.Errorf("not authenticated: run `citadel-cli auth login`")
 	}
 	flagServer, _ := cmd.Flags().GetString("server")
 	server := strings.TrimRight(cfg.ResolveServerURL(flagServer), "/")
@@ -74,7 +74,7 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("unauthorized: run `citadel auth login` to refresh your session")
+		return fmt.Errorf("unauthorized: run `citadel-cli auth login` to refresh your session")
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))

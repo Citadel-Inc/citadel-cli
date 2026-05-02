@@ -207,7 +207,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	if cfg.AccessToken == "" {
-		fmt.Println("Not authenticated. Run 'citadel auth login' to authenticate.")
+		fmt.Println("Not authenticated. Run 'citadel-cli auth login' to authenticate.")
 		return nil
 	}
 
