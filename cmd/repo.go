@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -125,8 +126,8 @@ func runRepoCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	bodyBytes, _ := json.Marshal(reqBody)
-	url := fmt.Sprintf("%s/api/namespaces/%s/repos", serverURL, ns)
-	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+	apiURL := fmt.Sprintf("%s/api/namespaces/%s/repos", serverURL, url.PathEscape(ns))
+	req, _ := http.NewRequest(http.MethodPost, apiURL, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -171,8 +172,8 @@ func runRepoList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--namespace is required")
 	}
 
-	url := fmt.Sprintf("%s/api/namespaces/%s/repos", serverURL, ns)
-	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	apiURL := fmt.Sprintf("%s/api/namespaces/%s/repos", serverURL, url.PathEscape(ns))
+	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -229,8 +230,8 @@ func runRepoGet(cmd *cobra.Command, args []string) error {
 	}
 	ns, slug := parts[0], parts[1]
 
-	url := fmt.Sprintf("%s/api/namespaces/%s/repos", serverURL, ns)
-	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	apiURL := fmt.Sprintf("%s/api/namespaces/%s/repos", serverURL, url.PathEscape(ns))
+	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -293,8 +294,9 @@ func runRepoDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	url := fmt.Sprintf("%s/api/namespaces/%s/%s", serverURL, ns, slug)
-	req, _ := http.NewRequest(http.MethodDelete, url, nil)
+	// DELETE route has no /repos segment: /api/namespaces/{parent}/{repo}
+	apiURL := fmt.Sprintf("%s/api/namespaces/%s/%s", serverURL, url.PathEscape(ns), url.PathEscape(slug))
+	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)

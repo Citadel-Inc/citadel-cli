@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"text/tabwriter"
 	"time"
@@ -226,8 +227,8 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	url := fmt.Sprintf("%s/api/agents/%s", serverURL, agentID)
-	req, _ := http.NewRequest(http.MethodDelete, url, nil)
+	apiURL := fmt.Sprintf("%s/api/agents/%s", serverURL, url.PathEscape(agentID))
+	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -258,6 +259,11 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	serverURL := cfg.ResolveServerURL(flagServer)
 
 	name := args[0]
+
+	yes, _ := cmd.Flags().GetBool("yes")
+	if err := confirmSlug(yes, "rotate token for agent", name); err != nil {
+		return err
+	}
 
 	// Resolve agent ID.
 	rows, err := listAgentRows(serverURL, cfg.AccessToken)
@@ -323,6 +329,7 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	}
 
 	// Revoke all tokens except the new one.
+	var revokeErr error
 	for _, t := range existingTokens {
 		if t.ID == newTok.ID {
 			continue
@@ -330,19 +337,27 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 		if t.RevokedAt != nil {
 			continue
 		}
-		revokeURL := fmt.Sprintf("%s/api/agent-tokens/%s", serverURL, t.ID)
-		revokeReq, _ := http.NewRequest(http.MethodDelete, revokeURL, nil)
+		revokeAPIURL := fmt.Sprintf("%s/api/agent-tokens/%s", serverURL, url.PathEscape(t.ID))
+		revokeReq, _ := http.NewRequest(http.MethodDelete, revokeAPIURL, nil)
 		revokeReq.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 		revokeResp, err := http.DefaultClient.Do(revokeReq)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to revoke token %s: %v\n", t.ID, err)
+			revokeErr = err
 			continue
 		}
 		_ = revokeResp.Body.Close()
+		if revokeResp.StatusCode != http.StatusNoContent && revokeResp.StatusCode != http.StatusOK {
+			fmt.Fprintf(os.Stderr, "warning: revoke token %s returned %d\n", t.ID, revokeResp.StatusCode)
+			revokeErr = fmt.Errorf("revoke returned %d", revokeResp.StatusCode)
+		}
 	}
 
-	// Print new token once to stdout.
+	// Print new token once to stdout before surfacing any revoke warnings.
 	fmt.Println(newTok.CleartextToken)
+	if revokeErr != nil {
+		return fmt.Errorf("new token issued but one or more old tokens could not be revoked; check 'citadel-cli token list --agent %s'", name)
+	}
 	return nil
 }
 
@@ -356,5 +371,6 @@ func init() {
 	agentGetCmd.Flags().String("output", "", "Output format: json")
 	agentDeleteCmd.Flags().Bool("yes", false, "Skip confirmation prompt")
 	agentDeleteCmd.Flags().String("output", "", "Output format: json")
+	agentRotateTokenCmd.Flags().Bool("yes", false, "Skip confirmation prompt")
 	agentRotateTokenCmd.Flags().String("output", "", "Output format: json")
 }

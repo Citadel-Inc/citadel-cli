@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -290,8 +291,8 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 
 	slug := args[0]
 
-	url := fmt.Sprintf("%s/api/orgs/%s/members", serverURL, slug)
-	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	apiURL := fmt.Sprintf("%s/api/orgs/%s/members", serverURL, url.PathEscape(slug))
+	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -305,10 +306,13 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
 	}
 
-	var members []nsMemberRow
-	if err := json.NewDecoder(resp.Body).Decode(&members); err != nil {
+	var payload struct {
+		Members []nsMemberRow `json:"members"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return fmt.Errorf("decode response: %w", err)
 	}
+	members := payload.Members
 
 	if output == "json" {
 		return emitJSON(members)
@@ -366,8 +370,8 @@ func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
 	}
 	bodyBytes, _ := json.Marshal(reqBody)
 
-	url := fmt.Sprintf("%s/api/orgs/%s/transfer", serverURL, orgSlug)
-	req, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(bodyBytes))
+	apiURL := fmt.Sprintf("%s/api/orgs/%s/transfer", serverURL, url.PathEscape(orgSlug))
+	req, _ := http.NewRequest(http.MethodPost, apiURL, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -469,8 +473,8 @@ func runNsTransferAccept(cmd *cobra.Command, args []string) error {
 
 	transferID := args[0]
 
-	url := fmt.Sprintf("%s/api/transfers/%s/accept", serverURL, transferID)
-	req, _ := http.NewRequest(http.MethodPost, url, http.NoBody)
+	apiURL := fmt.Sprintf("%s/api/transfers/%s/accept", serverURL, url.PathEscape(transferID))
+	req, _ := http.NewRequest(http.MethodPost, apiURL, http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -510,8 +514,8 @@ func runNsTransferDecline(cmd *cobra.Command, args []string) error {
 
 	transferID := args[0]
 
-	url := fmt.Sprintf("%s/api/transfers/%s/decline", serverURL, transferID)
-	req, _ := http.NewRequest(http.MethodPost, url, http.NoBody)
+	apiURL := fmt.Sprintf("%s/api/transfers/%s/decline", serverURL, url.PathEscape(transferID))
+	req, _ := http.NewRequest(http.MethodPost, apiURL, http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -547,8 +551,8 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	url := fmt.Sprintf("%s/api/transfers/%s", serverURL, transferID)
-	req, _ := http.NewRequest(http.MethodDelete, url, nil)
+	apiURL := fmt.Sprintf("%s/api/transfers/%s", serverURL, url.PathEscape(transferID))
+	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)

@@ -187,6 +187,15 @@ func TestAgentDeleteDestructiveFlags(t *testing.T) {
 	}
 }
 
+func TestAgentRotateTokenDestructiveFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.AgentCmd, "rotate-token")
+	for _, flag := range []string{"yes", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel agent rotate-token: missing flag --%s", flag)
+		}
+	}
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 // findSubcmd returns the named subcommand or fails the test.
