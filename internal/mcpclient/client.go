@@ -1,10 +1,9 @@
 // Package mcpclient is a tiny Streamable-HTTP client for MCP servers.
 //
 // One Client instance corresponds to one logical CLI invocation: callers
-// must Initialize() before issuing ToolsList / ToolsCall (the server
-// rejects non-initialize requests without an Mcp-Session-Id header that
-// is only minted on initialize). The client persists the session ID +
-// negotiated protocol version on the struct.
+// must Initialize() before issuing ToolsList / ToolsCall / ResourcesList /
+// ResourcesRead / PromptsList / PromptsGet (the server rejects non-initialize
+// requests without an Mcp-Session-Id header that is only minted on initialize).
 package mcpclient
 
 import (
@@ -51,6 +50,28 @@ type Tool struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description,omitempty"`
 	InputSchema map[string]any `json:"inputSchema,omitempty"`
+}
+
+// MCPResource is one row from resources/list.
+type MCPResource struct {
+	URI         string `json:"uri"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"`
+}
+
+// MCPPrompt is one row from prompts/list.
+type MCPPrompt struct {
+	Name        string              `json:"name"`
+	Description string              `json:"description,omitempty"`
+	Arguments   []MCPPromptArgument `json:"arguments,omitempty"`
+}
+
+// MCPPromptArgument mirrors prompts/list argument metadata.
+type MCPPromptArgument struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Required    *bool  `json:"required,omitempty"`
 }
 
 // New constructs a Client with the given timeout. Pass 0 for no timeout
@@ -141,6 +162,62 @@ func (c *Client) ToolsCall(ctx context.Context, name string, args map[string]any
 	}
 	parsed.Raw = raw
 	return &parsed, nil
+}
+
+// ResourcesList calls resources/list.
+func (c *Client) ResourcesList(ctx context.Context) ([]MCPResource, error) {
+	if c.sessionID == "" {
+		return nil, fmt.Errorf("ResourcesList: client not initialized")
+	}
+	var out struct {
+		Resources []MCPResource `json:"resources"`
+	}
+	if _, err := c.call(ctx, "resources/list", map[string]any{}, &out); err != nil {
+		return nil, err
+	}
+	return out.Resources, nil
+}
+
+// ResourcesRead calls resources/read for a URI (citadel:// or repo://).
+func (c *Client) ResourcesRead(ctx context.Context, uri string) (json.RawMessage, error) {
+	if c.sessionID == "" {
+		return nil, fmt.Errorf("ResourcesRead: client not initialized")
+	}
+	var raw json.RawMessage
+	if _, err := c.call(ctx, "resources/read", map[string]any{"uri": uri}, &raw); err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
+// PromptsList calls prompts/list.
+func (c *Client) PromptsList(ctx context.Context) ([]MCPPrompt, error) {
+	if c.sessionID == "" {
+		return nil, fmt.Errorf("PromptsList: client not initialized")
+	}
+	var out struct {
+		Prompts []MCPPrompt `json:"prompts"`
+	}
+	if _, err := c.call(ctx, "prompts/list", map[string]any{}, &out); err != nil {
+		return nil, err
+	}
+	return out.Prompts, nil
+}
+
+// PromptsGet calls prompts/get.
+func (c *Client) PromptsGet(ctx context.Context, name string, arguments map[string]any) (json.RawMessage, error) {
+	if c.sessionID == "" {
+		return nil, fmt.Errorf("PromptsGet: client not initialized")
+	}
+	params := map[string]any{"name": name}
+	if len(arguments) > 0 {
+		params["arguments"] = arguments
+	}
+	var raw json.RawMessage
+	if _, err := c.call(ctx, "prompts/get", params, &raw); err != nil {
+		return nil, err
+	}
+	return raw, nil
 }
 
 // call is the JSON-RPC round-trip primitive. Returns the session id from

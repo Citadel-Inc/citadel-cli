@@ -100,7 +100,7 @@ func TestMcpSubcommands(t *testing.T) {
 	if len(cmd.McpCmd.Commands()) == 0 {
 		t.Error("McpCmd has no subcommands")
 	}
-	expectedMcp := []string{"tools", "call"}
+	expectedMcp := []string{"tools", "call", "resources", "prompts"}
 	for _, expected := range expectedMcp {
 		found := false
 		for _, subcmd := range cmd.McpCmd.Commands() {

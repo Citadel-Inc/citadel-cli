@@ -26,8 +26,9 @@ import (
 // works at the resource-server boundary.
 var McpCmd = &cobra.Command{
 	Use:   "mcp",
-	Short: "Interact with MCP tools",
-	Long: `Commands for listing and calling MCP tools via the Citadel MCP server.
+	Short: "Interact with MCP tools, resources, and prompts",
+	Long: `Commands for listing MCP tools, resources, and prompts and invoking
+tool / resource / prompt RPCs via the Citadel MCP server.
 
 Authentication defaults to your Supabase JWT from 'citadel-cli auth login'.
 Override with --token or CITADEL_AGENT_TOKEN for agent / CI workflows.`,
@@ -48,6 +49,42 @@ response. Args coerce by default: digits→number, CSV→array, else string.
 Use --arg-string key=value to force string for a single arg.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runMcpCall,
+}
+
+var mcpResourcesCmd = &cobra.Command{
+	Use:   "resources",
+	Short: "List and read MCP resources (citadel://, repo://)",
+}
+
+var mcpResourcesListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List resources (resources/list)",
+	RunE:  runMcpResourcesList,
+}
+
+var mcpResourcesReadCmd = &cobra.Command{
+	Use:   "read <uri>",
+	Short: "Read a resource URI (resources/read)",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runMcpResourcesRead,
+}
+
+var mcpPromptsCmd = &cobra.Command{
+	Use:   "prompts",
+	Short: "List and fetch MCP prompts",
+}
+
+var mcpPromptsListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List prompts (prompts/list)",
+	RunE:  runMcpPromptsList,
+}
+
+var mcpPromptsGetCmd = &cobra.Command{
+	Use:   "get <name>",
+	Short: "Fetch a prompt template (prompts/get)",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runMcpPromptsGet,
 }
 
 func runMcpTools(cmd *cobra.Command, _ []string) error {
@@ -109,6 +146,146 @@ func runMcpCall(cmd *cobra.Command, args []string) error {
 	}
 	if res.IsError {
 		os.Exit(2)
+	}
+	return nil
+}
+
+func runMcpResourcesList(cmd *cobra.Command, _ []string) error {
+	c, err := dialMCP(cmd)
+	if err != nil {
+		return err
+	}
+	rows, err := c.ResourcesList(cmdContext(cmd))
+	if err != nil {
+		return surfaceErr(err)
+	}
+	for _, r := range rows {
+		desc := r.Description
+		if desc == "" {
+			fmt.Printf("%s\t%s\n", r.URI, r.Name)
+		} else {
+			fmt.Printf("%s\t%s\t%s\n", r.URI, r.Name, desc)
+		}
+	}
+	return nil
+}
+
+func runMcpResourcesRead(cmd *cobra.Command, args []string) error {
+	uri := args[0]
+	rawJSON, _ := cmd.Flags().GetBool("json")
+	c, err := dialMCP(cmd)
+	if err != nil {
+		return err
+	}
+	raw, err := c.ResourcesRead(cmdContext(cmd), uri)
+	if err != nil {
+		return surfaceErr(err)
+	}
+	if rawJSON {
+		var pretty any
+		_ = json.Unmarshal(raw, &pretty)
+		out, _ := json.MarshalIndent(pretty, "", "  ")
+		fmt.Println(string(out))
+		return nil
+	}
+	var parsed struct {
+		Contents []map[string]any `json:"contents"`
+	}
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return fmt.Errorf("decode resources/read: %w", err)
+	}
+	for _, block := range parsed.Contents {
+		if t, ok := block["text"].(string); ok {
+			fmt.Println(t)
+			continue
+		}
+		out, _ := json.MarshalIndent(block, "", "  ")
+		fmt.Println(string(out))
+	}
+	return nil
+}
+
+func runMcpPromptsList(cmd *cobra.Command, _ []string) error {
+	c, err := dialMCP(cmd)
+	if err != nil {
+		return err
+	}
+	rows, err := c.PromptsList(cmdContext(cmd))
+	if err != nil {
+		return surfaceErr(err)
+	}
+	for _, p := range rows {
+		if p.Description == "" {
+			fmt.Println(p.Name)
+		} else {
+			fmt.Printf("%s\t%s\n", p.Name, p.Description)
+		}
+	}
+	return nil
+}
+
+func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
+	name := args[0]
+	rawJSON, _ := cmd.Flags().GetBool("json")
+	argPairs, _ := cmd.Flags().GetStringSlice("arg")
+	stringArgPairs, _ := cmd.Flags().GetStringSlice("arg-string")
+
+	promptArgs := map[string]any{}
+	for _, p := range argPairs {
+		k, v, ok := strings.Cut(p, "=")
+		if !ok {
+			return fmt.Errorf("bad --arg %q (expected key=value)", p)
+		}
+		promptArgs[k] = coerceArg(v)
+	}
+	for _, p := range stringArgPairs {
+		k, v, ok := strings.Cut(p, "=")
+		if !ok {
+			return fmt.Errorf("bad --arg-string %q (expected key=value)", p)
+		}
+		promptArgs[k] = v
+	}
+
+	c, err := dialMCP(cmd)
+	if err != nil {
+		return err
+	}
+	raw, err := c.PromptsGet(cmdContext(cmd), name, promptArgs)
+	if err != nil {
+		return surfaceErr(err)
+	}
+	if rawJSON {
+		var pretty any
+		_ = json.Unmarshal(raw, &pretty)
+		out, _ := json.MarshalIndent(pretty, "", "  ")
+		fmt.Println(string(out))
+		return nil
+	}
+	var parsed struct {
+		Description string `json:"description"`
+		Messages    []map[string]any `json:"messages"`
+	}
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return fmt.Errorf("decode prompts/get: %w", err)
+	}
+	if parsed.Description != "" {
+		fmt.Println(parsed.Description)
+		fmt.Println()
+	}
+	for _, m := range parsed.Messages {
+		role, _ := m["role"].(string)
+		content, _ := m["content"].(map[string]any)
+		if content != nil && content["type"] == "text" {
+			if text, ok := content["text"].(string); ok {
+				if role != "" {
+					fmt.Printf("[%s]\n", role)
+				}
+				fmt.Println(text)
+				continue
+			}
+		}
+		out, _ := json.MarshalIndent(m, "", "  ")
+		fmt.Println(string(out))
 	}
 	return nil
 }
@@ -273,6 +450,10 @@ func parseFloat(v string) (float64, bool) {
 func init() {
 	McpCmd.AddCommand(toolsCmd)
 	McpCmd.AddCommand(callCmd)
+	McpCmd.AddCommand(mcpResourcesCmd)
+	mcpResourcesCmd.AddCommand(mcpResourcesListCmd, mcpResourcesReadCmd)
+	McpCmd.AddCommand(mcpPromptsCmd)
+	mcpPromptsCmd.AddCommand(mcpPromptsListCmd, mcpPromptsGetCmd)
 
 	McpCmd.PersistentFlags().String("token", "", "Auth token (overrides CITADEL_AGENT_TOKEN env var; defaults to your `citadel-cli auth login` session JWT)")
 	McpCmd.PersistentFlags().Int("timeout", 60, "Per-call HTTP timeout in seconds")
@@ -280,4 +461,9 @@ func init() {
 	callCmd.Flags().StringSlice("arg", []string{}, "Tool arguments as key=value pairs (digits→number, CSV→array, else string)")
 	callCmd.Flags().StringSlice("arg-string", []string{}, "Tool arguments forced to string (no coercion)")
 	callCmd.Flags().Bool("json", false, "Output raw JSON-RPC tools/call result")
+
+	mcpResourcesReadCmd.Flags().Bool("json", false, "Output raw JSON-RPC resources/read result")
+	mcpPromptsGetCmd.Flags().StringSlice("arg", []string{}, "Prompt arguments as key=value (same coercion as mcp call)")
+	mcpPromptsGetCmd.Flags().StringSlice("arg-string", []string{}, "Prompt arguments forced to string")
+	mcpPromptsGetCmd.Flags().Bool("json", false, "Output raw JSON-RPC prompts/get result")
 }
