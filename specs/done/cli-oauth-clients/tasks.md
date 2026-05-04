@@ -16,5 +16,5 @@ Status: DONE 040041ZMAY26 — P1 B3: opt-in live integration test (oauth_clients
 
 ## P2
 
-- [ ] C1. Production smoke (create + rotate + revoke a test client).
+- [x] C1. Production smoke (create + rotate + revoke a test client).
 - [x] C2. Spec close.

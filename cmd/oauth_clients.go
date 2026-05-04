@@ -121,7 +121,7 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 	orgSlug, _ := cmd.Flags().GetString("org")
 	output, _ := cmd.Flags().GetString("output")
 
-	u, err := url.Parse(serverURL + "/api/oauth/clients")
+	u, err := url.Parse(serverURL + "/oauth/clients")
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	req, _ := http.NewRequest(http.MethodPost, serverURL+"/api/oauth/clients", bytes.NewReader(raw))
+	req, _ := http.NewRequest(http.MethodPost, serverURL+"/oauth/clients", bytes.NewReader(raw))
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -268,7 +268,7 @@ func runOAuthClientsShow(cmd *cobra.Command, args []string) error {
 	flagServer, _ := cmd.Flags().GetString("server")
 	serverURL := strings.TrimRight(cfg.ResolveServerURL(flagServer), "/")
 
-	req, _ := http.NewRequest(http.MethodGet, serverURL+"/api/oauth/clients/"+url.PathEscape(id), nil)
+	req, _ := http.NewRequest(http.MethodGet, serverURL+"/oauth/clients/"+url.PathEscape(id), nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -323,7 +323,7 @@ func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {
 	flagServer, _ := cmd.Flags().GetString("server")
 	serverURL := strings.TrimRight(cfg.ResolveServerURL(flagServer), "/")
 
-	req, _ := http.NewRequest(http.MethodPost, serverURL+"/api/oauth/clients/"+url.PathEscape(id)+"/rotate-secret", nil)
+	req, _ := http.NewRequest(http.MethodPost, serverURL+"/oauth/clients/"+url.PathEscape(id)+"/rotate-secret", nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -384,7 +384,7 @@ func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
 	flagServer, _ := cmd.Flags().GetString("server")
 	serverURL := strings.TrimRight(cfg.ResolveServerURL(flagServer), "/")
 
-	req, _ := http.NewRequest(http.MethodDelete, serverURL+"/api/oauth/clients/"+url.PathEscape(id), nil)
+	req, _ := http.NewRequest(http.MethodDelete, serverURL+"/oauth/clients/"+url.PathEscape(id), nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)

@@ -82,7 +82,7 @@ func runWaitlistGrant(cmd *cobra.Command, args []string) error {
 	note, _ := cmd.Flags().GetString("note")
 
 	body, _ := json.Marshal(map[string]string{"email": email, "note": note})
-	req, _ := http.NewRequest("POST", serverURL+"/api/operator/waitlist/allowlist", bytes.NewReader(body))
+	req, _ := http.NewRequest("POST", serverURL+"/operator/waitlist/allowlist", bytes.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -116,7 +116,7 @@ func runWaitlistRevoke(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	email := args[0]
-	revokeURL := serverURL + "/api/operator/waitlist/allowlist/" + url.PathEscape(email)
+	revokeURL := serverURL + "/operator/waitlist/allowlist/" + url.PathEscape(email)
 	req, _ := http.NewRequest("DELETE", revokeURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
@@ -150,7 +150,7 @@ func runWaitlistList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	req, _ := http.NewRequest("GET", serverURL+"/api/operator/waitlist/allowlist", nil)
+	req, _ := http.NewRequest("GET", serverURL+"/operator/waitlist/allowlist", nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)

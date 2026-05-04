@@ -95,7 +95,7 @@ type agentTokenWithCleartext struct {
 }
 
 func listAgentRows(serverURL, accessToken string) ([]agentRow, error) {
-	req, _ := http.NewRequest(http.MethodGet, serverURL+"/api/agents", nil)
+	req, _ := http.NewRequest(http.MethodGet, serverURL+"/agents", nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -287,7 +287,7 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	}{AgentID: agentID}
 	bodyBytes, _ := json.Marshal(issueBody)
 
-	issueReq, _ := http.NewRequest(http.MethodPost, serverURL+"/api/agent-tokens", bytes.NewReader(bodyBytes))
+	issueReq, _ := http.NewRequest(http.MethodPost, serverURL+"/agent-tokens", bytes.NewReader(bodyBytes))
 	issueReq.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 	issueReq.Header.Set("Content-Type", "application/json")
 

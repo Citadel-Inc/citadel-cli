@@ -180,7 +180,7 @@ type nsTransferRow struct {
 // ── handlers ─────────────────────────────────────────────────────────────────
 
 func listOrgNamespaces(serverURL, accessToken string) ([]nsOrgRow, error) {
-	req, _ := http.NewRequest(http.MethodGet, serverURL+"/api/orgs", nil)
+	req, _ := http.NewRequest(http.MethodGet, serverURL+"/orgs", nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -416,7 +416,7 @@ func runNsTransferListPending(cmd *cobra.Command, args []string) error {
 	serverURL := cfg.ResolveServerURL(flagServer)
 	output, _ := cmd.Flags().GetString("output")
 
-	req, _ := http.NewRequest(http.MethodGet, serverURL+"/api/transfers/pending", nil)
+	req, _ := http.NewRequest(http.MethodGet, serverURL+"/transfers/pending", nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
 	resp, err := http.DefaultClient.Do(req)
