@@ -74,11 +74,19 @@ Examples:
 
 var nsDeleteCmd = &cobra.Command{
 	Use:   "delete <slug>",
-	Short: "Soft-delete an org namespace you own",
-	Long: `Soft-deletes an org namespace. Sets namespaces.deleted_at = now() and
-emits an audit row. Owner-only; only kind=org namespaces are accepted (user
-and system namespaces cannot be deleted via this surface). Repos under the
-namespace are NOT cascaded — delete them first via 'citadel-cli repo delete'.
+	Short: "Hard-purge an org namespace you own",
+	Long: `Hard-purges an org namespace and writes a slug-hold tombstone in
+namespace_aliases (default 30 + 30 days post-purge reservation).
+
+Owner-only; only kind=org is accepted (user / system namespaces cannot be
+deleted via this surface). 409 has_repos is returned if any live child
+repos exist — delete them first via 'citadel-cli repo delete'.
+
+The DELETE is a real hard purge: the namespaces row + every FK-cascaded
+child (org_invitations, org_transfers, org_passkey_policies,
+namespace_profiles, namespace_avatar_sync, namespace_pins,
+namespace_grants, etc.) is removed in one tx. Search index
+(searchable_namespaces) refreshes after commit.
 
 Requires typed-slug confirmation unless --yes is set.
 
