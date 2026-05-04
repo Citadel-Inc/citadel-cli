@@ -196,6 +196,75 @@ func TestAgentRotateTokenDestructiveFlags(t *testing.T) {
 	}
 }
 
+// ── oauth clients ───────────────────────────────────────────────────────────
+
+func TestOauthCmdExists(t *testing.T) {
+	if cmd.OauthCmd == nil {
+		t.Fatal("OauthCmd is nil")
+	}
+}
+
+func TestOauthCmdHelp(t *testing.T) {
+	helpRuns(t, cmd.OauthCmd)
+}
+
+func TestOauthClientsSubcommands(t *testing.T) {
+	clients := findSubcmd(t, cmd.OauthCmd, "clients")
+	for _, name := range []string{"list", "create", "show", "rotate-secret", "revoke"} {
+		if !hasSubcmd(clients, name) {
+			t.Errorf("citadel oauth clients: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestOauthClientsListFlags(t *testing.T) {
+	clients := findSubcmd(t, cmd.OauthCmd, "clients")
+	c := findSubcmd(t, clients, "list")
+	for _, flag := range []string{"org", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel oauth clients list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestOauthClientsCreateFlags(t *testing.T) {
+	clients := findSubcmd(t, cmd.OauthCmd, "clients")
+	c := findSubcmd(t, clients, "create")
+	for _, flag := range []string{"name", "redirect-uri", "org", "public", "description", "scope", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel oauth clients create: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestOauthClientsShowOutputFlag(t *testing.T) {
+	clients := findSubcmd(t, cmd.OauthCmd, "clients")
+	c := findSubcmd(t, clients, "show")
+	if !hasFlag(c, "output") {
+		t.Error("citadel oauth clients show: missing --output flag")
+	}
+}
+
+func TestOauthClientsRotateSecretFlags(t *testing.T) {
+	clients := findSubcmd(t, cmd.OauthCmd, "clients")
+	c := findSubcmd(t, clients, "rotate-secret")
+	for _, flag := range []string{"output", "copy-to-clipboard"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel oauth clients rotate-secret: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestOauthClientsRevokeDestructiveFlags(t *testing.T) {
+	clients := findSubcmd(t, cmd.OauthCmd, "clients")
+	c := findSubcmd(t, clients, "revoke")
+	for _, flag := range []string{"yes", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel oauth clients revoke: missing flag --%s", flag)
+		}
+	}
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 // findSubcmd returns the named subcommand or fails the test.

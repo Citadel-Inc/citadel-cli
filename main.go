@@ -31,6 +31,7 @@ Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --s
 	root.AddCommand(cmd.RepoCmd)
 	root.AddCommand(cmd.NamespaceCmd)
 	root.AddCommand(cmd.AgentCmd)
+	root.AddCommand(cmd.OauthCmd)
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
