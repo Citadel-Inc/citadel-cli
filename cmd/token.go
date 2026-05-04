@@ -243,24 +243,15 @@ func runTokenIssue(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	bypassWL, _ := cmd.Flags().GetBool("bypass-waitlist")
-	var bypassPtr *bool
-	if bypassWL {
-		t := true
-		bypassPtr = &t
-	}
-
 	issueURL := fmt.Sprintf("%s/agent-tokens", serverURL)
 	issueReq := struct {
 		AgentID          uuid.UUID `json:"agent_id"`
 		ExpiresInSeconds *int64    `json:"expires_in_seconds,omitempty"`
 		Scopes           []string  `json:"scopes,omitempty"`
-		BypassWaitlist   *bool     `json:"bypass_waitlist,omitempty"`
 	}{
 		AgentID:          agentID,
 		ExpiresInSeconds: expiresIn,
 		Scopes:           scopes,
-		BypassWaitlist:   bypassPtr,
 	}
 
 	body, _ := json.Marshal(issueReq)
@@ -369,5 +360,4 @@ func init() {
 	issueCmd.Flags().String("agent", "", "Agent name (required)")
 	issueCmd.Flags().StringSlice("scopes", []string{}, "Token scopes (optional)")
 	issueCmd.Flags().String("expires", "", "Expiration duration (optional, e.g. '24h')")
-	issueCmd.Flags().Bool("bypass-waitlist", false, "Issue token with bypass_waitlist=true (requires operator:tokens-force-revoke)")
 }
