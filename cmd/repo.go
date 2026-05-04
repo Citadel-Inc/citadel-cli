@@ -61,7 +61,7 @@ var repoDeleteCmd = &cobra.Command{
 	Use:   "delete <namespace>/<repo>",
 	Short: "Hard-purge a repository",
 	Long: `Hard-purges a repository: drops the repo namespace + every FK-cascaded
-child (kg_files, kg_symbols, kg_file_content, kg_edges, repos, repo_pins,
+child (kg_files, kg_symbols, kg_file_content, kg_edges, repos, repo_submodule_pins,
 pg_edges, user_pinned_repos, repo_topics, repo_stars, issues, milestones,
 issue_labels, issue_close_refs, namespace_grants, namespace_profiles, …)
 in one tx, removes the bare repo dir on disk, and inserts a slug-hold
