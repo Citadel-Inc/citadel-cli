@@ -1,6 +1,6 @@
 # Tasks — cli-mcp-resources
 
-Status: DONE 032359ZMAY26 — Shipped MCP resources/list and resources/read for citadel:// URIs (docs, specs, namespace inventory), prompts/list and prompts/get with three v1 workflows, citadel-cli mcp resources and prompts subcommands, waitlist parity with tools/call, and conformance tests. Production smoke (Claude Desktop) and formal NOMAD Q-table sign-off remain open.
+Status: DONE 032359ZMAY26 — Shipped MCP resources/list, resources/read, prompts/list, prompts/get, citadel-cli `mcp resources` / `mcp prompts`, waitlist parity with tools/call, and automated conformance tests. SDD closeout complete (P2 C2 checked). Remaining human follow-ups: P0 NOMAD Q-table row, P2 Claude Desktop smoke — see [HUMAN_BLOCKERS §69](../../HUMAN_BLOCKERS.md#69--cli-mcp-resources-nomad-procedural-q-table--claude-desktop-smoke).
 
 ## P0
 
