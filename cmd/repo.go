@@ -126,7 +126,7 @@ func runRepoCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	bodyBytes, _ := json.Marshal(reqBody)
-	apiURL := fmt.Sprintf("%s/api/namespaces/%s/repos", serverURL, url.PathEscape(ns))
+	apiURL := fmt.Sprintf("%s/namespaces/%s/repos", serverURL, url.PathEscape(ns))
 	req, _ := http.NewRequest(http.MethodPost, apiURL, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 	req.Header.Set("Content-Type", "application/json")
@@ -172,7 +172,7 @@ func runRepoList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--namespace is required")
 	}
 
-	apiURL := fmt.Sprintf("%s/api/namespaces/%s/repos", serverURL, url.PathEscape(ns))
+	apiURL := fmt.Sprintf("%s/namespaces/%s/repos", serverURL, url.PathEscape(ns))
 	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
@@ -230,7 +230,7 @@ func runRepoGet(cmd *cobra.Command, args []string) error {
 	}
 	ns, slug := parts[0], parts[1]
 
-	apiURL := fmt.Sprintf("%s/api/namespaces/%s/repos", serverURL, url.PathEscape(ns))
+	apiURL := fmt.Sprintf("%s/namespaces/%s/repos", serverURL, url.PathEscape(ns))
 	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
@@ -294,8 +294,10 @@ func runRepoDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// DELETE route has no /repos segment: /api/namespaces/{parent}/{repo}
-	apiURL := fmt.Sprintf("%s/api/namespaces/%s/%s", serverURL, url.PathEscape(ns), url.PathEscape(slug))
+	// DELETE route has no /repos segment: /namespaces/{parent}/{repo}.
+	// Caller-side base URL already has the /api prefix where needed (apex
+	// proxies it via Caddy on api.src.land); CLI sends the bare path.
+	apiURL := fmt.Sprintf("%s/namespaces/%s/%s", serverURL, url.PathEscape(ns), url.PathEscape(slug))
 	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 

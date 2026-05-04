@@ -70,6 +70,25 @@ Examples:
 	RunE: runNsMembers,
 }
 
+// ── delete ───────────────────────────────────────────────────────────────────
+
+var nsDeleteCmd = &cobra.Command{
+	Use:   "delete <slug>",
+	Short: "Soft-delete an org namespace you own",
+	Long: `Soft-deletes an org namespace. Sets namespaces.deleted_at = now() and
+emits an audit row. Owner-only; only kind=org namespaces are accepted (user
+and system namespaces cannot be deleted via this surface). Repos under the
+namespace are NOT cascaded — delete them first via 'citadel-cli repo delete'.
+
+Requires typed-slug confirmation unless --yes is set.
+
+Examples:
+  citadel-cli namespace delete my-test-org
+  citadel-cli namespace delete my-test-org --yes`,
+	Args: cobra.ExactArgs(1),
+	RunE: runNsDelete,
+}
+
 // ── transfer ─────────────────────────────────────────────────────────────────
 
 var nsTransferCmd = &cobra.Command{
@@ -292,7 +311,7 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 
 	slug := args[0]
 
-	apiURL := fmt.Sprintf("%s/api/orgs/%s/members", serverURL, url.PathEscape(slug))
+	apiURL := fmt.Sprintf("%s/orgs/%s/members", serverURL, url.PathEscape(slug))
 	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
@@ -371,7 +390,7 @@ func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
 	}
 	bodyBytes, _ := json.Marshal(reqBody)
 
-	apiURL := fmt.Sprintf("%s/api/orgs/%s/transfer", serverURL, url.PathEscape(orgSlug))
+	apiURL := fmt.Sprintf("%s/orgs/%s/transfer", serverURL, url.PathEscape(orgSlug))
 	req, _ := http.NewRequest(http.MethodPost, apiURL, bytes.NewReader(bodyBytes))
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 	req.Header.Set("Content-Type", "application/json")
@@ -474,7 +493,7 @@ func runNsTransferAccept(cmd *cobra.Command, args []string) error {
 
 	transferID := args[0]
 
-	apiURL := fmt.Sprintf("%s/api/transfers/%s/accept", serverURL, url.PathEscape(transferID))
+	apiURL := fmt.Sprintf("%s/transfers/%s/accept", serverURL, url.PathEscape(transferID))
 	req, _ := http.NewRequest(http.MethodPost, apiURL, http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
@@ -515,7 +534,7 @@ func runNsTransferDecline(cmd *cobra.Command, args []string) error {
 
 	transferID := args[0]
 
-	apiURL := fmt.Sprintf("%s/api/transfers/%s/decline", serverURL, url.PathEscape(transferID))
+	apiURL := fmt.Sprintf("%s/transfers/%s/decline", serverURL, url.PathEscape(transferID))
 	req, _ := http.NewRequest(http.MethodPost, apiURL, http.NoBody)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
@@ -552,7 +571,7 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	apiURL := fmt.Sprintf("%s/api/transfers/%s", serverURL, url.PathEscape(transferID))
+	apiURL := fmt.Sprintf("%s/transfers/%s", serverURL, url.PathEscape(transferID))
 	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
@@ -570,10 +589,66 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runNsDelete(cmd *cobra.Command, args []string) error {
+	cfg, err := clicfg.Load()
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+	if cfg.AccessToken == "" {
+		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
+	}
+	flagServer, _ := cmd.Flags().GetString("server")
+	serverURL := cfg.ResolveServerURL(flagServer)
+
+	slug := strings.TrimSpace(args[0])
+	yes, _ := cmd.Flags().GetBool("yes")
+	if err := confirmSlug(yes, "delete namespace", slug); err != nil {
+		return err
+	}
+
+	apiURL := fmt.Sprintf("%s/orgs/%s", serverURL, url.PathEscape(slug))
+	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
+	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	switch resp.StatusCode {
+	case http.StatusNoContent, http.StatusOK:
+		fmt.Printf("Deleted namespace %s\n", slug)
+		return nil
+	case http.StatusConflict:
+		var body struct {
+			Error  string `json:"error"`
+			Detail string `json:"detail"`
+		}
+		_ = json.NewDecoder(resp.Body).Decode(&body)
+		if body.Error == "has_repos" {
+			msg := body.Detail
+			if msg == "" {
+				msg = "delete repos under " + slug + " first"
+			}
+			return fmt.Errorf("namespace not empty: %s — run 'citadel-cli repo delete <ns>/<slug>' for each", msg)
+		}
+		return fmt.Errorf("conflict: %s", body.Error)
+	case http.StatusForbidden:
+		return fmt.Errorf("forbidden: only the owner can delete namespace %s", slug)
+	case http.StatusNotFound:
+		return fmt.Errorf("namespace %s not found, not an org, or already deleted", slug)
+	default:
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
+	}
+}
+
 func init() {
 	NamespaceCmd.AddCommand(nsListCmd)
 	NamespaceCmd.AddCommand(nsGetCmd)
 	NamespaceCmd.AddCommand(nsMembersCmd)
+	NamespaceCmd.AddCommand(nsDeleteCmd)
 	NamespaceCmd.AddCommand(nsTransferCmd)
 
 	nsTransferCmd.AddCommand(nsTransferInitiateCmd)
@@ -585,6 +660,7 @@ func init() {
 	nsListCmd.Flags().String("output", "", "Output format: json")
 	nsGetCmd.Flags().String("output", "", "Output format: json")
 	nsMembersCmd.Flags().String("output", "", "Output format: json")
+	nsDeleteCmd.Flags().Bool("yes", false, "Skip confirmation prompt")
 
 	nsTransferInitiateCmd.Flags().String("to", "", "Recipient username (required)")
 	nsTransferInitiateCmd.Flags().Bool("yes", false, "Skip confirmation prompt")

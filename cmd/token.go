@@ -104,7 +104,7 @@ func runTokenList(cmd *cobra.Command, args []string) error {
 	}
 
 	// List tokens for this agent
-	listURL := fmt.Sprintf("%s/api/agent-tokens?agent_id=%s", serverURL, agentID.String())
+	listURL := fmt.Sprintf("%s/agent-tokens?agent_id=%s", serverURL, agentID.String())
 
 	req, _ := http.NewRequest("GET", listURL, nil)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.AccessToken))
@@ -195,7 +195,7 @@ func runTokenIssue(cmd *cobra.Command, args []string) error {
 
 	if agentID == uuid.Nil {
 		// Create agent
-		createURL := fmt.Sprintf("%s/api/agents", serverURL)
+		createURL := fmt.Sprintf("%s/agents", serverURL)
 		createReq := struct {
 			Name string `json:"name"`
 		}{Name: agentName}
@@ -233,7 +233,7 @@ func runTokenIssue(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	issueURL := fmt.Sprintf("%s/api/agent-tokens", serverURL)
+	issueURL := fmt.Sprintf("%s/agent-tokens", serverURL)
 	issueReq := struct {
 		AgentID          uuid.UUID `json:"agent_id"`
 		ExpiresInSeconds *int64    `json:"expires_in_seconds,omitempty"`
@@ -286,7 +286,7 @@ func runTokenRevoke(cmd *cobra.Command, args []string) error {
 	flagServer, _ := cmd.Flags().GetString("server")
 	serverURL := cfg.ResolveServerURL(flagServer)
 
-	revokeURL := fmt.Sprintf("%s/api/agent-tokens/%s", serverURL, tokenID)
+	revokeURL := fmt.Sprintf("%s/agent-tokens/%s", serverURL, tokenID)
 
 	req, _ := http.NewRequest("DELETE", revokeURL, nil)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.AccessToken))
@@ -315,7 +315,7 @@ func runTokenRevoke(cmd *cobra.Command, args []string) error {
 func listAgents(cfg clicfg.Config) ([]agent, error) {
 	serverURL := cfg.ResolveServerURL("")
 
-	listURL := fmt.Sprintf("%s/api/agents", serverURL)
+	listURL := fmt.Sprintf("%s/agents", serverURL)
 
 	req, _ := http.NewRequest("GET", listURL, nil)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.AccessToken))

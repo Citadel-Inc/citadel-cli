@@ -57,7 +57,7 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 	if depth > 0 {
 		q.Set("depth", fmt.Sprintf("%d", depth))
 	}
-	endpoint := fmt.Sprintf("%s/api/kg/%s/impact?%s", server, url.PathEscape(slug), q.Encode())
+	endpoint := fmt.Sprintf("%s/kg/%s/impact?%s", server, url.PathEscape(slug), q.Encode())
 
 	req, err := http.NewRequestWithContext(cmd.Context(), http.MethodGet, endpoint, nil)
 	if err != nil {

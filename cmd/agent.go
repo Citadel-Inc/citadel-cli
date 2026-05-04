@@ -227,7 +227,7 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	apiURL := fmt.Sprintf("%s/api/agents/%s", serverURL, url.PathEscape(agentID))
+	apiURL := fmt.Sprintf("%s/agents/%s", serverURL, url.PathEscape(agentID))
 	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
@@ -308,7 +308,7 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	}
 
 	// List existing tokens to revoke all but the new one.
-	listURL := fmt.Sprintf("%s/api/agent-tokens?agent_id=%s", serverURL, agentID)
+	listURL := fmt.Sprintf("%s/agent-tokens?agent_id=%s", serverURL, agentID)
 	listReq, _ := http.NewRequest(http.MethodGet, listURL, nil)
 	listReq.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
@@ -337,7 +337,7 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 		if t.RevokedAt != nil {
 			continue
 		}
-		revokeAPIURL := fmt.Sprintf("%s/api/agent-tokens/%s", serverURL, url.PathEscape(t.ID))
+		revokeAPIURL := fmt.Sprintf("%s/agent-tokens/%s", serverURL, url.PathEscape(t.ID))
 		revokeReq, _ := http.NewRequest(http.MethodDelete, revokeAPIURL, nil)
 		revokeReq.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 		revokeResp, err := http.DefaultClient.Do(revokeReq)
