@@ -262,7 +262,7 @@ func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	var parsed struct {
-		Description string `json:"description"`
+		Description string           `json:"description"`
 		Messages    []map[string]any `json:"messages"`
 	}
 	if err := json.Unmarshal(raw, &parsed); err != nil {

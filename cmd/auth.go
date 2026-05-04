@@ -49,7 +49,7 @@ var logoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Clear the local authentication session",
 	Long:  `Removes the local config file, clearing the stored tokens and session state.`,
-	RunE: runLogout,
+	RunE:  runLogout,
 }
 
 func runLogin(cmd *cobra.Command, args []string) error {

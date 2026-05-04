@@ -33,10 +33,10 @@ type Client struct {
 	Token     string
 	HTTP      *http.Client
 
-	sessionID       string
-	serverProto     string
-	serverInfo      ServerInfo
-	nextID          int
+	sessionID   string
+	serverProto string
+	serverInfo  ServerInfo
+	nextID      int
 }
 
 // ServerInfo mirrors the server's `serverInfo` block.

@@ -83,22 +83,22 @@ Requires typing the client UUID unless --yes.`,
 }
 
 type oauthClient struct {
-	ID                  string      `json:"id"`
-	ClientID            string      `json:"client_id"`
-	Name                string      `json:"name"`
-	Description         string      `json:"description,omitempty"`
-	LogoURL             string      `json:"logo_url,omitempty"`
-	HomepageURL         string      `json:"homepage_url,omitempty"`
-	RedirectURIs        []string    `json:"redirect_uris"`
-	AllowedScopes       []string    `json:"allowed_scopes"`
-	IsPublic            bool        `json:"is_public"`
-	OwnerUserID         *string     `json:"owner_user_id,omitempty"`
-	OwnerNamespaceID    *string     `json:"owner_namespace_id,omitempty"`
-	OwnerSlug           string      `json:"owner_slug,omitempty"`
-	CreatedAt           time.Time   `json:"created_at"`
-	UpdatedAt           time.Time   `json:"updated_at"`
-	RevokedAt           *time.Time  `json:"revoked_at,omitempty"`
-	Dcr                 bool        `json:"dcr,omitempty"`
+	ID                   string     `json:"id"`
+	ClientID             string     `json:"client_id"`
+	Name                 string     `json:"name"`
+	Description          string     `json:"description,omitempty"`
+	LogoURL              string     `json:"logo_url,omitempty"`
+	HomepageURL          string     `json:"homepage_url,omitempty"`
+	RedirectURIs         []string   `json:"redirect_uris"`
+	AllowedScopes        []string   `json:"allowed_scopes"`
+	IsPublic             bool       `json:"is_public"`
+	OwnerUserID          *string    `json:"owner_user_id,omitempty"`
+	OwnerNamespaceID     *string    `json:"owner_namespace_id,omitempty"`
+	OwnerSlug            string     `json:"owner_slug,omitempty"`
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
+	RevokedAt            *time.Time `json:"revoked_at,omitempty"`
+	Dcr                  bool       `json:"dcr,omitempty"`
 	DcrSponsoredByUserID *string    `json:"dcr_sponsored_by_user_id,omitempty"`
 }
 

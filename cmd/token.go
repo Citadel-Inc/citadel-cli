@@ -49,12 +49,12 @@ var revokeCmd = &cobra.Command{
 }
 
 type token struct {
-	ID        uuid.UUID       `json:"id"`
-	AgentID   uuid.UUID       `json:"agent_id"`
-	CreatedAt time.Time       `json:"created_at"`
-	ExpiresAt *time.Time      `json:"expires_at,omitempty"`
-	RevokedAt *time.Time      `json:"revoked_at,omitempty"`
-	Scopes    any     `json:"scopes"`
+	ID        uuid.UUID  `json:"id"`
+	AgentID   uuid.UUID  `json:"agent_id"`
+	CreatedAt time.Time  `json:"created_at"`
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+	RevokedAt *time.Time `json:"revoked_at,omitempty"`
+	Scopes    any        `json:"scopes"`
 }
 
 type tokenWithCleartext struct {
@@ -235,13 +235,13 @@ func runTokenIssue(cmd *cobra.Command, args []string) error {
 
 	issueURL := fmt.Sprintf("%s/api/agent-tokens", serverURL)
 	issueReq := struct {
-		AgentID         uuid.UUID `json:"agent_id"`
-		ExpiresInSeconds *int64   `json:"expires_in_seconds,omitempty"`
-		Scopes          []string `json:"scopes,omitempty"`
+		AgentID          uuid.UUID `json:"agent_id"`
+		ExpiresInSeconds *int64    `json:"expires_in_seconds,omitempty"`
+		Scopes           []string  `json:"scopes,omitempty"`
 	}{
-		AgentID:         agentID,
+		AgentID:          agentID,
 		ExpiresInSeconds: expiresIn,
-		Scopes:          scopes,
+		Scopes:           scopes,
 	}
 
 	body, _ := json.Marshal(issueReq)
