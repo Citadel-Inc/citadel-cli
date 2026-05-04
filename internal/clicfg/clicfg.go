@@ -35,28 +35,48 @@ func configPath() (string, error) {
 	return filepath.Join(configDir, "config.toml"), nil
 }
 
-// Load reads the config from disk. If the file does not exist,
-// returns a zero-value Config with nil error (fresh install state).
+// Load reads the config from disk and applies env-var overrides for
+// non-interactive automation. If the file does not exist, returns a
+// zero-value Config (fresh install state).
+//
+// Env overrides (apply on top of the file):
+//
+//   - CITADEL_ACCESS_TOKEN — replaces stored access_token; pinned to a
+//     1-hour expiry from now. Useful for CI / scripts that mint a JWT
+//     externally and do not want to write to ~/.config/citadel.
+//   - CITADEL_SERVER — already honored by ResolveServerURL at request
+//     time; not duplicated here.
+//
+// The refresh-token flow is NOT yet wired (see specs/HUMAN_BLOCKERS.md
+// CLI auth gaps): refresh_token is stored on `auth login` but never
+// exchanged for a new access_token, so a CLI session past the 1-hour
+// JWT expiry currently requires `auth login` again or a fresh env-var
+// JWT.
 func Load() (Config, error) {
 	path, err := configPath()
 	if err != nil {
 		return Config{}, err
 	}
 
-	// File doesn't exist yet — return zero value and nil error
-	_, err = os.Stat(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return Config{}, nil
-	}
-	if err != nil {
-		return Config{}, err
+	var cfg Config
+	_, statErr := os.Stat(path)
+	switch {
+	case errors.Is(statErr, os.ErrNotExist):
+		// Fresh install — leave cfg zero-valued; env overrides may still apply.
+	case statErr != nil:
+		return Config{}, statErr
+	default:
+		if _, err := toml.DecodeFile(path, &cfg); err != nil {
+			return Config{}, err
+		}
 	}
 
-	// File exists — parse it
-	var cfg Config
-	_, err = toml.DecodeFile(path, &cfg)
-	if err != nil {
-		return Config{}, err
+	if env := os.Getenv("CITADEL_ACCESS_TOKEN"); env != "" {
+		cfg.AccessToken = env
+		// Trust the env value for an hour; the JWT itself is what gets
+		// validated server-side, so a wrong expiry only affects the
+		// client's own EXPIRED check.
+		cfg.ExpiresAt = time.Now().Add(time.Hour)
 	}
 
 	return cfg, nil
