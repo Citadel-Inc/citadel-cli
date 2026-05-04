@@ -107,10 +107,10 @@ func (c Config) Save() error {
 
 // ResolveServerURL picks the effective server URL with this precedence:
 //
-//	1. --server flag (passed as flagOverride; empty string = unset)
-//	2. CITADEL_SERVER env var
-//	3. stored config (c.ServerURL)
-//	4. default https://api.src.land
+//  1. --server flag (passed as flagOverride; empty string = unset)
+//  2. CITADEL_SERVER env var
+//  3. stored config (c.ServerURL)
+//  4. default https://api.src.land
 //
 // Used by every subcommand that issues HTTP requests so the precedence
 // is consistent.
