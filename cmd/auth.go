@@ -211,11 +211,9 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Decode JWT to get expiry (no signature verify needed)
+	// Decode JWT to get expiry (signature verified server-side; client only inspects claims).
 	claims := jwt.MapClaims{}
-	if _, err := jwt.ParseWithClaims(cfg.AccessToken, claims, func(token *jwt.Token) (any, error) {
-		return nil, nil
-	}); err != nil {
+	if _, _, err := jwt.NewParser().ParseUnverified(cfg.AccessToken, claims); err != nil {
 		fmt.Printf("Warning: could not parse access token: %v\n", err)
 	}
 
