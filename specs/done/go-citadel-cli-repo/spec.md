@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DONE 032036ZMAY26 — Shipped repo/namespace/agent CRUD CLI verbs against live APIs. repo create|list|get|delete; namespace list|get|members|transfer (with initiate|list-pending|accept|decline|revoke subcommands); agent list|get|delete|rotate-token. All verbs carry --help + --output json (A1). cmd_test.go integration suite covers command-tree structure, flag presence, and destructive-verb --yes gates (A2). Destructive verbs gate on typed-slug confirm (A3). Q-table ratified (A4). repo rename descoped (no server endpoint). namespace transfer org-only for now; personal namespace transfer deferred to server-side follow-on. |
+| Status | DONE 032036ZMAY26 — Shipped repo/namespace/agent CRUD CLI verbs against live APIs. repo create/list/get/delete; namespace list/get/members/transfer (with initiate/list-pending/accept/decline/revoke subcommands); agent list/get/delete/rotate-token. All verbs carry --help + --output json (A1). cmd_test.go integration suite covers command-tree structure, flag presence, and destructive-verb --yes gates (A2). Destructive verbs gate on typed-slug confirm (A3). Q-table ratified (A4). repo rename descoped (no server endpoint). namespace transfer org-only for now; personal namespace transfer deferred to server-side follow-on. |
 | Authored | 030548ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | `go-citadel-cli` D5 task ("Draft follow-on `go-citadel-cli-repo` spec for repo / namespace / agent CRUD verbs") + spec §Out-of-scope ("Repo / namespace operations defer to `go-citadel-cli-repo` follow-on once gitwire and the namespace API surface are real."). |
