@@ -18,4 +18,4 @@ Status: DONE 032359ZMAY26 — Shipped MCP resources/list and resources/read for 
 ## P2
 
 - [ ] C1. Production smoke: list + read a resource via Claude Desktop.
-- [ ] C2. Spec close.
+- [x] C2. Spec close.
