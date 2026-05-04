@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/Rethunk-Tech/citadel/internal/clicfg"
@@ -31,6 +33,10 @@ var kgImpactCmd = &cobra.Command{
 	Long: `Projects a callers-direction BFS into the rename-impact shape:
 direct callers + transitive callers + affected files. Default depth = 2.
 
+<slug> accepts <owner> or <owner>/<repo>. <symbol> accepts a UUID
+(direct call) or a name (resolved via /kg/<owner>/symbols first; if more
+than one symbol matches, prints the candidates so you can disambiguate).
+
 Pretty-printed by default; use --json for the raw HTTP response.`,
 	Args: cobra.ExactArgs(2),
 	RunE: runKgImpact,
@@ -52,12 +58,29 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 	flagServer, _ := cmd.Flags().GetString("server")
 	server := strings.TrimRight(cfg.ResolveServerURL(flagServer), "/")
 
+	symbolID := symbol
+	if _, err := uuid.Parse(symbol); err != nil {
+		// Resolve <name> → UUID via /kg/<owner>/symbols.
+		resolved, err := resolveSymbolID(cmd.Context(), server, cfg.AccessToken, slug, symbol)
+		if err != nil {
+			return err
+		}
+		symbolID = resolved
+	}
+
+	owner, repo := slug, ""
+	if i := strings.Index(slug, "/"); i > 0 {
+		owner, repo = slug[:i], slug[i+1:]
+	}
 	q := url.Values{}
-	q.Set("symbol", symbol)
+	q.Set("symbol", symbolID)
 	if depth > 0 {
 		q.Set("depth", fmt.Sprintf("%d", depth))
 	}
-	endpoint := fmt.Sprintf("%s/kg/%s/impact?%s", server, url.PathEscape(slug), q.Encode())
+	if repo != "" {
+		q.Set("repo", repo)
+	}
+	endpoint := fmt.Sprintf("%s/kg/%s/impact?%s", server, url.PathEscape(owner), q.Encode())
 
 	req, err := http.NewRequestWithContext(cmd.Context(), http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -162,6 +185,81 @@ func formatCaller(n impactNode) string {
 		return label + "  in " + n.Path
 	}
 	return label
+}
+
+// resolveSymbolID looks up a symbol UUID by name via /kg/<owner>/symbols.
+// slug accepts "<owner>" (search across owner's repos) or "<owner>/<repo>"
+// (the suffix is sent as the repo filter so duplicate names across repos
+// don't mask the user's intent).
+func resolveSymbolID(ctx context.Context, server, accessToken, slug, name string) (string, error) {
+	owner, repo := slug, ""
+	if i := strings.Index(slug, "/"); i > 0 {
+		owner, repo = slug[:i], slug[i+1:]
+	}
+	q := url.Values{}
+	q.Set("q", name)
+	if repo != "" {
+		q.Set("repo", repo)
+	}
+	endpoint := fmt.Sprintf("%s/kg/%s/symbols?%s", server, url.PathEscape(owner), q.Encode())
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("symbols lookup failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == http.StatusUnauthorized {
+		return "", fmt.Errorf("unauthorized: run `citadel-cli auth login` to refresh your session")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("symbols lookup HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var sr struct {
+		Matches []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+			Kind string `json:"kind"`
+			Path string `json:"path"`
+		} `json:"matches"`
+	}
+	if err := json.Unmarshal(body, &sr); err != nil {
+		return "", fmt.Errorf("decode symbols response: %w", err)
+	}
+	exact := sr.Matches[:0:0]
+	for _, m := range sr.Matches {
+		if m.Name == name {
+			exact = append(exact, m)
+		}
+	}
+	if len(exact) == 0 {
+		if len(sr.Matches) == 0 {
+			return "", fmt.Errorf("no symbol matches %q in %s — try a broader query or pass a UUID", name, slug)
+		}
+		return "", fmt.Errorf("no exact match for %q; closest: %s — pass a UUID to disambiguate", name, listSymbolCandidates(sr.Matches))
+	}
+	if len(exact) > 1 {
+		return "", fmt.Errorf("symbol %q is ambiguous (%d hits): %s — pass a UUID", name, len(exact), listSymbolCandidates(exact))
+	}
+	return exact[0].ID, nil
+}
+
+func listSymbolCandidates(ms []struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+	Path string `json:"path"`
+}) string {
+	parts := make([]string, 0, len(ms))
+	for _, m := range ms {
+		parts = append(parts, fmt.Sprintf("%s (%s @ %s id=%s)", m.Name, m.Kind, m.Path, m.ID))
+	}
+	return strings.Join(parts, "; ")
 }
 
 func init() {
