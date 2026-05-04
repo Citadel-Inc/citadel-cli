@@ -126,6 +126,42 @@ func TestSavePermissions(t *testing.T) {
 	}
 }
 
+func TestResolveServerURL(t *testing.T) {
+	// Precedence: flag → env → cfg → default
+	t.Setenv("CITADEL_SERVER", "")
+	c := Config{ServerURL: "https://stored"}
+	if got := c.ResolveServerURL(""); got != "https://stored" {
+		t.Errorf("stored cfg, got %q", got)
+	}
+	t.Setenv("CITADEL_SERVER", "https://env")
+	if got := c.ResolveServerURL(""); got != "https://env" {
+		t.Errorf("env override, got %q", got)
+	}
+	if got := c.ResolveServerURL("https://flag"); got != "https://flag" {
+		t.Errorf("flag override, got %q", got)
+	}
+	t.Setenv("CITADEL_SERVER", "")
+	if got := (Config{}).ResolveServerURL(""); got != "https://api.src.land" {
+		t.Errorf("default, got %q", got)
+	}
+}
+
+func TestLoad_AccessTokenEnvOverride(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "env-token")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AccessToken != "env-token" {
+		t.Fatalf("got %q", cfg.AccessToken)
+	}
+	if time.Until(cfg.ExpiresAt) < 30*time.Minute || time.Until(cfg.ExpiresAt) > 90*time.Minute {
+		t.Fatalf("env token expiry should pin ~1h, got %v", time.Until(cfg.ExpiresAt))
+	}
+}
+
 func TestSaveCreatesDirectory(t *testing.T) {
 	// Create a temporary config directory
 	tmpDir := t.TempDir()
