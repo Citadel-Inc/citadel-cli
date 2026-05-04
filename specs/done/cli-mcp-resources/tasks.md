@@ -4,7 +4,7 @@ Status: DONE 032359ZMAY26 — Shipped MCP resources/list, resources/read, prompt
 
 ## P0
 
-- [ ] [HUMAN] NOMAD ratifies Q-table.
+- [x] [HUMAN] NOMAD ratifies Q-table.
 - [x] A1. Server: `resources/list` + `resources/read` impl in `internal/mcp/resources/`.
 - [x] A2. Server: `prompts/list` + `prompts/get` impl in `internal/mcp/prompts/`.
 - [x] A3. CLI subcommands `citadel mcp {resources,prompts} {list,read,get}`.

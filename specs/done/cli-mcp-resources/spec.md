@@ -28,9 +28,9 @@
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Resource-set v1: docs + spec files + active-namespace inventory — anything else? | **RATIFIED** — v1 ships `citadel://doc/*`, root primers, `citadel://spec/{active,done}/<slug>`, and `citadel://inventory/namespaces` (JSON). |
+| Q1 | Resource-set v1: docs + spec files + active-namespace inventory — anything else? | **RE-RATIFIED 032100ZMAY26 — also includes `citadel://kg-search/{query}`** (NOMAD override). v1 ships `citadel://doc/*`, root primers, `citadel://spec/{active,done}/<slug>`, `citadel://inventory/namespaces`, plus a parameterised `citadel://kg-search/{query}` resource that runs cross-namespace KG fulltext gated to the caller's readable namespaces. |
 | Q2 | Auth: per-resource ACL vs. all-or-nothing tied to MCP session token? | **RATIFIED** — all-or-nothing at v1; same waitlist gate as `tools/call`. |
-| Q3 | Prompt set v1: which workflows? | **RATIFIED** — `commit-message-from-diff`, `spec-scaffold`, `triage-pr`. |
+| Q3 | Prompt set v1: which workflows? | **RE-RATIFIED 032100ZMAY26 — adds `review-pr` + `summarize-issue`** (NOMAD override). v1 prompts: `commit-message-from-diff`, `spec-scaffold`, `triage-pr`, `review-pr`, `summarize-issue`. |
 
 ## Acceptance
 
