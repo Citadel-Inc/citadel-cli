@@ -58,12 +58,12 @@
 - **`ssh-keygen`** — users generate keys locally.
 - **Deploy keys / per-repo keys** — not in this API surface.
 
-## Decision log
+## Decisions
 
-| Q | Proposal | Status |
-|---|----------|--------|
-| Q1 | Command group name `ssh-key` vs `account ssh-key`? | **Open** — top-level `ssh-key`. |
-| Q2 | stdin adds key vs require explicit `-` flag? | **Open** — mirror patterns from other stdin-reading verbs. |
+| # | Question | Proposed default | NOMAD |
+|---|----------|------------------|-------|
+| Q1 | Command group name `ssh-key` vs `account ssh-key`? | Top-level `ssh-key`. | Ratified 052317ZMAY26 |
+| Q2 | stdin adds key vs require explicit `-` flag? | If neither `--public-key` nor `--key-file` is set, read a single public key from stdin when stdin is not a TTY; use `--key-file -` to force stdin on a TTY. | Ratified 052317ZMAY26 |
 
 ## Acceptance
 
