@@ -1,8 +1,10 @@
 # Tasks — cli-mcp-stdio
 
-**Spec PARKED 050505ZMAY26** — see [`spec.md`](./spec.md) and [`../README.md`](../README.md). Tasks below are frozen; do not execute.
+**Spec PARKED 050505ZMAY26** — see [`spec.md`](./spec.md) and [`../README.md`](../README.md). Tasks below are frozen; do not execute. _(Was DRAFT 030619ZMAY26.)_
 
-Status: PARKED 050505ZMAY26 (was DRAFT 030619ZMAY26)
+| | |
+|---|---|
+| Status | PARKED 050505ZMAY26 — superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 
 ## P0
 
