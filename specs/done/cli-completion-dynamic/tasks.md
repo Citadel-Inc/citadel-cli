@@ -24,4 +24,4 @@ Status: DONE 050935ZMAY26 — Delivered dynamic shell completion with a 60s disk
 
 - [x] C1. README + HUMANS.md: document the new completion behavior, the cache path, and the `CITADEL_NO_COMPLETION_CACHE=1` escape hatch (proposed bypass for debugging).
 - [ ] C2. [HUMAN] Operator smoke: tab-complete `repo get` against a real namespace; verify ≤ 200 ms cache-hit latency.
-- [ ] C3. Spec close.
+- [x] C3. Spec close.
