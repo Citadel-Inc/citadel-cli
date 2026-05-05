@@ -28,3 +28,25 @@ func TestReadEvent_keepaliveSkipped(t *testing.T) {
 		t.Fatalf("got %#v", ev)
 	}
 }
+
+func TestReadEvent_unknownFieldIgnored(t *testing.T) {
+	raw := "retry: 5000\nevent: x\ndata: z\n\n"
+	ev, err := readEvent(context.Background(), bufio.NewReader(strings.NewReader(raw)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.Type != "x" || string(ev.Data) != "z" {
+		t.Fatalf("got %#v", ev)
+	}
+}
+
+func TestReadEvent_multiDataLines(t *testing.T) {
+	raw := "event: msg\ndata: line1\ndata: line2\n\n"
+	ev, err := readEvent(context.Background(), bufio.NewReader(strings.NewReader(raw)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(ev.Data) != "line1\nline2" {
+		t.Fatalf("got %q", ev.Data)
+	}
+}

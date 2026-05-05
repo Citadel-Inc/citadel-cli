@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -245,5 +246,76 @@ func TestClient_ContextCancellation(t *testing.T) {
 	cancel()
 	if err := c.Get(ctx, "/x", nil); err == nil || !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected ctx.Canceled, got %v", err)
+	}
+}
+
+func TestClient_GetEventStream_success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer tok" {
+			t.Errorf("Authorization = %q", r.Header.Get("Authorization"))
+		}
+		if !strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+			t.Errorf("Accept = %q", r.Header.Get("Accept"))
+		}
+		if got := r.Header.Get("Last-Event-ID"); got != "42" {
+			t.Errorf("Last-Event-ID = %q", got)
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("data: ok\n\n"))
+	}))
+	defer srv.Close()
+
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.GetEventStream(context.Background(), "/stream", "42")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "data: ok") {
+		t.Fatalf("body = %q", string(b))
+	}
+}
+
+func TestClient_GetEventStream_nonSuccessDrainsBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`missing`))
+	}))
+	defer srv.Close()
+
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	resp, err := c.GetEventStream(context.Background(), "/nope", "")
+	if err == nil {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		t.Fatal("expected error")
+	}
+	var he *HTTPError
+	if !errors.As(err, &he) || he.StatusCode != http.StatusNotFound || he.Body != "missing" {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestClient_GetEventStream_retryAfterOnError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "12")
+		w.WriteHeader(http.StatusGone)
+		_, _ = w.Write([]byte("gone"))
+	}))
+	defer srv.Close()
+
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	_, err := c.GetEventStream(context.Background(), "/gone", "")
+	var he *HTTPError
+	if !errors.As(err, &he) || he.StatusCode != http.StatusGone || he.RetryAfter != 12 {
+		t.Fatalf("HTTPError = %#v", he)
 	}
 }
