@@ -59,7 +59,7 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 	slug := strings.TrimSpace(args[0])
 	symbol := strings.TrimSpace(args[1])
 	depth, _ := cmd.Flags().GetInt("depth")
-	rawJSON, _ := cmd.Flags().GetBool("json")
+	rawJSON := jsonFlag(cmd)
 
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -228,5 +228,5 @@ func listSymbolCandidates(ms []symbolMatch) string {
 func init() {
 	KgCmd.AddCommand(kgImpactCmd)
 	kgImpactCmd.Flags().Int("depth", 0, "BFS depth (1-3, default 2 server-side)")
-	kgImpactCmd.Flags().Bool("json", false, "Output raw JSON response")
+	addJSONFlag(kgImpactCmd)
 }
