@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -219,34 +219,85 @@ type nsTransferRow struct {
 
 // ── handlers ─────────────────────────────────────────────────────────────────
 
-func listOrgNamespaces(ctx context.Context, c *apiclient.Client) ([]nsOrgRow, error) {
-	var payload struct {
-		Orgs []nsOrgRow `json:"orgs"`
-	}
-	if err := c.Get(ctx, "/orgs", &payload); err != nil {
-		return nil, err
-	}
-	return payload.Orgs, nil
-}
-
 func runNsList(cmd *cobra.Command, _ []string) error {
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
 	output := outputFlag(cmd)
-
-	orgs, err := listOrgNamespaces(cmd.Context(), c)
+	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
 	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 
-	return emitList(output, orgs, "No org namespaces found.", func(w *tabwriter.Writer, orgs []nsOrgRow) {
-		_, _ = fmt.Fprintln(w, "SLUG\tDISPLAY NAME\tCREATED")
-		for _, o := range orgs {
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", o.Slug, o.DisplayName, o.CreatedAt.Format("2006-01-02"))
+	first := true
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(limit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
 		}
-	})
+		var payload struct {
+			Orgs       []nsOrgRow `json:"orgs"`
+			NextCursor string     `json:"next_cursor"`
+		}
+		if err := c.Get(cmd.Context(), "/orgs?"+q.Encode(), &payload); err != nil {
+			return err
+		}
+		orgs := payload.Orgs
+		next := strings.TrimSpace(payload.NextCursor)
+
+		if len(orgs) == 0 && cursor != "" && next == "" {
+			return nil
+		}
+		if first && len(orgs) == 0 && cursor == "" {
+			switch output {
+			case "json":
+				return emitJSON([]nsOrgRow{})
+			case "ndjson":
+				return nil
+			default:
+				fmt.Println("No org namespaces found.")
+				return nil
+			}
+		}
+		first = false
+
+		switch output {
+		case "json":
+			return emitJSON(orgs)
+		case "ndjson":
+			if err := emitNDJSONLines(orgs); err != nil {
+				return err
+			}
+		default:
+			w := newTabWriter()
+			_, _ = fmt.Fprintln(w, "SLUG\tDISPLAY NAME\tCREATED")
+			for _, o := range orgs {
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", o.Slug, o.DisplayName, o.CreatedAt.Format("2006-01-02"))
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
+		}
+
+		if !all {
+			if output == "" && next != "" {
+				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+			}
+			return nil
+		}
+		if next == "" {
+			return nil
+		}
+		cursor = next
+	}
 }
 
 func runNsGet(cmd *cobra.Command, args []string) error {
@@ -287,28 +338,89 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 	}
 	output := outputFlag(cmd)
 	slug := args[0]
-
-	var payload struct {
-		Members []nsMemberRow `json:"members"`
-	}
-	if err := c.Get(cmd.Context(), "/orgs/"+url.PathEscape(slug)+"/members", &payload); err != nil {
+	limit, cursor, all, err := readPagination(cmd)
+	if err != nil {
 		return err
 	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateMemberCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 
-	return emitList(output, payload.Members, fmt.Sprintf("No members in namespace '%s'", slug), func(w *tabwriter.Writer, members []nsMemberRow) {
-		_, _ = fmt.Fprintln(w, "SLUG\tDISPLAY NAME\tROLE\tJOINED")
-		for _, m := range members {
-			role := "member"
-			if m.IsOwner {
-				role = "owner"
-			}
-			name := m.DisplayName
-			if name == "" {
-				name = m.Slug
-			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", m.Slug, name, role, m.JoinedAt.Format("2006-01-02"))
+	first := true
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(limit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
 		}
-	})
+		var payload struct {
+			Members    []nsMemberRow `json:"members"`
+			NextCursor string        `json:"next_cursor"`
+		}
+		path := "/orgs/" + url.PathEscape(slug) + "/members?" + q.Encode()
+		if err := c.Get(cmd.Context(), path, &payload); err != nil {
+			return err
+		}
+		members := payload.Members
+		next := strings.TrimSpace(payload.NextCursor)
+
+		if len(members) == 0 && cursor != "" && next == "" {
+			return nil
+		}
+		if first && len(members) == 0 && cursor == "" {
+			empty := fmt.Sprintf("No members in namespace '%s'", slug)
+			switch output {
+			case "json":
+				return emitJSON([]nsMemberRow{})
+			case "ndjson":
+				return nil
+			default:
+				fmt.Println(empty)
+				return nil
+			}
+		}
+		first = false
+
+		switch output {
+		case "json":
+			return emitJSON(members)
+		case "ndjson":
+			if err := emitNDJSONLines(members); err != nil {
+				return err
+			}
+		default:
+			w := newTabWriter()
+			_, _ = fmt.Fprintln(w, "SLUG\tDISPLAY NAME\tROLE\tJOINED")
+			for _, m := range members {
+				role := "member"
+				if m.IsOwner {
+					role = "owner"
+				}
+				name := m.DisplayName
+				if name == "" {
+					name = m.Slug
+				}
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", m.Slug, name, role, m.JoinedAt.Format("2006-01-02"))
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
+		}
+
+		if !all {
+			if output == "" && next != "" {
+				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+			}
+			return nil
+		}
+		if next == "" {
+			return nil
+		}
+		cursor = next
+	}
 }
 
 func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
@@ -345,22 +457,81 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	output := outputFlag(cmd)
-
-	var payload struct {
-		Transfers []nsTransferRow `json:"transfers"`
-	}
-	if err := c.Get(cmd.Context(), "/transfers/pending", &payload); err != nil {
+	limit, cursor, all, err := readPagination(cmd)
+	if err != nil {
 		return err
 	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 
-	return emitList(output, payload.Transfers, "No pending transfers.", func(w *tabwriter.Writer, transfers []nsTransferRow) {
-		_, _ = fmt.Fprintln(w, "ID\tORG\tFROM\tEXPIRES")
-		for _, t := range transfers {
-			shortID := t.ID[:min(len(t.ID), 8)]
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-				shortID, t.OrgSlug, t.FromUserSlug, t.ExpiresAt.Format("2006-01-02"))
+	first := true
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(limit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
 		}
-	})
+		var payload struct {
+			Transfers  []nsTransferRow `json:"transfers"`
+			NextCursor string          `json:"next_cursor"`
+		}
+		if err := c.Get(cmd.Context(), "/transfers/pending?"+q.Encode(), &payload); err != nil {
+			return err
+		}
+		transfers := payload.Transfers
+		next := strings.TrimSpace(payload.NextCursor)
+
+		if len(transfers) == 0 && cursor != "" && next == "" {
+			return nil
+		}
+		if first && len(transfers) == 0 && cursor == "" {
+			switch output {
+			case "json":
+				return emitJSON([]nsTransferRow{})
+			case "ndjson":
+				return nil
+			default:
+				fmt.Println("No pending transfers.")
+				return nil
+			}
+		}
+		first = false
+
+		switch output {
+		case "json":
+			return emitJSON(transfers)
+		case "ndjson":
+			if err := emitNDJSONLines(transfers); err != nil {
+				return err
+			}
+		default:
+			w := newTabWriter()
+			_, _ = fmt.Fprintln(w, "ID\tORG\tFROM\tEXPIRES")
+			for _, tr := range transfers {
+				shortID := tr.ID[:min(len(tr.ID), 8)]
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+					shortID, tr.OrgSlug, tr.FromUserSlug, tr.ExpiresAt.Format("2006-01-02"))
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
+		}
+
+		if !all {
+			if output == "" && next != "" {
+				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+			}
+			return nil
+		}
+		if next == "" {
+			return nil
+		}
+		cursor = next
+	}
 }
 
 func runNsTransferAccept(cmd *cobra.Command, args []string) error {
@@ -490,6 +661,7 @@ func init() {
 	addOutputFlag(nsListCmd, nsGetCmd, nsMembersCmd, nsDeleteCmd,
 		nsTransferInitiateCmd, nsTransferListPendingCmd,
 		nsTransferAcceptCmd, nsTransferDeclineCmd, nsTransferRevokeCmd)
+	addPaginationFlags(nsListCmd, nsMembersCmd, nsTransferListPendingCmd)
 	addYesFlag(nsDeleteCmd, nsTransferInitiateCmd, nsTransferRevokeCmd)
 	addDryRunFlag(nsDeleteCmd, nsTransferRevokeCmd)
 	nsTransferInitiateCmd.Flags().String("to", "", "Recipient username (required)")

@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"text/tabwriter"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -94,29 +95,94 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	var tokens []token
-	if err := c.Get(cmd.Context(), "/agent-tokens?agent_id="+url.QueryEscape(a.ID.String()), &tokens); err != nil {
+	output := outputFlag(cmd)
+	limit, cursor, all, err := readPagination(cmd)
+	if err != nil {
 		return err
 	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 
-	return emitList(outputFlag(cmd), tokens, fmt.Sprintf("No tokens for agent '%s'", agentName), func(w *tabwriter.Writer, tokens []token) {
-		_, _ = fmt.Fprint(w, "ID\tCREATED\tEXPIRES\tREVOKED\n")
-		for _, t := range tokens {
-			expires := ""
-			if t.ExpiresAt != nil {
-				expires = t.ExpiresAt.Format(time.RFC3339)
-			}
-			revoked := ""
-			if t.RevokedAt != nil {
-				revoked = t.RevokedAt.Format(time.RFC3339)
-			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-				t.ID.String(),
-				t.CreatedAt.Format("2006-01-02 15:04:05"),
-				expires,
-				revoked)
+	first := true
+	for {
+		q := url.Values{}
+		q.Set("agent_id", a.ID.String())
+		q.Set("limit", strconv.Itoa(limit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
 		}
-	})
+		var payload struct {
+			Tokens []token `json:"tokens"`
+			Next   string  `json:"next_cursor"`
+		}
+		if err := c.Get(cmd.Context(), "/agent-tokens?"+q.Encode(), &payload); err != nil {
+			return err
+		}
+		rows := payload.Tokens
+		next := strings.TrimSpace(payload.Next)
+
+		if len(rows) == 0 && cursor != "" && next == "" {
+			return nil
+		}
+		if first && len(rows) == 0 && cursor == "" {
+			empty := fmt.Sprintf("No tokens for agent '%s'", agentName)
+			switch output {
+			case "json":
+				return emitJSON([]token{})
+			case "ndjson":
+				return nil
+			default:
+				fmt.Println(empty)
+				return nil
+			}
+		}
+		first = false
+
+		switch output {
+		case "json":
+			return emitJSON(rows)
+		case "ndjson":
+			if err := emitNDJSONLines(rows); err != nil {
+				return err
+			}
+		default:
+			w := newTabWriter()
+			_, _ = fmt.Fprint(w, "ID\tCREATED\tEXPIRES\tREVOKED\n")
+			for _, t := range rows {
+				expires := ""
+				if t.ExpiresAt != nil {
+					expires = t.ExpiresAt.Format(time.RFC3339)
+				}
+				revoked := ""
+				if t.RevokedAt != nil {
+					revoked = t.RevokedAt.Format(time.RFC3339)
+				}
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+					t.ID.String(),
+					t.CreatedAt.Format("2006-01-02 15:04:05"),
+					expires,
+					revoked)
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
+		}
+
+		if !all {
+			if output == "" && next != "" {
+				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+			}
+			return nil
+		}
+		if next == "" {
+			return nil
+		}
+		cursor = next
+	}
 }
 
 func runTokenIssue(cmd *cobra.Command, _ []string) error {
@@ -194,6 +260,7 @@ func init() {
 
 	listCmd.Flags().String("agent", "", "Agent name (required)")
 	addOutputFlag(listCmd)
+	addPaginationFlags(listCmd)
 	_ = listCmd.MarkFlagRequired("agent")
 	issueCmd.Flags().String("agent", "", "Agent name (required)")
 	issueCmd.Flags().StringSlice("scopes", []string{}, "Token scopes (optional)")

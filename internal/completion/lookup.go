@@ -5,10 +5,12 @@ import (
 	"errors"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/pagination"
 )
 
 // Resource cache keys (logical); paired with resolved server URL for paths.
@@ -67,16 +69,33 @@ func sortDedupe(in []string) []string {
 
 // FetchOrgNamespaceSlugs lists org namespace slugs from GET /orgs.
 func FetchOrgNamespaceSlugs(ctx context.Context, c *apiclient.Client) ([]string, error) {
-	var payload struct {
-		Orgs []struct {
-			Slug string `json:"slug"`
-		} `json:"orgs"`
+	var all []struct {
+		Slug string `json:"slug"`
 	}
-	if err := c.Get(ctx, "/orgs", &payload); err != nil {
-		return nil, err
+	cursor := ""
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(pagination.MaxLimit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		}
+		var payload struct {
+			Orgs []struct {
+				Slug string `json:"slug"`
+			} `json:"orgs"`
+			NextCursor string `json:"next_cursor"`
+		}
+		if err := c.Get(ctx, "/orgs?"+q.Encode(), &payload); err != nil {
+			return nil, err
+		}
+		all = append(all, payload.Orgs...)
+		if strings.TrimSpace(payload.NextCursor) == "" {
+			break
+		}
+		cursor = payload.NextCursor
 	}
-	out := make([]string, 0, len(payload.Orgs))
-	for _, o := range payload.Orgs {
+	out := make([]string, 0, len(all))
+	for _, o := range all {
 		if s := strings.TrimSpace(o.Slug); s != "" {
 			out = append(out, s)
 		}
@@ -90,17 +109,34 @@ func FetchRepoSlugs(ctx context.Context, c *apiclient.Client, parentNamespace st
 	if ns == "" {
 		return nil, errors.New("missing namespace for repo completion")
 	}
-	var payload struct {
-		Repos []struct {
-			Slug string `json:"slug"`
-		} `json:"repos"`
+	var all []struct {
+		Slug string `json:"slug"`
 	}
-	path := "/namespaces/" + url.PathEscape(ns) + "/repos"
-	if err := c.Get(ctx, path, &payload); err != nil {
-		return nil, err
+	cursor := ""
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(pagination.MaxLimit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		}
+		path := "/namespaces/" + url.PathEscape(ns) + "/repos?" + q.Encode()
+		var payload struct {
+			Repos []struct {
+				Slug string `json:"slug"`
+			} `json:"repos"`
+			NextCursor string `json:"next_cursor"`
+		}
+		if err := c.Get(ctx, path, &payload); err != nil {
+			return nil, err
+		}
+		all = append(all, payload.Repos...)
+		if strings.TrimSpace(payload.NextCursor) == "" {
+			break
+		}
+		cursor = payload.NextCursor
 	}
-	out := make([]string, 0, len(payload.Repos))
-	for _, r := range payload.Repos {
+	out := make([]string, 0, len(all))
+	for _, r := range all {
 		if s := strings.TrimSpace(r.Slug); s != "" {
 			out = append(out, s)
 		}
@@ -110,14 +146,33 @@ func FetchRepoSlugs(ctx context.Context, c *apiclient.Client, parentNamespace st
 
 // FetchAgentNames lists agent display names from GET /agents.
 func FetchAgentNames(ctx context.Context, c *apiclient.Client) ([]string, error) {
-	var rows []struct {
+	var all []struct {
 		Name string `json:"name"`
 	}
-	if err := c.Get(ctx, "/agents", &rows); err != nil {
-		return nil, err
+	cursor := ""
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(pagination.MaxLimit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		}
+		var payload struct {
+			Agents []struct {
+				Name string `json:"name"`
+			} `json:"agents"`
+			NextCursor string `json:"next_cursor"`
+		}
+		if err := c.Get(ctx, "/agents?"+q.Encode(), &payload); err != nil {
+			return nil, err
+		}
+		all = append(all, payload.Agents...)
+		if strings.TrimSpace(payload.NextCursor) == "" {
+			break
+		}
+		cursor = payload.NextCursor
 	}
-	out := make([]string, 0, len(rows))
-	for _, r := range rows {
+	out := make([]string, 0, len(all))
+	for _, r := range all {
 		if s := strings.TrimSpace(r.Name); s != "" {
 			out = append(out, s)
 		}
@@ -127,14 +182,33 @@ func FetchAgentNames(ctx context.Context, c *apiclient.Client) ([]string, error)
 
 // FetchOAuthClientIDs lists OAuth client resource UUIDs from GET /oauth/clients.
 func FetchOAuthClientIDs(ctx context.Context, c *apiclient.Client) ([]string, error) {
-	var rows []struct {
+	var all []struct {
 		ID string `json:"id"`
 	}
-	if err := c.Get(ctx, "/oauth/clients", &rows); err != nil {
-		return nil, err
+	cursor := ""
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(pagination.MaxLimit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		}
+		var payload struct {
+			Clients []struct {
+				ID string `json:"id"`
+			} `json:"clients"`
+			NextCursor string `json:"next_cursor"`
+		}
+		if err := c.Get(ctx, "/oauth/clients?"+q.Encode(), &payload); err != nil {
+			return nil, err
+		}
+		all = append(all, payload.Clients...)
+		if strings.TrimSpace(payload.NextCursor) == "" {
+			break
+		}
+		cursor = payload.NextCursor
 	}
-	out := make([]string, 0, len(rows))
-	for _, r := range rows {
+	out := make([]string, 0, len(all))
+	for _, r := range all {
 		if s := strings.TrimSpace(r.ID); s != "" {
 			out = append(out, s)
 		}

@@ -20,11 +20,14 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
+	"github.com/Rethunk-Tech/citadel-cli/internal/pagination"
 )
 
 // rootFor returns a fresh test root with verb attached. SetArgs uses the
@@ -104,12 +107,24 @@ func writeJSON(t *testing.T, w http.ResponseWriter, status int, v any) {
 	}
 }
 
+func agentsJSON(rows []map[string]any) map[string]any {
+	return map[string]any{"agents": rows}
+}
+
+func tokensJSON(rows []map[string]any) map[string]any {
+	return map[string]any{"tokens": rows}
+}
+
+func clientsJSON(rows []map[string]any) map[string]any {
+	return map[string]any{"clients": rows}
+}
+
 // ── agent ────────────────────────────────────────────────────────────────────
 
 func TestAgentList_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "x", "owner_user_id": "u1"}})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "x", "owner_user_id": "u1"}}))
 		},
 	}))
 	if err := rootFor(cmd.AgentCmd, "list").Execute(); err != nil {
@@ -120,7 +135,7 @@ func TestAgentList_Happy(t *testing.T) {
 func TestAgentList_OutputJSON(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{}))
 		},
 	}))
 	if err := rootFor(cmd.AgentCmd, "list", "--output", "json").Execute(); err != nil {
@@ -131,7 +146,7 @@ func TestAgentList_OutputJSON(t *testing.T) {
 func TestAgentList_Empty(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{}))
 		},
 	}))
 	if err := rootFor(cmd.AgentCmd, "list").Execute(); err != nil {
@@ -152,7 +167,7 @@ func TestAgentList_NoAuth(t *testing.T) {
 func TestAgentGet_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "alpha", "owner_user_id": "u1"}})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "alpha", "owner_user_id": "u1"}}))
 		},
 	}))
 	if err := rootFor(cmd.AgentCmd, "get", "alpha").Execute(); err != nil {
@@ -163,7 +178,7 @@ func TestAgentGet_Happy(t *testing.T) {
 func TestAgentGet_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{}))
 		},
 	}))
 	err := rootFor(cmd.AgentCmd, "get", "missing").Execute()
@@ -175,7 +190,7 @@ func TestAgentGet_NotFound(t *testing.T) {
 func TestAgentDelete_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "alpha", "owner_user_id": "u1"}})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "alpha", "owner_user_id": "u1"}}))
 		},
 		"DELETE /agents/00000000-0000-0000-0000-00000000000a": func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
@@ -189,7 +204,7 @@ func TestAgentDelete_Happy(t *testing.T) {
 func TestAgentDelete_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{}))
 		},
 	}))
 	err := rootFor(cmd.AgentCmd, "delete", "missing", "--yes").Execute()
@@ -205,7 +220,7 @@ func TestAgentRotateToken_Happy(t *testing.T) {
 	)
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": agentID, "name": "alpha", "owner_user_id": "u1"}})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{{"id": agentID, "name": "alpha", "owner_user_id": "u1"}}))
 		},
 		"POST /agents/" + agentID + "/rotate-token": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, 201, map[string]any{
@@ -265,6 +280,61 @@ func TestRepoList_Empty(t *testing.T) {
 	}))
 	if err := rootFor(cmd.RepoCmd, "list", "--namespace", "myorg").Execute(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRepoList_InvalidCursor(t *testing.T) {
+	called := false
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /namespaces/myorg/repos": func(w http.ResponseWriter, _ *http.Request) {
+			called = true
+			writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{}})
+		},
+	}))
+	err := rootFor(cmd.RepoCmd, "list", "--namespace", "myorg", "--cursor", "not-valid-base64!!!").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
+		t.Fatalf("want invalid cursor error, got %v", err)
+	}
+	if called {
+		t.Fatal("server should not be called for malformed cursor")
+	}
+}
+
+func TestRepoList_AllThreePages(t *testing.T) {
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	cur1 := pagination.EncodeDesc(time.Unix(100, 0).UTC(), id)
+	cur2 := pagination.EncodeDesc(time.Unix(200, 0).UTC(), id)
+	var pages int
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /namespaces/myorg/repos": func(w http.ResponseWriter, r *http.Request) {
+			pages++
+			if r.URL.Query().Get("limit") != "2" {
+				t.Errorf("want limit=2, got %q", r.URL.Query().Get("limit"))
+			}
+			cur := r.URL.Query().Get("cursor")
+			switch {
+			case pages == 1 && cur == "":
+				writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{{
+					"path": "myorg/a", "slug": "a", "visibility": "private", "default_branch": "main", "created_at": "2026-01-01",
+				}}, "next_cursor": cur1})
+			case pages == 2 && cur == cur1:
+				writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{{
+					"path": "myorg/b", "slug": "b", "visibility": "private", "default_branch": "main", "created_at": "2026-01-02",
+				}}, "next_cursor": cur2})
+			case pages == 3 && cur == cur2:
+				writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{{
+					"path": "myorg/c", "slug": "c", "visibility": "private", "default_branch": "main", "created_at": "2026-01-03",
+				}}})
+			default:
+				t.Fatalf("unexpected pages=%d cursor=%q", pages, cur)
+			}
+		},
+	}))
+	if err := rootFor(cmd.RepoCmd, "list", "--namespace", "myorg", "--all", "--limit", "2").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if pages != 3 {
+		t.Fatalf("pages = %d want 3", pages)
 	}
 }
 
@@ -370,12 +440,12 @@ outer:
 func TestTokenList_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "alpha"}})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "alpha"}}))
 		},
 		"GET /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{
+			writeJSON(t, w, 200, tokensJSON([]map[string]any{{
 				"id": "00000000-0000-0000-0000-00000000000b", "agent_id": "00000000-0000-0000-0000-00000000000a", "created_at": "2026-01-01T00:00:00Z",
-			}})
+			}}))
 		},
 	}))
 	if err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha").Execute(); err != nil {
@@ -393,7 +463,7 @@ func TestTokenList_MissingAgent(t *testing.T) {
 func TestTokenIssue_FindOrCreate(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{}))
 		},
 		"POST /agents": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, 201, map[string]any{"id": "00000000-0000-0000-0000-00000000000a", "name": "alpha"})
@@ -569,9 +639,9 @@ func TestNsTransferRevoke_Happy(t *testing.T) {
 func TestOAuthList_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /oauth/clients": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{
+			writeJSON(t, w, 200, clientsJSON([]map[string]any{
 				{"id": "01234567-89ab-cdef-0123-456789abcdef", "client_id": "c1", "name": "App", "allowed_scopes": []string{"openid"}, "redirect_uris": []string{"https://x"}},
-			})
+			}))
 		},
 	}))
 	if err := rootFor(cmd.OauthCmd, "clients", "list").Execute(); err != nil {
@@ -585,7 +655,7 @@ func TestOAuthList_OrgFilter(t *testing.T) {
 			if r.URL.Query().Get("namespace") != "myorg" {
 				t.Errorf("missing namespace query")
 			}
-			writeJSON(t, w, 200, []map[string]any{})
+			writeJSON(t, w, 200, clientsJSON([]map[string]any{}))
 		},
 	}))
 	if err := rootFor(cmd.OauthCmd, "clients", "list", "--org", "myorg").Execute(); err != nil {
@@ -1074,7 +1144,7 @@ func TestTokenIssue_ExistingAgent(t *testing.T) {
 	const aid = "00000000-0000-0000-0000-00000000000a"
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": aid, "name": "alpha"}})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{{"id": aid, "name": "alpha"}}))
 		},
 		"POST /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, 201, map[string]any{
@@ -1101,7 +1171,7 @@ func TestTokenIssue_AgentsListFails(t *testing.T) {
 func TestTokenIssue_CreateFails(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{}))
 		},
 		"POST /agents": func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
@@ -1180,7 +1250,7 @@ func TestAgentDelete_DryRun(t *testing.T) {
 	// happens after the find-by-name resolution.
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": agentID, "name": "alpha", "owner_user_id": "u1"}})
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{{"id": agentID, "name": "alpha", "owner_user_id": "u1"}}))
 		},
 	}))
 	if err := rootFor(cmd.AgentCmd, "delete", "alpha", "--dry-run").Execute(); err != nil {

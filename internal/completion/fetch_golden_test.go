@@ -58,9 +58,11 @@ func TestFetchAgentNames_DecodesAgentArray(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		_ = json.NewEncoder(w).Encode([]map[string]any{
-			{"name": "beta", "id": "00000000-0000-0000-0000-000000000002"},
-			{"name": "alpha", "id": "00000000-0000-0000-0000-000000000001"},
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"agents": []any{
+				map[string]any{"name": "beta", "id": "00000000-0000-0000-0000-000000000002"},
+				map[string]any{"name": "alpha", "id": "00000000-0000-0000-0000-000000000001"},
+			},
 		})
 	}))
 	t.Cleanup(srv.Close)
@@ -84,9 +86,11 @@ func TestFetchOAuthClientIDs_DecodesClientList(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		_ = json.NewEncoder(w).Encode([]map[string]any{
-			{"id": "22222222-2222-2222-2222-222222222222", "name": "B"},
-			{"id": "11111111-1111-1111-1111-111111111111", "name": "A"},
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"clients": []any{
+				map[string]any{"id": "22222222-2222-2222-2222-222222222222", "name": "B"},
+				map[string]any{"id": "11111111-1111-1111-1111-111111111111", "name": "A"},
+			},
 		})
 	}))
 	t.Cleanup(srv.Close)

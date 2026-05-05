@@ -66,7 +66,7 @@ Makefile                         build / build-all / test / vet / lint / verify
 | Pre-push gate | `make verify` |
 | Cut a release | tag `vX.Y.Z`; `cli-release.yml` builds + publishes to GH Releases |
 
-Live integration tests (e.g. `oauth_clients_live_test.go`) self-skip without `CITADEL_TEST_OAUTH_JWT` set.
+Live integration tests (e.g. `oauth_clients_live_test.go`) self-skip without `CITADEL_TEST_OAUTH_JWT` set. Repository list pagination against a real instance is gated on `CITADEL_TEST_PAGINATION_LIVE=1` (see `repo_pagination_live_test.go`).
 
 ## Configuration
 
@@ -87,6 +87,14 @@ citadel-cli repo get -R other/ns   # explicit repo
 ```
 
 Full reference: [docs/cli.md](docs/cli.md).
+
+### List pagination
+
+Every list verb (`repo list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`) accepts **`--limit`** (default 50, maximum 200), **`--cursor`** (opaque token from the prior response’s `next_cursor` field), and **`--all`** (walk pages serially until exhausted). In human/table mode, when more rows exist the CLI prints a trailing hint: `(use --cursor … for more, or --all to fetch everything)`.
+
+**`--output json`** returns a single JSON array for one server round-trip only; **`--output ndjson`** emits one JSON object per row and is the supported mode for **`--all`** when you want a machine-readable stream without buffering the entire result set. Passing **`--all` with `--output json`** is rejected with an error directing you to `ndjson`.
+
+Malformed **`--cursor`** values (before any HTTP call) produce a clear `invalid --cursor` error; valid cursors that point past the end yield an empty success (exit 0).
 
 ### Shell completion
 

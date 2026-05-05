@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -122,27 +123,86 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 	}
 	orgSlug, _ := cmd.Flags().GetString("org")
 	output := outputFlag(cmd)
-
-	path := "/oauth/clients"
-	if orgSlug != "" {
-		path += "?namespace=" + url.QueryEscape(orgSlug)
-	}
-
-	var clients []oauthClient
-	if err := c.Get(cmd.Context(), path, &clients); err != nil {
+	limit, cursor, all, err := readPagination(cmd)
+	if err != nil {
 		return err
 	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 
-	return emitList(output, clients, "No OAuth clients.", func(w *tabwriter.Writer, clients []oauthClient) {
-		_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tSCOPES")
-		for _, oc := range clients {
-			scopes := strings.Join(oc.AllowedScopes, ",")
-			if scopes == "" {
-				scopes = "—"
-			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", oc.ClientID, oc.Name, scopes)
+	first := true
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(limit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
 		}
-	})
+		if orgSlug != "" {
+			q.Set("namespace", orgSlug)
+		}
+		var payload struct {
+			Clients    []oauthClient `json:"clients"`
+			NextCursor string        `json:"next_cursor"`
+		}
+		if err := c.Get(cmd.Context(), "/oauth/clients?"+q.Encode(), &payload); err != nil {
+			return err
+		}
+		clients := payload.Clients
+		next := strings.TrimSpace(payload.NextCursor)
+
+		if len(clients) == 0 && cursor != "" && next == "" {
+			return nil
+		}
+		if first && len(clients) == 0 && cursor == "" {
+			switch output {
+			case "json":
+				return emitJSON([]oauthClient{})
+			case "ndjson":
+				return nil
+			default:
+				fmt.Println("No OAuth clients.")
+				return nil
+			}
+		}
+		first = false
+
+		switch output {
+		case "json":
+			return emitJSON(clients)
+		case "ndjson":
+			if err := emitNDJSONLines(clients); err != nil {
+				return err
+			}
+		default:
+			w := newTabWriter()
+			_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tSCOPES")
+			for _, oc := range clients {
+				scopes := strings.Join(oc.AllowedScopes, ",")
+				if scopes == "" {
+					scopes = "—"
+				}
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", oc.ClientID, oc.Name, scopes)
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
+		}
+
+		if !all {
+			if output == "" && next != "" {
+				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+			}
+			return nil
+		}
+		if next == "" {
+			return nil
+		}
+		cursor = next
+	}
 }
 
 func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
@@ -347,6 +407,7 @@ func init() {
 
 	addOutputFlag(oauthClientsListCmd, oauthClientsCreateCmd, oauthClientsShowCmd,
 		oauthClientsRotateSecretCmd, oauthClientsRevokeCmd)
+	addPaginationFlags(oauthClientsListCmd)
 	addYesFlag(oauthClientsRevokeCmd)
 	addDryRunFlag(oauthClientsRevokeCmd)
 

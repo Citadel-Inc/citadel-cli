@@ -3,7 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"slices"
+	"strconv"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/google/uuid"
@@ -77,13 +80,30 @@ type agentRow struct {
 	ModelHint *string   `json:"model_hint,omitempty"`
 }
 
-// listAgentRows fetches all agents owned by the authenticated user.
+// listAgentRows fetches every page of agents owned by the authenticated user.
 func listAgentRows(ctx context.Context, c *apiclient.Client) ([]agentRow, error) {
-	var rows []agentRow
-	if err := c.Get(ctx, "/agents", &rows); err != nil {
-		return nil, err
+	var all []agentRow
+	cur := ""
+	for {
+		var payload struct {
+			Agents []agentRow `json:"agents"`
+			Next   string     `json:"next_cursor"`
+		}
+		q := url.Values{}
+		q.Set("limit", "200")
+		if cur != "" {
+			q.Set("cursor", cur)
+		}
+		if err := c.Get(ctx, "/agents?"+q.Encode(), &payload); err != nil {
+			return nil, err
+		}
+		all = append(all, payload.Agents...)
+		if strings.TrimSpace(payload.Next) == "" {
+			break
+		}
+		cur = payload.Next
 	}
-	return rows, nil
+	return all, nil
 }
 
 // findAgentByName returns the agent row matching name, or a not-found error.
@@ -104,22 +124,83 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	output := outputFlag(cmd)
-
-	rows, err := listAgentRows(cmd.Context(), c)
+	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
 	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 
-	return emitList(output, rows, "No agents found.", func(w *tabwriter.Writer, rows []agentRow) {
-		_, _ = fmt.Fprintln(w, "NAME\tID\tMODEL HINT")
-		for _, a := range rows {
-			hint := ""
-			if a.ModelHint != nil {
-				hint = *a.ModelHint
-			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, a.ID, hint)
+	first := true
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(limit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
 		}
-	})
+		var payload struct {
+			Agents []agentRow `json:"agents"`
+			Next   string     `json:"next_cursor"`
+		}
+		if err := c.Get(cmd.Context(), "/agents?"+q.Encode(), &payload); err != nil {
+			return err
+		}
+		rows := payload.Agents
+		next := strings.TrimSpace(payload.Next)
+
+		if len(rows) == 0 && cursor != "" && next == "" {
+			return nil
+		}
+		if first && len(rows) == 0 && cursor == "" {
+			switch output {
+			case "json":
+				return emitJSON([]agentRow{})
+			case "ndjson":
+				return nil
+			default:
+				fmt.Println("No agents found.")
+				return nil
+			}
+		}
+		first = false
+
+		switch output {
+		case "json":
+			return emitJSON(rows)
+		case "ndjson":
+			if err := emitNDJSONLines(rows); err != nil {
+				return err
+			}
+		default:
+			w := newTabWriter()
+			_, _ = fmt.Fprintln(w, "NAME\tID\tMODEL HINT")
+			for _, a := range rows {
+				hint := ""
+				if a.ModelHint != nil {
+					hint = *a.ModelHint
+				}
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, a.ID, hint)
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
+		}
+
+		if !all {
+			if output == "" && next != "" {
+				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+			}
+			return nil
+		}
+		if next == "" {
+			return nil
+		}
+		cursor = next
+	}
 }
 
 func runAgentGet(cmd *cobra.Command, args []string) error {
@@ -212,6 +293,7 @@ func init() {
 	AgentCmd.AddCommand(agentRotateTokenCmd)
 
 	addOutputFlag(agentListCmd, agentGetCmd, agentDeleteCmd, agentRotateTokenCmd)
+	addPaginationFlags(agentListCmd)
 	addYesFlag(agentDeleteCmd, agentRotateTokenCmd)
 	addDryRunFlag(agentDeleteCmd)
 

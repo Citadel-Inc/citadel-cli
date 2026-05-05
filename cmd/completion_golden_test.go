@@ -56,7 +56,10 @@ func TestCompleteAgentNames_HappyPath(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		_ = json.NewEncoder(w).Encode([]map[string]any{{"name": "zeus", "id": "1"}, {"name": "apollo", "id": "2"}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"agents": []any{
+			map[string]any{"name": "zeus", "id": "1"},
+			map[string]any{"name": "apollo", "id": "2"},
+		}})
 	})
 	root := NewRootCmd()
 	agentGet := findAgentGet(t, root)
@@ -128,7 +131,9 @@ func TestCompleteOAuthClientIDs_HappyPath(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "name": "A"}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"clients": []any{
+			map[string]any{"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "name": "A"},
+		}})
 	})
 	root := NewRootCmd()
 	show := findOauthShow(t, root)

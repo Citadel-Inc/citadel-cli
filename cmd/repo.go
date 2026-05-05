@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -145,36 +146,88 @@ func runRepoCreate(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// listRepos fetches all repos in a parent namespace.
-func listRepos(cmd *cobra.Command, ns string) ([]repoRow, error) {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return nil, err
-	}
-	var payload struct {
-		Repos []repoRow `json:"repos"`
-	}
-	if err := c.Get(cmd.Context(), "/namespaces/"+url.PathEscape(ns)+"/repos", &payload); err != nil {
-		return nil, err
-	}
-	return payload.Repos, nil
-}
-
 func runRepoList(cmd *cobra.Command, _ []string) error {
-	output := outputFlag(cmd)
-	ns, _ := cmd.Flags().GetString("namespace")
-
-	repos, err := listRepos(cmd, ns)
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
+	ns, _ := cmd.Flags().GetString("namespace")
+	output := outputFlag(cmd)
+	limit, cursor, all, err := readPagination(cmd)
+	if err != nil {
+		return err
+	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 
-	return emitList(output, repos, fmt.Sprintf("No repositories in namespace '%s'", ns), func(w *tabwriter.Writer, repos []repoRow) {
-		_, _ = fmt.Fprintln(w, "PATH\tVISIBILITY\tBRANCH\tCREATED")
-		for _, r := range repos {
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.Path, r.Visibility, r.DefaultBranch, r.CreatedAt)
+	first := true
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(limit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
 		}
-	})
+		var payload struct {
+			Repos      []repoRow `json:"repos"`
+			NextCursor string    `json:"next_cursor"`
+		}
+		path := "/namespaces/" + url.PathEscape(ns) + "/repos?" + q.Encode()
+		if err := c.Get(cmd.Context(), path, &payload); err != nil {
+			return err
+		}
+		rows := payload.Repos
+		next := strings.TrimSpace(payload.NextCursor)
+
+		if len(rows) == 0 && cursor != "" && next == "" {
+			return nil
+		}
+		if first && len(rows) == 0 && cursor == "" {
+			empty := fmt.Sprintf("No repositories in namespace '%s'", ns)
+			switch output {
+			case "json":
+				return emitJSON([]repoRow{})
+			case "ndjson":
+				return nil
+			default:
+				fmt.Println(empty)
+				return nil
+			}
+		}
+		first = false
+
+		switch output {
+		case "json":
+			return emitJSON(rows)
+		case "ndjson":
+			if err := emitNDJSONLines(rows); err != nil {
+				return err
+			}
+		default:
+			w := newTabWriter()
+			_, _ = fmt.Fprintln(w, "PATH\tVISIBILITY\tBRANCH\tCREATED")
+			for _, r := range rows {
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.Path, r.Visibility, r.DefaultBranch, r.CreatedAt)
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
+		}
+
+		if !all {
+			if output == "" && next != "" {
+				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+			}
+			return nil
+		}
+		if next == "" {
+			return nil
+		}
+		cursor = next
+	}
 }
 
 func runRepoGet(cmd *cobra.Command, args []string) error {
@@ -268,6 +321,7 @@ func init() {
 	RepoCmd.AddCommand(repoDeleteCmd)
 
 	addOutputFlag(repoCreateCmd, repoListCmd, repoGetCmd, repoDeleteCmd)
+	addPaginationFlags(repoListCmd)
 	addRepoFlag(repoGetCmd, repoDeleteCmd)
 	addYesFlag(repoDeleteCmd)
 	addDryRunFlag(repoDeleteCmd)
