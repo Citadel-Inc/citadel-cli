@@ -1,0 +1,9 @@
+# Optional stricter pass than `go vet` (CI). Run `make golangci`.
+version: "2"
+run:
+  timeout: 5m
+linters:
+  default: standard
+linters-settings:
+  staticcheck:
+    checks: ["all"]

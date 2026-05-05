@@ -1,0 +1,41 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/citadel-cli
+/dist/
+vendor/
+go.work.sum
+
+# Editor scratch
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+.fleet/
+
+# Agent / MCP local state
+.claude/
+.mcp.json
+
+# OS scratch
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Testing
+coverage/
+
+# Build artefacts
+/build/
+/coverage/
+*.log
