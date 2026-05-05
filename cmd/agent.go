@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"text/tabwriter"
@@ -13,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
@@ -94,42 +93,46 @@ type agentTokenWithCleartext struct {
 	CleartextToken string `json:"cleartext_token"`
 }
 
-func listAgentRows(serverURL, accessToken string) ([]agentRow, error) {
-	req, _ := http.NewRequest(http.MethodGet, serverURL+"/agents", nil)
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
-
+// listAgentRows fetches all agents owned by the authenticated user.
+func listAgentRows(ctx context.Context, c *apiclient.Client) ([]agentRow, error) {
 	var rows []agentRow
-	if err := json.NewDecoder(resp.Body).Decode(&rows); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+	if err := c.Get(ctx, "/agents", &rows); err != nil {
+		return nil, err
 	}
 	return rows, nil
 }
 
-func runAgentList(cmd *cobra.Command, args []string) error {
+// resolveAgentID returns the agent's UUID by name; returns a not-found error if absent.
+func resolveAgentID(ctx context.Context, c *apiclient.Client, name string) (string, error) {
+	rows, err := listAgentRows(ctx, c)
+	if err != nil {
+		return "", err
+	}
+	for _, a := range rows {
+		if a.Name == name {
+			return a.ID, nil
+		}
+	}
+	return "", fmt.Errorf("agent '%s' not found", name)
+}
+
+func newAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
 	cfg, err := clicfg.Load()
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return nil, fmt.Errorf("load config: %w", err)
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
 	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
+	return apiclient.New(cfg, flagServer)
+}
+
+func runAgentList(cmd *cobra.Command, _ []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	output, _ := cmd.Flags().GetString("output")
 
-	rows, err := listAgentRows(serverURL, cfg.AccessToken)
+	rows, err := listAgentRows(cmd.Context(), c)
 	if err != nil {
 		return err
 	}
@@ -137,7 +140,6 @@ func runAgentList(cmd *cobra.Command, args []string) error {
 	if output == "json" {
 		return emitJSON(rows)
 	}
-
 	if len(rows) == 0 {
 		fmt.Println("No agents found.")
 		return nil
@@ -156,25 +158,17 @@ func runAgentList(cmd *cobra.Command, args []string) error {
 }
 
 func runAgentGet(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
-	if err != nil {
-		return fmt.Errorf("load config: %w", err)
-	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
-	output, _ := cmd.Flags().GetString("output")
-
-	name := args[0]
-
-	rows, err := listAgentRows(serverURL, cfg.AccessToken)
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
+	output, _ := cmd.Flags().GetString("output")
+	name := args[0]
 
+	rows, err := listAgentRows(cmd.Context(), c)
+	if err != nil {
+		return err
+	}
 	for _, a := range rows {
 		if a.Name == name {
 			if output == "json" {
@@ -193,33 +187,15 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 }
 
 func runAgentDelete(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
-	if err != nil {
-		return fmt.Errorf("load config: %w", err)
-	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
-
-	name := args[0]
-
-	rows, err := listAgentRows(serverURL, cfg.AccessToken)
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
+	name := args[0]
 
-	var agentID string
-	for _, a := range rows {
-		if a.Name == name {
-			agentID = a.ID
-			break
-		}
-	}
-	if agentID == "" {
-		return fmt.Errorf("agent '%s' not found", name)
+	agentID, err := resolveAgentID(cmd.Context(), c, name)
+	if err != nil {
+		return err
 	}
 
 	yes, _ := cmd.Flags().GetBool("yes")
@@ -227,37 +203,18 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	apiURL := fmt.Sprintf("%s/agents/%s", serverURL, url.PathEscape(agentID))
-	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
+	if err := c.Delete(cmd.Context(), "/agents/"+url.PathEscape(agentID)); err != nil {
+		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
-
 	fmt.Printf("Agent '%s' deleted.\n", name)
 	return nil
 }
 
 func runAgentRotateToken(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
-
 	name := args[0]
 
 	yes, _ := cmd.Flags().GetBool("yes")
@@ -265,98 +222,39 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Resolve agent ID.
-	rows, err := listAgentRows(serverURL, cfg.AccessToken)
+	agentID, err := resolveAgentID(cmd.Context(), c, name)
 	if err != nil {
 		return err
 	}
-	var agentID string
-	for _, a := range rows {
-		if a.Name == name {
-			agentID = a.ID
-			break
-		}
-	}
-	if agentID == "" {
-		return fmt.Errorf("agent '%s' not found", name)
-	}
 
 	// Issue new token first.
-	issueBody := struct {
-		AgentID string `json:"agent_id"`
-	}{AgentID: agentID}
-	bodyBytes, _ := json.Marshal(issueBody)
-
-	issueReq, _ := http.NewRequest(http.MethodPost, serverURL+"/agent-tokens", bytes.NewReader(bodyBytes))
-	issueReq.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-	issueReq.Header.Set("Content-Type", "application/json")
-
-	issueResp, err := http.DefaultClient.Do(issueReq)
-	if err != nil {
-		return fmt.Errorf("issue token request failed: %w", err)
-	}
-	defer func() { _ = issueResp.Body.Close() }()
-
-	if issueResp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(issueResp.Body)
-		return fmt.Errorf("issue token failed %d: %s", issueResp.StatusCode, string(body))
-	}
-
 	var newTok agentTokenWithCleartext
-	if err := json.NewDecoder(issueResp.Body).Decode(&newTok); err != nil {
-		return fmt.Errorf("decode issue response: %w", err)
+	if err := c.Post(cmd.Context(), "/agent-tokens", map[string]string{"agent_id": agentID}, &newTok); err != nil {
+		return fmt.Errorf("issue token: %w", err)
 	}
 
 	// List existing tokens to revoke all but the new one.
-	listURL := fmt.Sprintf("%s/agent-tokens?agent_id=%s", serverURL, agentID)
-	listReq, _ := http.NewRequest(http.MethodGet, listURL, nil)
-	listReq.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	listResp, err := http.DefaultClient.Do(listReq)
-	if err != nil {
-		return fmt.Errorf("list tokens request failed: %w", err)
-	}
-	defer func() { _ = listResp.Body.Close() }()
-
-	if listResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(listResp.Body)
-		return fmt.Errorf("list tokens failed %d: %s", listResp.StatusCode, string(body))
-	}
-
 	var existingTokens []agentToken
-	if err := json.NewDecoder(listResp.Body).Decode(&existingTokens); err != nil {
-		return fmt.Errorf("decode tokens response: %w", err)
+	if err := c.Get(cmd.Context(), "/agent-tokens?agent_id="+url.QueryEscape(agentID), &existingTokens); err != nil {
+		return fmt.Errorf("list tokens: %w", err)
 	}
 
 	// Revoke all tokens except the new one.
-	var revokeErr error
+	var revokeErrs []error
 	for _, t := range existingTokens {
-		if t.ID == newTok.ID {
+		if t.ID == newTok.ID || t.RevokedAt != nil {
 			continue
 		}
-		if t.RevokedAt != nil {
-			continue
-		}
-		revokeAPIURL := fmt.Sprintf("%s/agent-tokens/%s", serverURL, url.PathEscape(t.ID))
-		revokeReq, _ := http.NewRequest(http.MethodDelete, revokeAPIURL, nil)
-		revokeReq.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-		revokeResp, err := http.DefaultClient.Do(revokeReq)
-		if err != nil {
+		if err := c.Delete(cmd.Context(), "/agent-tokens/"+url.PathEscape(t.ID)); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to revoke token %s: %v\n", t.ID, err)
-			revokeErr = err
-			continue
-		}
-		_ = revokeResp.Body.Close()
-		if revokeResp.StatusCode != http.StatusNoContent && revokeResp.StatusCode != http.StatusOK {
-			fmt.Fprintf(os.Stderr, "warning: revoke token %s returned %d\n", t.ID, revokeResp.StatusCode)
-			revokeErr = fmt.Errorf("revoke returned %d", revokeResp.StatusCode)
+			revokeErrs = append(revokeErrs, err)
 		}
 	}
 
 	// Print new token once to stdout before surfacing any revoke warnings.
 	fmt.Println(newTok.CleartextToken)
-	if revokeErr != nil {
-		return fmt.Errorf("new token issued but one or more old tokens could not be revoked; check 'citadel-cli token list --agent %s'", name)
+	if len(revokeErrs) > 0 {
+		return fmt.Errorf("new token issued but %d old token(s) could not be revoked; check 'citadel-cli token list --agent %s': %w", len(revokeErrs), name, errors.Join(revokeErrs...))
 	}
 	return nil
 }
