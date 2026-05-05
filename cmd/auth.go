@@ -61,14 +61,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 	flagServer, _ := cmd.Flags().GetString("server")
 	serverURL := cfg.ResolveServerURL(flagServer)
-
-	// Extract Supabase URL from server URL (assumed to be https://api.src.land or similar)
-	supabaseURL := os.Getenv("SUPABASE_URL")
-	if supabaseURL == "" {
-		// Try to infer from Citadel server (this is a simplification;
-		// production would need a better discovery mechanism).
-		supabaseURL = "https://ucnlqqhgqhenzthzkdpi.supabase.co"
-	}
+	supabaseURL := resolveSupabaseURL()
 
 	// Start a loopback HTTP server for the OAuth callback
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -86,13 +79,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("generate PKCE: %w", err)
 	}
 
-	// OAuth authorize URL
-	authURL := fmt.Sprintf(
-		"%s/auth/v1/authorize?provider=github&client_id=&redirect_uri=%s&code_challenge=%s&code_challenge_method=S256&response_type=code",
-		supabaseURL,
-		url.QueryEscape(redirectURI),
-		challenge,
-	)
+	authURL := buildAuthorizeURL(supabaseURL, redirectURI, challenge)
 
 	fmt.Printf("Opening browser to authenticate...\n")
 	openBrowser(authURL)
@@ -137,51 +124,17 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("login timeout")
 	}
 
-	// Exchange auth code for tokens
-	tokenURL := fmt.Sprintf("%s/auth/v1/token", supabaseURL)
-	tokenReq := url.Values{
-		"grant_type":    {"pkce"},
-		"code":          {code},
-		"code_verifier": {verifier},
-		"client_id":     {""}, // Will be obtained from Supabase or skipped
-	}
-
-	resp, err := http.PostForm(tokenURL, tokenReq)
+	tokenResp, err := exchangePKCECode(supabaseURL, code, verifier)
 	if err != nil {
-		return fmt.Errorf("token exchange: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("token exchange failed: %s", string(body))
+		return err
 	}
 
-	var tokenResp struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return fmt.Errorf("decode token response: %w", err)
-	}
-
-	// Extract user UUID from access token (unverified parse — server validates
-	// signatures; the CLI only inspects claims).
-	claims := jwt.MapClaims{}
-	if _, _, err := jwt.NewParser().ParseUnverified(tokenResp.AccessToken, claims); err != nil {
+	claims, err := claimsFromJWT(tokenResp.AccessToken)
+	if err != nil {
 		return fmt.Errorf("parse access token: %w", err)
 	}
-
-	userUUID := ""
-	if sub, ok := claims["sub"].(string); ok {
-		userUUID = sub
-	}
-
-	// Compute expiry from exp claim
-	expiresAt := time.Now().Add(time.Hour) // Default to 1 hour
-	if expF, ok := claims["exp"].(float64); ok {
-		expiresAt = time.Unix(int64(expF), 0)
-	}
+	userUUID := userUUIDFromClaims(claims)
+	expiresAt := expiryFromClaims(claims, time.Now().Add(time.Hour))
 
 	// Save config
 	cfg.ServerURL = serverURL
@@ -210,15 +163,11 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	// Decode JWT to get expiry (signature verified server-side; client only inspects claims).
-	claims := jwt.MapClaims{}
-	if _, _, err := jwt.NewParser().ParseUnverified(cfg.AccessToken, claims); err != nil {
-		fmt.Printf("Warning: could not parse access token: %v\n", err)
+	claims, perr := claimsFromJWT(cfg.AccessToken)
+	if perr != nil {
+		fmt.Printf("Warning: could not parse access token: %v\n", perr)
 	}
-
-	var exp time.Time
-	if ef, ok := claims["exp"].(float64); ok {
-		exp = time.Unix(int64(ef), 0)
-	}
+	exp := expiryFromClaims(claims, time.Time{})
 
 	remaining := time.Until(exp)
 	if remaining < 0 {
@@ -253,6 +202,90 @@ func runLogout(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("Logged out successfully.")
 	return nil
+}
+
+// resolveSupabaseURL returns the SUPABASE_URL env override or the canonical
+// Citadel Supabase project URL. Split out so tests can verify the env-vs-default
+// precedence without spinning up runLogin.
+func resolveSupabaseURL() string {
+	if v := os.Getenv("SUPABASE_URL"); v != "" {
+		return v
+	}
+	return "https://ucnlqqhgqhenzthzkdpi.supabase.co"
+}
+
+// buildAuthorizeURL constructs the GitHub-provider PKCE authorize URL
+// served by Supabase Auth.
+func buildAuthorizeURL(supabaseURL, redirectURI, challenge string) string {
+	return fmt.Sprintf(
+		"%s/auth/v1/authorize?provider=github&client_id=&redirect_uri=%s&code_challenge=%s&code_challenge_method=S256&response_type=code",
+		supabaseURL,
+		url.QueryEscape(redirectURI),
+		challenge,
+	)
+}
+
+// pkceTokenResponse is the JSON body returned by Supabase /auth/v1/token.
+type pkceTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+// exchangePKCECode swaps an auth code + verifier for an access/refresh token
+// pair. Split out so tests can drive the request with an httptest server.
+func exchangePKCECode(supabaseURL, code, verifier string) (pkceTokenResponse, error) {
+	tokenURL := supabaseURL + "/auth/v1/token"
+	form := url.Values{
+		"grant_type":    {"pkce"},
+		"code":          {code},
+		"code_verifier": {verifier},
+		"client_id":     {""},
+	}
+	resp, err := http.PostForm(tokenURL, form)
+	if err != nil {
+		return pkceTokenResponse{}, fmt.Errorf("token exchange: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return pkceTokenResponse{}, fmt.Errorf("token exchange failed: %s", string(body))
+	}
+
+	var out pkceTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return pkceTokenResponse{}, fmt.Errorf("decode token response: %w", err)
+	}
+	return out, nil
+}
+
+// claimsFromJWT performs an unverified parse of the bearer JWT and returns
+// its MapClaims. Signature verification is the server's job; the CLI only
+// reads claims locally for UX (display expiry, user UUID).
+func claimsFromJWT(tok string) (jwt.MapClaims, error) {
+	claims := jwt.MapClaims{}
+	if _, _, err := jwt.NewParser().ParseUnverified(tok, claims); err != nil {
+		return claims, err
+	}
+	return claims, nil
+}
+
+// userUUIDFromClaims returns the `sub` claim as a string, or "" if missing
+// or malformed.
+func userUUIDFromClaims(claims jwt.MapClaims) string {
+	if sub, ok := claims["sub"].(string); ok {
+		return sub
+	}
+	return ""
+}
+
+// expiryFromClaims returns the `exp` claim as a time.Time, or fallback if
+// the claim is missing or malformed.
+func expiryFromClaims(claims jwt.MapClaims, fallback time.Time) time.Time {
+	if expF, ok := claims["exp"].(float64); ok {
+		return time.Unix(int64(expF), 0)
+	}
+	return fallback
 }
 
 // generatePKCE generates a PKCE verifier and challenge.
