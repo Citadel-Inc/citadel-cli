@@ -136,6 +136,20 @@ func (tr nsTransferRow) CSVRecord() []string {
 	}
 }
 
+// ── ssh keys ─────────────────────────────────────────────────────────────────
+
+func (sshKeyRow) CSVHeader() []string {
+	return []string{"id", "fingerprint", "public_key", "label", "created_at"}
+}
+
+func (r sshKeyRow) CSVRecord() []string {
+	lbl := ""
+	if r.Label != nil {
+		lbl = *r.Label
+	}
+	return []string{r.ID, r.Fingerprint, r.PublicKey, lbl, formatRFC3339UTC(r.CreatedAt)}
+}
+
 // ── org invitations ───────────────────────────────────────────────────────────
 
 func (orgInvitationRow) CSVHeader() []string {

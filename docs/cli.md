@@ -165,6 +165,38 @@ Treat invitation tokens like passwords.
 
 Opt-in: set **`CITADEL_TEST_ORG_INVITATIONS_LIVE=1`** together with **`CITADEL_ACCESS_TOKEN`** and optional **`CITADEL_SERVER`** (see `cmd/org_invitation_live_test.go`). CI skips when unset.
 
+## SSH public keys (Git)
+
+Register SSH **public** keys for your account so Git SSH endpoints can authorize pushes and pulls. The CLI never uploads private keys and rejects PEM-style private key blobs.
+
+### List keys
+
+```bash
+citadel-cli ssh-key list
+citadel-cli ssh-key list --output json
+```
+
+### Add a key
+
+Preferred: point at a `.pub` file.
+
+```bash
+citadel-cli ssh-key add --key-file ~/.ssh/id_ed25519.pub --label work-laptop
+citadel-cli ssh-key add --public-key "$(cat ~/.ssh/id_ed25519.pub)"
+```
+
+When stdin is not a TTY, you may pipe a one-line public key. Use **`--key-file -`** to read from stdin on a TTY.
+
+### Delete a key
+
+```bash
+citadel-cli ssh-key delete <key-id>
+```
+
+### Live integration test
+
+Opt-in: **`CITADEL_TEST_SSH_KEYS_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`** (see `cmd/ssh_key_live_test.go`). CI skips when unset.
+
 ## Server URL configuration
 
 The CLI defaults to `https://api.src.land`. Override it via:

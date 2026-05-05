@@ -1953,3 +1953,85 @@ func TestOrgInvitationAccept_NotFound(t *testing.T) {
 		t.Fatalf("want not found, got %v", err)
 	}
 }
+
+// ── ssh-key ──────────────────────────────────────────────────────────────────
+
+func TestSshKeyList_Table(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /account/ssh-keys": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"keys": []map[string]any{
+				{
+					"id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "fingerprint": "SHA256:abc", "public_key": "ssh-ed25519 AAAAC3",
+					"label": nil, "created_at": "2026-01-01T00:00:00Z",
+				},
+			}})
+		},
+	}))
+	if err := rootFor(cmd.SSHKeyCmd, "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSshKeyAdd_PublicKeyFlag(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /account/ssh-keys": func(w http.ResponseWriter, r *http.Request) {
+			b, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(b), "ssh-ed25519 AAAAC3") {
+				t.Fatalf("body %s", string(b))
+			}
+			writeJSON(t, w, 201, map[string]any{
+				"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "fingerprint": "SHA256:zzz", "public_key": "ssh-ed25519 AAAAC3",
+				"label": nil, "created_at": "2026-01-01T00:00:00Z",
+			})
+		},
+	}))
+	if err := rootFor(cmd.SSHKeyCmd, "add", "--public-key", "ssh-ed25519 AAAAC3 comment").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSshKeyAdd_RejectsPrivateKeyPEM(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.SSHKeyCmd, "add", "--public-key", "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----").Execute()
+	if err == nil || !strings.Contains(err.Error(), "private key") {
+		t.Fatalf("want private key refusal, got %v", err)
+	}
+}
+
+func TestSshKeyAdd_BadRequestUnknownField(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /account/ssh-keys": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 400, map[string]any{"error": "unknown_field", "message": "unknown field"})
+		},
+	}))
+	err := rootFor(cmd.SSHKeyCmd, "add", "--public-key", "ssh-ed25519 AAAAC3").Execute()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestSshKeyDelete_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /account/ssh-keys/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	}))
+	if err := rootFor(cmd.SSHKeyCmd, "delete", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSshKeyDelete_NotFound(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /account/ssh-keys/missing-id": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		},
+	}))
+	err := rootFor(cmd.SSHKeyCmd, "delete", "missing-id").Execute()
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("want not found, got %v", err)
+	}
+}
