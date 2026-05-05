@@ -10,6 +10,7 @@
 | cli-output-formats | DRAFT | 080800ZMAY26 | Bastion (J-3) |
 | cli-pagination | DRAFT | 080800ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
+| cli-error-format | DRAFT | 050900ZMAY26 | Bastion (J-3) |
 | cli-completion-dynamic | DRAFT | 050826ZMAY26 | Bastion (J-3) |
 | cli-watch | DRAFT | 050826ZMAY26 | Bastion (J-3) |
 | cli-mcp-stdio | DRAFT | 030619ZMAY26 | Bastion (J-3) |
