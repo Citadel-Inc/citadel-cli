@@ -1,6 +1,9 @@
 package mcpclient
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Kind classifies typed mcpclient errors so callers can map to user copy
 // + exit codes without string-matching.
@@ -36,10 +39,11 @@ func (e *Error) Error() string { return e.Message }
 
 // IsUnauthorized is the canonical narrowing helper for the auth-failure
 // branch. Cobra cmd code uses this to decide whether to print
-// "Run `citadel-cli auth login` to refresh your session."
+// "Run `citadel-cli auth login` to refresh your session." Uses errors.As
+// so wrapped errors classify correctly.
 func IsUnauthorized(err error) bool {
-	e, ok := err.(*Error)
-	return ok && e.Kind == KindUnauthorized
+	var e *Error
+	return errors.As(err, &e) && e.Kind == KindUnauthorized
 }
 
 // classifyJSONRPCError maps server-side JSON-RPC error codes to typed

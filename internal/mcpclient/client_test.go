@@ -3,6 +3,7 @@ package mcpclient
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -133,6 +134,20 @@ func TestUnauthorizedHTTP401(t *testing.T) {
 	err := c.Initialize(context.Background())
 	if !IsUnauthorized(err) {
 		t.Fatalf("want unauthorized, got %v", err)
+	}
+}
+
+// TestIsUnauthorized_UnwrapsWrapped guards the errors.As migration: callers
+// that wrap a *mcpclient.Error with fmt.Errorf("...: %w", err) must still
+// classify as unauthorized.
+func TestIsUnauthorized_UnwrapsWrapped(t *testing.T) {
+	inner := &Error{Kind: KindUnauthorized, Message: "bad token"}
+	wrapped := fmt.Errorf("mcp call failed: %w", inner)
+	if !IsUnauthorized(wrapped) {
+		t.Fatal("wrapped *Error must classify as unauthorized")
+	}
+	if IsUnauthorized(fmt.Errorf("plain error, not unauthorized")) {
+		t.Fatal("plain error must not classify as unauthorized")
 	}
 }
 
