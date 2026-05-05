@@ -212,3 +212,48 @@ func TestSave_OverwritesExistingFile(t *testing.T) {
 		t.Fatalf("got %+v", got)
 	}
 }
+
+func TestLoad_InvalidTOML(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	path := filepath.Join(tmpDir, "citadel", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("this is not valid TOML [[[\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load: expected error for invalid TOML")
+	}
+}
+
+// TestLoad_UsesHomeWhenXDGUnset exercises configPath's branch that joins
+// ~/.config/citadel when XDG_CONFIG_HOME is empty.
+func TestLoad_UsesHomeWhenXDGUnset(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	_ = os.Unsetenv("XDG_CONFIG_HOME")
+
+	dir := filepath.Join(tmpDir, ".config", "citadel")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "config.toml")
+	content := `
+server_url = "https://home-path.example"
+access_token = "from-file"
+`
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.ServerURL != "https://home-path.example" || cfg.AccessToken != "from-file" {
+		t.Fatalf("got %+v", cfg)
+	}
+}

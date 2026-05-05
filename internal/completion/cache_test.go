@@ -1,6 +1,8 @@
 package completion
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -55,4 +57,61 @@ func TestNoDiskCacheUsesMemory(t *testing.T) {
 	if !ok || len(got) != 1 || got[0] != "x" {
 		t.Fatalf("memory hit: ok=%v got=%v", ok, got)
 	}
+}
+
+func TestReadCache_CorruptDiskJSON(t *testing.T) {
+	origNow := now
+	t.Cleanup(func() { now = origNow })
+
+	cacheHome := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", cacheHome)
+	t.Setenv("CITADEL_NO_COMPLETION_CACHE", "")
+
+	start := time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
+	now = func() time.Time { return start }
+
+	const resolved = "https://api.example.com"
+	const key = "corrupt-disk-json"
+	path := filepath.Join(cacheHome, "citadel-cli", "completion", "api.example.com", "corrupt-disk-json.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("{not-json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, ok := readCache(resolved, key)
+	if ok {
+		t.Fatal("expected miss for corrupt JSON on disk")
+	}
+}
+
+func TestReadCache_WrongServerInEnvelope(t *testing.T) {
+	origNow := now
+	t.Cleanup(func() { now = origNow })
+
+	cacheHome := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", cacheHome)
+	t.Setenv("CITADEL_NO_COMPLETION_CACHE", "")
+
+	start := time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC)
+	now = func() time.Time { return start }
+
+	const resolved = "https://api.example.com"
+	const key = "wrong-server-envelope"
+	path := filepath.Join(cacheHome, "citadel-cli", "completion", "api.example.com", "wrong-server-envelope.json")
+	payload := `{"fetched_at":"2026-05-05T12:00:00Z","server":"https://other.example","resource":"wrong-server-envelope","values":["x"]}`
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(payload), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, ok := readCache(resolved, key)
+	if ok {
+		t.Fatal("expected miss when envelope server does not match")
+	}
+}
+
+func TestRemoveAsync_NoKeysIsNoop(t *testing.T) {
+	RemoveAsync("https://api.example.com")
 }

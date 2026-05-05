@@ -338,3 +338,64 @@ func TestClassifyJSONRPCError_AllKinds(t *testing.T) {
 		}
 	}
 }
+
+func TestNew_DefaultTimeout(t *testing.T) {
+	c := New("http://example.test", "t", 0, Options{})
+	if c.HTTP.Timeout != 60*time.Second {
+		t.Fatalf("default timeout: got %v", c.HTTP.Timeout)
+	}
+}
+
+func TestToolsList_NotInitialized(t *testing.T) {
+	c := New("http://nope", "t", time.Second, Options{})
+	if _, err := c.ToolsList(context.Background()); err == nil || !strings.Contains(err.Error(), "not initialized") {
+		t.Fatalf("want not-initialized, got %v", err)
+	}
+}
+
+func TestCall_ResponseBodyInvalidJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`not-json-at-all`))
+	}))
+	defer srv.Close()
+	c := New(srv.URL, "t", time.Second, Options{})
+	err := c.Initialize(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "decode response") {
+		t.Fatalf("want decode response error, got %v", err)
+	}
+}
+
+func TestCall_HTTP500EmptyBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+	c := New(srv.URL, "t", time.Second, Options{})
+	err := c.Initialize(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "HTTP 500") {
+		t.Fatalf("want HTTP 500 error, got %v", err)
+	}
+}
+
+func TestCall_ResultDecodeFails(t *testing.T) {
+	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
+		switch req.Method {
+		case "initialize":
+			writeResult(w, "s", req.ID, map[string]any{"protocolVersion": ProtocolVersion})
+		case "tools/list":
+			// Result is valid JSON but wrong shape for tools/list output.
+			writeResult(w, "s", req.ID, "totally-wrong-shape")
+		}
+	})
+	defer srv.Close()
+	c := New(srv.URL, "t", time.Second, Options{})
+	if err := c.Initialize(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	_, err := c.ToolsList(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "decode result") {
+		t.Fatalf("want decode result error, got %v", err)
+	}
+}
