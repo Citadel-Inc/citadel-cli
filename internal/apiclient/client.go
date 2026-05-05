@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/httpx"
 )
 
 // defaultTimeout is the per-request timeout applied to the api client's
@@ -73,10 +74,7 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	if cfg.AccessToken == "" {
 		return nil, errors.New("not authenticated; run 'citadel-cli auth login' first")
 	}
-	var rt http.RoundTripper = &retryTransport{base: http.DefaultTransport}
-	if opts.Verbose || opts.DebugHTTP {
-		rt = &traceTransport{base: rt, verbose: opts.Verbose, debugHTTP: opts.DebugHTTP}
-	}
+	rt := httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP})
 	return &Client{
 		server: strings.TrimRight(cfg.ResolveServerURL(opts.Server), "/"),
 		token:  cfg.AccessToken,

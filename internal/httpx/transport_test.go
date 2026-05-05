@@ -1,12 +1,12 @@
-package apiclient
+package httpx
 
 import (
+	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
-
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
 // TestRetryOn503 asserts an idempotent GET retries through a 503 and
@@ -19,25 +19,19 @@ func TestRetryOn503(t *testing.T) {
 			return
 		}
 		w.WriteHeader(200)
-		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	defer srv.Close()
 
-	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	c := &http.Client{Transport: Stack(nil, Options{})}
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
+	resp, err := c.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var out struct {
-		OK bool `json:"ok"`
-	}
-	if err := c.Get(t.Context(), "/x", &out); err != nil {
-		t.Fatalf("Get: %v", err)
-	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
 	if got := calls.Load(); got != 2 {
 		t.Fatalf("expected 2 calls (1 retry), got %d", got)
-	}
-	if !out.OK {
-		t.Fatal("decoded body lost")
 	}
 }
 
@@ -50,9 +44,23 @@ func TestNoRetryOnPOST(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
-	_ = c.Post(t.Context(), "/x", map[string]string{"a": "b"}, nil)
+	c := &http.Client{Transport: Stack(nil, Options{})}
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL, nil)
+	resp, _ := c.Do(req)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("POST must not retry; got %d calls", got)
 	}
+}
+
+// TestStackBaseDefault ensures Stack(nil, _) wraps DefaultTransport without
+// panicking.
+func TestStackBaseDefault(t *testing.T) {
+	rt := Stack(nil, Options{})
+	if rt == nil {
+		t.Fatal("Stack returned nil")
+	}
+	_ = context.Background()
 }

@@ -1,4 +1,7 @@
-package apiclient
+// Package httpx is the shared http.RoundTripper stack used by both the
+// REST apiclient and the JSON-RPC mcpclient: retry-on-idempotent-verb plus
+// optional verbose / wire-level trace.
+package httpx
 
 import (
 	"bytes"
@@ -11,6 +14,27 @@ import (
 	"strconv"
 	"time"
 )
+
+// Options are the verbose / debug toggles passed in from the CLI's persistent
+// --verbose / --debug-http flags. Apply with Stack().
+type Options struct {
+	Verbose   bool
+	DebugHTTP bool
+}
+
+// Stack wraps base with retry + (when enabled) trace, returning a
+// RoundTripper suitable as http.Client.Transport. base may be nil
+// (uses http.DefaultTransport).
+func Stack(base http.RoundTripper, opts Options) http.RoundTripper {
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	rt := http.RoundTripper(&RetryTransport{Base: base})
+	if opts.Verbose || opts.DebugHTTP {
+		rt = &TraceTransport{Base: rt, Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP}
+	}
+	return rt
+}
 
 // Default retry policy for idempotent verbs against transient failures.
 const (
@@ -30,6 +54,8 @@ func retryableStatus(code int) bool {
 }
 
 // idempotentMethod reports whether a method is safe to retry transparently.
+// JSON-RPC over POST is intentionally excluded — caller-level logic must
+// opt in per-method, since tools/call may have side effects.
 func idempotentMethod(m string) bool {
 	switch m {
 	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodDelete, http.MethodPut:
@@ -55,22 +81,21 @@ func retryAfterDelay(h http.Header) time.Duration {
 // backoff returns the expo-jittered delay for attempt n (0-indexed).
 func backoff(n int) time.Duration {
 	d := min(retryBaseBackoff<<n, retryMaxBackoff)
-	// full jitter: random in [d/2, d]
 	half := d / 2
 	return half + time.Duration(rand.Int64N(int64(half)+1))
 }
 
-// retryTransport wraps a base RoundTripper with idempotent-verb retry on
+// RetryTransport wraps a base RoundTripper with idempotent-verb retry on
 // transient errors and 5xx/429/408/425 responses.
-type retryTransport struct {
-	base http.RoundTripper
+type RetryTransport struct {
+	Base http.RoundTripper
 }
 
-func (rt *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+// RoundTrip implements http.RoundTripper.
+func (rt *RetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if !idempotentMethod(req.Method) {
-		return rt.base.RoundTrip(req)
+		return rt.Base.RoundTrip(req)
 	}
-	// Buffer the body so we can replay on retry. Empty body == nil-safe.
 	var body []byte
 	if req.Body != nil {
 		b, err := io.ReadAll(req.Body)
@@ -86,12 +111,11 @@ func (rt *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		if body != nil {
 			req.Body = io.NopCloser(bytes.NewReader(body))
 		}
-		resp, err := rt.base.RoundTrip(req)
+		resp, err := rt.Base.RoundTrip(req)
 		if err == nil && !retryableStatus(resp.StatusCode) {
 			return resp, nil
 		}
 		if err == nil {
-			// Non-retryable HTTP failure on the last attempt: surface it.
 			if attempt == retryAttempts-1 {
 				return resp, nil
 			}
@@ -128,34 +152,35 @@ func sleepCtx(req *http.Request, d time.Duration) error {
 	}
 }
 
-// traceTransport dumps redacted requests/responses to stderr.
+// TraceTransport dumps redacted requests/responses to stderr.
 //
 // Verbose: one METHOD URL → STATUS line per call.
 // DebugHTTP: full headers + body, with Authorization scrubbed.
-type traceTransport struct {
-	base      http.RoundTripper
-	verbose   bool
-	debugHTTP bool
+type TraceTransport struct {
+	Base      http.RoundTripper
+	Verbose   bool
+	DebugHTTP bool
 }
 
-func (tt *traceTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+// RoundTrip implements http.RoundTripper.
+func (tt *TraceTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	start := time.Now()
-	if tt.debugHTTP {
+	if tt.DebugHTTP {
 		dump, _ := httputil.DumpRequestOut(redactAuth(req), true)
 		fmt.Fprintf(os.Stderr, "--- HTTP request ---\n%s\n", dump)
 	}
-	resp, err := tt.base.RoundTrip(req)
+	resp, err := tt.Base.RoundTrip(req)
 	dur := time.Since(start)
 	if err != nil {
-		if tt.verbose || tt.debugHTTP {
+		if tt.Verbose || tt.DebugHTTP {
 			fmt.Fprintf(os.Stderr, "%s %s → error after %s: %v\n", req.Method, req.URL, dur.Round(time.Millisecond), err)
 		}
 		return resp, err
 	}
-	if tt.debugHTTP {
+	if tt.DebugHTTP {
 		dump, _ := httputil.DumpResponse(resp, true)
 		fmt.Fprintf(os.Stderr, "--- HTTP response (%s) ---\n%s\n", dur.Round(time.Millisecond), dump)
-	} else if tt.verbose {
+	} else if tt.Verbose {
 		fmt.Fprintf(os.Stderr, "%s %s → %d in %s\n", req.Method, req.URL, resp.StatusCode, dur.Round(time.Millisecond))
 	}
 	return resp, nil
