@@ -18,4 +18,4 @@ Status: DONE 050915ZMAY26 — Implemented CWD git-origin repo resolution: -R/--r
 
 - [x] C1. README "Repo context" section: examples + opt-out guidance.
 - [ ] C2. [HUMAN] Operator smoke: cd into a Citadel-cloned repo, run `repo get` without args, confirm round trip.
-- [ ] C3. Spec close.
+- [x] C3. Spec close.
