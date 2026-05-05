@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | APPROVED 051044ZMAY26 |
+| Status | IN_PROGRESS 051044ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 080800ZMAY26 |
 | Owner | Bastion (J-3) |
 

@@ -1,6 +1,6 @@
 # Tasks — cli-output-formats
 
-Status: APPROVED 051044ZMAY26
+Status: IN_PROGRESS 051044ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 
