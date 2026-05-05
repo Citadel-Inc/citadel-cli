@@ -181,6 +181,20 @@ type nsOrgRow struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
+type nsRow struct {
+	NamespaceID   string    `json:"namespace_id"`
+	Slug          string    `json:"slug"`
+	Kind          string    `json:"kind"`
+	Path          string    `json:"path"`
+	Visibility    string    `json:"visibility"`
+	OwnerUserID   string    `json:"owner_user_id,omitempty"`
+	DisplayName   string    `json:"display_name,omitempty"`
+	Description   string    `json:"description,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	DefaultBranch string    `json:"default_branch,omitempty"`
+	Archived      bool      `json:"archived,omitempty"`
+}
+
 type nsMemberRow struct {
 	UserID      string    `json:"user_id"`
 	Email       string    `json:"email,omitempty"`
@@ -280,28 +294,46 @@ func runNsGet(cmd *cobra.Command, args []string) error {
 
 	slug := args[0]
 
-	orgs, err := listOrgNamespaces(serverURL, cfg.AccessToken)
+	apiURL := fmt.Sprintf("%s/namespaces/%s", serverURL, url.PathEscape(slug))
+	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
+	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("namespace '%s' not found", slug)
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
 	}
 
-	for _, o := range orgs {
-		if strings.EqualFold(o.Slug, slug) {
-			if output == "json" {
-				return emitJSON(o)
-			}
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprintf(w, "Slug:\t%s\n", o.Slug)
-			_, _ = fmt.Fprintf(w, "Display name:\t%s\n", o.DisplayName)
-			if o.LegalEntityName != "" {
-				_, _ = fmt.Fprintf(w, "Legal entity:\t%s\n", o.LegalEntityName)
-			}
-			_, _ = fmt.Fprintf(w, "Namespace ID:\t%s\n", o.NamespaceID)
-			_, _ = fmt.Fprintf(w, "Created:\t%s\n", o.CreatedAt.Format(time.RFC3339))
-			return w.Flush()
-		}
+	var ns nsRow
+	if err := json.NewDecoder(resp.Body).Decode(&ns); err != nil {
+		return fmt.Errorf("decode response: %w", err)
 	}
-	return fmt.Errorf("namespace '%s' not found", slug)
+
+	if output == "json" {
+		return emitJSON(ns)
+	}
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintf(w, "Slug:\t%s\n", ns.Slug)
+	_, _ = fmt.Fprintf(w, "Kind:\t%s\n", ns.Kind)
+	_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", ns.Visibility)
+	if ns.DisplayName != "" {
+		_, _ = fmt.Fprintf(w, "Display name:\t%s\n", ns.DisplayName)
+	}
+	if ns.Description != "" {
+		_, _ = fmt.Fprintf(w, "Description:\t%s\n", ns.Description)
+	}
+	_, _ = fmt.Fprintf(w, "Namespace ID:\t%s\n", ns.NamespaceID)
+	_, _ = fmt.Fprintf(w, "Created:\t%s\n", ns.CreatedAt.Format(time.RFC3339))
+	return w.Flush()
 }
 
 func runNsMembers(cmd *cobra.Command, args []string) error {
@@ -614,7 +646,7 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	apiURL := fmt.Sprintf("%s/orgs/%s", serverURL, url.PathEscape(slug))
+	apiURL := fmt.Sprintf("%s/namespaces/%s", serverURL, url.PathEscape(slug))
 	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
 	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
 
