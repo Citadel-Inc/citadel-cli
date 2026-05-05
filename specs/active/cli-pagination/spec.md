@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 080800ZMAY26 |
+| Status | IN_PROGRESS 050956ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 080800ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | second-pass review of `citadel-cli` (2026-05-05): silent-truncation bug in every list verb once a namespace exceeds 50 rows. Server `LIMIT 50` is hardcoded; CLI exposes no `--limit` / `--cursor`. |

@@ -1,6 +1,6 @@
 # Tasks — cli-pagination
 
-Status: DRAFT 080800ZMAY26
+Status: IN_PROGRESS 050956ZMAY26 — Bastion (J-3) claims execution
 
 Server-side delivery to be split into a citadel-repo spec once Q-table ratifies. Tasks below cover the CLI surface; server tasks are placeholders.
 
