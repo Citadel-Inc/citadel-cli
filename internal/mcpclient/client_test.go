@@ -199,3 +199,142 @@ func TestNoSessionHeader(t *testing.T) {
 		t.Fatalf("want session-header error, got %v", err)
 	}
 }
+
+func TestResourcesList(t *testing.T) {
+	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
+		switch req.Method {
+		case "initialize":
+			writeResult(w, "s", req.ID, map[string]any{"protocolVersion": ProtocolVersion})
+		case "resources/list":
+			writeResult(w, "s", req.ID, map[string]any{"resources": []map[string]any{
+				{"uri": "citadel://ns/x", "name": "x"},
+			}})
+		}
+	})
+	defer srv.Close()
+	c := New(srv.URL, "t", time.Second)
+	if err := c.Initialize(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	rs, err := c.ResourcesList(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rs) != 1 || rs[0].URI != "citadel://ns/x" {
+		t.Fatalf("got %+v", rs)
+	}
+}
+
+func TestResourcesRead(t *testing.T) {
+	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
+		switch req.Method {
+		case "initialize":
+			writeResult(w, "s", req.ID, map[string]any{"protocolVersion": ProtocolVersion})
+		case "resources/read":
+			writeResult(w, "s", req.ID, map[string]any{"contents": []map[string]any{
+				{"uri": "citadel://ns/x", "mimeType": "application/json", "text": "{}"},
+			}})
+		}
+	})
+	defer srv.Close()
+	c := New(srv.URL, "t", time.Second)
+	if err := c.Initialize(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := c.ResourcesRead(context.Background(), "citadel://ns/x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "citadel://ns/x") {
+		t.Fatalf("raw missing uri: %s", raw)
+	}
+}
+
+func TestPromptsList(t *testing.T) {
+	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
+		switch req.Method {
+		case "initialize":
+			writeResult(w, "s", req.ID, map[string]any{"protocolVersion": ProtocolVersion})
+		case "prompts/list":
+			writeResult(w, "s", req.ID, map[string]any{"prompts": []map[string]any{
+				{"name": "issue_template", "description": "Open an issue"},
+			}})
+		}
+	})
+	defer srv.Close()
+	c := New(srv.URL, "t", time.Second)
+	if err := c.Initialize(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	ps, err := c.PromptsList(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ps) != 1 || ps[0].Name != "issue_template" {
+		t.Fatalf("got %+v", ps)
+	}
+}
+
+func TestPromptsGet(t *testing.T) {
+	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
+		switch req.Method {
+		case "initialize":
+			writeResult(w, "s", req.ID, map[string]any{"protocolVersion": ProtocolVersion})
+		case "prompts/get":
+			writeResult(w, "s", req.ID, map[string]any{
+				"description": "Open an issue",
+				"messages": []map[string]any{
+					{"role": "user", "content": map[string]any{"type": "text", "text": "Title?"}},
+				},
+			})
+		}
+	})
+	defer srv.Close()
+	c := New(srv.URL, "t", time.Second)
+	if err := c.Initialize(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := c.PromptsGet(context.Background(), "issue_template", map[string]any{"k": "v"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "Title?") {
+		t.Fatalf("raw missing content: %s", raw)
+	}
+}
+
+func TestResourcesList_NotInitialized(t *testing.T) {
+	c := New("http://nope", "t", time.Second)
+	if _, err := c.ResourcesList(context.Background()); err == nil || !strings.Contains(err.Error(), "not initialized") {
+		t.Fatalf("want not-initialized, got %v", err)
+	}
+	if _, err := c.ResourcesRead(context.Background(), "x"); err == nil || !strings.Contains(err.Error(), "not initialized") {
+		t.Fatalf("want not-initialized, got %v", err)
+	}
+	if _, err := c.PromptsList(context.Background()); err == nil || !strings.Contains(err.Error(), "not initialized") {
+		t.Fatalf("want not-initialized, got %v", err)
+	}
+	if _, err := c.PromptsGet(context.Background(), "x", nil); err == nil || !strings.Contains(err.Error(), "not initialized") {
+		t.Fatalf("want not-initialized, got %v", err)
+	}
+}
+
+func TestClassifyJSONRPCError_AllKinds(t *testing.T) {
+	cases := []struct {
+		code int
+		want Kind
+	}{
+		{-32601, KindMethodNotFound},
+		{-32602, KindInvalidParams},
+		{-32600, KindInvalidRequest},
+		{-32700, KindParseError},
+		{-32001, KindUnauthorized},
+		{-99999, KindUnknown},
+	}
+	for _, tc := range cases {
+		got := classifyJSONRPCError(tc.code, "msg")
+		if got.Kind != tc.want {
+			t.Errorf("code %d: want kind %d, got %d", tc.code, tc.want, got.Kind)
+		}
+	}
+}

@@ -42,13 +42,18 @@ func rootFor(verb *cobra.Command, args ...string) *cobra.Command {
 
 // resetFlagsRecursive walks c and all its subcommands and writes each
 // pflag.Flag.Value back to its DefValue, undoing leaks from prior tests.
+// pflag SliceValue types (stringSlice / stringArray) need explicit
+// Replace([]string{}) since their .Set appends rather than replaces.
 func resetFlagsRecursive(c *cobra.Command) {
-	c.Flags().VisitAll(func(f *pflag.Flag) {
+	reset := func(f *pflag.Flag) {
+		if sv, ok := f.Value.(pflag.SliceValue); ok {
+			_ = sv.Replace([]string{})
+			return
+		}
 		_ = f.Value.Set(f.DefValue)
-	})
-	c.PersistentFlags().VisitAll(func(f *pflag.Flag) {
-		_ = f.Value.Set(f.DefValue)
-	})
+	}
+	c.Flags().VisitAll(reset)
+	c.PersistentFlags().VisitAll(reset)
 	for _, child := range c.Commands() {
 		resetFlagsRecursive(child)
 	}
@@ -699,5 +704,261 @@ func TestKgImpact_Unauthorized(t *testing.T) {
 	err := rootFor(cmd.KgCmd, "impact", "myorg", id).Execute()
 	if err == nil || !strings.Contains(err.Error(), "unauthorized") {
 		t.Fatalf("want unauthorized message, got %v", err)
+	}
+}
+
+// ── auth (status + logout; login OAuth flow excluded) ────────────────────────
+
+func TestAuthStatus_NotAuthenticated(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	if err := rootFor(cmd.AuthCmd, "status").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuthStatus_ExpiredJWT(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	// JWT with exp in the past (header.payload.signature; payload b64 of {"exp":1}).
+	t.Setenv("CITADEL_ACCESS_TOKEN", "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjF9.sig")
+	if err := rootFor(cmd.AuthCmd, "status").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuthStatus_FutureJWT(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	// JWT with exp far in the future. Payload b64 of {"exp":9999999999}.
+	t.Setenv("CITADEL_ACCESS_TOKEN", "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjk5OTk5OTk5OTl9.sig")
+	if err := rootFor(cmd.AuthCmd, "status").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuthLogout_TruncatesConfig(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	if err := rootFor(cmd.AuthCmd, "logout").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// ── mcp (JSON-RPC mock) ──────────────────────────────────────────────────────
+
+// mcpRPCMock dispatches incoming JSON-RPC requests by method name.
+// Each handler returns a result payload to be wrapped in a {"result": ...}
+// envelope. Returning nil from the handler skips writing (test-only).
+func mcpRPCMock(t *testing.T, byMethod map[string]func() any) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			JSONRPC string `json:"jsonrpc"`
+			ID      int    `json:"id"`
+			Method  string `json:"method"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode rpc req: %v", err)
+		}
+		fn, ok := byMethod[req.Method]
+		if !ok {
+			t.Errorf("unrouted MCP method: %s", req.Method)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Mcp-Session-Id", "test-sess")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"jsonrpc": "2.0",
+			"id":      req.ID,
+			"result":  fn(),
+		})
+	}
+}
+
+// withMCPServer wires the test server's /mcp endpoint to a JSON-RPC mock.
+// Initialize is auto-mocked to return ProtocolVersion 2025-11-25 (matching
+// internal/mcpclient.ProtocolVersion).
+func withMCPServer(t *testing.T, byMethod map[string]func() any) {
+	t.Helper()
+	if _, ok := byMethod["initialize"]; !ok {
+		byMethod["initialize"] = func() any {
+			return map[string]any{
+				"protocolVersion": "2025-11-25",
+				"serverInfo":      map[string]any{"name": "citadel-mcp-test", "version": "1"},
+			}
+		}
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/mcp" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		mcpRPCMock(t, byMethod)(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+	t.Setenv("CITADEL_AGENT_TOKEN", "")
+}
+
+func TestMcpTools_Happy(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"tools/list": func() any {
+			return map[string]any{"tools": []map[string]any{
+				{"name": "get_namespace", "description": "Look up a namespace"},
+			}}
+		},
+	})
+	if err := rootFor(cmd.McpCmd, "tools").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMcpCall_Happy(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"tools/call": func() any {
+			return map[string]any{
+				"content": []map[string]any{
+					{"type": "text", "text": "hello"},
+				},
+			}
+		},
+	})
+	if err := rootFor(cmd.McpCmd, "call", "get_namespace", "--arg", "path=damon").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMcpResourcesList_Happy(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"resources/list": func() any {
+			return map[string]any{"resources": []map[string]any{
+				{"uri": "citadel://ns/x", "name": "x"},
+			}}
+		},
+	})
+	if err := rootFor(cmd.McpCmd, "resources", "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMcpResourcesRead_Happy(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"resources/read": func() any {
+			return map[string]any{
+				"contents": []map[string]any{
+					{"uri": "citadel://ns/x", "mimeType": "application/json", "text": "{}"},
+				},
+			}
+		},
+	})
+	if err := rootFor(cmd.McpCmd, "resources", "read", "citadel://ns/x").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMcpPromptsList_Happy(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"prompts/list": func() any {
+			return map[string]any{"prompts": []map[string]any{
+				{"name": "issue_template", "description": "Open an issue"},
+			}}
+		},
+	})
+	if err := rootFor(cmd.McpCmd, "prompts", "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMcpPromptsGet_Happy(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"prompts/get": func() any {
+			return map[string]any{
+				"description": "Open an issue",
+				"messages": []map[string]any{
+					{"role": "user", "content": map[string]any{"type": "text", "text": "Title?"}},
+				},
+			}
+		},
+	})
+	if err := rootFor(cmd.McpCmd, "prompts", "get", "issue_template").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMcpCall_NoAuth(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_AGENT_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "http://nope")
+	err := rootFor(cmd.McpCmd, "call", "x").Execute()
+	if err == nil || !strings.Contains(err.Error(), "no auth token") {
+		t.Fatalf("want no-auth-token, got %v", err)
+	}
+}
+
+func TestMcpCall_JSON(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"tools/call": func() any {
+			return map[string]any{"content": []map[string]any{{"type": "text", "text": "ok"}}}
+		},
+	})
+	if err := rootFor(cmd.McpCmd, "call", "x", "--json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMcpCall_NonTextContent(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"tools/call": func() any {
+			return map[string]any{"content": []map[string]any{
+				{"type": "image", "data": "base64..."},
+			}}
+		},
+	})
+	if err := rootFor(cmd.McpCmd, "call", "x").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestMcpCall_ToolError omitted: runMcpCall calls os.Exit(2) on isError,
+// which aborts the test process. Coverage of that branch requires a
+// refactor to return an error instead of calling Exit directly.
+
+func TestMcpResourcesRead_JSON(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"resources/read": func() any {
+			return map[string]any{"contents": []map[string]any{{"uri": "x", "text": "{}"}}}
+		},
+	})
+	if err := rootFor(cmd.McpCmd, "resources", "read", "x", "--json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMcpPromptsGet_WithArgs(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"prompts/get": func() any {
+			return map[string]any{"messages": []map[string]any{
+				{"role": "system", "content": map[string]any{"type": "text", "text": "be brief"}},
+			}}
+		},
+	})
+	if err := rootFor(cmd.McpCmd, "prompts", "get", "x", "--arg", "topic=auth").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMcpUnauthorizedSurface(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+	err := rootFor(cmd.McpCmd, "tools").Execute()
+	if err == nil || !strings.Contains(err.Error(), "unauthorized") {
+		t.Fatalf("want surfaceErr-mapped unauthorized, got %v", err)
 	}
 }
