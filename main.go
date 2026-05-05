@@ -52,7 +52,7 @@ func run(args []string, stderr io.Writer) int {
 		if errors.Is(err, cmd.ErrToolCallFailed) {
 			return 2
 		}
-		_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "Error: %v\n", cmd.FriendlyError(err))
 		return 1
 	}
 	return 0
