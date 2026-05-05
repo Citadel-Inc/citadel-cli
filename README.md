@@ -48,6 +48,10 @@ Full reference: [docs/cli.md](docs/cli.md).
 
 Cobra emits integration scripts via `citadel-cli completion bash|zsh|fish|powershell`. How dynamic completion uses your session, what gets completed, on-disk caching, and related environment variables are covered in [HUMANS.md § Configuration](HUMANS.md#configuration).
 
+## JSON error envelope
+
+When a command fails with `--output json`, `yaml`, or `ndjson`, the CLI writes one structured **error** object to **stdout** (stderr stays empty) and exits with a class-specific code (for example `6` for rate limits). Human/table modes keep the usual `Error: …` line on stderr. See [HUMANS.md § Structured errors](HUMANS.md#structured-errors-output-json--yaml--ndjson) for the full shape, `kind` values, and exit-code table.
+
 ## Documentation
 
 - [docs/cli.md](docs/cli.md) — full command reference
