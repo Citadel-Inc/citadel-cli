@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // TestRetryOn503 asserts an idempotent GET retries through a 503 and
@@ -63,4 +64,23 @@ func TestStackBaseDefault(t *testing.T) {
 		t.Fatal("Stack returned nil")
 	}
 	_ = context.Background()
+}
+
+func TestRetryAfterDelay_ParseSeconds(t *testing.T) {
+	h := http.Header{}
+	if got := retryAfterDelay(h); got != 0 {
+		t.Fatalf("empty: %v", got)
+	}
+	h.Set("Retry-After", "3")
+	if got := retryAfterDelay(h); got != 3*time.Second {
+		t.Fatalf("got %v", got)
+	}
+	h.Set("Retry-After", "not-a-number")
+	if got := retryAfterDelay(h); got != 0 {
+		t.Fatalf("malformed: %v", got)
+	}
+	h.Set("Retry-After", "-1")
+	if got := retryAfterDelay(h); got != 0 {
+		t.Fatalf("negative: %v", got)
+	}
 }
