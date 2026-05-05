@@ -1,6 +1,6 @@
 # Tasks — cli-pagination
 
-Status: IN_PROGRESS 050956ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 051011ZMAY26 — Server list endpoints and citadel-cli list verbs now support opaque cursor pagination (?limit/?cursor, next_cursor), including members-specific cursors, ndjson streaming under --all, human tail hints, bounded completion fetch, and handler-level multi-page tests. P2 leaves the gated live 250-repo walk and operator production smoke as follow-ups.
 
 Server-side delivery to be split into a citadel-repo spec once Q-table ratifies. Tasks below cover the CLI surface; server tasks are placeholders.
 
