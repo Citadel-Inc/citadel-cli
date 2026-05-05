@@ -38,7 +38,7 @@ func TestFriendlyError_HTTPStatusBranches(t *testing.T) {
 		503: "temporarily unavailable",
 		502: "upstream",
 		504: "upstream",
-		500: "Citadel server error (HTTP 500)",
+		500: "citadel server error (HTTP 500)",
 	}
 	for code, want := range cases {
 		err := FriendlyError(&apiclient.HTTPError{StatusCode: code, Body: ""})

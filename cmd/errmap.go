@@ -34,7 +34,7 @@ func FriendlyError(err error) error {
 		return errors.New("cannot reach Citadel server: connection failed — is the server URL reachable from this host? Override with --server / CITADEL_SERVER")
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
-		return errors.New("request timed out — the server took too long to respond. Retry, or check https://status.src.land")
+		return errors.New("request timed out — server took too long to respond; retry, or check https://status.src.land")
 	}
 
 	// Server-side errors mapped to actionable text.
@@ -46,20 +46,20 @@ func FriendlyError(err error) error {
 		case he.StatusCode == http.StatusForbidden:
 			return errors.New("forbidden: the server rejected your token for this resource — check namespace ownership or token scope")
 		case he.StatusCode == http.StatusServiceUnavailable:
-			return errors.New("Citadel server is temporarily unavailable. Retry in a few seconds, or check https://status.src.land")
+			return errors.New("citadel server is temporarily unavailable; retry in a few seconds, or check https://status.src.land")
 		case he.StatusCode == http.StatusBadGateway, he.StatusCode == http.StatusGatewayTimeout:
-			return errors.New("upstream server unreachable. Retry in a few seconds, or check https://status.src.land")
+			return errors.New("upstream server unreachable; retry in a few seconds, or check https://status.src.land")
 		case he.StatusCode == http.StatusTooManyRequests:
 			return errors.New("rate limit exceeded — slow down or wait a few minutes before retrying")
 		case he.StatusCode >= 500:
-			return fmt.Errorf("Citadel server error (HTTP %d). Retry, and if the problem persists check https://status.src.land", he.StatusCode)
+			return fmt.Errorf("citadel server error (HTTP %d); retry, and if the problem persists check https://status.src.land", he.StatusCode)
 		}
 	}
 
 	// Catch the io.EOF / "unexpected EOF" stream-cut cases the apiclient
 	// wraps as a generic request-failed error.
 	if strings.Contains(err.Error(), "EOF") && !strings.Contains(err.Error(), "decode") {
-		return errors.New("connection cut by the server. Retry, and if the problem persists check https://status.src.land")
+		return errors.New("connection cut by the server; retry, and if the problem persists check https://status.src.land")
 	}
 
 	return err
