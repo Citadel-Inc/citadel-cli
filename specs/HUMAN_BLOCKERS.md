@@ -2,13 +2,13 @@
 
 Items that need **human / live-environment** follow-up outside what CI and httptest can enforce.
 
-## [`cli-output-formats`](active/cli-output-formats/)
+## [`cli-output-formats`](done/cli-output-formats/)
 
 | Task | Owner | Notes |
 |------|--------|--------|
 | P2 C2 — operator CSV smoke | NOMAD / operator | Paste a real export (e.g. `citadel-cli repo list -n … --output csv`) into Excel / Sheets and confirm columns align with the frozen header contract in README. |
 
-## [`cli-error-format`](active/cli-error-format/)
+## [`cli-error-format`](done/cli-error-format/)
 
 | Task | Owner | Notes |
 |------|--------|--------|
