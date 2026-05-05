@@ -190,3 +190,25 @@ func TestSaveCreatesDirectory(t *testing.T) {
 		t.Errorf("Config file was not created: %v", err)
 	}
 }
+
+func TestSave_OverwritesExistingFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	first := Config{ServerURL: "https://first.example", AccessToken: "a"}
+	if err := first.Save(); err != nil {
+		t.Fatal(err)
+	}
+	second := Config{ServerURL: "https://second.example", AccessToken: "b"}
+	if err := second.Save(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ServerURL != "https://second.example" || got.AccessToken != "b" {
+		t.Fatalf("got %+v", got)
+	}
+}

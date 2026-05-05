@@ -3,6 +3,7 @@ package clicfg
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -54,6 +55,24 @@ func TestLoad_BadTOML(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error for bad TOML")
+	}
+}
+
+// A directory at config.toml is a misconfiguration; Load should error.
+func TestLoad_ConfigPathIsDirectory(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+	dir := filepath.Join(tmp, "citadel")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	cfgPath := filepath.Join(dir, "config.toml")
+	if err := os.Mkdir(cfgPath, 0700); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error when config.toml is a directory")
 	}
 }
 
@@ -124,8 +143,7 @@ func TestLoad_StatError(t *testing.T) {
 
 	_, err := Load()
 	if err == nil {
-		// Some systems may still read mode-000 files; treat this as expected.
-		t.Log("note: mode-000 file was readable; OS may grant root-equivalent access")
+		t.Fatal("expected error when config file is not readable")
 	}
 }
 
@@ -231,5 +249,26 @@ func TestSave_OpenFileFails(t *testing.T) {
 	cfg := Config{ServerURL: "https://x"}
 	if err := cfg.Save(); err == nil {
 		t.Fatal("expected OpenFile error, got nil")
+	}
+}
+
+// When the temp file path is a write-sink (Linux /dev/full), TOML encoding
+// returns an error; Save must clean up and surface it.
+func TestSave_EncodeError_DevFull(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("/dev/full is Linux-specific")
+	}
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+	dir := filepath.Join(tmp, "citadel")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	tmpPath := filepath.Join(dir, "config.toml.tmp")
+	if err := os.Symlink("/dev/full", tmpPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := (Config{ServerURL: "https://x"}).Save(); err == nil {
+		t.Fatal("expected encode error")
 	}
 }
