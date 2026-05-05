@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 050506ZMAY26 |
+| Status | IN_PROGRESS 052317ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 L0 git wire: users need SSH public keys registered for `git@git.src.land`. Server: `internal/api/accountapi/ssh_keys.go`. |
