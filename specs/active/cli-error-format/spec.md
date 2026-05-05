@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 050900ZMAY26 |
+| Status | APPROVED 051044ZMAY26 |
 | Authored | 050900ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | 2026-05-05 enhancement sweep: every CLI error today goes to stderr as plain text via `Error: %v` in main.go. Scripts piping `--output json` get a JSON document on stdout for the success path and an unparseable English sentence on stderr for the failure path. Operators must regex-match error strings to branch on error class. |
@@ -11,7 +11,7 @@
 
 The CLI already commits to JSON-shape contracts on success (`--output json` per verb). The error path has no such contract. `cmd/errmap.go` carries rich classification logic — DNS / refused / timeout / 401 / 403 / 412 mfa-required / 429 / 5xx — but collapses every class to free-text English before main.go's `Fprintf(stderr, "Error: %v\n", ...)`. A script that wants to "retry on rate limit, hard-fail on auth, nag the user on timeout" must string-match the message.
 
-This spec adds an error-envelope contract so callers can branch on `code` / `kind`, and threads it through both stdout (when `--output=json`) and stderr (when human mode is selected, with the friendly text preserved).
+This spec adds an error-envelope contract so callers can branch on `kind` / exit code, and threads it through stdout for machine-readable `--output` modes (`json`, `yaml`, `ndjson`) and stderr for human/table modes (friendly text preserved).
 
 ## In scope
 
@@ -52,7 +52,7 @@ A small fixed set of `kind` values, frozen as part of the v1 contract:
 
 ### CLI surface
 
-- **`--output json` + error**: stdout receives the envelope above; stderr stays empty; exit code is the kind-mapped code (table below). Today's behavior of routing JSON output to stdout is preserved on the error path.
+- **Machine-readable `--output` (`json` / `yaml` / `ndjson`) + error**: stdout receives the envelope; stderr stays empty; exit code is the kind-mapped code (table below).
 - **Human mode + error**: stderr receives `Error: <message>\n` exactly as today — no regression. The taxonomy still drives the exit code.
 - **Exit code map** (frozen as part of v1 contract):
   - 0 — success
@@ -78,26 +78,20 @@ A small fixed set of `kind` values, frozen as part of the v1 contract:
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Envelope key `error` vs top-level `{kind, message, ...}`? | **Open** — `{"error": {...}}` so successful payloads (which are sometimes top-level objects) and error payloads never collide on the same key. |
-| Q2 | Exit code map: collapse to 0/1/2 (POSIX-ish) vs the per-class 0–7 above? | **Open** — per-class; scripts otherwise re-parse the message. |
-| Q3 | `details` payload: include the raw server body (truncated) or a curated subset? | **Open** — curated; the raw body is available via `--debug-http`. |
-| Q4 | `Retry-After`: parse seconds-only or also HTTP-date form? | **Open** — seconds-only at v1 (matches `internal/httpx/transport.go`). |
-| Q5 | `--output json` only, or also `--error-format json` independent of `--output`? | **Open** — only `--output json`; one knob, one contract. |
+| Q1 | Envelope key `error` vs top-level `{kind, message, ...}`? | **Ratified 051800ZMAY26** — nested `{"error": {...}}`. |
+| Q2 | Exit code map: collapse to 0/1/2 (POSIX-ish) vs the per-class 0–7 above? | **Ratified 051800ZMAY26** — per-class 1–7 map as specified. |
+| Q3 | `details` payload: include the raw server body (truncated) or a curated subset? | **Ratified 051800ZMAY26** — curated subset only. |
+| Q4 | `Retry-After`: parse seconds-only or also HTTP-date form? | **Ratified 051800ZMAY26** — delta-seconds or HTTP-date per RFC 7231 (`apiclient.ParseRetryAfterSeconds`). |
+| Q5 | `--output json` only, or also `--error-format json` independent of `--output`? | **Ratified 051800ZMAY26** — structured envelope when `--output` is `json`, `yaml`, or `ndjson` (single surface area). |
 
 ## Acceptance
 
 - A1. `*CLIError` type with `Kind`, `Message`, `HTTPStatus`, `RetryAfter`, `Hint`, `Details` fields.
 - A2. `errmap.go` returns `*CLIError` for every classified error class.
 - A3. `main.go` top-level error path branches on output mode:
-  - `--output json` → marshal envelope to stdout, no stderr text.
+  - machine-readable `--output` (`json`, `yaml`, `ndjson`) → marshal envelope to stdout, no stderr text.
   - default → `Error: <message>` to stderr (today's behavior).
 - A4. Exit code table A2 above is honored.
 - A5. Golden tests in `cmd/errmap_test.go`: each kind produces the expected envelope + exit code under both output modes.
 - A6. README + HUMANS.md document the envelope shape, the kind set, and the exit code map.
 - A7. Q-table ratified.
-
-## Open questions for NOMAD
-
-- Q1 envelope shape (top-level vs nested).
-- Q2 exit code granularity — does any operator script today depend on "non-zero == failure" only, where a finer split would be a behavior change?
-- Q5 flag surface (one knob vs two).

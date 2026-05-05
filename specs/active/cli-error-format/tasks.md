@@ -1,6 +1,6 @@
 # Tasks — cli-error-format
 
-Status: DRAFT 050900ZMAY26
+Status: APPROVED 051044ZMAY26
 
 ## P0
 
