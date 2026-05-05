@@ -33,6 +33,7 @@ Add `citadel-cli audit list` + `audit show` so operators can answer "what happen
 - **Cross-tenant audit correlation** — single user's view only at v1.
 - **Visualisation / charting** — terminal output only; ndjson exports for downstream tooling.
 - **Tail mode (`--follow`)** — depends on server-side stream. Defer until SSE / long-poll endpoint exists.
+- **Audit sessions (grouped views)** — shipped as follow-on [`cli-audit-sessions`](./cli-audit-sessions/spec.md) (`citadel-cli audit sessions list` / `show`).
 
 ## Decision log
 
