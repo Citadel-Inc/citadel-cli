@@ -6,10 +6,9 @@
 |------|-------|-----|-------|
 | cli-audit | DRAFT | 081550ZMAY26 | Bastion (J-3) |
 | cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
-| cli-output-formats | DRAFT | 080800ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
+| cli-error-format | IN_PROGRESS | 051044ZMAY26 | Bastion (J-3) |
 | cli-watch | IN_PROGRESS | 050953ZMAY26 | Bastion (J-3) |
-| cli-error-format | DRAFT | 050900ZMAY26 | Bastion (J-3) |
 | cli-mcp-stdio | DRAFT | 030619ZMAY26 | Bastion (J-3) |
 | cli-mcp-stream | DRAFT | 030619ZMAY26 | Bastion (J-3) |
 
@@ -18,6 +17,7 @@
 | Slug | DTG | Note |
 |------|-----|------|
 | go-citadel-cli | 292032ZAPR26 | shipped (in-line with the B-track ratifications) |
+| cli-output-formats | 051045ZMAY26 | Delivered machine-readable list output: json/yaml/ndjson/csv/table with validation, frozen CSV columns per list verb, yaml keyed like json, and cmd-scoped stdout writers. Added httptest coverage for repo csv/yaml, ndjson across pages, and CSV helpers. README documents schemas; operator CSV paste smoke remains in P2. |
 | cli-pagination | 051011ZMAY26 | Server list endpoints and citadel-cli list verbs now support opaque cursor pagination (?limit/?cursor, next_cursor), including members-specific cursors, ndjson streaming under --all, human tail hints, bounded completion fetch, and handler-level multi-page tests. P2 leaves the gated live 250-repo walk and operator production smoke as follow-ups. |
 | cli-completion-dynamic | 050935ZMAY26 | Delivered dynamic shell completion with a 60s disk cache under XDG, ValidArgsFunction wiring for repos/namespaces/agents/OAuth client UUIDs/agent tokens, async PostRun invalidation on mutating verbs, static --output completion aligned to cli-output-formats, integration tests plus cache TTL tests, and README/HUMANS documentation including CITADEL_NO_COMPLETION_CACHE. Operator latency smoke (C2) remains for a human with a live namespace. |
 | cli-cwd-context | 050915ZMAY26 | Implemented CWD git-origin repo resolution: -R/--repo and CITADEL_REPO, optional inference via git remote get-url origin for Citadel hosts (defaults plus CITADEL_GIT_HOSTS), --no-cwd-repo opt-out, TTY inference hint on stderr (respects --quiet and CI). Wired into repo get/delete and kg impact with tests and README/HUMANS guidance. Operator smoke task C2 left for humans. |

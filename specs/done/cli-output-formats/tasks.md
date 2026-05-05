@@ -1,6 +1,6 @@
 # Tasks — cli-output-formats
 
-Status: IN_PROGRESS 051044ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 051045ZMAY26 — Delivered machine-readable list output: json/yaml/ndjson/csv/table with validation, frozen CSV columns per list verb, yaml keyed like json, and cmd-scoped stdout writers. Added httptest coverage for repo csv/yaml, ndjson across pages, and CSV helpers. README documents schemas; operator CSV paste smoke remains in P2.
 
 ## P0
 
