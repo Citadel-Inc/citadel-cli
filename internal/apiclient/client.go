@@ -15,9 +15,14 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
+
+// defaultTimeout is the per-request timeout applied to the api client's
+// underlying http.Client. Per-request context deadlines may override.
+const defaultTimeout = 30 * time.Second
 
 // HTTPError is returned for any non-2xx response. Body is the trimmed
 // response payload (best-effort read; may be empty).
@@ -28,6 +33,21 @@ type HTTPError struct {
 
 func (e *HTTPError) Error() string {
 	return fmt.Sprintf("server error %d: %s", e.StatusCode, e.Body)
+}
+
+// DecodeBody decodes the (best-effort-trimmed) response body as JSON into v.
+// Returns nil if Body is empty or v is nil.
+func (e *HTTPError) DecodeBody(v any) error {
+	if v == nil || e.Body == "" {
+		return nil
+	}
+	return json.Unmarshal([]byte(e.Body), v)
+}
+
+// IsStatus reports whether err wraps an *HTTPError with the given status code.
+func IsStatus(err error, code int) bool {
+	var he *HTTPError
+	return errors.As(err, &he) && he.StatusCode == code
 }
 
 // Client is a thin Citadel-API client: server URL + bearer token + http.Client.
@@ -47,7 +67,7 @@ func New(cfg clicfg.Config, flagServer string) (*Client, error) {
 	return &Client{
 		server: strings.TrimRight(cfg.ResolveServerURL(flagServer), "/"),
 		token:  cfg.AccessToken,
-		http:   http.DefaultClient,
+		http:   &http.Client{Timeout: defaultTimeout},
 	}, nil
 }
 

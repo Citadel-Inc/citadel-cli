@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -243,8 +243,9 @@ func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {
 	var out oauthClientWithSecret
 	err = c.Post(cmd.Context(), "/oauth/clients/"+url.PathEscape(id)+"/rotate-secret", nil, &out)
 	if err != nil {
-		var he *apiclient.HTTPError
-		if errors.As(err, &he) && he.StatusCode == 428 && strings.Contains(he.Body, "mfa_required") {
+		// 428 Precondition Required carries an `mfa_required` payload; surface
+		// the canonical "obtain a fresh aal2 JWT" hint.
+		if apiclient.IsStatus(err, http.StatusPreconditionRequired) {
 			return fmt.Errorf("recent MFA required: obtain an aal2 JWT within ~5 minutes (re-login with MFA) or complete recent-verify in the web app, then retry")
 		}
 		return err

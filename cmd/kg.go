@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -49,8 +48,7 @@ func splitOwnerRepo(slug string) (owner, repo string) {
 
 // upgradeUnauthorized maps any *HTTPError 401 to the friendlier login hint.
 func upgradeUnauthorized(err error) error {
-	var he *apiclient.HTTPError
-	if errors.As(err, &he) && he.StatusCode == http.StatusUnauthorized {
+	if apiclient.IsStatus(err, http.StatusUnauthorized) {
 		return fmt.Errorf("unauthorized: run `citadel-cli auth login` to refresh your session")
 	}
 	return err

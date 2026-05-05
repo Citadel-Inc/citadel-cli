@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -259,8 +258,7 @@ func runNsGet(cmd *cobra.Command, args []string) error {
 
 	var ns nsRow
 	if err := c.Get(cmd.Context(), "/namespaces/"+url.PathEscape(slug), &ns); err != nil {
-		var he *apiclient.HTTPError
-		if errors.As(err, &he) && he.StatusCode == http.StatusNotFound {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
 			return fmt.Errorf("namespace '%s' not found", slug)
 		}
 		return err
@@ -441,7 +439,7 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 					Error  string `json:"error"`
 					Detail string `json:"detail"`
 				}
-				_ = json.Unmarshal([]byte(he.Body), &body)
+				_ = he.DecodeBody(&body)
 				if body.Error == "has_repos" {
 					msg := body.Detail
 					if msg == "" {
