@@ -123,7 +123,10 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
@@ -144,6 +147,8 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 
+	var yamlAccum []agentRow
+	csvHdr := false
 	first := true
 	for {
 		q := url.Values{}
@@ -167,9 +172,13 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 		if first && len(rows) == 0 && cursor == "" {
 			switch output {
 			case "json":
-				return emitJSON([]agentRow{})
+				return emitJSON(cmd, []agentRow{})
 			case "ndjson":
 				return nil
+			case "csv":
+				return emitCSVHeaderOnly[agentRow](cmd)
+			case "yaml":
+				return emitYAML(cmd, []agentRow{})
 			default:
 				fmt.Println("No agents found.")
 				return nil
@@ -179,13 +188,23 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 
 		switch output {
 		case "json":
-			return emitJSON(rows)
+			return emitJSON(cmd, rows)
 		case "ndjson":
-			if err := emitNDJSONLines(rows); err != nil {
+			if err := emitNDJSONLines(cmd, rows); err != nil {
 				return err
 			}
+		case "csv":
+			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
+				return err
+			}
+		case "yaml":
+			if all {
+				yamlAccum = append(yamlAccum, rows...)
+			} else {
+				return emitYAML(cmd, rows)
+			}
 		default:
-			w := newTabWriter()
+			w := newTabWriter(cmd)
 			_, _ = fmt.Fprintln(w, "NAME\tID\tMODEL HINT")
 			for _, a := range rows {
 				hint := ""
@@ -200,19 +219,30 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 		}
 
 		if !all {
-			if output == "" && next != "" {
+			if isHumanListOutput(output) && next != "" {
 				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
 			}
 			return nil
 		}
 		if next == "" {
-			return nil
+			break
 		}
 		cursor = next
 	}
+	if all && output == "yaml" {
+		if yamlAccum == nil {
+			yamlAccum = []agentRow{}
+		}
+		return emitYAML(cmd, yamlAccum)
+	}
+	return nil
 }
 
 func runAgentGet(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+	out := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -221,7 +251,7 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return emitOne(outputFlag(cmd), a, func(w *tabwriter.Writer, a agentRow) {
+	return emitOne(cmd, out, a, func(w *tabwriter.Writer, a agentRow) {
 		_, _ = fmt.Fprintf(w, "Name:\t%s\n", a.Name)
 		_, _ = fmt.Fprintf(w, "ID:\t%s\n", a.ID)
 		if a.ModelHint != nil {

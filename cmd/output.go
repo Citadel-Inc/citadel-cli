@@ -1,10 +1,15 @@
 package cmd
 
 import (
+	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
+	"strings"
 	"text/tabwriter"
+
+	"go.yaml.in/yaml/v3"
 
 	"github.com/spf13/cobra"
 
@@ -23,7 +28,7 @@ func completeOutputFormats(_ *cobra.Command, _ []string, _ string) ([]string, co
 // addOutputFlag registers the standard `--output` flag on each command.
 func addOutputFlag(cmds ...*cobra.Command) {
 	for _, c := range cmds {
-		c.Flags().String("output", "", "Output format: json")
+		c.Flags().String("output", "", "Output format: json, yaml, ndjson, csv, or table (default human table)")
 		_ = c.RegisterFlagCompletionFunc("output", completeOutputFormats)
 	}
 }
@@ -121,16 +126,76 @@ func colorEnabled(cmd *cobra.Command) bool {
 	return term.ColorEnabled(term.ParseColorMode(v))
 }
 
-// emitJSON writes v as indented JSON to stdout.
-func emitJSON(v any) error {
-	enc := json.NewEncoder(os.Stdout)
+// CSVRow is implemented by each stable list-row shape for `--output csv`.
+type CSVRow interface {
+	CSVHeader() []string
+	CSVRecord() []string
+}
+
+// validateListOutput rejects unknown machine formats for list verbs.
+func validateListOutput(output string) error {
+	o := strings.TrimSpace(strings.ToLower(output))
+	switch o {
+	case "", "json", "yaml", "ndjson", "csv", "table":
+		return nil
+	default:
+		return fmt.Errorf("--output: unknown format %q (use json|yaml|ndjson|csv|table)", output)
+	}
+}
+
+// validateGetOutput rejects list-only formats on single-resource verbs.
+func validateGetOutput(output string) error {
+	o := strings.TrimSpace(strings.ToLower(output))
+	switch o {
+	case "", "json", "yaml", "table":
+		return nil
+	default:
+		return fmt.Errorf("--output: unknown format %q (use json|yaml|table)", output)
+	}
+}
+
+func isHumanListOutput(output string) bool {
+	switch strings.TrimSpace(strings.ToLower(output)) {
+	case "", "table":
+		return true
+	default:
+		return false
+	}
+}
+
+func commandOut(cmd *cobra.Command) io.Writer {
+	if cmd == nil {
+		return os.Stdout
+	}
+	return cmd.OutOrStdout()
+}
+
+// emitJSON writes v as indented JSON to the command's stdout writer.
+func emitJSON(cmd *cobra.Command, v any) error {
+	enc := json.NewEncoder(commandOut(cmd))
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
 }
 
+// emitYAML writes one YAML document using JSON field names (via a JSON
+// round-trip) so keys stay aligned with `--output json`.
+func emitYAML(cmd *cobra.Command, v any) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	var tmp any
+	if err := json.Unmarshal(b, &tmp); err != nil {
+		return err
+	}
+	enc := yaml.NewEncoder(commandOut(cmd))
+	defer func() { _ = enc.Close() }()
+	return enc.Encode(tmp)
+}
+
 // emitNDJSONLines writes one compact JSON object per line (newline-delimited).
-func emitNDJSONLines[T any](rows []T) error {
-	return emitNDJSONLinesTo(os.Stdout, rows)
+func emitNDJSONLines[T any](cmd *cobra.Command, rows []T) error {
+	return emitNDJSONLinesTo(commandOut(cmd), rows)
 }
 
 // emitNDJSONLinesTo is emitNDJSONLines with an explicit writer (tests use this
@@ -145,21 +210,72 @@ func emitNDJSONLinesTo[T any](w io.Writer, rows []T) error {
 	return nil
 }
 
+// emitCSVRows writes CSV rows; the header is emitted on the first non-empty
+// batch only (streaming-friendly under `--all`).
+func emitCSVRows[T CSVRow](cmd *cobra.Command, headerWritten *bool, rows []T) error {
+	return emitCSVRowsTo(commandOut(cmd), headerWritten, rows)
+}
+
+func emitCSVRowsTo[T CSVRow](dst io.Writer, headerWritten *bool, rows []T) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	w := csv.NewWriter(dst)
+	if !*headerWritten {
+		var z T
+		if err := w.Write(z.CSVHeader()); err != nil {
+			return err
+		}
+		*headerWritten = true
+	}
+	for i := range rows {
+		if err := w.Write(rows[i].CSVRecord()); err != nil {
+			return err
+		}
+	}
+	w.Flush()
+	return w.Error()
+}
+
+// emitCSVHeaderOnly writes the CSV header row for an empty list result.
+func emitCSVHeaderOnly[T CSVRow](cmd *cobra.Command) error {
+	return emitCSVHeaderOnlyTo[T](commandOut(cmd))
+}
+
+func emitCSVHeaderOnlyTo[T CSVRow](dst io.Writer) error {
+	var z T
+	out := csv.NewWriter(dst)
+	if err := out.Write(z.CSVHeader()); err != nil {
+		return err
+	}
+	out.Flush()
+	return out.Error()
+}
+
 // newTabWriter returns a tabwriter configured for the table-output style
 // shared by every list/get verb (2-space padding, no minwidth, no padchar
 // other than space).
-func newTabWriter() *tabwriter.Writer {
-	return tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+func newTabWriter(cmd *cobra.Command) *tabwriter.Writer {
+	return tabwriter.NewWriter(commandOut(cmd), 0, 0, 2, ' ', 0)
 }
 
 // emitOne centralises the single-object "json or human" dispatch used by
 // get / show / create / accept / etc. verbs. In json mode it emits v;
 // otherwise it calls human with a configured tabwriter and flushes.
-func emitOne[T any](output string, v T, human func(w *tabwriter.Writer, v T)) error {
-	if output == "json" {
-		return emitJSON(v)
+func emitOne[T any](cmd *cobra.Command, output string, v T, human func(w *tabwriter.Writer, v T)) error {
+	o := strings.TrimSpace(strings.ToLower(output))
+	switch o {
+	case "json":
+		return emitJSON(cmd, v)
+	case "yaml":
+		return emitYAML(cmd, v)
+	case "csv", "ndjson":
+		return fmt.Errorf("--output %q is only supported on list commands (use json or yaml here)", o)
+	case "", "table":
+		w := newTabWriter(cmd)
+		human(w, v)
+		return w.Flush()
+	default:
+		return fmt.Errorf("--output: unknown format %q (use json|yaml|table)", output)
 	}
-	w := newTabWriter()
-	human(w, v)
-	return w.Flush()
 }

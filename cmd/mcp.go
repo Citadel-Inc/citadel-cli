@@ -100,7 +100,7 @@ func runMcpTools(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return surfaceErr(err)
 	}
-	w := newTabWriter()
+	w := newTabWriter(cmd)
 	for _, t := range tools {
 		if t.Description == "" {
 			_, _ = fmt.Fprintln(w, t.Name)
@@ -131,7 +131,7 @@ func runMcpCall(cmd *cobra.Command, args []string) error {
 		return surfaceErr(err)
 	}
 	if rawJSON {
-		if err := emitRawJSON(res.Raw); err != nil {
+		if err := emitRawJSON(cmd, res.Raw); err != nil {
 			return err
 		}
 	} else {
@@ -166,12 +166,12 @@ func parseArgPairs(coerced, raw []string) (map[string]any, error) {
 
 // emitRawJSON re-encodes a json.RawMessage with indentation. Surfaces decode
 // errors instead of swallowing them.
-func emitRawJSON(raw json.RawMessage) error {
+func emitRawJSON(cmd *cobra.Command, raw json.RawMessage) error {
 	var pretty any
 	if err := json.Unmarshal(raw, &pretty); err != nil {
 		return fmt.Errorf("decode JSON: %w", err)
 	}
-	return emitJSON(pretty)
+	return emitJSON(cmd, pretty)
 }
 
 func runMcpResourcesList(cmd *cobra.Command, _ []string) error {
@@ -183,7 +183,7 @@ func runMcpResourcesList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return surfaceErr(err)
 	}
-	w := newTabWriter()
+	w := newTabWriter(cmd)
 	for _, r := range rows {
 		if r.Description == "" {
 			_, _ = fmt.Fprintf(w, "%s\t%s\n", r.URI, r.Name)
@@ -206,7 +206,7 @@ func runMcpResourcesRead(cmd *cobra.Command, args []string) error {
 		return surfaceErr(err)
 	}
 	if rawJSON {
-		return emitRawJSON(raw)
+		return emitRawJSON(cmd, raw)
 	}
 	var parsed struct {
 		Contents []map[string]any `json:"contents"`
@@ -229,7 +229,7 @@ func runMcpPromptsList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return surfaceErr(err)
 	}
-	w := newTabWriter()
+	w := newTabWriter(cmd)
 	for _, p := range rows {
 		if p.Description == "" {
 			_, _ = fmt.Fprintln(w, p.Name)
@@ -260,7 +260,7 @@ func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
 		return surfaceErr(err)
 	}
 	if rawJSON {
-		return emitRawJSON(raw)
+		return emitRawJSON(cmd, raw)
 	}
 	var parsed struct {
 		Description string           `json:"description"`
@@ -285,7 +285,7 @@ func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
 				continue
 			}
 		}
-		if err := emitJSON(m); err != nil {
+		if err := emitJSON(cmd, m); err != nil {
 			fmt.Fprintf(os.Stderr, "encode prompt message: %v\n", err)
 		}
 	}
@@ -357,7 +357,7 @@ func printContentBlock(m map[string]any) {
 			return
 		}
 	}
-	if err := emitJSON(m); err != nil {
+	if err := emitJSON(nil, m); err != nil {
 		fmt.Fprintf(os.Stderr, "encode content block: %v\n", err)
 	}
 }

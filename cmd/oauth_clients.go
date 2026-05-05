@@ -122,7 +122,10 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	orgSlug, _ := cmd.Flags().GetString("org")
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
@@ -143,6 +146,8 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 
+	var yamlAccum []oauthClient
+	csvHdr := false
 	first := true
 	for {
 		q := url.Values{}
@@ -169,9 +174,13 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		if first && len(clients) == 0 && cursor == "" {
 			switch output {
 			case "json":
-				return emitJSON([]oauthClient{})
+				return emitJSON(cmd, []oauthClient{})
 			case "ndjson":
 				return nil
+			case "csv":
+				return emitCSVHeaderOnly[oauthClient](cmd)
+			case "yaml":
+				return emitYAML(cmd, []oauthClient{})
 			default:
 				fmt.Println("No OAuth clients.")
 				return nil
@@ -181,13 +190,23 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 
 		switch output {
 		case "json":
-			return emitJSON(clients)
+			return emitJSON(cmd, clients)
 		case "ndjson":
-			if err := emitNDJSONLines(clients); err != nil {
+			if err := emitNDJSONLines(cmd, clients); err != nil {
 				return err
 			}
+		case "csv":
+			if err := emitCSVRows(cmd, &csvHdr, clients); err != nil {
+				return err
+			}
+		case "yaml":
+			if all {
+				yamlAccum = append(yamlAccum, clients...)
+			} else {
+				return emitYAML(cmd, clients)
+			}
 		default:
-			w := newTabWriter()
+			w := newTabWriter(cmd)
 			_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tSCOPES")
 			for _, oc := range clients {
 				scopes := strings.Join(oc.AllowedScopes, ",")
@@ -202,16 +221,23 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		}
 
 		if !all {
-			if output == "" && next != "" {
+			if isHumanListOutput(output) && next != "" {
 				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
 			}
 			return nil
 		}
 		if next == "" {
-			return nil
+			break
 		}
 		cursor = next
 	}
+	if all && output == "yaml" {
+		if yamlAccum == nil {
+			yamlAccum = []oauthClient{}
+		}
+		return emitYAML(cmd, yamlAccum)
+	}
+	return nil
 }
 
 func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
@@ -253,7 +279,7 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 	}
 
 	if output == "json" {
-		return emitJSON(created)
+		return emitJSON(cmd, created)
 	}
 
 	fmt.Fprintf(os.Stderr, "Created OAuth client %q\n", created.Name)
@@ -267,6 +293,9 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 }
 
 func runOAuthClientsShow(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -275,14 +304,14 @@ func runOAuthClientsShow(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 
 	var row oauthClient
 	if err := c.Get(cmd.Context(), "/oauth/clients/"+url.PathEscape(id), &row); err != nil {
 		return err
 	}
 
-	return emitOne(output, row, func(w *tabwriter.Writer, row oauthClient) {
+	return emitOne(cmd, output, row, func(w *tabwriter.Writer, row oauthClient) {
 		_, _ = fmt.Fprintf(w, "id:\t%s\n", row.ID)
 		_, _ = fmt.Fprintf(w, "client_id:\t%s\n", row.ClientID)
 		_, _ = fmt.Fprintf(w, "name:\t%s\n", row.Name)
@@ -321,7 +350,7 @@ func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {
 	}
 
 	if output == "json" {
-		return emitJSON(out)
+		return emitJSON(cmd, out)
 	}
 	if out.ClientSecret == "" {
 		return fmt.Errorf("server returned no client_secret (public clients have no secret)")
@@ -359,7 +388,7 @@ func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
 	}
 
 	if output == "json" {
-		return emitJSON(map[string]string{"status": "revoked", "id": id})
+		return emitJSON(cmd, map[string]string{"status": "revoked", "id": id})
 	}
 	fmt.Fprintf(os.Stderr, "OAuth client %s revoked.\n", id)
 	return nil

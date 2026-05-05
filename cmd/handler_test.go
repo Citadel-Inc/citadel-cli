@@ -38,6 +38,7 @@ import (
 // defined default before returning.
 func rootFor(verb *cobra.Command, args ...string) *cobra.Command {
 	resetFlagsRecursive(verb)
+	setOutRecursive(verb, io.Discard, io.Discard)
 	root := &cobra.Command{Use: "test"}
 	root.AddCommand(verb)
 	root.SetArgs(append([]string{verb.Name()}, args...))
@@ -46,6 +47,28 @@ func rootFor(verb *cobra.Command, args ...string) *cobra.Command {
 	root.SilenceErrors = true
 	root.SilenceUsage = true
 	return root
+}
+
+// rootForOut is like rootFor but captures stdout (stderr still discarded).
+func rootForOut(verb *cobra.Command, stdout io.Writer, args ...string) *cobra.Command {
+	resetFlagsRecursive(verb)
+	setOutRecursive(verb, stdout, io.Discard)
+	root := &cobra.Command{Use: "test"}
+	root.AddCommand(verb)
+	root.SetArgs(append([]string{verb.Name()}, args...))
+	root.SetOut(stdout)
+	root.SetErr(io.Discard)
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	return root
+}
+
+func setOutRecursive(c *cobra.Command, out, err io.Writer) {
+	c.SetOut(out)
+	c.SetErr(err)
+	for _, child := range c.Commands() {
+		setOutRecursive(child, out, err)
+	}
 }
 
 // resetFlagsRecursive walks c and all its subcommands and writes each
@@ -297,6 +320,98 @@ func TestRepoList_InvalidCursor(t *testing.T) {
 	}
 	if called {
 		t.Fatal("server should not be called for malformed cursor")
+	}
+}
+
+func TestRepoList_OutputCSV(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /namespaces/myorg/repos": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{
+				{"slug": "r1", "path": "myorg/r1", "visibility": "private", "default_branch": "main", "created_at": "2026-01-01T00:00:00Z"},
+			}})
+		},
+	}))
+	var stdout strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &stdout, "list", "--namespace", "myorg", "--output", "csv").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(stdout.String(), "slug,") {
+		t.Fatalf("want csv header, got %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "myorg/r1") {
+		t.Fatalf("want row path, got %q", stdout.String())
+	}
+}
+
+func TestRepoGet_OutputYAML(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /namespaces/myorg/r1": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"slug": "r1", "path": "myorg/r1", "visibility": "private", "default_branch": "main", "description": "d", "created_at": "2026-01-01T00:00:00Z",
+			})
+		},
+	}))
+	var stdout strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &stdout, "get", "myorg/r1", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "myorg/r1") || !strings.Contains(stdout.String(), "path:") {
+		t.Fatalf("want yaml path field, got %q", stdout.String())
+	}
+}
+
+func TestRepoGet_OutputCSV_rejected(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /namespaces/myorg/r1": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"slug": "r1", "path": "myorg/r1"})
+		},
+	}))
+	err := rootFor(cmd.RepoCmd, "get", "myorg/r1", "--output", "csv").Execute()
+	if err == nil || !strings.Contains(err.Error(), "unknown format") {
+		t.Fatalf("want unknown format error, got %v", err)
+	}
+}
+
+func TestRepoList_AllThreePages_ndjsonLines(t *testing.T) {
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	cur1 := pagination.EncodeDesc(time.Unix(100, 0).UTC(), id)
+	cur2 := pagination.EncodeDesc(time.Unix(200, 0).UTC(), id)
+	var pages int
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /namespaces/myorg/repos": func(w http.ResponseWriter, r *http.Request) {
+			pages++
+			if r.URL.Query().Get("limit") != "2" {
+				t.Errorf("want limit=2, got %q", r.URL.Query().Get("limit"))
+			}
+			cur := r.URL.Query().Get("cursor")
+			switch {
+			case pages == 1 && cur == "":
+				writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{{
+					"path": "myorg/a", "slug": "a", "visibility": "private", "default_branch": "main", "created_at": "2026-01-01",
+				}}, "next_cursor": cur1})
+			case pages == 2 && cur == cur1:
+				writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{{
+					"path": "myorg/b", "slug": "b", "visibility": "private", "default_branch": "main", "created_at": "2026-01-02",
+				}}, "next_cursor": cur2})
+			case pages == 3 && cur == cur2:
+				writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{{
+					"path": "myorg/c", "slug": "c", "visibility": "private", "default_branch": "main", "created_at": "2026-01-03",
+				}}})
+			default:
+				t.Fatalf("unexpected pages=%d cursor=%q", pages, cur)
+			}
+		},
+	}))
+	var stdout strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &stdout, "list", "--namespace", "myorg", "--all", "--limit", "2", "--output", "ndjson").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if pages != 3 {
+		t.Fatalf("pages = %d want 3", pages)
+	}
+	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("want 3 ndjson lines, got %d: %q", len(lines), stdout.String())
 	}
 }
 

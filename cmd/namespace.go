@@ -224,7 +224,10 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
@@ -245,6 +248,8 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 
+	var yamlAccum []nsOrgRow
+	csvHdr := false
 	first := true
 	for {
 		q := url.Values{}
@@ -268,9 +273,13 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 		if first && len(orgs) == 0 && cursor == "" {
 			switch output {
 			case "json":
-				return emitJSON([]nsOrgRow{})
+				return emitJSON(cmd, []nsOrgRow{})
 			case "ndjson":
 				return nil
+			case "csv":
+				return emitCSVHeaderOnly[nsOrgRow](cmd)
+			case "yaml":
+				return emitYAML(cmd, []nsOrgRow{})
 			default:
 				fmt.Println("No org namespaces found.")
 				return nil
@@ -280,13 +289,23 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 
 		switch output {
 		case "json":
-			return emitJSON(orgs)
+			return emitJSON(cmd, orgs)
 		case "ndjson":
-			if err := emitNDJSONLines(orgs); err != nil {
+			if err := emitNDJSONLines(cmd, orgs); err != nil {
 				return err
 			}
+		case "csv":
+			if err := emitCSVRows(cmd, &csvHdr, orgs); err != nil {
+				return err
+			}
+		case "yaml":
+			if all {
+				yamlAccum = append(yamlAccum, orgs...)
+			} else {
+				return emitYAML(cmd, orgs)
+			}
 		default:
-			w := newTabWriter()
+			w := newTabWriter(cmd)
 			_, _ = fmt.Fprintln(w, "SLUG\tDISPLAY NAME\tCREATED")
 			for _, o := range orgs {
 				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", o.Slug, o.DisplayName, o.CreatedAt.Format("2006-01-02"))
@@ -297,24 +316,34 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 		}
 
 		if !all {
-			if output == "" && next != "" {
+			if isHumanListOutput(output) && next != "" {
 				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
 			}
 			return nil
 		}
 		if next == "" {
-			return nil
+			break
 		}
 		cursor = next
 	}
+	if all && output == "yaml" {
+		if yamlAccum == nil {
+			yamlAccum = []nsOrgRow{}
+		}
+		return emitYAML(cmd, yamlAccum)
+	}
+	return nil
 }
 
 func runNsGet(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	slug := args[0]
 
 	var ns nsRow
@@ -325,7 +354,7 @@ func runNsGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return emitOne(output, ns, func(w *tabwriter.Writer, ns nsRow) {
+	return emitOne(cmd, output, ns, func(w *tabwriter.Writer, ns nsRow) {
 		_, _ = fmt.Fprintf(w, "Slug:\t%s\n", ns.Slug)
 		_, _ = fmt.Fprintf(w, "Kind:\t%s\n", ns.Kind)
 		_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", ns.Visibility)
@@ -345,7 +374,10 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
 	slug := args[0]
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
@@ -367,6 +399,8 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 
+	var yamlAccum []nsMemberRow
+	csvHdr := false
 	first := true
 	for {
 		q := url.Values{}
@@ -392,9 +426,13 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 			empty := fmt.Sprintf("No members in namespace '%s'", slug)
 			switch output {
 			case "json":
-				return emitJSON([]nsMemberRow{})
+				return emitJSON(cmd, []nsMemberRow{})
 			case "ndjson":
 				return nil
+			case "csv":
+				return emitCSVHeaderOnly[nsMemberRow](cmd)
+			case "yaml":
+				return emitYAML(cmd, []nsMemberRow{})
 			default:
 				fmt.Println(empty)
 				return nil
@@ -404,13 +442,23 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 
 		switch output {
 		case "json":
-			return emitJSON(members)
+			return emitJSON(cmd, members)
 		case "ndjson":
-			if err := emitNDJSONLines(members); err != nil {
+			if err := emitNDJSONLines(cmd, members); err != nil {
 				return err
 			}
+		case "csv":
+			if err := emitCSVRows(cmd, &csvHdr, members); err != nil {
+				return err
+			}
+		case "yaml":
+			if all {
+				yamlAccum = append(yamlAccum, members...)
+			} else {
+				return emitYAML(cmd, members)
+			}
 		default:
-			w := newTabWriter()
+			w := newTabWriter(cmd)
 			_, _ = fmt.Fprintln(w, "SLUG\tDISPLAY NAME\tROLE\tJOINED")
 			for _, m := range members {
 				role := "member"
@@ -429,16 +477,23 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 		}
 
 		if !all {
-			if output == "" && next != "" {
+			if isHumanListOutput(output) && next != "" {
 				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
 			}
 			return nil
 		}
 		if next == "" {
-			return nil
+			break
 		}
 		cursor = next
 	}
+	if all && output == "yaml" {
+		if yamlAccum == nil {
+			yamlAccum = []nsMemberRow{}
+		}
+		return emitYAML(cmd, yamlAccum)
+	}
+	return nil
 }
 
 func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
@@ -460,7 +515,7 @@ func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
 	}
 
 	if output == "json" {
-		return emitJSON(result)
+		return emitJSON(cmd, result)
 	}
 	id, _ := result["id"].(string)
 	fmt.Printf("Transfer initiated. ID: %s\n", id)
@@ -474,7 +529,10 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
@@ -495,6 +553,8 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 
+	var yamlAccum []nsTransferRow
+	csvHdr := false
 	first := true
 	for {
 		q := url.Values{}
@@ -518,9 +578,13 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 		if first && len(transfers) == 0 && cursor == "" {
 			switch output {
 			case "json":
-				return emitJSON([]nsTransferRow{})
+				return emitJSON(cmd, []nsTransferRow{})
 			case "ndjson":
 				return nil
+			case "csv":
+				return emitCSVHeaderOnly[nsTransferRow](cmd)
+			case "yaml":
+				return emitYAML(cmd, []nsTransferRow{})
 			default:
 				fmt.Println("No pending transfers.")
 				return nil
@@ -530,13 +594,23 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 
 		switch output {
 		case "json":
-			return emitJSON(transfers)
+			return emitJSON(cmd, transfers)
 		case "ndjson":
-			if err := emitNDJSONLines(transfers); err != nil {
+			if err := emitNDJSONLines(cmd, transfers); err != nil {
 				return err
 			}
+		case "csv":
+			if err := emitCSVRows(cmd, &csvHdr, transfers); err != nil {
+				return err
+			}
+		case "yaml":
+			if all {
+				yamlAccum = append(yamlAccum, transfers...)
+			} else {
+				return emitYAML(cmd, transfers)
+			}
 		default:
-			w := newTabWriter()
+			w := newTabWriter(cmd)
 			_, _ = fmt.Fprintln(w, "ID\tORG\tFROM\tEXPIRES")
 			for _, tr := range transfers {
 				shortID := tr.ID[:min(len(tr.ID), 8)]
@@ -549,16 +623,23 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 		}
 
 		if !all {
-			if output == "" && next != "" {
+			if isHumanListOutput(output) && next != "" {
 				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
 			}
 			return nil
 		}
 		if next == "" {
-			return nil
+			break
 		}
 		cursor = next
 	}
+	if all && output == "yaml" {
+		if yamlAccum == nil {
+			yamlAccum = []nsTransferRow{}
+		}
+		return emitYAML(cmd, yamlAccum)
+	}
+	return nil
 }
 
 func runNsTransferAccept(cmd *cobra.Command, args []string) error {
@@ -575,7 +656,7 @@ func runNsTransferAccept(cmd *cobra.Command, args []string) error {
 	}
 
 	if output == "json" {
-		return emitJSON(result)
+		return emitJSON(cmd, result)
 	}
 	fmt.Printf("Transfer %s accepted.\n", transferID)
 	return nil

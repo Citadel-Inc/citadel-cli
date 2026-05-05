@@ -95,7 +95,10 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
@@ -116,6 +119,8 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 
+	var yamlAccum []token
+	csvHdr := false
 	first := true
 	for {
 		q := url.Values{}
@@ -141,9 +146,13 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 			empty := fmt.Sprintf("No tokens for agent '%s'", agentName)
 			switch output {
 			case "json":
-				return emitJSON([]token{})
+				return emitJSON(cmd, []token{})
 			case "ndjson":
 				return nil
+			case "csv":
+				return emitCSVHeaderOnly[token](cmd)
+			case "yaml":
+				return emitYAML(cmd, []token{})
 			default:
 				fmt.Println(empty)
 				return nil
@@ -153,13 +162,23 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 
 		switch output {
 		case "json":
-			return emitJSON(rows)
+			return emitJSON(cmd, rows)
 		case "ndjson":
-			if err := emitNDJSONLines(rows); err != nil {
+			if err := emitNDJSONLines(cmd, rows); err != nil {
 				return err
 			}
+		case "csv":
+			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
+				return err
+			}
+		case "yaml":
+			if all {
+				yamlAccum = append(yamlAccum, rows...)
+			} else {
+				return emitYAML(cmd, rows)
+			}
 		default:
-			w := newTabWriter()
+			w := newTabWriter(cmd)
 			_, _ = fmt.Fprint(w, "ID\tCREATED\tEXPIRES\tREVOKED\n")
 			for _, t := range rows {
 				expires := ""
@@ -182,16 +201,23 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 		}
 
 		if !all {
-			if output == "" && next != "" {
+			if isHumanListOutput(output) && next != "" {
 				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
 			}
 			return nil
 		}
 		if next == "" {
-			return nil
+			break
 		}
 		cursor = next
 	}
+	if all && output == "yaml" {
+		if yamlAccum == nil {
+			yamlAccum = []token{}
+		}
+		return emitYAML(cmd, yamlAccum)
+	}
+	return nil
 }
 
 func runTokenIssue(cmd *cobra.Command, _ []string) error {

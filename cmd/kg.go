@@ -126,7 +126,7 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 		if err := c.Get(cmd.Context(), path, &pretty); err != nil {
 			return upgradeUnauthorized(err)
 		}
-		return emitJSON(pretty)
+		return emitJSON(cmd, pretty)
 	}
 
 	var ir impactResp

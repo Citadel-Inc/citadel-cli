@@ -140,7 +140,7 @@ func runRepoCreate(cmd *cobra.Command, _ []string) error {
 	}
 
 	if output == "json" {
-		return emitJSON(row)
+		return emitJSON(cmd, row)
 	}
 	fmt.Printf("Created %s/%s (%s)\n", row.ParentSlug, row.Slug, row.Visibility)
 	return nil
@@ -152,7 +152,10 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	ns, _ := cmd.Flags().GetString("namespace")
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
@@ -173,6 +176,8 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 
+	var yamlAccum []repoRow
+	csvHdr := false
 	first := true
 	for {
 		q := url.Values{}
@@ -198,9 +203,13 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 			empty := fmt.Sprintf("No repositories in namespace '%s'", ns)
 			switch output {
 			case "json":
-				return emitJSON([]repoRow{})
+				return emitJSON(cmd, []repoRow{})
 			case "ndjson":
 				return nil
+			case "csv":
+				return emitCSVHeaderOnly[repoRow](cmd)
+			case "yaml":
+				return emitYAML(cmd, []repoRow{})
 			default:
 				fmt.Println(empty)
 				return nil
@@ -210,13 +219,23 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 
 		switch output {
 		case "json":
-			return emitJSON(rows)
+			return emitJSON(cmd, rows)
 		case "ndjson":
-			if err := emitNDJSONLines(rows); err != nil {
+			if err := emitNDJSONLines(cmd, rows); err != nil {
 				return err
 			}
+		case "csv":
+			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
+				return err
+			}
+		case "yaml":
+			if all {
+				yamlAccum = append(yamlAccum, rows...)
+			} else {
+				return emitYAML(cmd, rows)
+			}
 		default:
-			w := newTabWriter()
+			w := newTabWriter(cmd)
 			_, _ = fmt.Fprintln(w, "PATH\tVISIBILITY\tBRANCH\tCREATED")
 			for _, r := range rows {
 				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.Path, r.Visibility, r.DefaultBranch, r.CreatedAt)
@@ -227,20 +246,30 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 		}
 
 		if !all {
-			if output == "" && next != "" {
+			if isHumanListOutput(output) && next != "" {
 				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
 			}
 			return nil
 		}
 		if next == "" {
-			return nil
+			break
 		}
 		cursor = next
 	}
+	if all && output == "yaml" {
+		if yamlAccum == nil {
+			yamlAccum = []repoRow{}
+		}
+		return emitYAML(cmd, yamlAccum)
+	}
+	return nil
 }
 
 func runRepoGet(cmd *cobra.Command, args []string) error {
-	output := outputFlag(cmd)
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -264,7 +293,7 @@ func runRepoGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return emitOne(output, r, func(w *tabwriter.Writer, r repoRow) {
+	return emitOne(cmd, output, r, func(w *tabwriter.Writer, r repoRow) {
 		_, _ = fmt.Fprintf(w, "Path:\t%s\n", r.Path)
 		_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", r.Visibility)
 		_, _ = fmt.Fprintf(w, "Default branch:\t%s\n", r.DefaultBranch)
