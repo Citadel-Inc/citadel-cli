@@ -214,3 +214,63 @@ func TestInferenceHintSkippedWhenStderrNotTTYFile(t *testing.T) {
 		t.Fatalf("unexpected hint on non-terminal stderr: %q", stderr.String())
 	}
 }
+
+func TestResolveRepoNamespaceForCompletion_RFlagFullPath(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().StringP("repo", "R", "", "")
+	cmd.Flags().Bool("no-cwd-repo", false, "")
+	if err := cmd.Flags().Set("repo", "acme/widget"); err != nil {
+		t.Fatal(err)
+	}
+	ns, err := ResolveRepoNamespaceForCompletion(cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ns != "acme" {
+		t.Fatalf("got %q", ns)
+	}
+}
+
+func TestResolveRepoNamespaceForCompletion_RFlagPartialOrgSlash(t *testing.T) {
+	// Typing "-R myorg/" scopes completion to namespace myorg even before repo slug is present.
+	cmd := &cobra.Command{}
+	cmd.Flags().StringP("repo", "R", "", "")
+	cmd.Flags().Bool("no-cwd-repo", false, "")
+	if err := cmd.Flags().Set("repo", "myorg/"); err != nil {
+		t.Fatal(err)
+	}
+	ns, err := ResolveRepoNamespaceForCompletion(cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ns != "myorg" {
+		t.Fatalf("got %q", ns)
+	}
+}
+
+func TestResolveRepoNamespaceForCompletion_RFlagBareOrgFails(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().StringP("repo", "R", "", "")
+	cmd.Flags().Bool("no-cwd-repo", false, "")
+	if err := cmd.Flags().Set("repo", "onlyorg"); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ResolveRepoNamespaceForCompletion(cmd)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestResolveRepoNamespaceForCompletion_EnvRepo(t *testing.T) {
+	t.Setenv(citadelRepoEnv, "envns/envslug")
+	cmd := &cobra.Command{}
+	cmd.Flags().StringP("repo", "R", "", "")
+	cmd.Flags().Bool("no-cwd-repo", false, "")
+	ns, err := ResolveRepoNamespaceForCompletion(cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ns != "envns" {
+		t.Fatalf("got %q", ns)
+	}
+}

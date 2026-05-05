@@ -200,6 +200,42 @@ Edge cases that fall through to string: `.5`, `5.`, `1.2.3`, anything with non-d
 | 1    | Local error: bad flags, no token, transport failure, server JSON-RPC error. |
 | 2    | Tool returned `isError: true` (the call reached the tool; the tool failed).|
 
+### Phase 0 operator cookbook (HTTPS MCP)
+
+Agents should configure the IDE or runtime to talk to **`https://mcp.src.land/mcp`** (or your deployment’s MCP URL) directly. For **operators** — debugging, runbooks, CI smoke — `citadel-cli mcp call` hits the **same** Streamable HTTP MCP surface as agents; there is no separate stdio MCP in this client ([parked specs](../specs/parked/README.md)).
+
+**Discover names on your server** (tool lists drift with Citadel releases):
+
+```bash
+citadel-cli mcp tools
+```
+
+Below, treat **`<tool>`** as a name from that list. Argument shapes mirror the Proof-of-Life dossier **appendix K** tool groups (`namespace.*`, `repo.*`, `issue.*`, `project.*`, `kg.*`, `agent.*`, `audit.*`, `key.*`) — **wire names differ** (often `snake_case`); always confirm with `mcp tools`.
+
+| Intent | Pattern |
+|--------|---------|
+| Resolve namespace / org | `citadel-cli mcp call <tool> --arg path=<slug>` — typical discovery tool (historically `get_namespace`; confirm via `mcp tools`). |
+| Knowledge graph | Tools such as **`kg_find_symbol`**, **`kg_list_files`**, **`kg_walk`** (examples; verify list). Pass repo/namespace args your server’s schema expects, often `--arg namespace_path=…` or `--arg-string` for opaque IDs. |
+| Project-as-graph | Project tools accept **`project_path`** or **`namespace_path`**-style args per server registration — use `--json` when responses are large. |
+| Issues | When issue MCP tools are enabled, use **`issue.list` / `issue.get`**-style names from `mcp tools` (not yet mirrored by dedicated `citadel-cli issue` verbs — see spec **`cli-issue-pr`**). |
+| Audit | **`audit.list`** / session tools — align filters (`namespace_path`, `since`) with MCP schema; parity with `citadel-cli audit list` when both exist. |
+| SSH keys | **`key.list` / `key.add` / `key.delete`** per appendix K — same semantics as future `citadel-cli ssh-key` REST wrappers. |
+
+**Recipes**
+
+```bash
+# Namespace lookup (replace get_namespace if your server lists a different name)
+citadel-cli mcp call get_namespace --arg path=Rethunk-Tech
+
+# Raw JSON-RPC envelope (scripting)
+citadel-cli mcp call get_namespace --arg path=Rethunk-Tech --json
+
+# Agent with explicit bearer (CI / rotate-token output)
+citadel-cli mcp --token "$CITADEL_AGENT_TOKEN" tools
+```
+
+**REST parity:** Most MCP tools have equivalent **`GET/POST /api/...`** handlers on the Citadel API host (`api.src.land`). Prefer MCP for agent-shaped workflows; prefer **`citadel-cli <verb>`** when we ship first-class commands (repos, namespaces, audit events) — fewer typed arguments to assemble by hand.
+
 ### Auth failures
 
 A 401 / `-32001 unauthorized` from the server prints:
