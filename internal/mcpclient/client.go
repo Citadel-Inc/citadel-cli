@@ -119,7 +119,7 @@ func (c *Client) Initialize(ctx context.Context) error {
 	return nil
 }
 
-// ServerInfo returns the negotiated server identity (post-Initialize).
+// ServerInfoValue returns the negotiated server identity (post-Initialize).
 func (c *Client) ServerInfoValue() ServerInfo { return c.serverInfo }
 
 // ToolsList calls tools/list. Initialize must have run first.
