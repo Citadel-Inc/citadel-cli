@@ -1,6 +1,6 @@
 # Tasks — cli-completion-dynamic
 
-Status: DRAFT 050826ZMAY26
+Status: IN_PROGRESS 050921ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 

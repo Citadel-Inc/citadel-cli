@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 050826ZMAY26 |
+| Status | IN_PROGRESS 050921ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 050826ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | 2026-05-05 enhancement sweep: `citadel-cli completion` ships shells but every positional argument (repo slug, namespace, agent id, oauth client id) has zero `ValidArgsFunction` coverage. Tab completion today returns nothing for any resource identifier. |
@@ -37,11 +37,11 @@ Operators use the CLI interactively against namespaces with dozens of repos / ag
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Cache TTL 60 s vs 30 s vs no cache? | **Open** — 60 s; trades freshness for ≤ one round trip per minute per resource. |
-| Q2 | On unauthenticated client, complete with `[]` (silent) or surface `auth login required` as a hint message? | **Open** — silent + `ShellCompDirectiveError`; cobra does not render hints across all shells consistently. |
-| Q3 | Cache file format: JSON array vs newline-delimited slugs? | **Open** — JSON array; one decoder, future-proof for adding metadata. |
-| Q4 | Invalidation on write verbs: blocking delete vs fire-and-forget? | **Open** — fire-and-forget goroutine on cmd.PostRun; never delays user exit. |
-| Q5 | Completion for the persistent `--server` flag itself? | **Open** — defer; no obvious source set without a config-stored profile list (separate spec). |
+| Q1 | Cache TTL 60 s vs 30 s vs no cache? | **Ratified 050919ZMAY26** — 60 s; trades freshness for ≤ one round trip per minute per resource. |
+| Q2 | On unauthenticated client, complete with `[]` (silent) or surface `auth login required` as a hint message? | **Ratified 050919ZMAY26** — silent + `ShellCompDirectiveError`; cobra does not render hints across all shells consistently. |
+| Q3 | Cache file format: JSON array vs newline-delimited slugs? | **Ratified 050919ZMAY26** — JSON envelope with `values` array; future-proof for adding metadata. |
+| Q4 | Invalidation on write verbs: blocking delete vs fire-and-forget? | **Ratified 050919ZMAY26** — fire-and-forget goroutine on cmd.PostRun; never delays user exit. |
+| Q5 | Completion for the persistent `--server` flag itself? | **Ratified 050919ZMAY26** — defer; no obvious source set without a config-stored profile list (separate spec). |
 
 ## Acceptance
 
@@ -53,9 +53,3 @@ Operators use the CLI interactively against namespaces with dozens of repos / ag
 - A6. Cache file written under `$XDG_CACHE_HOME/citadel-cli/completion/`. TTL 60 s; cache miss triggers a single API call.
 - A7. Mutation verbs delete the matching cache file before returning.
 - A8. Q-table ratified.
-
-## Open questions for NOMAD
-
-- Auth-completion-error UX (Q2): silent vs hinted.
-- Cache TTL (Q1).
-- Static `--output` completion list — names should match the [cli-output-formats](../cli-output-formats/spec.md) acceptance set verbatim.
