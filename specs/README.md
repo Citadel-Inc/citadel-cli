@@ -1,14 +1,18 @@
 # Specs
 
-This directory holds [SDD](https://github.com/Rethunk-AI/citadel-sdd) specifications for `citadel-cli`.
+## Active
 
-## Layout
+| Slug | State | DTG | Owner |
+|------|-------|-----|-------|
+| cli-mcp-stdio | DRAFT | 030619ZMAY26 | Bastion (J-3) |
+| cli-mcp-stream | DRAFT | 030619ZMAY26 | Bastion (J-3) |
 
-- `active/` — open specs (DRAFT, APPROVED, IN_PROGRESS, BLOCKED)
-- `done/` — completed specs (DONE)
+## Done
 
-## Lifecycle
-
-Use the `mcp__citadel-sdd__*` MCP tools for all spec lifecycle operations (claim, approve, close, block, task-check). Never hand-edit status fields, DTG stamps, or `tasks.md` checkbox state lines — the tools enforce lint rules and stamp accurate timestamps.
-
-See [`citadel-sdd/docs/mcp-tools.md`](https://github.com/Rethunk-AI/citadel-sdd/blob/main/docs/mcp-tools.md) for the full tool reference.
+| Slug | DTG | Note |
+|------|-----|------|
+| go-citadel-cli | 292032ZAPR26 | shipped (in-line with the B-track ratifications) |
+| cli-oauth-clients | 040041ZMAY26 | P1 B3: opt-in live integration test (oauth_clients_live_test.go) + §71 runbook. P2 C1 remains operator citadel-cli smoke — see specs/HUMAN_BLOCKERS.md §71. |
+| cli-mcp-resources | 032359ZMAY26 | Shipped MCP resources/list, resources/read, prompts/list, prompts/get, citadel-cli `mcp resources` / `mcp prompts`, waitlist parity with tools/call, and automated conformance tests. SDD closeout complete (P2 C2). Remaining operator/NOMAD rows: P0 Q-table sign-off and P2 Claude Desktop smoke — see [specs/HUMAN_BLOCKERS.md §69](../../HUMAN_BLOCKERS.md#69--cli-mcp-resources-nomad-procedural-q-table--claude-desktop-smoke). |
+| go-citadel-cli-repo | 032036ZMAY26 | Shipped repo/namespace/agent CRUD CLI verbs against live APIs. repo create/list/get/delete; namespace list/get/members/transfer (with initiate/list-pending/accept/decline/revoke subcommands); agent list/get/delete/rotate-token. All verbs carry --help + --output json (A1). cmd_test.go integration suite covers command-tree structure, flag presence, and destructive-verb --yes gates (A2). Destructive verbs gate on typed-slug confirm (A3). Q-table ratified (A4). repo rename descoped (no server endpoint). namespace transfer org-only for now; personal namespace transfer deferred to server-side follow-on. |
+| cli-mcp-tools | 010300ZMAY26 | shipped; HUMAN follow-up = positive prod smoke with real JWT |
