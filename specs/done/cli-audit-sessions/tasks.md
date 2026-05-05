@@ -11,7 +11,7 @@ Status: DONE 052320ZMAY26 — Added `citadel-cli audit sessions list` and `audit
 
 ## P1
 
-- [ ] B1. Cross-link from `specs/done/cli-audit/spec.md` retrospective (“sessions deferred — now cli-audit-sessions”).
+- [x] B1. Cross-link from `specs/done/cli-audit/spec.md` retrospective (“sessions deferred — now cli-audit-sessions”).
 
 ## P2
 
