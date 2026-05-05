@@ -1,6 +1,6 @@
 # Tasks — cli-audit
 
-Status: IN_PROGRESS 051143ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 051145ZMAY26 — Shipped Citadel GET /api/audit/events and GET /api/audit/events/{id} with RBAC, time and kind filters, cli-pagination cursors, cascade linkage from purge, and agent.created audit rows. Delivered citadel-cli audit list/show with standard output modes, live opt-in test, and documentation. Deferred: P1 B6 expanded RBAC HTTP matrix for events; P2 operator smoke, tail-mode carry-forward, and spec hygiene.
 
 ## P0
 
