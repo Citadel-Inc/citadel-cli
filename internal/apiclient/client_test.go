@@ -104,6 +104,90 @@ func TestClient_NonSuccessReturnsHTTPError(t *testing.T) {
 	}
 }
 
+func TestHTTPError_ErrorAndDecodeBody(t *testing.T) {
+	he := &HTTPError{StatusCode: 409, Body: `{"error":"has_repos","detail":"x"}`}
+	if got := he.Error(); !strings.Contains(got, "409") || !strings.Contains(got, "has_repos") {
+		t.Fatalf("Error() = %q", got)
+	}
+	var body struct {
+		Error  string `json:"error"`
+		Detail string `json:"detail"`
+	}
+	if err := he.DecodeBody(&body); err != nil {
+		t.Fatalf("DecodeBody: %v", err)
+	}
+	if body.Error != "has_repos" || body.Detail != "x" {
+		t.Fatalf("decoded %+v", body)
+	}
+	// nil target and empty body each short-circuit.
+	if err := he.DecodeBody(nil); err != nil {
+		t.Fatalf("DecodeBody(nil): %v", err)
+	}
+	if err := (&HTTPError{Body: ""}).DecodeBody(&body); err != nil {
+		t.Fatalf("DecodeBody empty: %v", err)
+	}
+}
+
+func TestIsStatus(t *testing.T) {
+	err := &HTTPError{StatusCode: 404}
+	if !IsStatus(err, 404) {
+		t.Fatal("expected match on direct *HTTPError")
+	}
+	wrapped := errors.Join(errors.New("ctx"), err)
+	if !IsStatus(wrapped, 404) {
+		t.Fatal("expected match through errors.Join")
+	}
+	if IsStatus(err, 500) {
+		t.Fatal("did not expect match for different code")
+	}
+	if IsStatus(errors.New("plain"), 404) {
+		t.Fatal("plain errors must not match")
+	}
+	if IsStatus(nil, 404) {
+		t.Fatal("nil must not match")
+	}
+}
+
+func TestClient_ServerAndToken(t *testing.T) {
+	c, err := New(clicfg.Config{ServerURL: "https://x.test/", AccessToken: "tok"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := c.Server(); got != "https://x.test" {
+		t.Fatalf("Server() = %q", got)
+	}
+	if got := c.Token(); got != "tok" {
+		t.Fatalf("Token() = %q", got)
+	}
+}
+
+func TestClient_PutSendsJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("method = %s", r.Method)
+		}
+		var body struct{ Y int }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Y != 7 {
+			t.Errorf("got %d", body.Y)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, "")
+	var out struct{ OK bool }
+	if err := c.Put(context.Background(), "/things/1", map[string]int{"y": 7}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !out.OK {
+		t.Fatalf("got %+v", out)
+	}
+}
+
 func TestClient_ContextCancellation(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
