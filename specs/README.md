@@ -4,6 +4,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
+| cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
 | cli-mcp-stdio | DRAFT | 030619ZMAY26 | Bastion (J-3) |
 | cli-mcp-stream | DRAFT | 030619ZMAY26 | Bastion (J-3) |
 
