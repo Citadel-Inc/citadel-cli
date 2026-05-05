@@ -7,6 +7,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+
+	"github.com/Rethunk-Tech/citadel-cli/internal/term"
 )
 
 // addOutputFlag registers the standard `--output` flag on each command.
@@ -67,6 +69,37 @@ func dryRunFlag(cmd *cobra.Command) bool {
 func serverFlag(cmd *cobra.Command) string {
 	v, _ := cmd.Flags().GetString("server")
 	return v
+}
+
+// verboseFlag returns the resolved persistent `--verbose` (-v) flag value.
+// Suppressed by `--quiet`.
+func verboseFlag(cmd *cobra.Command) bool {
+	if quietFlag(cmd) {
+		return false
+	}
+	v, _ := cmd.Flags().GetBool("verbose")
+	return v
+}
+
+// quietFlag returns the resolved persistent `--quiet` (-q) flag value.
+func quietFlag(cmd *cobra.Command) bool {
+	v, _ := cmd.Flags().GetBool("quiet")
+	return v
+}
+
+// debugHTTPFlag returns the resolved persistent `--debug-http` flag value.
+// Implies verbose; emits full request/response dumps to stderr.
+func debugHTTPFlag(cmd *cobra.Command) bool {
+	v, _ := cmd.Flags().GetBool("debug-http")
+	return v
+}
+
+// colorEnabled resolves whether color output is permitted given the resolved
+// `--color` flag and the NO_COLOR / TTY environment. Helpers that emit ANSI
+// styles MUST consult this before writing escape codes.
+func colorEnabled(cmd *cobra.Command) bool {
+	v, _ := cmd.Flags().GetString("color")
+	return term.ColorEnabled(term.ParseColorMode(v))
 }
 
 // emitJSON writes v as indented JSON to stdout.

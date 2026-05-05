@@ -13,7 +13,7 @@ import (
 )
 
 func TestNew_RequiresToken(t *testing.T) {
-	if _, err := New(clicfg.Config{}, ""); err == nil || !strings.Contains(err.Error(), "not authenticated") {
+	if _, err := New(clicfg.Config{}, Options{}); err == nil || !strings.Contains(err.Error(), "not authenticated") {
 		t.Fatalf("expected not-authenticated error, got %v", err)
 	}
 }
@@ -28,7 +28,7 @@ func TestClient_GetDecodes(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, "")
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestClient_PostSendsJSON(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, "")
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
 	var out struct{ ID string }
 	if err := c.Post(context.Background(), "/things", map[string]int{"x": 42}, &out); err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func TestClient_DeleteAcceptsNoContent(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, "")
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
 	if err := c.Delete(context.Background(), "/things/1"); err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestClient_NonSuccessReturnsHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, "")
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
 	err := c.Get(context.Background(), "/x", nil)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -149,7 +149,7 @@ func TestIsStatus(t *testing.T) {
 }
 
 func TestClient_ServerAndToken(t *testing.T) {
-	c, err := New(clicfg.Config{ServerURL: "https://x.test/", AccessToken: "tok"}, "")
+	c, err := New(clicfg.Config{ServerURL: "https://x.test/", AccessToken: "tok"}, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestClient_PutSendsJSON(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, "")
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
 	var out struct{ OK bool }
 	if err := c.Put(context.Background(), "/things/1", map[string]int{"y": 7}, &out); err != nil {
 		t.Fatal(err)
@@ -194,7 +194,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, "")
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if err := c.Get(ctx, "/x", nil); err == nil || !errors.Is(err, context.Canceled) {

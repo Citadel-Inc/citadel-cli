@@ -16,5 +16,9 @@ func newAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
-	return apiclient.New(cfg, serverFlag(cmd))
+	return apiclient.New(cfg, apiclient.Options{
+		Server:    serverFlag(cmd),
+		Verbose:   verboseFlag(cmd),
+		DebugHTTP: debugHTTPFlag(cmd),
+	})
 }

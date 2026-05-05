@@ -57,17 +57,30 @@ type Client struct {
 	http   *http.Client
 }
 
-// New builds a Client from a loaded clicfg.Config and the optional --server
-// flag override. Returns the canonical "not authenticated" error if no token
-// is configured.
-func New(cfg clicfg.Config, flagServer string) (*Client, error) {
+// Options are the per-invocation knobs surfaced by root persistent flags.
+// Server is the resolved --server flag value; Verbose / DebugHTTP wire the
+// trace transport; retry/backoff is always on for idempotent verbs.
+type Options struct {
+	Server    string
+	Verbose   bool
+	DebugHTTP bool
+}
+
+// New builds a Client from a loaded clicfg.Config and the resolved CLI
+// options. Returns the canonical "not authenticated" error if no token is
+// configured.
+func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	if cfg.AccessToken == "" {
 		return nil, errors.New("not authenticated; run 'citadel-cli auth login' first")
 	}
+	var rt http.RoundTripper = &retryTransport{base: http.DefaultTransport}
+	if opts.Verbose || opts.DebugHTTP {
+		rt = &traceTransport{base: rt, verbose: opts.Verbose, debugHTTP: opts.DebugHTTP}
+	}
 	return &Client{
-		server: strings.TrimRight(cfg.ResolveServerURL(flagServer), "/"),
+		server: strings.TrimRight(cfg.ResolveServerURL(opts.Server), "/"),
 		token:  cfg.AccessToken,
-		http:   &http.Client{Timeout: defaultTimeout},
+		http:   &http.Client{Timeout: defaultTimeout, Transport: rt},
 	}, nil
 }
 

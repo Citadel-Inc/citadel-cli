@@ -26,6 +26,10 @@ Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --s
 	// --server flag + CITADEL_SERVER env var. Persistent so every subcommand
 	// inherits it. Resolved against cfg.ServerURL by clicfg.ResolveServerURL().
 	root.PersistentFlags().String("server", "", "Server URL (overrides CITADEL_SERVER env and stored config)")
+	root.PersistentFlags().BoolP("verbose", "v", false, "Print one METHOD URL → STATUS line per HTTP call to stderr")
+	root.PersistentFlags().BoolP("quiet", "q", false, "Suppress non-essential stderr output (overrides --verbose)")
+	root.PersistentFlags().Bool("debug-http", false, "Dump full HTTP request/response (Authorization redacted) to stderr")
+	root.PersistentFlags().String("color", "auto", "Color output: auto|always|never (honors NO_COLOR)")
 
 	root.AddCommand(cmd.AuthCmd)
 	root.AddCommand(cmd.TokenCmd)
