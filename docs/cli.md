@@ -54,6 +54,16 @@ citadel-cli auth logout
 
 Removes the authentication session from the config file, preserving the server URL setting for future logins.
 
+## Shell completion
+
+Generate scripts for your shell (bash, zsh, fish, or PowerShell):
+
+```bash
+citadel-cli completion bash   # often: source <(citadel-cli completion bash)
+```
+
+Dynamic completion for resource arguments (repos, namespaces, agents, OAuth clients, tokens) uses your stored access token to query list endpoints. Cache layout, TTL, and the `CITADEL_NO_COMPLETION_CACHE` bypass are described under **Configuration** in the repo’s [HUMANS.md](../HUMANS.md#configuration) (not duplicated here).
+
 ## Daily commands
 
 ### List agent tokens

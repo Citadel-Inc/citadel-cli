@@ -27,6 +27,7 @@ cmd/                             Subcommand implementations
   doc.go                         Package comment
   *_test.go                      Unit + integration tests (live tests env-gated)
 internal/clicfg/                 Config (XDG_CONFIG_HOME / ~/.config/citadel/config.toml; doc.go for package comment)
+internal/completion/             Shell-completion cache + API-backed candidate lists
 internal/mcpclient/              HTTP MCP client (cobra mcp subcommands)
 docs/cli.md                      Full command reference
 specs/active/, specs/done/       SDD specs
@@ -53,7 +54,7 @@ Live integration tests (e.g. `oauth_clients_live_test.go`) self-skip without `CI
 - **Auth tokens:** `~/.config/citadel/config.toml` (mode 0600); written by `citadel-cli auth login`.
 - **Override access token:** `CITADEL_ACCESS_TOKEN` env var (1-hour pinned expiry; for CI / scripting).
 - **Repo context:** `CITADEL_REPO=<namespace>/<slug>` selects a repo without `-R`. Only the **`origin`** remote is used for CWD inference; if `origin` is not a Citadel host, pass `-R` explicitly (see README “Repo context”). For private git endpoints, set comma-separated **`CITADEL_GIT_HOSTS`**.
-- **Completion cache:** dynamic shell completion writes JSON cache files under `$XDG_CACHE_HOME/citadel-cli/completion/<server-host>/` with a 60-second TTL. Set **`CITADEL_NO_COMPLETION_CACHE=1`** to skip disk reads/writes (in-memory only, useful for debugging).
+- **Shell completion:** install scripts with `citadel-cli completion bash|zsh|fish|powershell` (see `citadel-cli completion --help`). Dynamic tab completion for resource arguments — repo slugs (scoped via `-R`, `CITADEL_REPO`, or CWD inference), org namespace slugs on `namespace get|members|delete|transfer initiate`, agent names on `agent get|delete|rotate-token`, OAuth client resource UUIDs on `oauth clients show|revoke`, token UUIDs on `token revoke` — issues authenticated list calls against the Citadel API. With no access token, completion yields no candidates and never prompts for credentials. JSON cache files live under `$XDG_CACHE_HOME/citadel-cli/completion/<server-host>/` with a 60-second TTL. Set **`CITADEL_NO_COMPLETION_CACHE=1`** to skip disk cache reads and writes (in-memory only; useful for debugging).
 
 ## Documentation
 
