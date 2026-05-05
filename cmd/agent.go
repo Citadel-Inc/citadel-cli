@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"text/tabwriter"
 
@@ -179,38 +177,14 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	agentID := a.ID.String()
 
-	// Issue new token first.
+	// Server-side atomic rotate: issues new token + revokes every other
+	// live token for this agent in a single transaction.
 	var newTok tokenWithCleartext
-	if err := c.Post(cmd.Context(), "/agent-tokens", map[string]string{"agent_id": agentID}, &newTok); err != nil {
-		return fmt.Errorf("issue token: %w", err)
+	if err := c.Post(cmd.Context(), "/agents/"+a.ID.String()+"/rotate-token", nil, &newTok); err != nil {
+		return fmt.Errorf("rotate token: %w", err)
 	}
-
-	// List existing tokens to revoke all but the new one. UUIDs need no
-	// query escape — canonical form is alphanumeric + dashes.
-	var existingTokens []token
-	if err := c.Get(cmd.Context(), "/agent-tokens?agent_id="+agentID, &existingTokens); err != nil {
-		return fmt.Errorf("list tokens: %w", err)
-	}
-
-	// Revoke all tokens except the new one.
-	var revokeErrs []error
-	for _, t := range existingTokens {
-		if t.ID == newTok.ID || t.RevokedAt != nil {
-			continue
-		}
-		if err := c.Delete(cmd.Context(), "/agent-tokens/"+t.ID.String()); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to revoke token %s: %v\n", t.ID, err)
-			revokeErrs = append(revokeErrs, err)
-		}
-	}
-
-	// Print new token once to stdout before surfacing any revoke warnings.
 	fmt.Println(newTok.CleartextToken)
-	if len(revokeErrs) > 0 {
-		return fmt.Errorf("new token issued but %d old token(s) could not be revoked; check 'citadel-cli token list --agent %s': %w", len(revokeErrs), name, errors.Join(revokeErrs...))
-	}
 	return nil
 }
 
