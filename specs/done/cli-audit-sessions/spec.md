@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 052320ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 052320ZMAY26 — Added `citadel-cli audit sessions list` and `audit sessions show` backed by `/audit/sessions` with required namespace (`--ns` or `--namespace`/`-n`), `since`/limit/offset pagination (no cursor), output formats on list, JSON/YAML/table passthrough on show, CSV projection types, httptest coverage for client and server `ns_required`/`invalid_since`/404 paths and minimal drill-down JSON without operator-console fields, user docs + plan appendix, and opt-in live list behind `CITADEL_TEST_AUDIT_SESSIONS_LIVE` + `CITADEL_TEST_AUDIT_SESSIONS_NS`. P1 B1 (cross-link cli-audit retrospective) left open until sibling directory lands under specs/done. |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | `cli-audit` (DONE) ships **events** only. `internal/api/auditapi` also implements **sessions** list + detail for the same audit gate (`package auditapi` comment references fe-audit-session-drilldown). |

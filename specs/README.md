@@ -8,7 +8,6 @@
 |------|-------|-----|-------|
 | cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
 | cli-account-security | DRAFT | 050506ZMAY26 | Bastion (J-3) |
-| cli-audit-sessions | DRAFT | 050506ZMAY26 | Bastion (J-3) |
 | cli-global-search | DRAFT | 050506ZMAY26 | Bastion (J-3) |
 | cli-kg-extended | DRAFT | 050506ZMAY26 | Bastion (J-3) |
 | cli-projectgraph | DRAFT | 050506ZMAY26 | Bastion (J-3) |
@@ -20,6 +19,7 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-audit-sessions | 052320ZMAY26 | Added `citadel-cli audit sessions list` and `audit sessions show` backed by `/audit/sessions` with required namespace (`--ns` or `--namespace`/`-n`), `since`/limit/offset pagination (no cursor), output formats on list, JSON/YAML/table passthrough on show, CSV projection types, httptest coverage for client and server `ns_required`/`invalid_since`/404 paths and minimal drill-down JSON without operator-console fields, user docs + plan appendix, and opt-in live list behind `CITADEL_TEST_AUDIT_SESSIONS_LIVE` + `CITADEL_TEST_AUDIT_SESSIONS_NS`. P1 B1 (cross-link cli-audit retrospective) left open until sibling directory lands under specs/done. |
 | cli-ssh-keys | 052318ZMAY26 | Shipped top-level `citadel-cli ssh-key` (list/add/delete) against `/account/ssh-keys`, with public-key-only uploads, private-key rejection, output formats on list, `--output json` on add, httptest matrix including 400/404 paths, `docs/cli.md`, and opt-in `TestLiveSshKeys_list_optIn`. Left P1 B1 (optional delete-ID completion) deliberately open. |
 | cli-org-invitations | 052317ZMAY26 | Delivered `citadel-cli org invitation` (pending, list, create, revoke, accept) with output formats, TTY email prompt, token-file accept, httptest matrix for 409/404/400 paths, docs/cli.md, plan RECON appendix, and opt-in live pending test behind CITADEL_TEST_ORG_INVITATIONS_LIVE=1. |
 | cli-watch | 051430ZMAY26 | CLI watch shipped end-to-end: Citadel exposes SSE list watches on repos, orgs, agents, OAuth clients, members, pending transfers, and agent tokens (polling snapshot diff + keepalive + Last-Event-ID); citadel-cli streams via `--watch`, ndjson/table modes, reconnect/backoff, and B6 scripted SSE tests. P2 C2 operator smoke stays human-owned. |
