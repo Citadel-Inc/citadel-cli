@@ -44,6 +44,10 @@ citadel-cli repo get -R other/ns   # explicit repo
 
 Full reference: [docs/cli.md](docs/cli.md).
 
+## Shell completion
+
+Dynamic tab completion for resource arguments (repos, namespaces, agents, OAuth client IDs, token IDs) calls the Citadel API with your saved session; results are cached for 60 seconds under `$XDG_CACHE_HOME/citadel-cli/completion/` (see [HUMANS.md](HUMANS.md) for details and the `CITADEL_NO_COMPLETION_CACHE` escape hatch). Install the cobra completion scripts with `citadel-cli completion bash|zsh|fish|powershell`.
+
 ## Documentation
 
 - [docs/cli.md](docs/cli.md) — full command reference

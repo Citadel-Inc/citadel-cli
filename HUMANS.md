@@ -53,6 +53,7 @@ Live integration tests (e.g. `oauth_clients_live_test.go`) self-skip without `CI
 - **Auth tokens:** `~/.config/citadel/config.toml` (mode 0600); written by `citadel-cli auth login`.
 - **Override access token:** `CITADEL_ACCESS_TOKEN` env var (1-hour pinned expiry; for CI / scripting).
 - **Repo context:** `CITADEL_REPO=<namespace>/<slug>` selects a repo without `-R`. Only the **`origin`** remote is used for CWD inference; if `origin` is not a Citadel host, pass `-R` explicitly (see README “Repo context”). For private git endpoints, set comma-separated **`CITADEL_GIT_HOSTS`**.
+- **Completion cache:** dynamic shell completion writes JSON cache files under `$XDG_CACHE_HOME/citadel-cli/completion/<server-host>/` with a 60-second TTL. Set **`CITADEL_NO_COMPLETION_CACHE=1`** to skip disk reads/writes (in-memory only, useful for debugging).
 
 ## Documentation
 
