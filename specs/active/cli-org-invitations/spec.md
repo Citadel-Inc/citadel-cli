@@ -41,13 +41,13 @@
 - **Resend invite email** — web / operator (unless REST exists — not in baseline RECON).
 - **Editing invite permissions** — create-only + revoke.
 
-## Decision log
+## Decisions
 
-| Q | Proposal | Status |
-|---|----------|--------|
-| Q1 | `org invitation` vs `namespace invitation`? | **Open** — `org invitation` (org-scoped language). |
-| Q2 | `create` interactive email prompt on TTY? | **Open** — yes when flags omitted. |
-| Q3 | Permissions flag: repeated `--permission` vs JSON file? | **Open** — repeated flag v1. |
+| # | Question | Proposed default | NOMAD |
+|---|----------|------------------|-------|
+| Q1 | `org invitation` vs `namespace invitation`? | `org invitation` (org-scoped language). | Ratified 052313ZMAY26 |
+| Q2 | `create` interactive email prompt on TTY? | Yes when flags omitted. | Ratified 052313ZMAY26 |
+| Q3 | Permissions flag: repeated `--permission` vs JSON file? | Repeated `--permission` v1. | Ratified 052313ZMAY26 |
 
 ## Acceptance
 
