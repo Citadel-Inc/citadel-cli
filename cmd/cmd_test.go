@@ -77,14 +77,16 @@ func TestRepoListFlags(t *testing.T) {
 
 func TestRepoGetOutputFlag(t *testing.T) {
 	c := findSubcmd(t, cmd.RepoCmd, "get")
-	if !hasFlag(c, "output") {
-		t.Error("citadel repo get: missing --output flag")
+	for _, flag := range []string{"output", "repo", "no-cwd-repo"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo get: missing --%s flag", flag)
+		}
 	}
 }
 
 func TestRepoDeleteDestructiveFlags(t *testing.T) {
 	c := findSubcmd(t, cmd.RepoCmd, "delete")
-	for _, flag := range []string{"yes", "output"} {
+	for _, flag := range []string{"yes", "output", "repo", "no-cwd-repo"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel repo delete: missing flag --%s", flag)
 		}
@@ -145,6 +147,17 @@ func TestNamespaceTransferRevokeFlags(t *testing.T) {
 	for _, flag := range []string{"yes", "output"} {
 		if !hasFlag(revoke, flag) {
 			t.Errorf("citadel namespace transfer revoke: missing flag --%s", flag)
+		}
+	}
+}
+
+// ── kg ────────────────────────────────────────────────────────────────────────
+
+func TestKgImpactRepoFlags(t *testing.T) {
+	impact := findSubcmd(t, cmd.KgCmd, "impact")
+	for _, flag := range []string{"json", "depth", "repo", "no-cwd-repo"} {
+		if !hasFlag(impact, flag) {
+			t.Errorf("citadel kg impact: missing --%s flag", flag)
 		}
 	}
 }

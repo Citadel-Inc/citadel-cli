@@ -41,6 +41,15 @@ func addDryRunFlag(cmds ...*cobra.Command) {
 	}
 }
 
+// addRepoFlag registers `-R` / `--repo` and `--no-cwd-repo` for commands that
+// target a single repository (CWD inference via git origin when omitted).
+func addRepoFlag(cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.Flags().StringP("repo", "R", "", "Repository as <namespace>/<slug> (overrides CWD inference)")
+		c.Flags().Bool("no-cwd-repo", false, "Disable CWD git-remote inference (require -R or "+citadelRepoEnv+")")
+	}
+}
+
 // outputFlag returns the resolved `--output` flag value (empty if unset).
 func outputFlag(cmd *cobra.Command) string {
 	v, _ := cmd.Flags().GetString("output")

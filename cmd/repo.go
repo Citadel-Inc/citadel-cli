@@ -42,19 +42,24 @@ Examples:
 }
 
 var repoGetCmd = &cobra.Command{
-	Use:   "get <namespace>/<repo>",
+	Use:   "get [<namespace>/<repo>]",
 	Short: "Get details of a single repository",
 	Long: `Fetches metadata for a single repository by its full path.
 
+If <namespace>/<repo> is omitted, the CLI resolves it from -R/--repo, ` + "`CITADEL_REPO`" + `,
+or the git origin remote in the current directory (Citadel hosts only).
+
 Examples:
   citadel-cli repo get myorg/myrepo
-  citadel-cli repo get myorg/myrepo --output json`,
-	Args: cobra.ExactArgs(1),
+  citadel-cli repo get -R myorg/myrepo
+  citadel-cli repo get --output json
+  citadel-cli repo get`,
+	Args: cobra.RangeArgs(0, 1),
 	RunE: runRepoGet,
 }
 
 var repoDeleteCmd = &cobra.Command{
-	Use:   "delete <namespace>/<repo>",
+	Use:   "delete [<namespace>/<repo>]",
 	Short: "Hard-purge a repository",
 	Long: `Hard-purges a repository: drops the repo namespace + every FK-cascaded
 child (kg_files, kg_symbols, kg_file_content, kg_edges, repos, repo_submodule_pins,
@@ -68,8 +73,9 @@ Requires typed-slug confirmation unless --yes is set.
 
 Examples:
   citadel-cli repo delete myorg/myrepo
-  citadel-cli repo delete myorg/myrepo --yes`,
-	Args: cobra.ExactArgs(1),
+  citadel-cli repo delete -R myorg/myrepo --yes
+  citadel-cli repo delete --yes`,
+	Args: cobra.RangeArgs(0, 1),
 	RunE: runRepoDelete,
 }
 
@@ -171,7 +177,11 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 
 func runRepoGet(cmd *cobra.Command, args []string) error {
 	output := outputFlag(cmd)
-	ns, slug, err := splitRepoArg(args[0])
+	pos := ""
+	if len(args) > 0 {
+		pos = args[0]
+	}
+	ns, slug, err := resolveRepoFromPosOrFlag(cmd, pos)
 	if err != nil {
 		return err
 	}
@@ -206,7 +216,11 @@ func runRepoDelete(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ns, slug, err := splitRepoArg(args[0])
+	pos := ""
+	if len(args) > 0 {
+		pos = args[0]
+	}
+	ns, slug, err := resolveRepoFromPosOrFlag(cmd, pos)
 	if err != nil {
 		return err
 	}
@@ -235,6 +249,7 @@ func init() {
 	RepoCmd.AddCommand(repoDeleteCmd)
 
 	addOutputFlag(repoCreateCmd, repoListCmd, repoGetCmd, repoDeleteCmd)
+	addRepoFlag(repoGetCmd, repoDeleteCmd)
 	addYesFlag(repoDeleteCmd)
 	addDryRunFlag(repoDeleteCmd)
 

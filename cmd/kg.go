@@ -26,17 +26,18 @@ Authentication uses your Supabase JWT from 'citadel-cli auth login'.`,
 }
 
 var kgImpactCmd = &cobra.Command{
-	Use:   "impact <slug> <symbol>",
+	Use:   "impact [<owner>[/<repo>]] <symbol>",
 	Short: "Find direct + transitive callers of a symbol",
 	Long: `Projects a callers-direction BFS into the rename-impact shape:
 direct callers + transitive callers + affected files. Default depth = 2.
 
-<slug> accepts <owner> or <owner>/<repo>. <symbol> accepts a UUID
-(direct call) or a name (resolved via /kg/<owner>/symbols first; if more
+The repository may be given as <owner>, <owner>/<repo>, or omitted when -R/--repo,
+` + "`CITADEL_REPO`" + `, or git origin in the current directory supplies it.
+<symbol> accepts a UUID (direct call) or a name (resolved via /kg/<owner>/symbols first; if more
 than one symbol matches, prints the candidates so you can disambiguate).
 
 Pretty-printed by default; use --json for the raw HTTP response.`,
-	Args: cobra.ExactArgs(2),
+	Args: cobra.RangeArgs(1, 2),
 	RunE: runKgImpact,
 }
 
@@ -57,10 +58,42 @@ func upgradeUnauthorized(err error) error {
 }
 
 func runKgImpact(cmd *cobra.Command, args []string) error {
-	slug := strings.TrimSpace(args[0])
-	symbol := strings.TrimSpace(args[1])
+	symbol := strings.TrimSpace(args[len(args)-1])
 	depth, _ := cmd.Flags().GetInt("depth")
 	rawJSON := jsonFlag(cmd)
+
+	repoFlag, _ := cmd.Flags().GetString("repo")
+	repoFlag = strings.TrimSpace(repoFlag)
+
+	var slug string
+	switch len(args) {
+	case 1:
+		if repoFlag != "" {
+			ns, rslug, err := splitRepoArg(repoFlag)
+			if err != nil {
+				return err
+			}
+			slug = ns + "/" + rslug
+		} else {
+			ns, rslug, err := resolveRepoFlag(cmd)
+			if err != nil {
+				return err
+			}
+			slug = ns + "/" + rslug
+		}
+	case 2:
+		if repoFlag != "" {
+			ns, rslug, err := splitRepoArg(repoFlag)
+			if err != nil {
+				return err
+			}
+			slug = ns + "/" + rslug
+		} else {
+			slug = strings.TrimSpace(args[0])
+		}
+	default:
+		return fmt.Errorf("expected 1 or 2 arguments")
+	}
 
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -227,4 +260,5 @@ func init() {
 	KgCmd.AddCommand(kgImpactCmd)
 	kgImpactCmd.Flags().Int("depth", 0, "BFS depth (1-3, default 2 server-side)")
 	addJSONFlag(kgImpactCmd)
+	addRepoFlag(kgImpactCmd)
 }

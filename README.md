@@ -30,6 +30,18 @@ citadel-cli auth status       # confirm authentication
 citadel-cli repo list         # query the API
 ```
 
+## Repo context (`-R` / CWD)
+
+Commands that target a single repository accept `-R <namespace>/<slug>` (same meaning as `gh -R`). If you omit it, the CLI uses the `CITADEL_REPO` environment variable, then (unless `--no-cwd-repo` is set) infers the repo from `git remote get-url origin` when that remote uses a [Citadel git host](https://src.land) (for example `src.land` or `git.src.land`). Comma-separated `CITADEL_GIT_HOSTS` extends the default host list for self‑hosted deployments.
+
+`--no-cwd-repo` disables CWD inference so scripts never pick up a surprise repo from the current directory; combine it with `-R` or `CITADEL_REPO` when you need an explicit path.
+
+```bash
+cd ~/code/myorg/myrepo          # citadel clone
+citadel-cli repo get            # inferred when origin is a Citadel remote
+citadel-cli repo get -R other/ns   # explicit repo
+```
+
 Full reference: [docs/cli.md](docs/cli.md).
 
 ## Documentation
