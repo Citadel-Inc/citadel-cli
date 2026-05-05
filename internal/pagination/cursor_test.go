@@ -1,6 +1,8 @@
 package pagination
 
 import (
+	"encoding/base64"
+	"errors"
 	"testing"
 	"time"
 
@@ -17,5 +19,76 @@ func TestEncodeDecodeDesc(t *testing.T) {
 	}
 	if got.ID != id || got.TimeUnixNano != ts.UTC().UnixNano() {
 		t.Fatalf("%+v", got)
+	}
+}
+
+func TestDecodeDesc_errors(t *testing.T) {
+	for _, s := range []string{
+		"not-valid-base64!!!",
+		base64.RawURLEncoding.EncodeToString([]byte{1}), // too short
+	} {
+		_, err := DecodeDesc(s)
+		if err == nil || !errors.Is(err, ErrInvalidCursor) {
+			t.Fatalf("DecodeDesc(%q) = _, %v; want wrapped %v", s, err, ErrInvalidCursor)
+		}
+	}
+	wrongVer := make([]byte, 25)
+	wrongVer[0] = 99
+	_, err := DecodeDesc(base64.RawURLEncoding.EncodeToString(wrongVer))
+	if err == nil || !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("wrong version: %v", err)
+	}
+}
+
+func TestEncodeDecodeMemberAsc(t *testing.T) {
+	uid := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	joined := time.Date(2025, 6, 7, 8, 9, 10, 11, time.UTC)
+
+	for _, tc := range []struct {
+		notOwner bool
+	}{
+		{notOwner: false},
+		{notOwner: true},
+	} {
+		s := EncodeMemberAsc(tc.notOwner, joined, uid)
+		got, err := DecodeMemberAsc(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.NotOwner != tc.notOwner || got.JoinedNano != joined.UTC().UnixNano() || got.UserID != uid {
+			t.Fatalf("notOwner=%v: %+v", tc.notOwner, got)
+		}
+	}
+}
+
+func TestDecodeMemberAsc_errors(t *testing.T) {
+	_, err := DecodeMemberAsc(base64.RawURLEncoding.EncodeToString([]byte{cursorV2Mem})) // too short
+	if err == nil || !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("short: %v", err)
+	}
+	raw := make([]byte, 26)
+	raw[0] = cursorV1Desc
+	_, err = DecodeMemberAsc(base64.RawURLEncoding.EncodeToString(raw))
+	if err == nil || !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("wrong kind: %v", err)
+	}
+}
+
+func TestClampLimit(t *testing.T) {
+	for _, tc := range []struct {
+		in   int
+		want int
+	}{
+		{0, DefaultLimit},
+		{-1, DefaultLimit},
+		{1, 1},
+		{50, 50},
+		{MaxLimit, MaxLimit},
+		{MaxLimit + 1, MaxLimit},
+		{9999, MaxLimit},
+	} {
+		if got := ClampLimit(tc.in); got != tc.want {
+			t.Fatalf("ClampLimit(%d) = %d; want %d", tc.in, got, tc.want)
+		}
 	}
 }
