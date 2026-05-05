@@ -45,12 +45,12 @@ Tracked here for symmetry; will be split into a daemon-side spec when this one l
 
 | # | Question | Proposed default | NOMAD |
 |---|----------|------------------|-------|
-| Q1 | Cursor encoding: `(created_at, id)` vs. row offset (`limit/offset`)? | Tuple cursor `(created_at, id)`; not `limit`/`offset` (unsafe under concurrent inserts). | TBD |
-| Q2 | Default `--limit`: 50 (matches server today) vs. 100 (better for human ergonomics)? | 50 to keep first-page latency stable; `--all` covers heavy users. | TBD |
-| Q3 | Max `--limit` cap: 200 vs. 500? | 200 unless an operator surfaces a use case for 500. | TBD |
-| Q4 | Server response: `{ "next_cursor": "..." }` envelope vs. `Link:` HTTP header (RFC 5988)? | JSON envelope with `next_cursor`; not `Link:` header. | TBD |
-| Q5 | Should `--all` cap implicitly to avoid runaway fetches? | No implicit cap; `--all` is opt-in; document the cost. | TBD |
-| Q6 | Should `--all` parallelise pages, or strictly serial? | Strictly serial; cursor causality requires it. | TBD |
+| Q1 | Cursor encoding: `(created_at, id)` vs. row offset (`limit/offset`)? | Tuple cursor `(created_at, id)`; not `limit`/`offset` (unsafe under concurrent inserts). | Ratified 050956ZMAY26 |
+| Q2 | Default `--limit`: 50 (matches server today) vs. 100 (better for human ergonomics)? | 50 to keep first-page latency stable; `--all` covers heavy users. | Ratified 050956ZMAY26 |
+| Q3 | Max `--limit` cap: 200 vs. 500? | 200 unless an operator surfaces a use case for 500. | Ratified 050956ZMAY26 |
+| Q4 | Server response: `{ "next_cursor": "..." }` envelope vs. `Link:` HTTP header (RFC 5988)? | JSON envelope with `next_cursor`; not `Link:` header. | Ratified 050956ZMAY26 |
+| Q5 | Should `--all` cap implicitly to avoid runaway fetches? | No implicit cap; `--all` is opt-in; document the cost. | Ratified 050956ZMAY26 |
+| Q6 | Should `--all` parallelise pages, or strictly serial? | Strictly serial; cursor causality requires it. | Ratified 050956ZMAY26 |
 
 ## Acceptance
 
