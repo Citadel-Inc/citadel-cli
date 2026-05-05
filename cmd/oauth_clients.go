@@ -132,13 +132,13 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 	}
 
 	return emitList(output, clients, "No OAuth clients.", func(w *tabwriter.Writer, clients []oauthClient) {
-		_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tSCOPES\tLAST USED")
+		_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tSCOPES")
 		for _, oc := range clients {
 			scopes := strings.Join(oc.AllowedScopes, ",")
 			if scopes == "" {
 				scopes = "—"
 			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", oc.ClientID, oc.Name, scopes, "—")
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", oc.ClientID, oc.Name, scopes)
 		}
 	})
 }
@@ -297,26 +297,33 @@ func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
 func must[T any](v T, _ error) T { return v }
 
 func copySecretToClipboard(s string) error {
-	var c *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		c = exec.Command("pbcopy")
-	case "windows":
-		c = exec.Command("cmd", "/c", "clip")
-	default:
-		if path, err := exec.LookPath("wl-copy"); err == nil && path != "" {
-			c = exec.Command("wl-copy")
-		} else if path, err := exec.LookPath("xclip"); err == nil && path != "" {
-			c = exec.Command("xclip", "-selection", "clipboard")
-		} else {
-			return fmt.Errorf("install wl-copy or xclip, or copy manually")
-		}
+	c, err := clipboardCommand()
+	if err != nil {
+		return err
 	}
 	c.Stdin = strings.NewReader(s)
 	if out, err := c.CombinedOutput(); err != nil {
 		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
+}
+
+// clipboardCommand picks the right OS clipboard tool, or returns an error
+// describing what to install.
+func clipboardCommand() (*exec.Cmd, error) {
+	switch runtime.GOOS {
+	case "darwin":
+		return exec.Command("pbcopy"), nil
+	case "windows":
+		return exec.Command("cmd", "/c", "clip"), nil
+	}
+	if _, err := exec.LookPath("wl-copy"); err == nil {
+		return exec.Command("wl-copy"), nil
+	}
+	if _, err := exec.LookPath("xclip"); err == nil {
+		return exec.Command("xclip", "-selection", "clipboard"), nil
+	}
+	return nil, fmt.Errorf("install wl-copy or xclip, or copy manually")
 }
 
 func init() {

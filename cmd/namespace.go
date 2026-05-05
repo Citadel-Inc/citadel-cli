@@ -358,10 +358,7 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 	return emitList(output, payload.Transfers, "No pending transfers.", func(w *tabwriter.Writer, transfers []nsTransferRow) {
 		_, _ = fmt.Fprintln(w, "ID\tORG\tFROM\tEXPIRES")
 		for _, t := range transfers {
-			shortID := t.ID
-			if len(shortID) > 8 {
-				shortID = shortID[:8]
-			}
+			shortID := t.ID[:min(len(t.ID), 8)]
 			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 				shortID, t.OrgSlug, t.FromUserSlug, t.ExpiresAt.Format("2006-01-02"))
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -79,7 +80,7 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 	q := url.Values{}
 	q.Set("symbol", symbolID)
 	if depth > 0 {
-		q.Set("depth", fmt.Sprintf("%d", depth))
+		q.Set("depth", strconv.Itoa(depth))
 	}
 	if repo != "" {
 		q.Set("repo", repo)

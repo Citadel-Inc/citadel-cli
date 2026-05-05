@@ -99,14 +99,15 @@ func runMcpTools(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return surfaceErr(err)
 	}
+	w := newTabWriter()
 	for _, t := range tools {
 		if t.Description == "" {
-			fmt.Println(t.Name)
+			_, _ = fmt.Fprintln(w, t.Name)
 		} else {
-			fmt.Printf("%s\t%s\n", t.Name, t.Description)
+			_, _ = fmt.Fprintf(w, "%s\t%s\n", t.Name, t.Description)
 		}
 	}
-	return nil
+	return w.Flush()
 }
 
 func runMcpCall(cmd *cobra.Command, args []string) error {
@@ -181,15 +182,15 @@ func runMcpResourcesList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return surfaceErr(err)
 	}
+	w := newTabWriter()
 	for _, r := range rows {
-		desc := r.Description
-		if desc == "" {
-			fmt.Printf("%s\t%s\n", r.URI, r.Name)
+		if r.Description == "" {
+			_, _ = fmt.Fprintf(w, "%s\t%s\n", r.URI, r.Name)
 		} else {
-			fmt.Printf("%s\t%s\t%s\n", r.URI, r.Name, desc)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", r.URI, r.Name, r.Description)
 		}
 	}
-	return nil
+	return w.Flush()
 }
 
 func runMcpResourcesRead(cmd *cobra.Command, args []string) error {
@@ -231,14 +232,15 @@ func runMcpPromptsList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return surfaceErr(err)
 	}
+	w := newTabWriter()
 	for _, p := range rows {
 		if p.Description == "" {
-			fmt.Println(p.Name)
+			_, _ = fmt.Fprintln(w, p.Name)
 		} else {
-			fmt.Printf("%s\t%s\n", p.Name, p.Description)
+			_, _ = fmt.Fprintf(w, "%s\t%s\n", p.Name, p.Description)
 		}
 	}
-	return nil
+	return w.Flush()
 }
 
 func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
