@@ -128,8 +128,7 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	output, _ := cmd.Flags().GetString("output")
-	return emitList(output, tokens, fmt.Sprintf("No tokens for agent '%s'", agentName), func(w *tabwriter.Writer, tokens []token) {
+	return emitList(outputFlag(cmd), tokens, fmt.Sprintf("No tokens for agent '%s'", agentName), func(w *tabwriter.Writer, tokens []token) {
 		_, _ = fmt.Fprint(w, "ID\tCREATED\tEXPIRES\tREVOKED\n")
 		for _, t := range tokens {
 			expires := ""
@@ -215,7 +214,7 @@ func init() {
 	TokenCmd.AddCommand(revokeCmd)
 
 	listCmd.Flags().String("agent", "", "Agent name (required)")
-	listCmd.Flags().String("output", "", "Output format: json")
+	addOutputFlag(listCmd)
 	issueCmd.Flags().String("agent", "", "Agent name (required)")
 	issueCmd.Flags().StringSlice("scopes", []string{}, "Token scopes (optional)")
 	issueCmd.Flags().String("expires", "", "Expiration duration (optional, e.g. '24h')")

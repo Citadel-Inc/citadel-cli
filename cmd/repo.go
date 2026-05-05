@@ -95,7 +95,7 @@ func runRepoCreate(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	ns, _ := cmd.Flags().GetString("namespace")
 	slug, _ := cmd.Flags().GetString("slug")
 	if ns == "" {
@@ -156,7 +156,7 @@ func listRepos(cmd *cobra.Command, ns string) ([]repoRow, error) {
 }
 
 func runRepoList(cmd *cobra.Command, _ []string) error {
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	ns, _ := cmd.Flags().GetString("namespace")
 	if ns == "" {
 		return fmt.Errorf("--namespace is required")
@@ -176,7 +176,7 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 }
 
 func runRepoGet(cmd *cobra.Command, args []string) error {
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	ns, slug, err := splitRepoArg(args[0])
 	if err != nil {
 		return err
@@ -212,8 +212,7 @@ func runRepoDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	yes, _ := cmd.Flags().GetBool("yes")
-	if err := confirmSlug(yes, "delete", slug); err != nil {
+	if err := confirmSlug(yesFlag(cmd), "delete", slug); err != nil {
 		return err
 	}
 
@@ -231,19 +230,17 @@ func init() {
 	RepoCmd.AddCommand(repoGetCmd)
 	RepoCmd.AddCommand(repoDeleteCmd)
 
+	for _, c := range []*cobra.Command{repoCreateCmd, repoListCmd, repoGetCmd, repoDeleteCmd} {
+		addOutputFlag(c)
+	}
+	addYesFlag(repoDeleteCmd)
+
 	repoCreateCmd.Flags().String("namespace", "", "Parent namespace slug (required)")
 	repoCreateCmd.Flags().String("slug", "", "Repository slug (required)")
 	repoCreateCmd.Flags().String("description", "", "Repository description")
 	repoCreateCmd.Flags().String("visibility", "private", "Visibility: public or private")
 	repoCreateCmd.Flags().String("default-branch", "main", "Default branch name")
 	repoCreateCmd.Flags().Bool("init-with-readme", false, "Initialize with a README")
-	repoCreateCmd.Flags().String("output", "", "Output format: json")
 
 	repoListCmd.Flags().String("namespace", "", "Parent namespace slug (required)")
-	repoListCmd.Flags().String("output", "", "Output format: json")
-
-	repoGetCmd.Flags().String("output", "", "Output format: json")
-
-	repoDeleteCmd.Flags().Bool("yes", false, "Skip confirmation prompt")
-	repoDeleteCmd.Flags().String("output", "", "Output format: json")
 }

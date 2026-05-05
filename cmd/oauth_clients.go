@@ -119,7 +119,7 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	orgSlug, _ := cmd.Flags().GetString("org")
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 
 	path := "/oauth/clients"
 	if orgSlug != "" {
@@ -154,7 +154,7 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 	isPublic, _ := cmd.Flags().GetBool("public")
 	desc, _ := cmd.Flags().GetString("description")
 	scopes, _ := cmd.Flags().GetStringSlice("scope")
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 
 	if name == "" {
 		return fmt.Errorf("--name is required")
@@ -206,7 +206,7 @@ func runOAuthClientsShow(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 
 	var row oauthClient
 	if err := c.Get(cmd.Context(), "/oauth/clients/"+url.PathEscape(id), &row); err != nil {
@@ -237,7 +237,7 @@ func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	copyClip, _ := cmd.Flags().GetBool("copy-to-clipboard")
 
 	var out oauthClientWithSecret
@@ -275,11 +275,10 @@ func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	yes, _ := cmd.Flags().GetBool("yes")
-	if err := confirmTypedValue(yes, "revoke OAuth client", id); err != nil {
+	if err := confirmTypedValue(yesFlag(cmd), "revoke OAuth client", id); err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 
 	if err := c.Delete(cmd.Context(), "/oauth/clients/"+url.PathEscape(id)); err != nil {
 		return err
@@ -327,8 +326,15 @@ func init() {
 	oauthClientsCmd.AddCommand(oauthClientsRotateSecretCmd)
 	oauthClientsCmd.AddCommand(oauthClientsRevokeCmd)
 
+	for _, c := range []*cobra.Command{
+		oauthClientsListCmd, oauthClientsCreateCmd, oauthClientsShowCmd,
+		oauthClientsRotateSecretCmd, oauthClientsRevokeCmd,
+	} {
+		addOutputFlag(c)
+	}
+	addYesFlag(oauthClientsRevokeCmd)
+
 	oauthClientsListCmd.Flags().String("org", "", "Org namespace slug (omit for personal-scope clients)")
-	oauthClientsListCmd.Flags().String("output", "", "Output format: json")
 
 	oauthClientsCreateCmd.Flags().String("name", "", "Display name (required)")
 	oauthClientsCreateCmd.Flags().StringSlice("redirect-uri", nil, "Redirect URI (repeat flag for multiple)")
@@ -336,13 +342,6 @@ func init() {
 	oauthClientsCreateCmd.Flags().Bool("public", false, "Register a public (PKCE-only) client")
 	oauthClientsCreateCmd.Flags().String("description", "", "Optional description")
 	oauthClientsCreateCmd.Flags().StringSlice("scope", nil, "Allowed OAuth scope (repeatable; default server set if omitted)")
-	oauthClientsCreateCmd.Flags().String("output", "", "Output format: json")
 
-	oauthClientsShowCmd.Flags().String("output", "", "Output format: json")
-
-	oauthClientsRotateSecretCmd.Flags().String("output", "", "Output format: json")
 	oauthClientsRotateSecretCmd.Flags().Bool("copy-to-clipboard", false, "Copy rotated secret to clipboard (after printing)")
-
-	oauthClientsRevokeCmd.Flags().Bool("yes", false, "Skip typed-UUID confirmation")
-	oauthClientsRevokeCmd.Flags().String("output", "", "Output format: json")
 }

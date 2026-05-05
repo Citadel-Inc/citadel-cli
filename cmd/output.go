@@ -5,7 +5,42 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+
+	"github.com/spf13/cobra"
 )
+
+// addOutputFlag registers the standard `--output` flag on c.
+func addOutputFlag(c *cobra.Command) {
+	c.Flags().String("output", "", "Output format: json")
+}
+
+// addYesFlag registers the standard `--yes` flag on c.
+func addYesFlag(c *cobra.Command) {
+	c.Flags().Bool("yes", false, "Skip confirmation prompt")
+}
+
+// addJSONFlag registers the standard `--json` flag on c.
+func addJSONFlag(c *cobra.Command) {
+	c.Flags().Bool("json", false, "Output raw JSON")
+}
+
+// outputFlag returns the resolved `--output` flag value (empty if unset).
+func outputFlag(cmd *cobra.Command) string {
+	v, _ := cmd.Flags().GetString("output")
+	return v
+}
+
+// yesFlag returns the resolved `--yes` flag value.
+func yesFlag(cmd *cobra.Command) bool {
+	v, _ := cmd.Flags().GetBool("yes")
+	return v
+}
+
+// jsonFlag returns the resolved `--json` flag value.
+func jsonFlag(cmd *cobra.Command) bool {
+	v, _ := cmd.Flags().GetBool("json")
+	return v
+}
 
 // emitJSON writes v as indented JSON to stdout.
 func emitJSON(v any) error {

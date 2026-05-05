@@ -234,7 +234,7 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 
 	orgs, err := listOrgNamespaces(cmd.Context(), c)
 	if err != nil {
@@ -254,7 +254,7 @@ func runNsGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	slug := args[0]
 
 	var ns nsRow
@@ -286,7 +286,7 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	slug := args[0]
 
 	var payload struct {
@@ -317,15 +317,14 @@ func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	orgSlug := args[0]
 	to, _ := cmd.Flags().GetString("to")
 	if to == "" {
 		return fmt.Errorf("--to is required")
 	}
 
-	yes, _ := cmd.Flags().GetBool("yes")
-	if err := confirmSlug(yes, "transfer", orgSlug); err != nil {
+	if err := confirmSlug(yesFlag(cmd), "transfer", orgSlug); err != nil {
 		return err
 	}
 
@@ -349,7 +348,7 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 
 	var payload struct {
 		Transfers []nsTransferRow `json:"transfers"`
@@ -376,7 +375,7 @@ func runNsTransferAccept(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	transferID := args[0]
 
 	var result map[string]any
@@ -412,8 +411,7 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 	}
 	transferID := args[0]
 
-	yes, _ := cmd.Flags().GetBool("yes")
-	if err := confirmSlug(yes, "revoke transfer", transferID); err != nil {
+	if err := confirmSlug(yesFlag(cmd), "revoke transfer", transferID); err != nil {
 		return err
 	}
 
@@ -430,8 +428,7 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	slug := strings.TrimSpace(args[0])
-	yes, _ := cmd.Flags().GetBool("yes")
-	if err := confirmSlug(yes, "delete namespace", slug); err != nil {
+	if err := confirmSlug(yesFlag(cmd), "delete namespace", slug); err != nil {
 		return err
 	}
 
@@ -478,18 +475,15 @@ func init() {
 	nsTransferCmd.AddCommand(nsTransferDeclineCmd)
 	nsTransferCmd.AddCommand(nsTransferRevokeCmd)
 
-	nsListCmd.Flags().String("output", "", "Output format: json")
-	nsGetCmd.Flags().String("output", "", "Output format: json")
-	nsMembersCmd.Flags().String("output", "", "Output format: json")
-	nsDeleteCmd.Flags().Bool("yes", false, "Skip confirmation prompt")
-
+	for _, c := range []*cobra.Command{
+		nsListCmd, nsGetCmd, nsMembersCmd, nsDeleteCmd,
+		nsTransferInitiateCmd, nsTransferListPendingCmd,
+		nsTransferAcceptCmd, nsTransferDeclineCmd, nsTransferRevokeCmd,
+	} {
+		addOutputFlag(c)
+	}
+	for _, c := range []*cobra.Command{nsDeleteCmd, nsTransferInitiateCmd, nsTransferRevokeCmd} {
+		addYesFlag(c)
+	}
 	nsTransferInitiateCmd.Flags().String("to", "", "Recipient username (required)")
-	nsTransferInitiateCmd.Flags().Bool("yes", false, "Skip confirmation prompt")
-	nsTransferInitiateCmd.Flags().String("output", "", "Output format: json")
-
-	nsTransferListPendingCmd.Flags().String("output", "", "Output format: json")
-	nsTransferAcceptCmd.Flags().String("output", "", "Output format: json")
-	nsTransferDeclineCmd.Flags().String("output", "", "Output format: json")
-	nsTransferRevokeCmd.Flags().Bool("yes", false, "Skip confirmation prompt")
-	nsTransferRevokeCmd.Flags().String("output", "", "Output format: json")
 }

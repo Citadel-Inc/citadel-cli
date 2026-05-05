@@ -108,7 +108,7 @@ func runMcpTools(cmd *cobra.Command, _ []string) error {
 
 func runMcpCall(cmd *cobra.Command, args []string) error {
 	toolName := args[0]
-	rawJSON, _ := cmd.Flags().GetBool("json")
+	rawJSON := jsonFlag(cmd)
 	argPairs, _ := cmd.Flags().GetStringSlice("arg")
 	stringArgPairs, _ := cmd.Flags().GetStringSlice("arg-string")
 
@@ -171,7 +171,7 @@ func runMcpResourcesList(cmd *cobra.Command, _ []string) error {
 
 func runMcpResourcesRead(cmd *cobra.Command, args []string) error {
 	uri := args[0]
-	rawJSON, _ := cmd.Flags().GetBool("json")
+	rawJSON := jsonFlag(cmd)
 	c, err := dialMCP(cmd)
 	if err != nil {
 		return err
@@ -222,7 +222,7 @@ func runMcpPromptsList(cmd *cobra.Command, _ []string) error {
 
 func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
 	name := args[0]
-	rawJSON, _ := cmd.Flags().GetBool("json")
+	rawJSON := jsonFlag(cmd)
 	argPairs, _ := cmd.Flags().GetStringSlice("arg")
 	stringArgPairs, _ := cmd.Flags().GetStringSlice("arg-string")
 
@@ -452,10 +452,9 @@ func init() {
 
 	callCmd.Flags().StringSlice("arg", []string{}, "Tool arguments as key=value pairs (digits→number, CSV→array, else string)")
 	callCmd.Flags().StringSlice("arg-string", []string{}, "Tool arguments forced to string (no coercion)")
-	callCmd.Flags().Bool("json", false, "Output raw JSON-RPC tools/call result")
-
-	mcpResourcesReadCmd.Flags().Bool("json", false, "Output raw JSON-RPC resources/read result")
 	mcpPromptsGetCmd.Flags().StringSlice("arg", []string{}, "Prompt arguments as key=value (same coercion as mcp call)")
 	mcpPromptsGetCmd.Flags().StringSlice("arg-string", []string{}, "Prompt arguments forced to string")
-	mcpPromptsGetCmd.Flags().Bool("json", false, "Output raw JSON-RPC prompts/get result")
+	for _, c := range []*cobra.Command{callCmd, mcpResourcesReadCmd, mcpPromptsGetCmd} {
+		addJSONFlag(c)
+	}
 }

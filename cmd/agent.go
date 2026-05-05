@@ -130,7 +130,7 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 
 	rows, err := listAgentRows(cmd.Context(), c)
 	if err != nil {
@@ -154,7 +154,7 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	name := args[0]
 
 	rows, err := listAgentRows(cmd.Context(), c)
@@ -187,8 +187,7 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	yes, _ := cmd.Flags().GetBool("yes")
-	if err := confirmSlug(yes, "delete agent", name); err != nil {
+	if err := confirmSlug(yesFlag(cmd), "delete agent", name); err != nil {
 		return err
 	}
 
@@ -206,8 +205,7 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	}
 	name := args[0]
 
-	yes, _ := cmd.Flags().GetBool("yes")
-	if err := confirmSlug(yes, "rotate token for agent", name); err != nil {
+	if err := confirmSlug(yesFlag(cmd), "rotate token for agent", name); err != nil {
 		return err
 	}
 
@@ -254,10 +252,10 @@ func init() {
 	AgentCmd.AddCommand(agentDeleteCmd)
 	AgentCmd.AddCommand(agentRotateTokenCmd)
 
-	agentListCmd.Flags().String("output", "", "Output format: json")
-	agentGetCmd.Flags().String("output", "", "Output format: json")
-	agentDeleteCmd.Flags().Bool("yes", false, "Skip confirmation prompt")
-	agentDeleteCmd.Flags().String("output", "", "Output format: json")
-	agentRotateTokenCmd.Flags().Bool("yes", false, "Skip confirmation prompt")
-	agentRotateTokenCmd.Flags().String("output", "", "Output format: json")
+	addOutputFlag(agentListCmd)
+	addOutputFlag(agentGetCmd)
+	addOutputFlag(agentDeleteCmd)
+	addOutputFlag(agentRotateTokenCmd)
+	addYesFlag(agentDeleteCmd)
+	addYesFlag(agentRotateTokenCmd)
 }
