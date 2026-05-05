@@ -81,7 +81,7 @@ func FetchOrgNamespaceSlugs(ctx context.Context, c *apiclient.Client) ([]string,
 			out = append(out, s)
 		}
 	}
-	return out, nil
+	return sortDedupe(out), nil
 }
 
 // FetchRepoSlugs lists repo slugs for a parent namespace.
@@ -105,7 +105,7 @@ func FetchRepoSlugs(ctx context.Context, c *apiclient.Client, parentNamespace st
 			out = append(out, s)
 		}
 	}
-	return out, nil
+	return sortDedupe(out), nil
 }
 
 // FetchAgentNames lists agent display names from GET /agents.
@@ -122,7 +122,7 @@ func FetchAgentNames(ctx context.Context, c *apiclient.Client) ([]string, error)
 			out = append(out, s)
 		}
 	}
-	return out, nil
+	return sortDedupe(out), nil
 }
 
 // FetchOAuthClientIDs lists OAuth client resource UUIDs from GET /oauth/clients.
@@ -139,7 +139,7 @@ func FetchOAuthClientIDs(ctx context.Context, c *apiclient.Client) ([]string, er
 			out = append(out, s)
 		}
 	}
-	return out, nil
+	return sortDedupe(out), nil
 }
 
 // FetchAgentTokenIDs lists token UUIDs from GET /agent-tokens.
@@ -156,5 +156,5 @@ func FetchAgentTokenIDs(ctx context.Context, c *apiclient.Client) ([]string, err
 			out = append(out, s)
 		}
 	}
-	return out, nil
+	return sortDedupe(out), nil
 }
