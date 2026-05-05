@@ -636,7 +636,7 @@ func TestKgImpact_WithUUID(t *testing.T) {
 				t.Errorf("want symbol=%s, got %s", id, r.URL.Query().Get("symbol"))
 			}
 			writeJSON(t, w, 200, map[string]any{
-				"symbol": map[string]any{"id": id, "kind": "function", "name": "foo", "path": "x.go"},
+				"symbol":             map[string]any{"id": id, "kind": "function", "name": "foo", "path": "x.go"},
 				"direct_callers":     []any{},
 				"transitive_callers": []any{},
 				"affected_files":     []string{"x.go"},
