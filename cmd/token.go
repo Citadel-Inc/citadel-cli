@@ -45,40 +45,27 @@ var revokeCmd = &cobra.Command{
 	RunE:  runTokenRevoke,
 }
 
+// token mirrors the server agent_tokens row (canonical shape used by every
+// token verb plus agent rotate-token).
 type token struct {
 	ID        uuid.UUID  `json:"id"`
 	AgentID   uuid.UUID  `json:"agent_id"`
 	CreatedAt time.Time  `json:"created_at"`
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 	RevokedAt *time.Time `json:"revoked_at,omitempty"`
-	Scopes    any        `json:"scopes"`
+	Scopes    []string   `json:"scopes,omitempty"`
 }
 
+// tokenWithCleartext is the issue / rotate response shape.
 type tokenWithCleartext struct {
 	token
 	CleartextToken string `json:"cleartext_token"`
 }
 
-type agent struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-}
-
-// listAgentsViaClient is the apiclient-based replacement for the legacy
-// listAgents helper. agentRow (from cmd/agent.go) is the canonical shape; we
-// re-decode here as []agent for the uuid.UUID-typed fields used by token verbs.
-func listAgentsViaClient(ctx context.Context, c *apiclient.Client) ([]agent, error) {
-	var rows []agent
-	if err := c.Get(ctx, "/agents", &rows); err != nil {
-		return nil, err
-	}
-	return rows, nil
-}
-
 // findOrCreateAgent returns the agent's UUID for name, creating a new agent
 // if no match exists.
 func findOrCreateAgent(ctx context.Context, c *apiclient.Client, name string) (uuid.UUID, error) {
-	rows, err := listAgentsViaClient(ctx, c)
+	rows, err := listAgentRows(ctx, c)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -87,25 +74,11 @@ func findOrCreateAgent(ctx context.Context, c *apiclient.Client, name string) (u
 			return a.ID, nil
 		}
 	}
-	var created agent
+	var created agentRow
 	if err := c.Post(ctx, "/agents", map[string]string{"name": name}, &created); err != nil {
 		return uuid.Nil, fmt.Errorf("create agent: %w", err)
 	}
 	return created.ID, nil
-}
-
-// findAgentID returns the agent's UUID for name, or an error if not found.
-func findAgentID(ctx context.Context, c *apiclient.Client, name string) (uuid.UUID, error) {
-	rows, err := listAgentsViaClient(ctx, c)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	for _, a := range rows {
-		if a.Name == name {
-			return a.ID, nil
-		}
-	}
-	return uuid.Nil, fmt.Errorf("agent not found: %s", name)
 }
 
 func runTokenList(cmd *cobra.Command, _ []string) error {
@@ -118,13 +91,13 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--agent flag required")
 	}
 
-	agentID, err := findAgentID(cmd.Context(), c, agentName)
+	a, err := findAgentByName(cmd.Context(), c, agentName)
 	if err != nil {
 		return err
 	}
 
 	var tokens []token
-	if err := c.Get(cmd.Context(), "/agent-tokens?agent_id="+url.QueryEscape(agentID.String()), &tokens); err != nil {
+	if err := c.Get(cmd.Context(), "/agent-tokens?agent_id="+url.QueryEscape(a.ID.String()), &tokens); err != nil {
 		return err
 	}
 

@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"os"
 	"text/tabwriter"
-	"time"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
@@ -70,27 +70,13 @@ Examples:
 	RunE: runAgentRotateToken,
 }
 
-// agentRow is the CLI-side representation of an agent.
+// agentRow is the canonical CLI-side representation of an agent. Shared
+// across cmd/agent.go and cmd/token.go.
 type agentRow struct {
-	ID        string  `json:"id"`
-	OwnerID   string  `json:"owner_user_id"`
-	Name      string  `json:"name"`
-	ModelHint *string `json:"model_hint,omitempty"`
-}
-
-// agentToken mirrors the server Token shape for rotate-token operations.
-type agentToken struct {
-	ID        string     `json:"id"`
-	AgentID   string     `json:"agent_id"`
-	CreatedAt time.Time  `json:"created_at"`
-	ExpiresAt *time.Time `json:"expires_at,omitempty"`
-	RevokedAt *time.Time `json:"revoked_at,omitempty"`
-}
-
-// agentTokenWithCleartext is the issue response shape.
-type agentTokenWithCleartext struct {
-	agentToken
-	CleartextToken string `json:"cleartext_token"`
+	ID        uuid.UUID `json:"id"`
+	OwnerID   string    `json:"owner_user_id,omitempty"`
+	Name      string    `json:"name"`
+	ModelHint *string   `json:"model_hint,omitempty"`
 }
 
 // listAgentRows fetches all agents owned by the authenticated user.
@@ -102,18 +88,18 @@ func listAgentRows(ctx context.Context, c *apiclient.Client) ([]agentRow, error)
 	return rows, nil
 }
 
-// resolveAgentID returns the agent's UUID by name; returns a not-found error if absent.
-func resolveAgentID(ctx context.Context, c *apiclient.Client, name string) (string, error) {
+// findAgentByName returns the agent row matching name, or a not-found error.
+func findAgentByName(ctx context.Context, c *apiclient.Client, name string) (agentRow, error) {
 	rows, err := listAgentRows(ctx, c)
 	if err != nil {
-		return "", err
+		return agentRow{}, err
 	}
 	for _, a := range rows {
 		if a.Name == name {
-			return a.ID, nil
+			return a, nil
 		}
 	}
-	return "", fmt.Errorf("agent '%s' not found", name)
+	return agentRow{}, fmt.Errorf("agent '%s' not found", name)
 }
 
 func newAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
@@ -144,7 +130,7 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 			if a.ModelHint != nil {
 				hint = *a.ModelHint
 			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, a.ID, hint)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, a.ID.String(), hint)
 		}
 	})
 }
@@ -165,7 +151,7 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 		if a.Name == name {
 			return emitOne(output, a, func(w *tabwriter.Writer, a agentRow) {
 				_, _ = fmt.Fprintf(w, "Name:\t%s\n", a.Name)
-				_, _ = fmt.Fprintf(w, "ID:\t%s\n", a.ID)
+				_, _ = fmt.Fprintf(w, "ID:\t%s\n", a.ID.String())
 				if a.ModelHint != nil {
 					_, _ = fmt.Fprintf(w, "Model hint:\t%s\n", *a.ModelHint)
 				}
@@ -182,7 +168,7 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 	}
 	name := args[0]
 
-	agentID, err := resolveAgentID(cmd.Context(), c, name)
+	a, err := findAgentByName(cmd.Context(), c, name)
 	if err != nil {
 		return err
 	}
@@ -191,7 +177,7 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := c.Delete(cmd.Context(), "/agents/"+url.PathEscape(agentID)); err != nil {
+	if err := c.Delete(cmd.Context(), "/agents/"+url.PathEscape(a.ID.String())); err != nil {
 		return err
 	}
 	fmt.Printf("Agent '%s' deleted.\n", name)
@@ -209,19 +195,20 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	agentID, err := resolveAgentID(cmd.Context(), c, name)
+	a, err := findAgentByName(cmd.Context(), c, name)
 	if err != nil {
 		return err
 	}
+	agentID := a.ID.String()
 
 	// Issue new token first.
-	var newTok agentTokenWithCleartext
+	var newTok tokenWithCleartext
 	if err := c.Post(cmd.Context(), "/agent-tokens", map[string]string{"agent_id": agentID}, &newTok); err != nil {
 		return fmt.Errorf("issue token: %w", err)
 	}
 
 	// List existing tokens to revoke all but the new one.
-	var existingTokens []agentToken
+	var existingTokens []token
 	if err := c.Get(cmd.Context(), "/agent-tokens?agent_id="+url.QueryEscape(agentID), &existingTokens); err != nil {
 		return fmt.Errorf("list tokens: %w", err)
 	}
@@ -232,7 +219,7 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 		if t.ID == newTok.ID || t.RevokedAt != nil {
 			continue
 		}
-		if err := c.Delete(cmd.Context(), "/agent-tokens/"+url.PathEscape(t.ID)); err != nil {
+		if err := c.Delete(cmd.Context(), "/agent-tokens/"+url.PathEscape(t.ID.String())); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to revoke token %s: %v\n", t.ID, err)
 			revokeErrs = append(revokeErrs, err)
 		}

@@ -100,7 +100,7 @@ func writeJSON(t *testing.T, w http.ResponseWriter, status int, v any) {
 func TestAgentList_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": "a1", "name": "x", "owner_user_id": "u1"}})
+			writeJSON(t, w, 200, []map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "x", "owner_user_id": "u1"}})
 		},
 	}))
 	if err := rootFor(cmd.AgentCmd, "list").Execute(); err != nil {
@@ -143,7 +143,7 @@ func TestAgentList_NoAuth(t *testing.T) {
 func TestAgentGet_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": "a1", "name": "alpha", "owner_user_id": "u1"}})
+			writeJSON(t, w, 200, []map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "alpha", "owner_user_id": "u1"}})
 		},
 	}))
 	if err := rootFor(cmd.AgentCmd, "get", "alpha").Execute(); err != nil {
@@ -166,9 +166,9 @@ func TestAgentGet_NotFound(t *testing.T) {
 func TestAgentDelete_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": "a1", "name": "alpha", "owner_user_id": "u1"}})
+			writeJSON(t, w, 200, []map[string]any{{"id": "00000000-0000-0000-0000-00000000000a", "name": "alpha", "owner_user_id": "u1"}})
 		},
-		"DELETE /agents/a1": func(w http.ResponseWriter, _ *http.Request) {
+		"DELETE /agents/00000000-0000-0000-0000-00000000000a": func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
@@ -190,25 +190,30 @@ func TestAgentDelete_NotFound(t *testing.T) {
 }
 
 func TestAgentRotateToken_Happy(t *testing.T) {
+	const (
+		agentID = "00000000-0000-0000-0000-00000000000a"
+		newTok  = "00000000-0000-0000-0000-00000000000b"
+		oldTok  = "00000000-0000-0000-0000-00000000000c"
+	)
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{{"id": "a1", "name": "alpha", "owner_user_id": "u1"}})
+			writeJSON(t, w, 200, []map[string]any{{"id": agentID, "name": "alpha", "owner_user_id": "u1"}})
 		},
 		"POST /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, 201, map[string]any{
-				"id": "tok-new", "agent_id": "a1", "created_at": "2026-01-01T00:00:00Z", "cleartext_token": "sb_at_xxx",
+				"id": newTok, "agent_id": agentID, "created_at": "2026-01-01T00:00:00Z", "cleartext_token": "sb_at_xxx",
 			})
 		},
 		"GET /agent-tokens": func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Query().Get("agent_id") != "a1" {
+			if r.URL.Query().Get("agent_id") != agentID {
 				t.Errorf("missing agent_id query")
 			}
 			writeJSON(t, w, 200, []map[string]any{
-				{"id": "tok-old", "agent_id": "a1", "created_at": "2026-01-01T00:00:00Z"},
-				{"id": "tok-new", "agent_id": "a1", "created_at": "2026-01-01T00:00:00Z"},
+				{"id": oldTok, "agent_id": agentID, "created_at": "2026-01-01T00:00:00Z"},
+				{"id": newTok, "agent_id": agentID, "created_at": "2026-01-01T00:00:00Z"},
 			})
 		},
-		"DELETE /agent-tokens/tok-old": func(w http.ResponseWriter, _ *http.Request) {
+		"DELETE /agent-tokens/" + oldTok: func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
