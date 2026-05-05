@@ -269,7 +269,7 @@ func runAuditShow(cmd *cobra.Command, args []string) error {
 			_, _ = fmt.Fprintf(w, "Client IP:\t%s\n", detail.ClientIP)
 		}
 		_, _ = fmt.Fprintln(w, "\nPayload:")
-		var pretty json.RawMessage = detail.Payload
+		pretty := detail.Payload
 		if len(pretty) > 0 {
 			buf := &bytes.Buffer{}
 			if err := json.Indent(buf, pretty, "", "  "); err == nil {
