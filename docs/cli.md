@@ -17,14 +17,14 @@ cp ./citadel-cli /usr/local/bin/citadel-cli
 ### Via `go install` (latest)
 
 ```bash
-go install github.com/Rethunk-Tech/citadel/cmd/citadel-cli@latest
+go install github.com/Rethunk-Tech/citadel-cli@latest
 ```
 
 This installs to `~/go/bin/citadel-cli`; add `~/go/bin` to your `PATH` if it is not already there.
 
 ### Binary releases (future)
 
-Once v1 is stable, pre-built binaries for linux-amd64, linux-arm64, and darwin-arm64 will be published to GitHub Releases. Check <https://github.com/Rethunk-Tech/citadel/releases/> for availability.
+Once v1 is stable, pre-built binaries for linux-amd64, linux-arm64, and darwin-arm64 will be published to GitHub Releases. Check <https://github.com/Rethunk-Tech/citadel-cli/releases/> for availability.
 
 ## First-run flow
 
@@ -238,19 +238,19 @@ This will create a fresh config.
 
 ## Distribution
 
-The CLI binary is built by the GitHub Actions release workflow on every annotated tag matching `citadel-cli-v*`, producing static binaries for `linux-amd64`, `linux-arm64`, and `darwin-arm64`. Channels:
+The CLI binary is built by the GitHub Actions release workflow on every annotated tag matching `v*`, producing static binaries for `linux-amd64`, `linux-arm64`, and `darwin-arm64`. Channels:
 
-- **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Rethunk-Tech/citadel/releases/tag/<tag>` with the three binaries + a `SHA256SUMS` file. Manual download:
+- **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Rethunk-Tech/citadel-cli/releases/tag/<tag>` with the three binaries + a `SHA256SUMS` file. Manual download:
 
   ```bash
-  # Replace v0.x.y with the latest tag. GitHub asset is named citadel-linux-amd64; install on PATH as citadel-cli.
-  curl -L -o citadel-linux-amd64 \
-    https://github.com/Rethunk-Tech/citadel/releases/download/citadel-cli-v0.x.y/citadel-linux-amd64
+  # Replace v0.x.y with the latest tag.
+  curl -L -o citadel-cli-linux-amd64 \
+    https://github.com/Rethunk-Tech/citadel-cli/releases/download/v0.x.y/citadel-cli-linux-amd64
   curl -L -o SHA256SUMS \
-    https://github.com/Rethunk-Tech/citadel/releases/download/citadel-cli-v0.x.y/SHA256SUMS
+    https://github.com/Rethunk-Tech/citadel-cli/releases/download/v0.x.y/SHA256SUMS
   sha256sum -c SHA256SUMS --ignore-missing
-  chmod +x citadel-linux-amd64
-  sudo mv citadel-linux-amd64 /usr/local/bin/citadel-cli
+  chmod +x citadel-cli-linux-amd64
+  sudo mv citadel-cli-linux-amd64 /usr/local/bin/citadel-cli
   ```
 
 - **Homebrew tap (deferred).** Suggested formula path `rethunk-tech/tap/citadel-cli`. Land when a second non-operator user adopts the CLI; until then, GH Releases is sufficient.
