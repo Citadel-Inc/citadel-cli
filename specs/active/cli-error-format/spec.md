@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | APPROVED 051044ZMAY26 |
+| Status | IN_PROGRESS 051044ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 050900ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | 2026-05-05 enhancement sweep: every CLI error today goes to stderr as plain text via `Error: %v` in main.go. Scripts piping `--output json` get a JSON document on stdout for the success path and an unparseable English sentence on stderr for the failure path. Operators must regex-match error strings to branch on error class. |
