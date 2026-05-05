@@ -1,0 +1,30 @@
+citadel-cli — third-party notices
+=================================
+
+This file lists material third-party open-source components shipped with or
+used to build `citadel-cli`. **citadel-cli itself** (excluding those third-party
+components) is **proprietary** — see the repository root **`LICENSE`**.
+
+Third-party components remain under their respective licenses.
+
+Go toolchain and standard library
+---------------------------------
+The Go compiler and standard library are copyright The Go Authors and
+distributed under the BSD 3-Clause "New" or "Revised" License. See:
+https://go.dev/LICENSE
+
+Go module dependencies
+----------------------
+The following direct Go modules are included in release binaries built from
+this repository. SPDX-style identifiers are shown where well established;
+see each module's repository for the full license text.
+
+| Module | SPDX / known license | Copyright / notes |
+|--------|----------------------|-------------------|
+| github.com/spf13/cobra | Apache-2.0 | Copyright © Steve Francia |
+| github.com/BurntSushi/toml | MIT | Copyright © BurntSushi LLC |
+| github.com/golang-jwt/jwt/v5 | MIT | Copyright © golang-jwt maintainers |
+| github.com/google/uuid | BSD-3-Clause | Copyright © Google, Inc. |
+
+This table is hand-maintained from `go.mod` / `go.sum`. For a machine-readable
+full dependency graph and versions, use `go mod vendor` or `go list -deps -json ./...`.
