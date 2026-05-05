@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,7 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 )
 
 // NamespaceCmd is the top-level `citadel namespace` command.
@@ -220,44 +220,24 @@ type nsTransferRow struct {
 
 // ── handlers ─────────────────────────────────────────────────────────────────
 
-func listOrgNamespaces(serverURL, accessToken string) ([]nsOrgRow, error) {
-	req, _ := http.NewRequest(http.MethodGet, serverURL+"/orgs", nil)
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
-
+func listOrgNamespaces(ctx context.Context, c *apiclient.Client) ([]nsOrgRow, error) {
 	var payload struct {
 		Orgs []nsOrgRow `json:"orgs"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+	if err := c.Get(ctx, "/orgs", &payload); err != nil {
+		return nil, err
 	}
 	return payload.Orgs, nil
 }
 
-func runNsList(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+func runNsList(cmd *cobra.Command, _ []string) error {
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
 	output, _ := cmd.Flags().GetString("output")
 
-	orgs, err := listOrgNamespaces(serverURL, cfg.AccessToken)
+	orgs, err := listOrgNamespaces(cmd.Context(), c)
 	if err != nil {
 		return err
 	}
@@ -265,7 +245,6 @@ func runNsList(cmd *cobra.Command, args []string) error {
 	if output == "json" {
 		return emitJSON(orgs)
 	}
-
 	if len(orgs) == 0 {
 		fmt.Println("No org namespaces found.")
 		return nil
@@ -280,41 +259,20 @@ func runNsList(cmd *cobra.Command, args []string) error {
 }
 
 func runNsGet(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
 	output, _ := cmd.Flags().GetString("output")
-
 	slug := args[0]
 
-	apiURL := fmt.Sprintf("%s/namespaces/%s", serverURL, url.PathEscape(slug))
-	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("namespace '%s' not found", slug)
-	}
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
-
 	var ns nsRow
-	if err := json.NewDecoder(resp.Body).Decode(&ns); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	if err := c.Get(cmd.Context(), "/namespaces/"+url.PathEscape(slug), &ns); err != nil {
+		var he *apiclient.HTTPError
+		if errors.As(err, &he) && he.StatusCode == http.StatusNotFound {
+			return fmt.Errorf("namespace '%s' not found", slug)
+		}
+		return err
 	}
 
 	if output == "json" {
@@ -337,47 +295,24 @@ func runNsGet(cmd *cobra.Command, args []string) error {
 }
 
 func runNsMembers(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
 	output, _ := cmd.Flags().GetString("output")
-
 	slug := args[0]
-
-	apiURL := fmt.Sprintf("%s/orgs/%s/members", serverURL, url.PathEscape(slug))
-	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
 
 	var payload struct {
 		Members []nsMemberRow `json:"members"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	if err := c.Get(cmd.Context(), "/orgs/"+url.PathEscape(slug)+"/members", &payload); err != nil {
+		return err
 	}
 	members := payload.Members
 
 	if output == "json" {
 		return emitJSON(members)
 	}
-
 	if len(members) == 0 {
 		fmt.Printf("No members in namespace '%s'\n", slug)
 		return nil
@@ -400,18 +335,11 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 }
 
 func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
 	output, _ := cmd.Flags().GetString("output")
-
 	orgSlug := args[0]
 	to, _ := cmd.Flags().GetString("to")
 	if to == "" {
@@ -423,38 +351,14 @@ func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	reqBody := struct {
-		ToUsername string `json:"to_username,omitempty"`
-	}{
-		ToUsername: to,
-	}
-	bodyBytes, _ := json.Marshal(reqBody)
-
-	apiURL := fmt.Sprintf("%s/orgs/%s/transfer", serverURL, url.PathEscape(orgSlug))
-	req, _ := http.NewRequest(http.MethodPost, apiURL, bytes.NewReader(bodyBytes))
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
-
 	var result map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	if err := c.Post(cmd.Context(), "/orgs/"+url.PathEscape(orgSlug)+"/transfer", map[string]string{"to_username": to}, &result); err != nil {
+		return err
 	}
 
 	if output == "json" {
 		return emitJSON(result)
 	}
-
 	id, _ := result["id"].(string)
 	fmt.Printf("Transfer initiated. ID: %s\n", id)
 	fmt.Printf("The recipient '%s' must accept via:\n", to)
@@ -462,44 +366,23 @@ func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runNsTransferListPending(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
 	output, _ := cmd.Flags().GetString("output")
-
-	req, _ := http.NewRequest(http.MethodGet, serverURL+"/transfers/pending", nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
 
 	var payload struct {
 		Transfers []nsTransferRow `json:"transfers"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	if err := c.Get(cmd.Context(), "/transfers/pending", &payload); err != nil {
+		return err
 	}
 
 	if output == "json" {
 		return emitJSON(payload.Transfers)
 	}
-
 	if len(payload.Transfers) == 0 {
 		fmt.Println("No pending transfers.")
 		return nil
@@ -519,38 +402,16 @@ func runNsTransferListPending(cmd *cobra.Command, args []string) error {
 }
 
 func runNsTransferAccept(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
 	output, _ := cmd.Flags().GetString("output")
-
 	transferID := args[0]
 
-	apiURL := fmt.Sprintf("%s/transfers/%s/accept", serverURL, url.PathEscape(transferID))
-	req, _ := http.NewRequest(http.MethodPost, apiURL, http.NoBody)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
-
 	var result map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	if err := c.Post(cmd.Context(), "/transfers/"+url.PathEscape(transferID)+"/accept", nil, &result); err != nil {
+		return err
 	}
 
 	if output == "json" {
@@ -561,49 +422,24 @@ func runNsTransferAccept(cmd *cobra.Command, args []string) error {
 }
 
 func runNsTransferDecline(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
-
 	transferID := args[0]
 
-	apiURL := fmt.Sprintf("%s/transfers/%s/decline", serverURL, url.PathEscape(transferID))
-	req, _ := http.NewRequest(http.MethodPost, apiURL, http.NoBody)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
+	if err := c.Post(cmd.Context(), "/transfers/"+url.PathEscape(transferID)+"/decline", nil, nil); err != nil {
+		return err
 	}
 	fmt.Printf("Transfer %s declined.\n", transferID)
 	return nil
 }
 
 func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
-
 	transferID := args[0]
 
 	yes, _ := cmd.Flags().GetBool("yes")
@@ -611,77 +447,52 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	apiURL := fmt.Sprintf("%s/transfers/%s", serverURL, url.PathEscape(transferID))
-	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
+	if err := c.Delete(cmd.Context(), "/transfers/"+url.PathEscape(transferID)); err != nil {
+		return err
 	}
 	fmt.Printf("Transfer %s revoked.\n", transferID)
 	return nil
 }
 
 func runNsDelete(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
-
 	slug := strings.TrimSpace(args[0])
 	yes, _ := cmd.Flags().GetBool("yes")
 	if err := confirmSlug(yes, "delete namespace", slug); err != nil {
 		return err
 	}
 
-	apiURL := fmt.Sprintf("%s/namespaces/%s", serverURL, url.PathEscape(slug))
-	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	switch resp.StatusCode {
-	case http.StatusNoContent, http.StatusOK:
-		fmt.Printf("Deleted namespace %s\n", slug)
-		return nil
-	case http.StatusConflict:
-		var body struct {
-			Error  string `json:"error"`
-			Detail string `json:"detail"`
-		}
-		_ = json.NewDecoder(resp.Body).Decode(&body)
-		if body.Error == "has_repos" {
-			msg := body.Detail
-			if msg == "" {
-				msg = "delete repos under " + slug + " first"
+	if err := c.Delete(cmd.Context(), "/namespaces/"+url.PathEscape(slug)); err != nil {
+		var he *apiclient.HTTPError
+		if errors.As(err, &he) {
+			switch he.StatusCode {
+			case http.StatusConflict:
+				var body struct {
+					Error  string `json:"error"`
+					Detail string `json:"detail"`
+				}
+				_ = json.Unmarshal([]byte(he.Body), &body)
+				if body.Error == "has_repos" {
+					msg := body.Detail
+					if msg == "" {
+						msg = "delete repos under " + slug + " first"
+					}
+					return fmt.Errorf("namespace not empty: %s — run 'citadel-cli repo delete <ns>/<slug>' for each", msg)
+				}
+				return fmt.Errorf("conflict: %s", body.Error)
+			case http.StatusForbidden:
+				return fmt.Errorf("forbidden: only the owner can delete namespace %s", slug)
+			case http.StatusNotFound:
+				return fmt.Errorf("namespace %s not found, not an org, or already deleted", slug)
 			}
-			return fmt.Errorf("namespace not empty: %s — run 'citadel-cli repo delete <ns>/<slug>' for each", msg)
 		}
-		return fmt.Errorf("conflict: %s", body.Error)
-	case http.StatusForbidden:
-		return fmt.Errorf("forbidden: only the owner can delete namespace %s", slug)
-	case http.StatusNotFound:
-		return fmt.Errorf("namespace %s not found, not an org, or already deleted", slug)
-	default:
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
+		return err
 	}
+	fmt.Printf("Deleted namespace %s\n", slug)
+	return nil
 }
 
 func init() {
