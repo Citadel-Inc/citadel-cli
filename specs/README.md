@@ -4,6 +4,9 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
+| cli-audit | DRAFT | 081550ZMAY26 | Bastion (J-3) |
+| cli-cwd-context | DRAFT | 081550ZMAY26 | Bastion (J-3) |
+| cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
 | cli-output-formats | DRAFT | 080800ZMAY26 | Bastion (J-3) |
 | cli-pagination | DRAFT | 080800ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
