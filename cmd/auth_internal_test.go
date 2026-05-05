@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -123,6 +124,45 @@ func TestExchangePKCECode_BadJSON(t *testing.T) {
 	t.Cleanup(srv.Close)
 	if _, err := exchangePKCECode(srv.URL, "x", "y"); err == nil || !strings.Contains(err.Error(), "decode") {
 		t.Errorf("got %v", err)
+	}
+}
+
+func TestRunSetToken_FromFlag(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	tok := makeUnsignedJWT(t, jwt.MapClaims{
+		"sub": "11111111-1111-1111-1111-111111111111",
+		"exp": float64(time.Now().Add(time.Hour).Unix()),
+	})
+	if err := setTokenCmd.Flags().Set("token", tok); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = setTokenCmd.Flags().Set("token", "") })
+
+	if err := runSetToken(setTokenCmd, nil); err != nil {
+		t.Fatalf("runSetToken: %v", err)
+	}
+}
+
+func TestRunSetToken_NoSourceErrors(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	// Replace stdin with an empty pipe so io.ReadAll returns "".
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = orig; _ = r.Close() })
+
+	if err := setTokenCmd.Flags().Set("token", ""); err != nil {
+		t.Fatal(err)
+	}
+	err = runSetToken(setTokenCmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "no token") {
+		t.Fatalf("expected no-token error, got %v", err)
 	}
 }
 

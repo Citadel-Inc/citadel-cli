@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -31,10 +32,15 @@ var AuthCmd = &cobra.Command{
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Authenticate with the server via OAuth/PKCE flow",
-	Long: `Starts an OAuth/PKCE authentication flow with Supabase Auth.
-Opens a browser to the authorization endpoint and stores the resulting
-access and refresh tokens in ~/.config/citadel/config.toml (mode 0600).`,
+	Short: "Authenticate via OAuth/PKCE flow (experimental)",
+	Long: `Starts an OAuth/PKCE authentication flow with Supabase Auth, opens a
+browser to the authorization endpoint, and stores the resulting access
+and refresh tokens in ~/.config/citadel/config.toml (mode 0600).
+
+EXPERIMENTAL: the OAuth client_id wiring is not yet productised. For
+practical use today, prefer 'citadel-cli auth set-token' (paste a JWT
+minted via the web app or an external SSO bridge) or set the
+CITADEL_ACCESS_TOKEN environment variable.`,
 	RunE: runLogin,
 }
 
@@ -51,6 +57,27 @@ var logoutCmd = &cobra.Command{
 	Short: "Clear the local authentication session",
 	Long:  `Removes the local config file, clearing the stored tokens and session state.`,
 	RunE:  runLogout,
+}
+
+var setTokenCmd = &cobra.Command{
+	Use:   "set-token",
+	Short: "Persist a Supabase JWT directly (operator / CI path)",
+	Long: `Reads a JWT from --token, the CITADEL_ACCESS_TOKEN env var, or stdin
+(in that order), parses sub/exp claims, and writes the token + derived user
+UUID + expiry to ~/.config/citadel/config.toml.
+
+Use this when:
+  - you already have a Supabase access token from elsewhere (web app dev tools,
+    a CI mint job, an external SSO bridge), and
+  - the interactive 'auth login' OAuth/PKCE flow is unavailable or undesired
+    (headless host, container, runLogin's PKCE client_id is still being
+    productised — see specs/HUMAN_BLOCKERS.md).
+
+Examples:
+  citadel-cli auth set-token --token "$JWT"
+  echo "$JWT" | citadel-cli auth set-token
+  CITADEL_ACCESS_TOKEN="$JWT" citadel-cli auth set-token`,
+	RunE: runSetToken,
 }
 
 func runLogin(cmd *cobra.Command, args []string) error {
@@ -179,6 +206,43 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	fmt.Printf("User UUID: %s\n", cfg.UserUUID)
 	fmt.Printf("Expires in: %v\n", remaining.Round(time.Second))
 	fmt.Printf("Server: %s\n", cfg.ServerURL)
+	return nil
+}
+
+func runSetToken(cmd *cobra.Command, _ []string) error {
+	cfg, err := clicfg.Load()
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	tok, _ := cmd.Flags().GetString("token")
+	tok = cmp.Or(tok, os.Getenv("CITADEL_ACCESS_TOKEN"))
+	if tok == "" {
+		// Fall back to stdin, trimmed.
+		buf, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("read stdin: %w", err)
+		}
+		tok = strings.TrimSpace(string(buf))
+	}
+	if tok == "" {
+		return errors.New("no token provided: pass --token, set CITADEL_ACCESS_TOKEN, or pipe a JWT on stdin")
+	}
+
+	claims, err := claimsFromJWT(tok)
+	if err != nil {
+		return fmt.Errorf("parse token: %w", err)
+	}
+	cfg.ServerURL = cfg.ResolveServerURL(serverFlag(cmd))
+	cfg.AccessToken = tok
+	cfg.RefreshToken = ""
+	cfg.UserUUID = userUUIDFromClaims(claims)
+	cfg.ExpiresAt = expiryFromClaims(claims, time.Now().Add(time.Hour))
+
+	if err := cfg.Save(); err != nil {
+		return fmt.Errorf("save config: %w", err)
+	}
+	fmt.Printf("Stored token for user %s (expires %s).\n", cfg.UserUUID, cfg.ExpiresAt.Format(time.RFC3339))
 	return nil
 }
 
@@ -318,4 +382,6 @@ func init() {
 	AuthCmd.AddCommand(loginCmd)
 	AuthCmd.AddCommand(statusCmd)
 	AuthCmd.AddCommand(logoutCmd)
+	AuthCmd.AddCommand(setTokenCmd)
+	setTokenCmd.Flags().String("token", "", "JWT to persist (overrides CITADEL_ACCESS_TOKEN and stdin)")
 }
