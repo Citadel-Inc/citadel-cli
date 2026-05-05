@@ -73,7 +73,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		checkConfigPerms(),
 	}
 	for _, r := range results {
-		fmt.Println(r.String())
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), r.String())
 	}
 	if anyFailed(results) {
 		return errors.New("one or more checks failed")

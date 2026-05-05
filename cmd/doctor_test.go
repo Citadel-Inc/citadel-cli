@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/mcpclient"
 )
 
 func TestCheckServer_Healthy(t *testing.T) {
@@ -126,4 +129,91 @@ func makeJWT(t *testing.T, claims jwt.MapClaims) string {
 		t.Fatal(err)
 	}
 	return s
+}
+
+func doctorTestMux(t *testing.T) http.HandlerFunc {
+	t.Helper()
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/healthz"):
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/mcp"):
+			var req struct {
+				ID     int             `json:"id"`
+				Method string          `json:"method"`
+				Params json.RawMessage `json:"params"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				t.Errorf("mcp decode: %v", err)
+				http.Error(w, "bad json", http.StatusBadRequest)
+				return
+			}
+			if req.Method != "initialize" {
+				t.Errorf("unexpected MCP method %q", req.Method)
+				http.Error(w, "nope", http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Mcp-Session-Id", "sess-doctor-test")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			body := map[string]any{
+				"jsonrpc": "2.0",
+				"id":      req.ID,
+				"result": map[string]any{
+					"protocolVersion": mcpclient.ProtocolVersion,
+					"serverInfo":      map[string]any{"name": "test-mcp", "version": "0"},
+				},
+			}
+			_ = json.NewEncoder(w).Encode(body)
+		default:
+			t.Errorf("unhandled doctor test request %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}
+}
+
+func TestRunDoctor_allChecksGreen(t *testing.T) {
+	srv := httptest.NewServer(doctorTestMux(t))
+	t.Cleanup(srv.Close)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "opaque-agent-token-for-doctor")
+
+	root := NewRootCmd()
+	t.Cleanup(func() {
+		// NewRootCmd re-parents every global *cobra.Command onto a fresh root.
+		// Without this, the prior root can retain SetArgs(["doctor"]) while
+		// shared subcommands (namespace, agent, …) still point at it, which
+		// breaks unrelated tests that Execute those subcommands directly.
+		_ = NewRootCmd()
+	})
+	root.SetArgs([]string{"doctor"})
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("doctor: %v", err)
+	}
+	s := out.String()
+	if !strings.Contains(s, "[PASS]") || !strings.Contains(s, "server-reachable") {
+		t.Fatalf("expected PASS server line, got:\n%s", s)
+	}
+	if !strings.Contains(s, "mcp-endpoint") {
+		t.Fatalf("expected MCP line, got:\n%s", s)
+	}
+}
+
+func TestAnyFailed_trueOnFail(t *testing.T) {
+	if !anyFailed([]checkResult{{status: statusPass}, {status: statusFail}}) {
+		t.Fatal("anyFailed must be true when a FAIL is present")
+	}
+}
+
+func TestAnyFailed_falseWithoutFail(t *testing.T) {
+	if anyFailed([]checkResult{{status: statusPass}, {status: statusWarn}}) {
+		t.Fatal("WARN must not count as failure")
+	}
 }

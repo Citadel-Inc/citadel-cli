@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"text/tabwriter"
 
@@ -129,7 +130,13 @@ func emitJSON(v any) error {
 
 // emitNDJSONLines writes one compact JSON object per line (newline-delimited).
 func emitNDJSONLines[T any](rows []T) error {
-	enc := json.NewEncoder(os.Stdout)
+	return emitNDJSONLinesTo(os.Stdout, rows)
+}
+
+// emitNDJSONLinesTo is emitNDJSONLines with an explicit writer (tests use this
+// to avoid swapping os.Stdout).
+func emitNDJSONLinesTo[T any](w io.Writer, rows []T) error {
+	enc := json.NewEncoder(w)
 	for _, row := range rows {
 		if err := enc.Encode(row); err != nil {
 			return err

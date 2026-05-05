@@ -195,3 +195,84 @@ func TestFriendlyError_validationDetailsCurated(t *testing.T) {
 		t.Fatal("nested should not be in curated subset")
 	}
 }
+
+func TestCuratedValidationDetails_invalidJSON(t *testing.T) {
+	if got := curatedValidationDetails("not json"); got != nil {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestCuratedValidationDetails_emptyObject(t *testing.T) {
+	if got := curatedValidationDetails("{}"); got != nil {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestCuratedValidationDetails_noCuratedKeys(t *testing.T) {
+	if got := curatedValidationDetails(`{"only_unknown":1}`); got != nil {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestCuratedValidationDetails_hitsKeyCap(t *testing.T) {
+	body := `{"error":"e","message":"m","detail":"d","details":"x","code":1,"field":"f","extra":"z"}`
+	got := curatedValidationDetails(body)
+	if got == nil || len(got) != 6 {
+		t.Fatalf("want 6 curated keys, got %#v", got)
+	}
+	if _, ok := got["field"]; !ok {
+		t.Fatalf("missing field: %#v", got)
+	}
+	if _, bad := got["extra"]; bad {
+		t.Fatal("extra should not appear when cap reached at 6 keys")
+	}
+}
+
+func TestMcpErrorToCLI_methodNotFound(t *testing.T) {
+	in := &mcpclient.Error{Kind: mcpclient.KindMethodNotFound, Message: "no tool", JSONRPCCode: -32601}
+	ce := mcpErrorToCLI(in)
+	if ce.Kind != KindNotFound {
+		t.Fatalf("kind %s", ce.Kind)
+	}
+	if ce.Details == nil {
+		t.Fatal("expected details")
+	}
+	if ce.Details["jsonrpc_code"] != -32601 {
+		t.Fatalf("jsonrpc_code: %#v", ce.Details["jsonrpc_code"])
+	}
+}
+
+func TestMcpErrorToCLI_validationKinds(t *testing.T) {
+	cases := []struct {
+		kind mcpclient.Kind
+		want CLIErrorKind
+	}{
+		{mcpclient.KindInvalidParams, KindValidation},
+		{mcpclient.KindInvalidRequest, KindValidation},
+		{mcpclient.KindParseError, KindValidation},
+		{mcpclient.KindVersionMismatch, KindValidation},
+	}
+	for _, tc := range cases {
+		ce := mcpErrorToCLI(&mcpclient.Error{Kind: tc.kind, Message: "x", JSONRPCCode: -32602})
+		if ce.Kind != tc.want {
+			t.Errorf("%v → %s want %s", tc.kind, ce.Kind, tc.want)
+		}
+	}
+}
+
+func TestMcpErrorToCLI_internalDefault(t *testing.T) {
+	ce := mcpErrorToCLI(&mcpclient.Error{Kind: mcpclient.KindUnknown, Message: "weird", JSONRPCCode: 99})
+	if ce.Kind != KindInternal {
+		t.Fatalf("kind %s", ce.Kind)
+	}
+	if ce.Details == nil || ce.Details["jsonrpc_code"] != 99 {
+		t.Fatalf("details: %#v", ce.Details)
+	}
+}
+
+func TestMcpErrorToCLI_zeroJSONRPCCodeOmitsDetails(t *testing.T) {
+	ce := mcpErrorToCLI(&mcpclient.Error{Kind: mcpclient.KindUnknown, Message: "x", JSONRPCCode: 0})
+	if ce.Details != nil {
+		t.Fatalf("want nil details, got %#v", ce.Details)
+	}
+}
