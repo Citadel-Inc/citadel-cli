@@ -4,10 +4,10 @@ Status: IN_PROGRESS 052320ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 
-- [ ] [HUMAN] NOMAD ratifies Q-table (Q1–Q3).
-- [ ] A1. RECON appendix: session summary + detail JSON types from `audit` service package.
-- [ ] A2. Implement `audit sessions list` + `audit sessions show` + httptest suite.
-- [ ] A3. Confirm `since` shorthand parity with server (`parseSince` cases).
+- [x] [HUMAN] NOMAD ratifies Q-table (Q1–Q3).
+- [x] A1. RECON appendix: session summary + detail JSON types from `audit` service package.
+- [x] A2. Implement `audit sessions list` + `audit sessions show` + httptest suite.
+- [x] A3. Confirm `since` shorthand parity with server (`parseSince` cases).
 
 ## P1
 
@@ -15,5 +15,5 @@ Status: IN_PROGRESS 052320ZMAY26 — Bastion (J-3) claims execution
 
 ## P2
 
-- [ ] C1. Live test `CITADEL_TEST_AUDIT_SESSIONS_LIVE=1`.
-- [ ] C2. Spec close.
+- [x] C1. Live test `CITADEL_TEST_AUDIT_SESSIONS_LIVE=1`.
+- [x] C2. Spec close.
