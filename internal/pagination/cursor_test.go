@@ -105,3 +105,37 @@ func TestEncodeDecodeAuditDesc(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+func TestDecodeAuditDesc_errors(t *testing.T) {
+	t.Parallel()
+	_, err := DecodeAuditDesc("not-base64!!!")
+	if err == nil || !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("got %v", err)
+	}
+	// v1 desc cursor must fail audit decode
+	raw := make([]byte, 25)
+	raw[0] = cursorV1Desc
+	_, err = DecodeAuditDesc(base64.RawURLEncoding.EncodeToString(raw))
+	if err == nil || !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("wrong kind: %v", err)
+	}
+}
+
+func TestParseLimit(t *testing.T) {
+	t.Parallel()
+	if ParseLimit("") != DefaultLimit {
+		t.Fatal()
+	}
+	if ParseLimit("abc") != DefaultLimit {
+		t.Fatal()
+	}
+	if ParseLimit("100") != 100 {
+		t.Fatal()
+	}
+	if ParseLimit("500") != MaxLimit {
+		t.Fatal()
+	}
+	if ParseLimit("999999999999999999999") != MaxLimit {
+		t.Fatal("expected early clamp when digit run exceeds bound")
+	}
+}

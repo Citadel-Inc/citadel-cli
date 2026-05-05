@@ -1418,6 +1418,335 @@ func TestAuditShow_Happy(t *testing.T) {
 	}
 }
 
+func TestAuditList_OutputCSV(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"events": []map[string]any{{
+					"id": "1", "ts": "2026-05-05T12:00:00Z", "kind": "k",
+					"actor_slug": "al", "actor_type": "user", "namespace_slug": "ns",
+					"subject_id": "s", "payload": map[string]any{},
+				}},
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list", "--output", "csv").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditList_OutputCSV_empty(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"events": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list", "--output", "csv").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditList_OutputNDJSON(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"events": []map[string]any{{
+					"id": "1", "ts": "2026-05-05T12:00:00Z", "kind": "k", "actor_type": "user", "payload": map[string]any{},
+				}},
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list", "--output", "ndjson").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditList_OutputYAML(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"events": []map[string]any{{
+					"id": "1", "ts": "2026-05-05T12:00:00Z", "kind": "k", "actor_type": "user", "payload": map[string]any{},
+				}},
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditList_AllYAML_paginated(t *testing.T) {
+	n := 0
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, r *http.Request) {
+			n++
+			if n == 1 {
+				cur := pagination.EncodeAuditDesc(time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC), 99)
+				writeJSON(t, w, 200, map[string]any{
+					"events": []map[string]any{{
+						"id": "1", "ts": "2026-05-05T12:00:00Z", "kind": "k", "actor_type": "user", "payload": map[string]any{},
+					}},
+					"next_cursor": cur,
+				})
+				return
+			}
+			if r.URL.Query().Get("cursor") == "" {
+				t.Fatal("expected cursor on second page")
+			}
+			writeJSON(t, w, 200, map[string]any{"events": []any{}, "next_cursor": ""})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list", "--all", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("pages: %d", n)
+	}
+}
+
+func TestAuditList_continuationReturnsEmpty(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("cursor") != "" {
+				writeJSON(t, w, 200, map[string]any{"events": []any{}, "next_cursor": ""})
+				return
+			}
+			cur := pagination.EncodeAuditDesc(time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC), 1)
+			writeJSON(t, w, 200, map[string]any{
+				"events": []map[string]any{{
+					"id": "1", "ts": "2026-05-05T12:00:00Z", "kind": "k", "actor_type": "user", "payload": map[string]any{},
+				}},
+				"next_cursor": cur,
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list", "--limit", "50",
+		"--cursor", pagination.EncodeAuditDesc(time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC), 1),
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditList_InvalidCursor(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.AuditCmd, "list", "--cursor", "%%%").Execute()
+	if err == nil || !strings.Contains(err.Error(), "cursor") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestAuditList_AllWithJSONRejected(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.AuditCmd, "list", "--all", "--output", "json").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--all") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestAuditList_passesQueryFilters(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			if q.Get("since") != "1h" || q.Get("until") != "30m" || q.Get("kind") != "repo.*" ||
+				q.Get("namespace") != "myorg" || q.Get("actor") != "alice" {
+				t.Fatalf("query: %s", r.URL.RawQuery)
+			}
+			writeJSON(t, w, 200, map[string]any{"events": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list",
+		"--since", "1h", "--until", "30m", "--kind", "repo.*", "-n", "myorg", "--actor", "alice",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditShow_JSON(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events/9": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"id": "9", "ts": "2026-05-05T12:00:00Z", "kind": "k", "actor_type": "user", "payload": map[string]any{"x": 1},
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "show", "9", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditShow_YAML(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events/9": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"id": "9", "ts": "2026-05-05T12:00:00Z", "kind": "k", "actor_type": "user", "payload": map[string]any{},
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "show", "9", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditShow_badOutputFormat(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events/9": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"id": "9", "ts": "t", "kind": "k", "actor_type": "user", "payload": map[string]any{}})
+		},
+	}))
+	err := rootFor(cmd.AuditCmd, "show", "9", "--output", "ndjson").Execute()
+	if err == nil || !strings.Contains(err.Error(), "output") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestAuditList_OutputJSON_nonEmpty(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"events": []map[string]any{{
+					"id": "1", "ts": "2026-05-05T12:00:00Z", "kind": "k", "actor_type": "user", "payload": map[string]any{},
+				}},
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditList_emptyNdjson(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"events": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list", "--output", "ndjson").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditList_tableUsesActorIDWhenSlugEmpty(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"events": []map[string]any{{
+					"id": "1", "ts": "2026-05-05T12:00:00Z", "kind": "k",
+					"actor_id": "00000000-0000-0000-0000-000000000001", "actor_type": "user",
+					"payload": map[string]any{},
+				}},
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditList_readPaginationLimitTooHigh(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"events": []any{}})
+		},
+	}))
+	err := rootFor(cmd.AuditCmd, "list", "--limit", "999").Execute()
+	if err == nil || !strings.Contains(err.Error(), "limit") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestAuditList_readPaginationLimitNegative(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.AuditCmd, "list", "--limit", "-1").Execute()
+	if err == nil || !strings.Contains(err.Error(), "limit") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestAuditList_allYamlSinglePage(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"events": []map[string]any{{
+					"id": "1", "ts": "2026-05-05T12:00:00Z", "kind": "k", "actor_type": "user", "payload": map[string]any{},
+				}},
+				"next_cursor": "",
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list", "--all", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditList_badOutputFormat(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.AuditCmd, "list", "--output", "bogus").Execute()
+	if err == nil || !strings.Contains(err.Error(), "output") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestAuditList_noAuth(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "http://nope")
+	err := rootFor(cmd.AuditCmd, "list").Execute()
+	if err == nil || !strings.Contains(err.Error(), "not authenticated") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestAuditList_HTTPError(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		},
+	}))
+	err := rootFor(cmd.AuditCmd, "list").Execute()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestAuditShow_HTTPError(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events/1": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		},
+	}))
+	err := rootFor(cmd.AuditCmd, "show", "1").Execute()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestAuditShow_tableExercisesOptionalFields(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events/9": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"id":           "9",
+				"ts":           "2026-05-05T12:00:00Z",
+				"kind":         "k",
+				"actor_id":     "00000000-0000-0000-0000-0000000000aa",
+				"namespace_id": "00000000-0000-0000-0000-0000000000bb",
+				"subject_id":   "sub",
+				"session_id":   "sess",
+				"request_id":   "req",
+				"client_ip":    "1.2.3.4",
+				"actor_type":   "user",
+				"payload":      map[string]any{"nested": []int{1, 2}},
+				"cascade_children": []map[string]any{{
+					"id": "10", "ts": "2026-05-05T12:01:00Z", "kind": "child", "actor_type": "user", "payload": map[string]any{},
+				}},
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "show", "9").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAgentDelete_DryRun(t *testing.T) {
 	const agentID = "00000000-0000-0000-0000-00000000000a"
 	// Server sees the GET /agents lookup but no DELETE — the dry-run skip
