@@ -24,8 +24,9 @@ main.go                          Cobra entrypoint
 cmd/                             Subcommand implementations
   agent.go auth.go confirm.go kg.go mcp.go namespace.go
   oauth_clients.go output.go repo.go token.go
+  doc.go                         Package comment
   *_test.go                      Unit + integration tests (live tests env-gated)
-internal/clicfg/                 Config (XDG_CONFIG_HOME / ~/.config/citadel/config.toml)
+internal/clicfg/                 Config (XDG_CONFIG_HOME / ~/.config/citadel/config.toml; doc.go for package comment)
 internal/mcpclient/              HTTP MCP client (cobra mcp subcommands)
 docs/cli.md                      Full command reference
 specs/active/, specs/done/       SDD specs

@@ -1,6 +1,6 @@
 # Citadel CLI — Installation and usage
 
-The **`citadel-cli`** binary is the command-line **client** for authentication, agent tokens, and MCP tool calls against the Citadel **server**. The server binary from this repo is **`citadel`** (`cmd/citadel` — HTTP, SSH, MCP); do not confuse the two names on disk. All CLI commands authenticate via Supabase Auth (OAuth/PKCE) and store credentials locally in `~/.config/citadel/config.toml` (mode 0600).
+The **`citadel-cli`** binary is the command-line **client** for authentication, agent tokens, and MCP tool calls against the Citadel **server**. The server binary lives in the [Rethunk-Tech/citadel](https://github.com/Rethunk-Tech/citadel) repository and is named **`citadel`** (HTTP, SSH, MCP); do not confuse the two names on disk. All CLI commands authenticate via Supabase Auth (OAuth/PKCE) and store credentials locally in `~/.config/citadel/config.toml` (mode 0600).
 
 ## Installation
 
@@ -9,8 +9,8 @@ The **`citadel-cli`** binary is the command-line **client** for authentication, 
 If you have a local checkout:
 
 ```bash
-cd /path/to/citadel
-make build-cli
+cd /path/to/citadel-cli
+make build
 cp ./citadel-cli /usr/local/bin/citadel-cli
 ```
 
@@ -36,7 +36,7 @@ citadel-cli auth login
 
 This opens your default browser to Supabase's OAuth authorization endpoint. After you authenticate (GitHub or your configured provider), the browser redirects to a local loopback server running on your machine, which exchanges the authorization code for an access token and refresh token. Both are stored in `~/.config/citadel/config.toml` (mode 0600).
 
-The CLI defaults to server URL `https://api.src.land`; if your server is at a different URL, set the `CITADEL_SERVER_URL` environment variable or edit the config file directly (key: `server_url`).
+The CLI defaults to server URL `https://api.src.land`; if your server is at a different URL, set the `CITADEL_SERVER` environment variable or edit the config file directly (key: `server_url`).
 
 ### Check authentication status
 
@@ -202,14 +202,12 @@ The CLI does **not** auto-refresh tokens. Re-authenticate explicitly.
 
 ## Agent token semantics
 
-For comprehensive token lifecycle documentation, see [docs/agents.md](agents.md). In brief:
+For comprehensive token lifecycle documentation, see [Rethunk-Tech/citadel docs/agents.md](https://github.com/Rethunk-Tech/citadel/blob/main/docs/agents.md). In brief:
 
 - **Tokens are opaque secrets.** Never log them, commit them, or pass them on the command line. Store in environment files (e.g., `.env.local`) or CI secrets with restricted access.
 - **Hashing.** The CLI never stores the clear-text token; only the server stores a sha256 hash. Once you close the terminal, you cannot recover the token — you must revoke and issue a new one.
 - **Scopes.** Tokens carry a list of permissions (scopes) enforced server-side. The MCP server checks token scopes before allowing tool access.
 - **Revocation.** Revoked tokens are rejected immediately; no cache delay.
-
-For hand-rolled token issuance (operator-only, until this CLI shipped), see [docs/agents.md § Token issuance](agents.md#token-issuance-hand-rolled-phase-b).
 
 ## Troubleshooting
 

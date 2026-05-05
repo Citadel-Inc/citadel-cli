@@ -6,16 +6,7 @@ For human maintainer onboarding see [HUMANS.md](HUMANS.md). For commit conventio
 
 ## Repository shape
 
-```
-main.go                          Cobra entrypoint
-cmd/                             Subcommand implementations (agent, auth, kg, mcp, namespace, oauth_clients, repo, token)
-internal/clicfg/                 Config load/save (XDG_CONFIG_HOME, ~/.config/citadel/config.toml)
-internal/mcpclient/              HTTP MCP client used by the `mcp` subcommands
-docs/cli.md                      Full command reference
-specs/active/, specs/done/       SDD specs (use mcp__citadel-sdd__* MCP tools)
-.github/workflows/               ci.yml (test+lint), cli-release.yml (cross-compile on v* tags)
-Makefile                         build, build-all, test, vet, lint, verify
-```
+See [HUMANS.md § Repository layout](HUMANS.md#repository-layout) for the canonical tree. Spec lifecycle uses the `mcp__citadel-sdd__*` MCP tools (table below); release workflow fires on `v*` tags.
 
 ## Working conventions
 
