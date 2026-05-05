@@ -13,7 +13,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +32,9 @@ const defaultTimeout = 30 * time.Second
 type HTTPError struct {
 	StatusCode int
 	Body       string
+	// RetryAfter is seconds from the Retry-After header when parseable (RFC 7231
+	// delta-seconds or HTTP-date); zero when absent or malformed.
+	RetryAfter int
 }
 
 func (e *HTTPError) Error() string {
@@ -49,6 +54,26 @@ func (e *HTTPError) DecodeBody(v any) error {
 func IsStatus(err error, code int) bool {
 	var he *HTTPError
 	return errors.As(err, &he) && he.StatusCode == code
+}
+
+// ParseRetryAfterSeconds interprets a Retry-After header value: non-negative
+// integer seconds, or HTTP-date; returns 0 when absent or unparseable.
+func ParseRetryAfterSeconds(raw string) int {
+	v := strings.TrimSpace(raw)
+	if v == "" {
+		return 0
+	}
+	if secs, err := strconv.Atoi(v); err == nil && secs >= 0 {
+		return secs
+	}
+	if t, err := http.ParseTime(v); err == nil {
+		d := time.Until(t)
+		if d < 0 {
+			return 0
+		}
+		return int(math.Round(d.Seconds()))
+	}
+	return 0
 }
 
 // Client is a thin Citadel-API client: server URL + bearer token + http.Client.
@@ -134,7 +159,11 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
-		return &HTTPError{StatusCode: resp.StatusCode, Body: strings.TrimSpace(string(b))}
+		return &HTTPError{
+			StatusCode: resp.StatusCode,
+			Body:       strings.TrimSpace(string(b)),
+			RetryAfter: ParseRetryAfterSeconds(resp.Header.Get("Retry-After")),
+		}
 	}
 	if out == nil || resp.StatusCode == http.StatusNoContent {
 		return nil
