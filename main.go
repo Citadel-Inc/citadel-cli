@@ -21,6 +21,10 @@ func newRootCmd() *cobra.Command {
 // run executes the CLI with the given args and returns the process exit code.
 // Stays in package main for testability — main() is then a tiny shim.
 func run(args []string, stderr io.Writer) int {
+	return runWriters(args, os.Stdout, stderr)
+}
+
+func runWriters(args []string, stdout, stderr io.Writer) int {
 	root := newRootCmd()
 	root.SetArgs(args)
 
@@ -34,19 +38,30 @@ func run(args []string, stderr io.Writer) int {
 	cleanup, _ := pager.Start(disablePager)
 	defer cleanup()
 
-	if err := root.Execute(); err != nil {
+	sub, err := root.ExecuteC()
+	if err != nil {
 		// ErrToolCallFailed is the sentinel signaling tools/call returned
 		// isError=true; the result has already been printed, so suppress
 		// the duplicate "Error:" line and exit with code 2.
 		if errors.Is(err, cmd.ErrToolCallFailed) {
 			return 2
 		}
-		_, _ = fmt.Fprintf(stderr, "Error: %v\n", cmd.FriendlyError(err))
-		return 1
+		friendly := cmd.FriendlyError(err)
+		ce, code := cmd.ResolveCLIExit(err, friendly)
+		if cmd.WantsMachineErrorEnvelope(sub) {
+			o, _ := sub.Flags().GetString("output")
+			if werr := cmd.WriteErrorEnvelope(stdout, o, ce); werr != nil {
+				_, _ = fmt.Fprintf(stderr, "Error: %v\n", werr)
+				return 1
+			}
+			return code
+		}
+		_, _ = fmt.Fprintf(stderr, "Error: %s\n", ce.Message)
+		return code
 	}
 	return 0
 }
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stderr))
+	os.Exit(runWriters(os.Args[1:], os.Stdout, os.Stderr))
 }
