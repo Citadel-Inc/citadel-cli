@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 050506ZMAY26 |
+| Status | IN_PROGRESS 052320ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | `cli-audit` (DONE) ships **events** only. `internal/api/auditapi` also implements **sessions** list + detail for the same audit gate (`package auditapi` comment references fe-audit-session-drilldown). |

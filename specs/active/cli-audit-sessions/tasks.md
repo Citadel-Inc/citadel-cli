@@ -1,6 +1,6 @@
 # Tasks — cli-audit-sessions
 
-Status: DRAFT 050506ZMAY26
+Status: IN_PROGRESS 052320ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 
