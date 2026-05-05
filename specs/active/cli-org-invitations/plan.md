@@ -11,6 +11,24 @@
 - **`HandleRevokeInvitation`** path param name (`{id}` UUID).
 - **`HandleAcceptInvitation`** success body shape.
 
+### Appendix — JSON shapes (CLI ↔ daemon)
+
+List/pending envelope:
+
+```json
+{"invitations":[{"id":"<uuid>","org_slug":"<slug>","email":"<addr>","user_slug":"","status":"pending","permissions":["members:read"],"created_at":"RFC3339"}]}
+```
+
+Create request (`POST /orgs/{slug}/invitations`):
+
+```json
+{"email":"<optional>","slug":"<optional invitee public namespace>","permissions":["members:read"]}
+```
+
+Permission atoms must match **`orgs.ValidatePermissions`** on the server (examples commonly include `members:read`, `members:write`; confirm against current daemon allow-list).
+
+Accept success body is treated as opaque JSON (`--output json` prints decoded map).
+
 ## Implementation sketch
 
 - **`cmd/org_invitation.go`** — parent `orgCmd` **may** already be absent: today `namespace` holds org flows — decide whether to hang under **`namespace invitation`** vs new **`org`** top-level (Q1). If new **`org`** root: aligns with spec title; requires **`root.go`** registration.

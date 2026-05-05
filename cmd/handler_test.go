@@ -1794,3 +1794,162 @@ func TestMcpUnauthorizedSurface(t *testing.T) {
 		t.Fatalf("want surfaceErr-mapped unauthorized, got %v", err)
 	}
 }
+
+// ── org invitation ───────────────────────────────────────────────────────────
+
+func TestOrgInvitationPending_Table(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /invitations/pending": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"invitations": []map[string]any{
+				{
+					"id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "org_slug": "myorg", "email": "invitee@example.com",
+					"user_slug": "", "status": "pending", "permissions": []string{"members:read"}, "created_at": "2026-01-01T00:00:00Z",
+				},
+			}})
+		},
+	}))
+	if err := rootFor(cmd.OrgCmd, "invitation", "pending").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOrgInvitationList_JSON(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /orgs/myorg/invitations": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"invitations": []map[string]any{}})
+		},
+	}))
+	if err := rootFor(cmd.OrgCmd, "invitation", "list", "myorg", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOrgInvitationCreate_PostBodyPermissions(t *testing.T) {
+	var gotBody []byte
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /orgs/myorg/invitations": func(w http.ResponseWriter, r *http.Request) {
+			var err error
+			gotBody, err = io.ReadAll(r.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			writeJSON(t, w, 201, map[string]any{
+				"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "org_slug": "myorg", "email": "a@b.c",
+				"permissions": []string{"members:read", "members:write"}, "created_at": "2026-01-01T00:00:00Z",
+			})
+		},
+	}))
+	if err := rootFor(cmd.OrgCmd, "invitation", "create", "myorg", "--email", "a@b.c", "--permission", "members:read,members:write").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(gotBody, &m); err != nil {
+		t.Fatal(err)
+	}
+	p := m["permissions"].([]any)
+	if len(p) != 2 {
+		t.Fatalf("permissions: %v", m["permissions"])
+	}
+}
+
+func TestOrgInvitationCreate_AlreadyPending(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /orgs/myorg/invitations": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 409, map[string]any{"error": "already_pending", "code": "already_pending"})
+		},
+	}))
+	err := rootFor(cmd.OrgCmd, "invitation", "create", "myorg", "--email", "x@y.z").Execute()
+	if err == nil || !strings.Contains(err.Error(), "already_pending") {
+		t.Fatalf("want already_pending in error, got %v", err)
+	}
+}
+
+func TestOrgInvitationCreate_UserNotFound(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /orgs/myorg/invitations": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 404, map[string]any{"error": "user_not_found", "code": "user_not_found"})
+		},
+	}))
+	err := rootFor(cmd.OrgCmd, "invitation", "create", "myorg", "--slug", "nosuchuser").Execute()
+	if err == nil || !strings.Contains(err.Error(), "user_not_found") {
+		t.Fatalf("want user_not_found in error, got %v", err)
+	}
+}
+
+func TestOrgInvitationCreate_InvalidPermission(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /orgs/myorg/invitations": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 400, map[string]any{"error": "invalid_permission", "code": "invalid_permission"})
+		},
+	}))
+	err := rootFor(cmd.OrgCmd, "invitation", "create", "myorg", "--email", "x@y.z", "--permission", "bogus").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid_permission") {
+		t.Fatalf("want invalid_permission in error, got %v", err)
+	}
+}
+
+func TestOrgInvitationCreate_MissingInviteeNonTTY(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.OrgCmd, "invitation", "create", "myorg").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invitee required") {
+		t.Fatalf("want invitee required, got %v", err)
+	}
+}
+
+func TestOrgInvitationRevoke_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /orgs/myorg/invitations/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	}))
+	if err := rootFor(cmd.OrgCmd, "invitation", "revoke", "myorg", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOrgInvitationAccept_TokenArg(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /invitations/secret-token/accept": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"status": "accepted"})
+		},
+	}))
+	if err := rootFor(cmd.OrgCmd, "invitation", "accept", "secret-token").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOrgInvitationAccept_TokenFile(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /invitations/from-file/accept": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"status": "accepted"})
+		},
+	}))
+	dir := t.TempDir()
+	path := dir + "/tok"
+	if err := os.WriteFile(path, []byte("from-file\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := rootFor(cmd.OrgCmd, "invitation", "accept", "--token-file", path).Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOrgInvitationAccept_MissingToken(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.OrgCmd, "invitation", "accept").Execute()
+	if err == nil || !strings.Contains(err.Error(), "token required") {
+		t.Fatalf("want token required, got %v", err)
+	}
+}
+
+func TestOrgInvitationAccept_NotFound(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /invitations/bad/accept": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		},
+	}))
+	err := rootFor(cmd.OrgCmd, "invitation", "accept", "bad").Execute()
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("want not found, got %v", err)
+	}
+}

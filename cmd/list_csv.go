@@ -135,3 +135,22 @@ func (tr nsTransferRow) CSVRecord() []string {
 		formatRFC3339UTC(tr.CreatedAt),
 	}
 }
+
+// ── org invitations ───────────────────────────────────────────────────────────
+
+func (orgInvitationRow) CSVHeader() []string {
+	return []string{"id", "org_slug", "email", "user_slug", "status", "permissions", "created_at", "expires_at"}
+}
+
+func (r orgInvitationRow) CSVRecord() []string {
+	return []string{
+		r.ID,
+		r.OrgSlug,
+		r.Email,
+		r.UserSlug,
+		r.Status,
+		strings.Join(r.Permissions, ","),
+		formatRFC3339UTC(r.CreatedAt),
+		formatRFC3339PtrUTC(r.ExpiresAt),
+	}
+}

@@ -116,6 +116,55 @@ Example:
 citadel-cli token revoke 550e8400-e29b-41d4-a716-446655440000
 ```
 
+## Org invitations
+
+Org invitations use the daemon **`orgsmembersapi`** routes behind your normal CLI session (`citadel-cli auth login`). You need **`members:read`** to list invitations for an org and **`members:write`** to create or revoke them; **`accept`** uses your session JWT plus the invitation token.
+
+### List invitations pending for your account
+
+```bash
+citadel-cli org invitation pending
+citadel-cli org invitation pending --output json
+```
+
+### List invitations for one org
+
+```bash
+citadel-cli org invitation list <org-slug>
+```
+
+### Create an invitation
+
+Provide **`--email`** and/or **`--slug`** (the invitee's public user namespace slug). Repeat **`--permission`** for each grant, or pass comma-separated permission atoms that match the server's allow-list (for example `members:read`, `members:write` — confirm on your server).
+
+```bash
+citadel-cli org invitation create myorg --email colleague@example.com --permission members:read
+citadel-cli org invitation create myorg --slug publichandle --permission members:read,members:write
+```
+
+On a TTY, if you omit both **`--email`** and **`--slug`**, the CLI prompts for an email.
+
+### Revoke
+
+```bash
+citadel-cli org invitation revoke <org-slug> <invite-id>
+```
+
+### Accept
+
+Pass the token from the invitation link as an argument, or use **`--token-file`** so the secret is not stored in your shell history.
+
+```bash
+citadel-cli org invitation accept <token>
+citadel-cli org invitation accept --token-file ~/invite-token.txt
+```
+
+Treat invitation tokens like passwords.
+
+### Live integration test
+
+Opt-in: set **`CITADEL_TEST_ORG_INVITATIONS_LIVE=1`** together with **`CITADEL_ACCESS_TOKEN`** and optional **`CITADEL_SERVER`** (see `cmd/org_invitation_live_test.go`). CI skips when unset.
+
 ## Server URL configuration
 
 The CLI defaults to `https://api.src.land`. Override it via:
