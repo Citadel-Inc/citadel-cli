@@ -137,24 +137,16 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if output == "json" {
-		return emitJSON(rows)
-	}
-	if len(rows) == 0 {
-		fmt.Println("No agents found.")
-		return nil
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "NAME\tID\tMODEL HINT")
-	for _, a := range rows {
-		hint := ""
-		if a.ModelHint != nil {
-			hint = *a.ModelHint
+	return emitList(output, rows, "No agents found.", func(w *tabwriter.Writer, rows []agentRow) {
+		_, _ = fmt.Fprintln(w, "NAME\tID\tMODEL HINT")
+		for _, a := range rows {
+			hint := ""
+			if a.ModelHint != nil {
+				hint = *a.ModelHint
+			}
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, a.ID, hint)
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, a.ID, hint)
-	}
-	return w.Flush()
+	})
 }
 
 func runAgentGet(cmd *cobra.Command, args []string) error {
@@ -174,7 +166,7 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 			if output == "json" {
 				return emitJSON(a)
 			}
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			w := newTabWriter()
 			_, _ = fmt.Fprintf(w, "Name:\t%s\n", a.Name)
 			_, _ = fmt.Fprintf(w, "ID:\t%s\n", a.ID)
 			if a.ModelHint != nil {

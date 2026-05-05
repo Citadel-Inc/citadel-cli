@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"text/tabwriter"
 	"time"
 
@@ -130,36 +129,24 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 	}
 
 	output, _ := cmd.Flags().GetString("output")
-	if output == "json" {
-		return emitJSON(tokens)
-	}
-	if len(tokens) == 0 {
-		fmt.Printf("No tokens for agent '%s'\n", agentName)
-		return nil
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprint(w, "ID\tCREATED\tEXPIRES\tREVOKED\n"); err != nil {
-		return err
-	}
-	for _, t := range tokens {
-		expires := ""
-		if t.ExpiresAt != nil {
-			expires = t.ExpiresAt.Format(time.RFC3339)
+	return emitList(output, tokens, fmt.Sprintf("No tokens for agent '%s'", agentName), func(w *tabwriter.Writer, tokens []token) {
+		_, _ = fmt.Fprint(w, "ID\tCREATED\tEXPIRES\tREVOKED\n")
+		for _, t := range tokens {
+			expires := ""
+			if t.ExpiresAt != nil {
+				expires = t.ExpiresAt.Format(time.RFC3339)
+			}
+			revoked := ""
+			if t.RevokedAt != nil {
+				revoked = t.RevokedAt.Format(time.RFC3339)
+			}
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+				t.ID.String(),
+				t.CreatedAt.Format("2006-01-02 15:04:05"),
+				expires,
+				revoked)
 		}
-		revoked := ""
-		if t.RevokedAt != nil {
-			revoked = t.RevokedAt.Format(time.RFC3339)
-		}
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-			t.ID.String(),
-			t.CreatedAt.Format("2006-01-02 15:04:05"),
-			expires,
-			revoked); err != nil {
-			return err
-		}
-	}
-	return w.Flush()
+	})
 }
 
 func runTokenIssue(cmd *cobra.Command, _ []string) error {

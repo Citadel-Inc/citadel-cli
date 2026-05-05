@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
 	"text/tabwriter"
 
@@ -168,20 +167,12 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if output == "json" {
-		return emitJSON(repos)
-	}
-	if len(repos) == 0 {
-		fmt.Printf("No repositories in namespace '%s'\n", ns)
-		return nil
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "PATH\tVISIBILITY\tBRANCH\tCREATED")
-	for _, r := range repos {
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.Path, r.Visibility, r.DefaultBranch, r.CreatedAt)
-	}
-	return w.Flush()
+	return emitList(output, repos, fmt.Sprintf("No repositories in namespace '%s'", ns), func(w *tabwriter.Writer, repos []repoRow) {
+		_, _ = fmt.Fprintln(w, "PATH\tVISIBILITY\tBRANCH\tCREATED")
+		for _, r := range repos {
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.Path, r.Visibility, r.DefaultBranch, r.CreatedAt)
+		}
+	})
 }
 
 func runRepoGet(cmd *cobra.Command, args []string) error {
@@ -200,7 +191,7 @@ func runRepoGet(cmd *cobra.Command, args []string) error {
 			if output == "json" {
 				return emitJSON(r)
 			}
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			w := newTabWriter()
 			_, _ = fmt.Fprintf(w, "Path:\t%s\n", r.Path)
 			_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", r.Visibility)
 			_, _ = fmt.Fprintf(w, "Default branch:\t%s\n", r.DefaultBranch)

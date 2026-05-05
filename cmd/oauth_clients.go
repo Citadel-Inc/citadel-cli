@@ -131,24 +131,16 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if output == "json" {
-		return emitJSON(clients)
-	}
-	if len(clients) == 0 {
-		fmt.Println("No OAuth clients.")
-		return nil
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tSCOPES\tLAST USED")
-	for _, oc := range clients {
-		scopes := strings.Join(oc.AllowedScopes, ",")
-		if scopes == "" {
-			scopes = "—"
+	return emitList(output, clients, "No OAuth clients.", func(w *tabwriter.Writer, clients []oauthClient) {
+		_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tSCOPES\tLAST USED")
+		for _, oc := range clients {
+			scopes := strings.Join(oc.AllowedScopes, ",")
+			if scopes == "" {
+				scopes = "—"
+			}
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", oc.ClientID, oc.Name, scopes, "—")
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", oc.ClientID, oc.Name, scopes, "—")
-	}
-	return w.Flush()
+	})
 }
 
 func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
@@ -225,7 +217,7 @@ func runOAuthClientsShow(cmd *cobra.Command, args []string) error {
 		return emitJSON(row)
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTabWriter()
 	_, _ = fmt.Fprintf(w, "id:\t%s\n", row.ID)
 	_, _ = fmt.Fprintf(w, "client_id:\t%s\n", row.ClientID)
 	_, _ = fmt.Fprintf(w, "name:\t%s\n", row.Name)

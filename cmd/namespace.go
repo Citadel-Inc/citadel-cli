@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -242,20 +241,12 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if output == "json" {
-		return emitJSON(orgs)
-	}
-	if len(orgs) == 0 {
-		fmt.Println("No org namespaces found.")
-		return nil
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "SLUG\tDISPLAY NAME\tCREATED")
-	for _, o := range orgs {
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", o.Slug, o.DisplayName, o.CreatedAt.Format("2006-01-02"))
-	}
-	return w.Flush()
+	return emitList(output, orgs, "No org namespaces found.", func(w *tabwriter.Writer, orgs []nsOrgRow) {
+		_, _ = fmt.Fprintln(w, "SLUG\tDISPLAY NAME\tCREATED")
+		for _, o := range orgs {
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", o.Slug, o.DisplayName, o.CreatedAt.Format("2006-01-02"))
+		}
+	})
 }
 
 func runNsGet(cmd *cobra.Command, args []string) error {
@@ -279,7 +270,7 @@ func runNsGet(cmd *cobra.Command, args []string) error {
 		return emitJSON(ns)
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTabWriter()
 	_, _ = fmt.Fprintf(w, "Slug:\t%s\n", ns.Slug)
 	_, _ = fmt.Fprintf(w, "Kind:\t%s\n", ns.Kind)
 	_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", ns.Visibility)
@@ -308,30 +299,21 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 	if err := c.Get(cmd.Context(), "/orgs/"+url.PathEscape(slug)+"/members", &payload); err != nil {
 		return err
 	}
-	members := payload.Members
 
-	if output == "json" {
-		return emitJSON(members)
-	}
-	if len(members) == 0 {
-		fmt.Printf("No members in namespace '%s'\n", slug)
-		return nil
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "SLUG\tDISPLAY NAME\tROLE\tJOINED")
-	for _, m := range members {
-		role := "member"
-		if m.IsOwner {
-			role = "owner"
+	return emitList(output, payload.Members, fmt.Sprintf("No members in namespace '%s'", slug), func(w *tabwriter.Writer, members []nsMemberRow) {
+		_, _ = fmt.Fprintln(w, "SLUG\tDISPLAY NAME\tROLE\tJOINED")
+		for _, m := range members {
+			role := "member"
+			if m.IsOwner {
+				role = "owner"
+			}
+			name := m.DisplayName
+			if name == "" {
+				name = m.Slug
+			}
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", m.Slug, name, role, m.JoinedAt.Format("2006-01-02"))
 		}
-		name := m.DisplayName
-		if name == "" {
-			name = m.Slug
-		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", m.Slug, name, role, m.JoinedAt.Format("2006-01-02"))
-	}
-	return w.Flush()
+	})
 }
 
 func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
@@ -380,25 +362,17 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if output == "json" {
-		return emitJSON(payload.Transfers)
-	}
-	if len(payload.Transfers) == 0 {
-		fmt.Println("No pending transfers.")
-		return nil
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "ID\tORG\tFROM\tEXPIRES")
-	for _, t := range payload.Transfers {
-		shortID := t.ID
-		if len(shortID) > 8 {
-			shortID = shortID[:8]
+	return emitList(output, payload.Transfers, "No pending transfers.", func(w *tabwriter.Writer, transfers []nsTransferRow) {
+		_, _ = fmt.Fprintln(w, "ID\tORG\tFROM\tEXPIRES")
+		for _, t := range transfers {
+			shortID := t.ID
+			if len(shortID) > 8 {
+				shortID = shortID[:8]
+			}
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+				shortID, t.OrgSlug, t.FromUserSlug, t.ExpiresAt.Format("2006-01-02"))
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-			shortID, t.OrgSlug, t.FromUserSlug, t.ExpiresAt.Format("2006-01-02"))
-	}
-	return w.Flush()
+	})
 }
 
 func runNsTransferAccept(cmd *cobra.Command, args []string) error {
