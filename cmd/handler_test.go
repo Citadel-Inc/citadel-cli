@@ -51,9 +51,13 @@ func resetFlagsRecursive(c *cobra.Command) {
 	reset := func(f *pflag.Flag) {
 		if sv, ok := f.Value.(pflag.SliceValue); ok {
 			_ = sv.Replace([]string{})
-			return
+		} else {
+			_ = f.Value.Set(f.DefValue)
 		}
-		_ = f.Value.Set(f.DefValue)
+		// pflag tracks "was the flag set on this invocation" via Changed,
+		// which cobra's MarkFlagRequired check consults. Without this clear,
+		// a flag set in test N stays "changed" for test N+1.
+		f.Changed = false
 	}
 	c.Flags().VisitAll(reset)
 	c.PersistentFlags().VisitAll(reset)
@@ -338,8 +342,8 @@ func TestTokenList_Happy(t *testing.T) {
 
 func TestTokenList_MissingAgent(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	if err := rootFor(cmd.TokenCmd, "list").Execute(); err == nil || !strings.Contains(err.Error(), "--agent") {
-		t.Fatalf("want --agent required, got %v", err)
+	if err := rootFor(cmd.TokenCmd, "list").Execute(); err == nil || !strings.Contains(err.Error(), `"agent"`) {
+		t.Fatalf("want agent required, got %v", err)
 	}
 }
 
@@ -466,8 +470,8 @@ func TestNsTransferInitiate_Happy(t *testing.T) {
 
 func TestNsTransferInitiate_MissingTo(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	if err := rootFor(cmd.NamespaceCmd, "transfer", "initiate", "myorg", "--yes").Execute(); err == nil || !strings.Contains(err.Error(), "--to") {
-		t.Fatalf("want --to required, got %v", err)
+	if err := rootFor(cmd.NamespaceCmd, "transfer", "initiate", "myorg", "--yes").Execute(); err == nil || !strings.Contains(err.Error(), `"to"`) {
+		t.Fatalf("want to required, got %v", err)
 	}
 }
 
@@ -562,8 +566,8 @@ func TestOAuthCreate_Happy(t *testing.T) {
 
 func TestOAuthCreate_MissingName(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	if err := rootFor(cmd.OauthCmd, "clients", "create").Execute(); err == nil || !strings.Contains(err.Error(), "--name") {
-		t.Fatalf("want --name required, got %v", err)
+	if err := rootFor(cmd.OauthCmd, "clients", "create").Execute(); err == nil || !strings.Contains(err.Error(), `"name"`) {
+		t.Fatalf("want name required, got %v", err)
 	}
 }
 

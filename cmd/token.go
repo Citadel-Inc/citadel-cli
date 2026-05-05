@@ -87,9 +87,6 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	agentName, _ := cmd.Flags().GetString("agent")
-	if agentName == "" {
-		return fmt.Errorf("--agent flag required")
-	}
 
 	a, err := findAgentByName(cmd.Context(), c, agentName)
 	if err != nil {
@@ -127,9 +124,6 @@ func runTokenIssue(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	agentName, _ := cmd.Flags().GetString("agent")
-	if agentName == "" {
-		return fmt.Errorf("--agent flag required")
-	}
 	scopes, _ := cmd.Flags().GetStringSlice("scopes")
 	expiresStr, _ := cmd.Flags().GetString("expires")
 
@@ -188,7 +182,9 @@ func init() {
 
 	listCmd.Flags().String("agent", "", "Agent name (required)")
 	addOutputFlag(listCmd)
+	_ = listCmd.MarkFlagRequired("agent")
 	issueCmd.Flags().String("agent", "", "Agent name (required)")
 	issueCmd.Flags().StringSlice("scopes", []string{}, "Token scopes (optional)")
 	issueCmd.Flags().String("expires", "", "Expiration duration (optional, e.g. '24h')")
+	_ = issueCmd.MarkFlagRequired("agent")
 }
