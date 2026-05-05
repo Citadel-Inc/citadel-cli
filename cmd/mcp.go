@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +14,10 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 	"github.com/Rethunk-Tech/citadel-cli/internal/mcpclient"
 )
+
+// ErrToolCallFailed signals that a tools/call returned isError=true; main
+// translates it to exit code 2.
+var ErrToolCallFailed = errors.New("tool call returned isError")
 
 // McpCmd is the parent for `citadel-cli mcp ...`. Speaks the MCP Streamable
 // HTTP protocol against /mcp.
@@ -92,7 +95,7 @@ func runMcpTools(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	tools, err := c.ToolsList(cmdContext(cmd))
+	tools, err := c.ToolsList(cmd.Context())
 	if err != nil {
 		return surfaceErr(err)
 	}
@@ -112,41 +115,61 @@ func runMcpCall(cmd *cobra.Command, args []string) error {
 	argPairs, _ := cmd.Flags().GetStringSlice("arg")
 	stringArgPairs, _ := cmd.Flags().GetStringSlice("arg-string")
 
-	toolArgs := map[string]any{}
-	for _, p := range argPairs {
-		k, v, ok := strings.Cut(p, "=")
-		if !ok {
-			return fmt.Errorf("bad --arg %q (expected key=value)", p)
-		}
-		toolArgs[k] = coerceArg(v)
-	}
-	for _, p := range stringArgPairs {
-		k, v, ok := strings.Cut(p, "=")
-		if !ok {
-			return fmt.Errorf("bad --arg-string %q (expected key=value)", p)
-		}
-		toolArgs[k] = v
+	toolArgs, err := parseArgPairs(argPairs, stringArgPairs)
+	if err != nil {
+		return err
 	}
 
 	c, err := dialMCP(cmd)
 	if err != nil {
 		return err
 	}
-	res, err := c.ToolsCall(cmdContext(cmd), toolName, toolArgs)
+	res, err := c.ToolsCall(cmd.Context(), toolName, toolArgs)
 	if err != nil {
 		return surfaceErr(err)
 	}
 	if rawJSON {
-		var pretty any
-		_ = json.Unmarshal(res.Raw, &pretty)
-		_ = emitJSON(pretty)
+		if err := emitRawJSON(res.Raw); err != nil {
+			return err
+		}
 	} else {
 		printToolResult(res)
 	}
 	if res.IsError {
-		os.Exit(2)
+		return ErrToolCallFailed
 	}
 	return nil
+}
+
+// parseArgPairs splits --arg key=value pairs (with type coercion) and
+// --arg-string key=value pairs (raw string) into a single argument map.
+func parseArgPairs(coerced, raw []string) (map[string]any, error) {
+	out := make(map[string]any, len(coerced)+len(raw))
+	for _, p := range coerced {
+		k, v, ok := strings.Cut(p, "=")
+		if !ok {
+			return nil, fmt.Errorf("bad --arg %q (expected key=value)", p)
+		}
+		out[k] = coerceArg(v)
+	}
+	for _, p := range raw {
+		k, v, ok := strings.Cut(p, "=")
+		if !ok {
+			return nil, fmt.Errorf("bad --arg-string %q (expected key=value)", p)
+		}
+		out[k] = v
+	}
+	return out, nil
+}
+
+// emitRawJSON re-encodes a json.RawMessage with indentation. Surfaces decode
+// errors instead of swallowing them.
+func emitRawJSON(raw json.RawMessage) error {
+	var pretty any
+	if err := json.Unmarshal(raw, &pretty); err != nil {
+		return fmt.Errorf("decode JSON: %w", err)
+	}
+	return emitJSON(pretty)
 }
 
 func runMcpResourcesList(cmd *cobra.Command, _ []string) error {
@@ -154,7 +177,7 @@ func runMcpResourcesList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	rows, err := c.ResourcesList(cmdContext(cmd))
+	rows, err := c.ResourcesList(cmd.Context())
 	if err != nil {
 		return surfaceErr(err)
 	}
@@ -176,14 +199,12 @@ func runMcpResourcesRead(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	raw, err := c.ResourcesRead(cmdContext(cmd), uri)
+	raw, err := c.ResourcesRead(cmd.Context(), uri)
 	if err != nil {
 		return surfaceErr(err)
 	}
 	if rawJSON {
-		var pretty any
-		_ = json.Unmarshal(raw, &pretty)
-		return emitJSON(pretty)
+		return emitRawJSON(raw)
 	}
 	var parsed struct {
 		Contents []map[string]any `json:"contents"`
@@ -206,7 +227,7 @@ func runMcpPromptsList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	rows, err := c.PromptsList(cmdContext(cmd))
+	rows, err := c.PromptsList(cmd.Context())
 	if err != nil {
 		return surfaceErr(err)
 	}
@@ -226,34 +247,21 @@ func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
 	argPairs, _ := cmd.Flags().GetStringSlice("arg")
 	stringArgPairs, _ := cmd.Flags().GetStringSlice("arg-string")
 
-	promptArgs := map[string]any{}
-	for _, p := range argPairs {
-		k, v, ok := strings.Cut(p, "=")
-		if !ok {
-			return fmt.Errorf("bad --arg %q (expected key=value)", p)
-		}
-		promptArgs[k] = coerceArg(v)
-	}
-	for _, p := range stringArgPairs {
-		k, v, ok := strings.Cut(p, "=")
-		if !ok {
-			return fmt.Errorf("bad --arg-string %q (expected key=value)", p)
-		}
-		promptArgs[k] = v
+	promptArgs, err := parseArgPairs(argPairs, stringArgPairs)
+	if err != nil {
+		return err
 	}
 
 	c, err := dialMCP(cmd)
 	if err != nil {
 		return err
 	}
-	raw, err := c.PromptsGet(cmdContext(cmd), name, promptArgs)
+	raw, err := c.PromptsGet(cmd.Context(), name, promptArgs)
 	if err != nil {
 		return surfaceErr(err)
 	}
 	if rawJSON {
-		var pretty any
-		_ = json.Unmarshal(raw, &pretty)
-		return emitJSON(pretty)
+		return emitRawJSON(raw)
 	}
 	var parsed struct {
 		Description string           `json:"description"`
@@ -302,7 +310,7 @@ func dialMCP(cmd *cobra.Command) (*mcpclient.Client, error) {
 	}
 
 	c := mcpclient.New(mcpURL, token, time.Duration(timeoutSecs)*time.Second)
-	if err := c.Initialize(cmdContext(cmd)); err != nil {
+	if err := c.Initialize(cmd.Context()); err != nil {
 		return nil, surfaceErr(err)
 	}
 	return c, nil
@@ -336,15 +344,6 @@ func surfaceErr(err error) error {
 	return err
 }
 
-// cmdContext returns the cobra command's context (Go 1.21+). Falls back
-// to context.Background for the (unreachable) nil case.
-func cmdContext(cmd *cobra.Command) context.Context {
-	if ctx := cmd.Context(); ctx != nil {
-		return ctx
-	}
-	return context.Background()
-}
-
 // printToolResult pretty-prints a tools/call result. Text content blocks
 // emit one per line; non-text content falls through to JSON.
 func printToolResult(res *mcpclient.ToolCallResult) {
@@ -358,7 +357,9 @@ func printToolResult(res *mcpclient.ToolCallResult) {
 				continue
 			}
 		}
-		_ = emitJSON(c)
+		if err := emitJSON(c); err != nil {
+			fmt.Fprintf(os.Stderr, "encode content block: %v\n", err)
+		}
 	}
 }
 

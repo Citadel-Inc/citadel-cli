@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -33,6 +34,12 @@ Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --s
 	root.AddCommand(cmd.OauthCmd)
 
 	if err := root.Execute(); err != nil {
+		// errToolCallFailed is the sentinel signaling tools/call returned
+		// isError=true; the result has already been printed, so suppress
+		// the duplicate "Error:" line and exit with code 2.
+		if errors.Is(err, cmd.ErrToolCallFailed) {
+			os.Exit(2)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
