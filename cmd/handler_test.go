@@ -94,6 +94,20 @@ func resetFlagsRecursive(c *cobra.Command) {
 	}
 }
 
+// resetCtxRecursive clears each command's stored context. Cobra's ExecuteC only
+// assigns the root context to a target subcommand when cmd.ctx == nil; after a
+// prior ExecuteContext+cancel, reused globals (e.g. RepoCmd) may otherwise keep
+// a canceled context and exit handlers immediately on the next run.
+func resetCtxRecursive(c *cobra.Command) {
+	// Cobra assigns the executing root's context to the target subcommand only
+	// when cmd.ctx == nil. After ExecuteContext+cancel, a reused global command
+	// may retain a canceled ctx; nil clears it so the next run inherits fresh ctx.
+	c.SetContext(nil) //nolint:staticcheck // SA1012: clearing stale ctx is intentional (cobra merges from root only when nil).
+	for _, child := range c.Commands() {
+		resetCtxRecursive(child)
+	}
+}
+
 // withServer spins up an httptest server with the given handler and wires
 // clicfg env vars to point at it. XDG_CONFIG_HOME is redirected to a
 // tempdir so clicfg.Load() reads zero state.
