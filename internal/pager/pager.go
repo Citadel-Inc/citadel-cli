@@ -11,6 +11,11 @@ import (
 	"golang.org/x/term"
 )
 
+// Overridable for tests: whether stdout is an interactive terminal.
+var isStdoutInteractive = func() bool {
+	return term.IsTerminal(int(os.Stdout.Fd()))
+}
+
 // Resolve returns the pager command line in precedence order:
 // CITADEL_PAGER > GIT_PAGER > PAGER > "less -FRX". An explicit empty value
 // at any tier disables paging (matches git's PAGER="" convention).
@@ -38,7 +43,7 @@ func Start(disabled bool) (cleanup func(), err error) {
 	if disabled {
 		return noop, nil
 	}
-	if !term.IsTerminal(int(os.Stdout.Fd())) {
+	if !isStdoutInteractive() {
 		return noop, nil
 	}
 	cmdline := strings.TrimSpace(Resolve())
