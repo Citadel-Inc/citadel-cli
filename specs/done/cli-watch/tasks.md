@@ -7,7 +7,7 @@ Server-side delivery to be split into a citadel-repo spec once Q-table ratifies.
 ## P0
 
 - [x] [HUMAN] NOMAD ratifies Q-table (Q1–Q5).
-- [ ] A1. [SERVER] SSE endpoints on every list path with init/add/update/remove events + `:keepalive` heartbeat + `Last-Event-ID` resume.
+- [x] A1. [SERVER] SSE endpoints on every list path with init/add/update/remove events + `:keepalive` heartbeat + `Last-Event-ID` resume.
 - [x] A2. [CLI] `internal/sseclient` package: minimal `text/event-stream` reader (event id, type, data); reconnect with `Last-Event-ID`; honor request context cancellation.
 - [x] A3. [CLI] `--watch / -w` flag on every list verb; routes to SSE handler when set.
 
