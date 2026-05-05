@@ -27,7 +27,7 @@
   - `--output ndjson --watch`: one JSON object per line per event, `{type, ts, payload}`. Canonical for piping into `jq` / log tailers.
   - `--output table --watch` (default): re-render the tabwriter on every event. Uses ANSI cursor-up only when `colorEnabled(cmd)` is true (TTY + NO_COLOR unset); falls back to append-only blocks otherwise.
   - `--output json --watch`: explicitly disallowed (single-array shape doesn't stream). Hard error with a hint pointing at `--output ndjson`.
-- **Reconnect**: on stream drop, retry with expo backoff (250 ms → 4 s, capped) re-using the existing `internal/apiclient/transport.go` retry policy. Send `Last-Event-ID` from the most recent server event.
+- **Reconnect**: on stream drop, retry with expo backoff (250 ms → 4 s, capped) matching `internal/httpx` retry jitter. Send `Last-Event-ID` from the most recent server event.
 - **Exit**: `--watch` runs until Ctrl-C / SIGTERM / context-cancel; clean exit 0 on signal. Exit 1 on auth failure, exit 2 on non-recoverable HTTP (404 / 410).
 
 ## Out of scope
@@ -42,11 +42,11 @@
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | SSE vs long-poll vs WebSocket? | **Open** — SSE; one-way, framing built in, replays via Last-Event-ID. |
-| Q2 | Default `--output` under `--watch`: table-redraw vs append-only blocks? | **Open** — table-redraw on TTY, append on non-TTY. Auto. |
-| Q3 | Reconnect: max attempts vs unbounded? | **Open** — unbounded with capped backoff; Ctrl-C is the user's exit. |
-| Q4 | Heartbeat interval 15 s vs 30 s? | **Open** — 15 s; matches typical idle-timeout floors (Cloudflare 100 s, AWS ALB 60 s). |
-| Q5 | `--watch` + `--limit/--cursor`/`--all` (cli-pagination) interplay: snapshot only, or paginate the init burst? | **Open** — paginate the init burst transparently; emit init events page-by-page. |
+| Q1 | SSE vs long-poll vs WebSocket? | **Ratified 051645ZMAY26** — SSE; one-way, framing built in, replays via Last-Event-ID. |
+| Q2 | Default `--output` under `--watch`: table-redraw vs append-only blocks? | **Ratified 051645ZMAY26** — table-redraw on TTY when color is enabled; append-style deltas otherwise (auto). |
+| Q3 | Reconnect: max attempts vs unbounded? | **Ratified 051645ZMAY26** — unbounded with capped backoff; Ctrl-C is the user's exit. |
+| Q4 | Heartbeat interval 15 s vs 30 s? | **Ratified 051645ZMAY26** — 15 s; `:keepalive` comments; client treats >30 s idle as a stalled stream. |
+| Q5 | `--watch` + `--limit/--cursor`/`--all` (cli-pagination) interplay: snapshot only, or paginate the init burst? | **Ratified 051645ZMAY26** — paginate the init burst transparently; emit init events page-by-page (server); CLI forwards `limit`, `cursor`, and `all` query params on the SSE URL. |
 
 ## Acceptance
 
@@ -58,8 +58,6 @@
 - A6. Heartbeat keepalives received every ≤ 15 s; not surfaced to the user except in `--debug-http`.
 - A7. Q-table ratified.
 
-## Open questions for NOMAD
+## Carry-forward
 
-- Server SSE contract (Q1 + event shape).
-- Default-mode rendering on TTY (Q2).
-- Init-burst pagination semantics (Q5) — depends on cli-pagination landing first.
+Server SSE contract (event shape) is captured in `plan.md`. Companion daemon implementation remains tracked separately (citadel core repo).

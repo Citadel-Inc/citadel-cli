@@ -18,7 +18,7 @@ Install, authenticate, and first-run commands live in [HUMANS.md § Getting star
 
 ## Shell completion
 
-Cobra emits integration scripts via `citadel-cli completion bash|zsh|fish|powershell`. How dynamic completion uses your session, list pagination flags (`--limit` / `--cursor` / `--all`), on-disk caching, and related environment variables are covered in [HUMANS.md § Shell completion](HUMANS.md#shell-completion) and [HUMANS.md § List pagination](HUMANS.md#list-pagination).
+Cobra emits integration scripts via `citadel-cli completion bash|zsh|fish|powershell`. How dynamic completion uses your session, list pagination flags (`--limit` / `--cursor` / `--all`), live list streaming (`--watch` / `-w`), on-disk caching, and related environment variables are covered in [HUMANS.md § Shell completion](HUMANS.md#shell-completion) and [HUMANS.md § List pagination](HUMANS.md#list-pagination).
 
 ## JSON error envelope
 

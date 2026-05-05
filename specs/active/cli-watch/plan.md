@@ -44,7 +44,7 @@ func runRepoListWatch(ctx context.Context, cmd *cobra.Command) error {
 
 ## Reconnect policy
 
-Re-use `internal/apiclient/transport.go` retry helpers (`backoff(n)`). On stream drop, `sseclient` reopens with `Last-Event-ID: <id-of-last-good-event>` and the same Bearer token. Max single-attempt timeout: 30 s for the connect; the stream itself runs without timeout. Heartbeat absence > 30 s = treat as drop.
+Re-use `internal/httpx.Backoff`. On stream drop, `sseclient` reopens with `Last-Event-ID: <id-of-last-good-event>` and the same Bearer token. Max single-attempt timeout: 30 s for the connect; the stream itself runs without timeout. Heartbeat absence > 30 s = treat as drop.
 
 ## Output mode matrix
 

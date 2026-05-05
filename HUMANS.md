@@ -94,6 +94,8 @@ Every list verb (`repo list`, `agent list`, `token list`, `oauth clients list`, 
 
 **`--output json`** returns a single JSON array for one server round-trip only; **`--output ndjson`** emits one JSON object per row and is the supported mode for **`--all`** when you want a machine-readable stream without buffering the entire result set. Passing **`--all` with `--output json`** is rejected with an error directing you to `ndjson`.
 
+**`--watch` / `-w`** on the same list verbs opens the Server-Sent Events stream (`Accept: text/event-stream`) on the corresponding REST path: rows arrive as `init` / `add` / `update` / `remove` events until you interrupt (Ctrl-C). Use **`--output ndjson --watch`** for one JSON object per event (`type`, `ts`, `payload`) suitable for piping to `jq`. **`--output json --watch`** is rejected (same hint as pagination). Human/table mode redraws on a color-capable TTY when color is enabled; otherwise it prints snapshot blocks and short `+`/`-`/`~` delta lines.
+
 Malformed **`--cursor`** values (before any HTTP call) produce a clear `invalid --cursor` error; valid cursors that point past the end yield an empty success (exit 0).
 
 ### Shell completion
