@@ -1,6 +1,7 @@
 package clicfg
 
 import (
+	"cmp"
 	"errors"
 	"os"
 	"path/filepath"
@@ -135,14 +136,5 @@ func (c Config) Save() error {
 // Used by every subcommand that issues HTTP requests so the precedence
 // is consistent.
 func (c Config) ResolveServerURL(flagOverride string) string {
-	if flagOverride != "" {
-		return flagOverride
-	}
-	if env := os.Getenv("CITADEL_SERVER"); env != "" {
-		return env
-	}
-	if c.ServerURL != "" {
-		return c.ServerURL
-	}
-	return "https://api.src.land"
+	return cmp.Or(flagOverride, os.Getenv("CITADEL_SERVER"), c.ServerURL, "https://api.src.land")
 }

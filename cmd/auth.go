@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"context"
+	"cmp"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -94,7 +94,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 			c := r.URL.Query().Get("code")
 			if c == "" {
-				errChan <- fmt.Errorf("missing code parameter")
+				errChan <- errors.New("missing code parameter")
 				w.WriteHeader(http.StatusBadRequest)
 				_, _ = w.Write([]byte("missing code"))
 				return
@@ -105,14 +105,12 @@ func runLogin(cmd *cobra.Command, args []string) error {
 			_, _ = w.Write([]byte("Authentication successful! You can close this window."))
 		})
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-
+		// The outer defer closes the listener; that is what unblocks Serve.
+		// No follow-up Shutdown() is needed — Serve already returned.
 		server := &http.Server{Handler: mux}
 		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errChan <- fmt.Errorf("serve: %w", err)
 		}
-		_ = server.Shutdown(ctx)
 	}()
 
 	select {
@@ -121,7 +119,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	case err := <-errChan:
 		return err
 	case <-time.After(5 * time.Minute):
-		return fmt.Errorf("login timeout")
+		return errors.New("login timeout")
 	}
 
 	tokenResp, err := exchangePKCECode(supabaseURL, code, verifier)
@@ -208,10 +206,7 @@ func runLogout(cmd *cobra.Command, args []string) error {
 // Citadel Supabase project URL. Split out so tests can verify the env-vs-default
 // precedence without spinning up runLogin.
 func resolveSupabaseURL() string {
-	if v := os.Getenv("SUPABASE_URL"); v != "" {
-		return v
-	}
-	return "https://ucnlqqhgqhenzthzkdpi.supabase.co"
+	return cmp.Or(os.Getenv("SUPABASE_URL"), "https://ucnlqqhgqhenzthzkdpi.supabase.co")
 }
 
 // buildAuthorizeURL constructs the GitHub-provider PKCE authorize URL

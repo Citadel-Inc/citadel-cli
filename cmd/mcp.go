@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -214,11 +215,7 @@ func runMcpResourcesRead(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("decode resources/read: %w", err)
 	}
 	for _, block := range parsed.Contents {
-		if t, ok := block["text"].(string); ok {
-			fmt.Println(t)
-			continue
-		}
-		_ = emitJSON(block)
+		printContentBlock(block)
 	}
 	return nil
 }
@@ -288,7 +285,9 @@ func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
 				continue
 			}
 		}
-		_ = emitJSON(m)
+		if err := emitJSON(m); err != nil {
+			fmt.Fprintf(os.Stderr, "encode prompt message: %v\n", err)
+		}
 	}
 	return nil
 }
@@ -328,13 +327,7 @@ func resolveMCPURL(server string) string {
 
 // pickToken applies the token-precedence chain: --token > env > JWT.
 func pickToken(flagToken, jwt string) string {
-	if flagToken != "" {
-		return flagToken
-	}
-	if env := os.Getenv("CITADEL_AGENT_TOKEN"); env != "" {
-		return env
-	}
-	return jwt
+	return cmp.Or(flagToken, os.Getenv("CITADEL_AGENT_TOKEN"), jwt)
 }
 
 // surfaceErr maps mcpclient errors to user copy. Auth failures point at
@@ -349,19 +342,23 @@ func surfaceErr(err error) error {
 // printToolResult pretty-prints a tools/call result. Text content blocks
 // emit one per line; non-text content falls through to JSON.
 func printToolResult(res *mcpclient.ToolCallResult) {
-	if len(res.Content) == 0 {
-		return
-	}
 	for _, c := range res.Content {
-		if c["type"] == "text" {
-			if text, ok := c["text"].(string); ok {
-				fmt.Println(text)
-				continue
-			}
+		printContentBlock(c)
+	}
+}
+
+// printContentBlock prints one MCP content block: type=text → text on its own
+// line; everything else → indented JSON. Errors during JSON encoding go to
+// stderr instead of being silently dropped.
+func printContentBlock(m map[string]any) {
+	if m["type"] == "text" {
+		if text, ok := m["text"].(string); ok {
+			fmt.Println(text)
+			return
 		}
-		if err := emitJSON(c); err != nil {
-			fmt.Fprintf(os.Stderr, "encode content block: %v\n", err)
-		}
+	}
+	if err := emitJSON(m); err != nil {
+		fmt.Fprintf(os.Stderr, "encode content block: %v\n", err)
 	}
 }
 
@@ -457,7 +454,5 @@ func init() {
 	callCmd.Flags().StringSlice("arg-string", []string{}, "Tool arguments forced to string (no coercion)")
 	mcpPromptsGetCmd.Flags().StringSlice("arg", []string{}, "Prompt arguments as key=value (same coercion as mcp call)")
 	mcpPromptsGetCmd.Flags().StringSlice("arg-string", []string{}, "Prompt arguments forced to string")
-	for _, c := range []*cobra.Command{callCmd, mcpResourcesReadCmd, mcpPromptsGetCmd} {
-		addJSONFlag(c)
-	}
+	addJSONFlag(callCmd, mcpResourcesReadCmd, mcpPromptsGetCmd)
 }

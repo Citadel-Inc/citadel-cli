@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"net/http"
@@ -161,10 +162,7 @@ func printImpactTree(ir impactResp) {
 }
 
 func formatCaller(n impactNode) string {
-	label := n.Name
-	if label == "" {
-		label = n.ID
-	}
+	label := cmp.Or(n.Name, n.ID)
 	if n.Path != "" {
 		return label + "  in " + n.Path
 	}
