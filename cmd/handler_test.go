@@ -10,9 +10,12 @@ package cmd_test
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -951,6 +954,164 @@ func TestMcpPromptsGet_WithArgs(t *testing.T) {
 	})
 	if err := rootFor(cmd.McpCmd, "prompts", "get", "x", "--arg", "topic=auth").Execute(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// ── json-output + error-path coverage fillers ───────────────────────────────
+
+func TestOAuthRevoke_JSON(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /oauth/clients/00000000-0000-0000-0000-000000000001": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	}))
+	if err := rootFor(cmd.OauthCmd, "clients", "revoke", "00000000-0000-0000-0000-000000000001", "--yes", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRepoDelete_BadArg(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	if err := rootFor(cmd.RepoCmd, "delete", "no-slash", "--yes").Execute(); err == nil {
+		t.Fatal("expected error on malformed arg")
+	}
+}
+
+func TestNsTransferAccept_JSON(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /transfers/abc/accept": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"id": "abc", "status": "accepted"})
+		},
+	}))
+	if err := rootFor(cmd.NamespaceCmd, "transfer", "accept", "abc", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRepoList_ServerError(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /namespaces/myorg/repos": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		},
+	}))
+	if err := rootFor(cmd.RepoCmd, "list", "--namespace", "myorg").Execute(); err == nil {
+		t.Fatal("expected server error")
+	}
+}
+
+func TestNsDelete_Forbidden(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /namespaces/myorg": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		},
+	}))
+	err := rootFor(cmd.NamespaceCmd, "delete", "myorg", "--yes").Execute()
+	if err == nil || !strings.Contains(err.Error(), "forbidden") {
+		t.Fatalf("want forbidden message, got %v", err)
+	}
+}
+
+func TestNsDelete_NotFound(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /namespaces/myorg": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		},
+	}))
+	err := rootFor(cmd.NamespaceCmd, "delete", "myorg", "--yes").Execute()
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("want not-found message, got %v", err)
+	}
+}
+
+func TestTokenIssue_ExistingAgent(t *testing.T) {
+	const aid = "00000000-0000-0000-0000-00000000000a"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, []map[string]any{{"id": aid, "name": "alpha"}})
+		},
+		"POST /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 201, map[string]any{
+				"id": "00000000-0000-0000-0000-00000000000b", "agent_id": aid, "created_at": "2026-01-01T00:00:00Z", "cleartext_token": "sb_at_x",
+			})
+		},
+	}))
+	if err := rootFor(cmd.TokenCmd, "issue", "--agent", "alpha").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTokenIssue_AgentsListFails(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		},
+	}))
+	if err := rootFor(cmd.TokenCmd, "issue", "--agent", "alpha").Execute(); err == nil {
+		t.Fatal("expected error when /agents 500s")
+	}
+}
+
+func TestTokenIssue_CreateFails(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, []map[string]any{})
+		},
+		"POST /agents": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+		},
+	}))
+	err := rootFor(cmd.TokenCmd, "issue", "--agent", "alpha").Execute()
+	if err == nil || !strings.Contains(err.Error(), "create agent") {
+		t.Fatalf("want create-agent error, got %v", err)
+	}
+}
+
+func TestOAuthRotateSecret_WithClipboard(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("linux-only path")
+	}
+	dir := t.TempDir()
+	stub := dir + "/wl-copy"
+	if err := os.WriteFile(stub, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /oauth/clients/00000000-0000-0000-0000-000000000001/rotate-secret": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"id": "00000000-0000-0000-0000-000000000001", "client_id": "ci", "name": "x",
+				"redirect_uris": []string{}, "allowed_scopes": []string{},
+				"created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+				"client_secret": "sek",
+			})
+		},
+	}))
+	if err := rootFor(cmd.OauthCmd, "clients", "rotate-secret", "00000000-0000-0000-0000-000000000001", "--copy-to-clipboard").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRepoDelete_DeleteFails(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /namespaces/myorg/r": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		},
+	}))
+	if err := rootFor(cmd.RepoCmd, "delete", "myorg/r", "--yes").Execute(); err == nil {
+		t.Fatal("expected error when delete returns 500")
+	}
+}
+
+func TestMcpCall_ToolError(t *testing.T) {
+	withMCPServer(t, map[string]func() any{
+		"tools/call": func() any {
+			return map[string]any{"isError": true, "content": []map[string]any{{"type": "text", "text": "boom"}}}
+		},
+	})
+	err := rootFor(cmd.McpCmd, "call", "x").Execute()
+	if err == nil || !errors.Is(err, cmd.ErrToolCallFailed) {
+		t.Fatalf("want ErrToolCallFailed, got %v", err)
 	}
 }
 
