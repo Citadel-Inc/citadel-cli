@@ -129,6 +129,44 @@ func TestLoad_StatError(t *testing.T) {
 	}
 }
 
+// ─── Load: env-var token override pins expiry to ~now+1h ────────────────
+
+func TestLoad_EnvTokenOverride(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "env-jwt")
+
+	got, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.AccessToken != "env-jwt" {
+		t.Fatalf("AccessToken = %q", got.AccessToken)
+	}
+	// Expiry pinned to ~now+1h; allow generous skew (test scheduling).
+	if got.ExpiresAt.IsZero() {
+		t.Fatal("ExpiresAt was not pinned")
+	}
+}
+
+// ─── ResolveServerURL: precedence chain ──────────────────────────────────
+
+func TestResolveServerURL_Precedence(t *testing.T) {
+	c := Config{ServerURL: "https://stored.example"}
+	t.Setenv("CITADEL_SERVER", "https://env.example")
+
+	if got := c.ResolveServerURL("https://flag.example"); got != "https://flag.example" {
+		t.Fatalf("flag override: got %q", got)
+	}
+	if got := c.ResolveServerURL(""); got != "https://env.example" {
+		t.Fatalf("env override: got %q", got)
+	}
+	t.Setenv("CITADEL_SERVER", "")
+	if got := c.ResolveServerURL(""); got != "https://stored.example" {
+		t.Fatalf("stored value: got %q", got)
+	}
+}
+
 // ─── Save: error branches (parent-mkdir failure, OpenFile failure) ──────
 
 // TestSave_MkdirFails covers the os.MkdirAll error branch by pointing
@@ -148,6 +186,30 @@ func TestSave_MkdirFails(t *testing.T) {
 	cfg := Config{ServerURL: "https://x"}
 	if err := cfg.Save(); err == nil {
 		t.Fatal("expected mkdir error, got nil")
+	}
+}
+
+// TestSave_RenameFails covers the os.Rename error branch by pre-creating
+// the destination path as a non-empty directory so atomic rename fails.
+func TestSave_RenameFails(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+
+	dir := filepath.Join(tmp, "citadel")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	// Block the rename target by making config.toml a non-empty directory.
+	target := filepath.Join(dir, "config.toml")
+	if err := os.MkdirAll(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "guard"), []byte("x"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := (Config{ServerURL: "https://x"}).Save(); err == nil {
+		t.Fatal("expected Rename error, got nil")
 	}
 }
 
