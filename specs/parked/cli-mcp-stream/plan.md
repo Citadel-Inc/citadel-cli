@@ -1,5 +1,7 @@
 # Plan — cli-mcp-stream
 
+**PARKED 050505ZMAY26** — not implementing; see [`spec.md`](./spec.md).
+
 HTTP handler branches on `Accept: text/event-stream`: if present + tool flagged `streaming`, hijack the response writer for SSE framing (`data: <json>\n\n`). Tool runtime exposes `ctx.Emit(name, payload)` that the dispatcher serialises onto the SSE stream.
 
 Heartbeat is a 15s ticker (Q1) emitting a no-op `: ping\n\n` comment line — keeps proxies from severing the connection.

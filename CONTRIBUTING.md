@@ -16,7 +16,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## Spec discipline
 
-Specs live under `specs/active/` and `specs/done/`. Authoring rules and lifecycle are defined by [`@rethunk/citadel-sdd`](https://github.com/Rethunk-AI/citadel-sdd). Use the `mcp__citadel-sdd__*` MCP tools — see [AGENTS.md](AGENTS.md) for the tool→operation map. Strict spec lint (`mcp__citadel-sdd__spec_lint`) must pass before merge.
+Specs live under `specs/active/`, `specs/done/`, and `specs/parked/` (intentionally not pursued — see [`specs/parked/README.md`](specs/parked/README.md)). Authoring rules and lifecycle for **active** and **done** are defined by [`@rethunk/citadel-sdd`](https://github.com/Rethunk-AI/citadel-sdd). Use the `mcp__citadel-sdd__*` MCP tools — see [AGENTS.md](AGENTS.md) for the tool→operation map. Strict spec lint (`mcp__citadel-sdd__spec_lint`) must pass before merge.
 
 ## Pre-commit checklist
 

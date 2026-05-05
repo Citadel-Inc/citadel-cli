@@ -1,5 +1,7 @@
 # Plan — cli-mcp-stdio
 
+**PARKED 050505ZMAY26** — not implementing; see [`spec.md`](./spec.md).
+
 `citadel mcp serve --stdio` constructs the same MCP server used in HTTP mode (`internal/mcp/server.go`) but mounts it on a stdio transport (`mark3labs/mcp-go` already provides `server.NewStdioServer`). Token lookup via `os.Getenv("CITADEL_TOKEN")` — stamps the server's auth context.
 
 Logging via `log/slog` with the handler bound to `os.Stderr`. Default level `warn` (Q2) — parent clients (Claude Desktop) surface stderr in their UI and noisy logs are a UX problem.

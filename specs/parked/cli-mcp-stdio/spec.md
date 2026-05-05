@@ -2,12 +2,16 @@
 
 | | |
 |---|---|
-| Status | DRAFT 030619ZMAY26 |
+| Status | **PARKED** 050505ZMAY26 — superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | Authored | 030619ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | `cli-mcp-tools` retro line 79: "`cli-mcp-stdio` — stdio transport for embedding in other tooling." + spec §95: "Stdio transport (out of scope per spec; tracked as `cli-mcp-stdio` carry-forward)." |
 
-## Why
+## Resolution
+
+**Not implementing.** IDE and agent integrations should point at **HTTPS MCP** on the Citadel host. A stdio adapter in `citadel-cli` would duplicate the transport and violate the “don’t build features twice” rule. Re-open only if a *mandatory* host appears that cannot speak HTTP MCP and the cost of a thin external proxy is unacceptable.
+
+## Why (historical)
 
 `cli-mcp-tools` ships HTTP-transport MCP client. Stdio transport is the standard MCP embedding contract — Claude Desktop, IDE integrations, language SDKs all spawn an MCP server on stdio. Citadel exposing only HTTP closes us out of that ecosystem. This spec adds a stdio entrypoint that wraps the existing MCP server.
 

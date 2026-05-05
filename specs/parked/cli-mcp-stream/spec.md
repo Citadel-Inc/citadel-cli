@@ -2,12 +2,16 @@
 
 | | |
 |---|---|
-| Status | DRAFT 030619ZMAY26 |
+| Status | **PARKED** 050505ZMAY26 — superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | Authored | 030619ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | `cli-mcp-tools` retro line 80: "`cli-mcp-stream` — SSE upgrade for long-running tool calls." + spec §94 R2 timeout note. |
 
-## Why
+## Resolution
+
+**Not implementing** a dedicated SSE/streaming upgrade track for the CLI MCP client. Long-running tools remain bounded by **HTTP timeouts**, **`--timeout`**, and **server-side** behaviour (async jobs, proxy limits). Re-open only if HTTPS MCP itself gains an approved streaming contract and this spec is rewritten to match it.
+
+## Why (historical)
 
 `cli-mcp-tools` HTTP transport caps at 60s tool-call timeout (R2). Long-running tools (project-graph walk over a huge repo, KG re-index) blow past that and the client times out. SSE upgrade lets the server stream progress events + final result without holding a connection that triggers the 60s gate.
 

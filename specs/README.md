@@ -6,8 +6,15 @@
 |------|-------|-----|-------|
 | cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
-| cli-mcp-stdio | DRAFT | 030619ZMAY26 | Bastion (J-3) |
-| cli-mcp-stream | DRAFT | 030619ZMAY26 | Bastion (J-3) |
+
+## Parked
+
+Specs we are **not pursuing** (superseded, withdrawn, or cancelled). See [`parked/README.md`](parked/README.md) for the **HTTPS MCP canonical** decision.
+
+| Slug | Parked | Note |
+|------|--------|------|
+| cli-mcp-stdio | 050505ZMAY26 | Stdio MCP bridge — superseded; customers use HTTPS MCP. |
+| cli-mcp-stream | 050505ZMAY26 | SSE streaming upgrade for long calls — superseded; canonical MCP stays HTTPS-only from the CLI product perspective. |
 
 ## Done
 

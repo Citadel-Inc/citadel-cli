@@ -1,6 +1,8 @@
 # Tasks — cli-mcp-stdio
 
-Status: DRAFT 030619ZMAY26
+**Spec PARKED 050505ZMAY26** — see [`spec.md`](./spec.md) and [`../README.md`](../README.md). Tasks below are frozen; do not execute.
+
+Status: PARKED 050505ZMAY26 (was DRAFT 030619ZMAY26)
 
 ## P0
 

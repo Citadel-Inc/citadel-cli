@@ -50,7 +50,7 @@ internal/clicfg/                 Config (XDG_CONFIG_HOME / ~/.config/citadel/con
 internal/completion/             Shell-completion cache + API-backed candidate lists
 internal/mcpclient/              HTTP MCP client (cobra mcp subcommands)
 docs/cli.md                      Full command reference
-specs/active/, specs/done/       SDD specs
+specs/active/, specs/done/, specs/parked/   SDD specs (+ parked = not pursued)
 .github/workflows/               ci.yml, cli-release.yml
 Makefile                         build / build-all / test / vet / lint / verify
 ```

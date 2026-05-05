@@ -36,7 +36,7 @@ This spec lands the two CLI verbs against the existing MCP transport.
 - **Tool argument validation** beyond JSON parse. The server enforces schemas; the CLI does not pre-validate.
 - **Resource / prompt browsing** (`resources/list`, `prompts/list`). MCP server's resource surface is stubbed today; defer to `cli-mcp-resources` follow-on.
 - **Session re-use across invocations.** Each CLI call opens a fresh session (`Mcp-Session-Id` not persisted between processes). Re-use is a complication v1 doesn't need.
-- **Stdio MCP transport.** Streamable-HTTP only; stdio support is a follow-on if/when the MCP server grows it.
+- **Stdio MCP transport / CLI SSE streaming upgrades.** **Parked** — HTTPS MCP is canonical; see `specs/parked/README.md` and `specs/parked/cli-mcp-stdio/`, `specs/parked/cli-mcp-stream/`.
 
 ## Acceptance criteria
 
@@ -53,12 +53,12 @@ A7. `--server` override works against `http://localhost:8080/mcp` for dev; defau
 C1. **Reuse `internal/clicfg`.** No new config storage; access-token comes from the existing TOML.
 C2. **No new HTTP client.** Use `net/http` directly; no third-party JSON-RPC lib.
 C3. **No retry on auth failure.** The CLI does not auto-refresh the token; surfaces the error and exits.
-C4. **Streamable-HTTP only.** Stdio MCP is out of scope.
+C4. **Streamable-HTTP only** for the `citadel-cli mcp` client. Stdio bridge and dedicated SSE streaming upgrades are **out of product scope** and **parked** (`specs/parked/`).
 
 ## Risks
 
 R1. **Tool-argument coercion ambiguity.** `--arg count=5` becomes `5` (number), but a tool wanting the string `"5"` gets a type mismatch. Mitigation: `--arg-string foo=5` form forces string; document in `docs/cli.md`.
-R2. **Long-running tool calls.** v1 has no SSE / streaming response; a tool that takes 30s blocks the CLI. Mitigation: 60s timeout default + `--timeout` flag override; future stdio / SSE support is the proper fix.
+R2. **Long-running tool calls.** v1 has no SSE / streaming response; a tool that takes 30s blocks the CLI. Mitigation: 60s timeout default + `--timeout` flag override. A dedicated SSE streaming track for MCP was **parked** (`specs/parked/cli-mcp-stream/`); address very long calls via server design, proxy timeouts, or async jobs on the HTTPS MCP surface.
 R3. **Server-version drift.** MCP server bumps protocol version (`2025-11-25` today); old CLI binaries may break. Mitigation: include the version in every initialize round-trip; surface a clear "version mismatch" error rather than a generic parse failure.
 
 ## Resolved questions
@@ -75,9 +75,7 @@ Token model clarification (010230Z): default Bearer = `cfg.AccessToken` (Supabas
 
 ## Carry-forward
 
-- `cli-mcp-resources` — `resources/list` + `resources/read` verbs.
-- `cli-mcp-stdio` — stdio transport for embedding in other tooling.
-- `cli-mcp-stream` — SSE upgrade for long-running tool calls.
+- (none) — `cli-mcp-resources` shipped (`specs/done/cli-mcp-resources/`). Alternate MCP transports (`cli-mcp-stdio`, `cli-mcp-stream`) are **parked** under `specs/parked/`; HTTPS MCP remains canonical per `specs/parked/README.md`.
 
 ## Retrospective (010300Z)
 
@@ -91,6 +89,6 @@ Token model clarification (010230Z): default Bearer = `cfg.AccessToken` (Supabas
 
 **Did NOT do.**
 - Token auto-refresh on 401 (Q3 ratified: out of scope).
-- SSE / streaming response (R2: 60s timeout suffices for current tool surface).
-- Stdio transport (out of scope per spec; tracked as `cli-mcp-stdio` carry-forward).
+- SSE / streaming response (R2: 60s timeout + `--timeout`; streaming upgrade **parked** — `specs/parked/cli-mcp-stream/`).
+- Stdio transport (**parked** — `specs/parked/cli-mcp-stdio/`).
 - Resource / prompt browsing (Q5 ratified: `cli-mcp-resources` follow-on).
