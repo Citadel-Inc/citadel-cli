@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 050912ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 050915ZMAY26 — Implemented CWD git-origin repo resolution: -R/--repo and CITADEL_REPO, optional inference via git remote get-url origin for Citadel hosts (defaults plus CITADEL_GIT_HOSTS), --no-cwd-repo opt-out, TTY inference hint on stderr (respects --quiet and CI). Wired into repo get/delete and kg impact with tests and README/HUMANS guidance. Operator smoke task C2 left for humans. |
 | Authored | 081550ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | third-pass review of `citadel-cli` (2026-05-05): smart-context detection from CWD git remote. Mirrors `gh -R` defaulting from local repo. |
@@ -40,11 +40,11 @@ $ citadel-cli issue list -R myorg/myrepo  # ditto
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | URL parse: shell out to `git remote get-url origin` vs. read `.git/config` directly? | **Open** — `git` shell-out; handles git-config alias rewrites + worktrees correctly without us reimplementing. |
-| Q2 | Host whitelist: hardcoded list vs. env override (`CITADEL_GIT_HOSTS`)? | **Open** — both: hardcoded defaults + env override for self-hosted Citadel installs. |
-| Q3 | `repo get <ns>/<slug>` positional shape: keep + add -R, or migrate to -R only? | **Open** — keep both (positional shortcut survives; -R works everywhere). |
-| Q4 | Inference failure: warn-and-prompt vs. silent fail-with-error? | **Open** — silent fail with friendly error (`could not infer repo from CWD; pass -R <ns>/<slug>`); no surprise. |
-| Q5 | TTY warning when -R is omitted but inference succeeds (`Inferred -R myorg/myrepo from CWD`)? | **Open** — yes, on stderr; CI suppresses with `--quiet` or `CI=1` once we add a stderr-quiet flag. |
+| Q1 | URL parse: shell out to `git remote get-url origin` vs. read `.git/config` directly? | **Ratified 050912ZMAY26** — `git` shell-out; handles git-config alias rewrites + worktrees correctly without us reimplementing. |
+| Q2 | Host whitelist: hardcoded list vs. env override (`CITADEL_GIT_HOSTS`)? | **Ratified 050912ZMAY26** — both: hardcoded defaults + env override for self-hosted Citadel installs. |
+| Q3 | `repo get <ns>/<slug>` positional shape: keep + add -R, or migrate to -R only? | **Ratified 050912ZMAY26** — keep both (positional shortcut survives; -R works everywhere). |
+| Q4 | Inference failure: warn-and-prompt vs. silent fail-with-error? | **Ratified 050912ZMAY26** — silent fail with friendly error (`could not infer repo from CWD; pass -R <ns>/<slug>`); no surprise. |
+| Q5 | TTY warning when -R is omitted but inference succeeds (`Inferred -R myorg/myrepo from CWD`)? | **Ratified 050912ZMAY26** — yes, on stderr; suppress with `--quiet` or `CI=1`; root `--quiet` applies to inference hints. |
 
 ## Acceptance
 

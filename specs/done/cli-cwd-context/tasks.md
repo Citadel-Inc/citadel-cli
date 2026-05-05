@@ -1,6 +1,6 @@
 # Tasks — cli-cwd-context
 
-Status: IN_PROGRESS 050912ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 050915ZMAY26 — Implemented CWD git-origin repo resolution: -R/--repo and CITADEL_REPO, optional inference via git remote get-url origin for Citadel hosts (defaults plus CITADEL_GIT_HOSTS), --no-cwd-repo opt-out, TTY inference hint on stderr (respects --quiet and CI). Wired into repo get/delete and kg impact with tests and README/HUMANS guidance. Operator smoke task C2 left for humans.
 
 ## P0
 
