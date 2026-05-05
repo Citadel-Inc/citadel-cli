@@ -168,3 +168,28 @@ func (r orgInvitationRow) CSVRecord() []string {
 		formatRFC3339PtrUTC(r.ExpiresAt),
 	}
 }
+
+// ── audit sessions ────────────────────────────────────────────────────────────
+
+func (auditSessionSummary) CSVHeader() []string {
+	return []string{"session_id", "id", "actor_slug", "actor_id", "actor_type", "namespace_slug", "namespace_id", "started_at", "last_event_at", "event_count"}
+}
+
+func (s auditSessionSummary) CSVRecord() []string {
+	sid := s.SessionID
+	if sid == "" {
+		sid = s.ID
+	}
+	return []string{
+		sid,
+		s.ID,
+		s.ActorSlug,
+		s.ActorID,
+		s.ActorType,
+		s.NamespaceSlug,
+		s.NamespaceID,
+		s.StartedAt,
+		s.LastEventAt,
+		strconv.Itoa(s.EventCount),
+	}
+}

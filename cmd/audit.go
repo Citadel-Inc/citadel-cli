@@ -15,7 +15,7 @@ import (
 var AuditCmd = &cobra.Command{
 	Use:   "audit",
 	Short: "Query Citadel audit events",
-	Long: `List and inspect audit log events for namespaces you can access.
+	Long: `List and inspect audit log events and sessions for namespaces you can access.
 
 Requires a token with audit visibility for the target namespace (audit:read grant
 or namespace ownership). Operators with operator:audit:read see cross-tenant

@@ -2035,3 +2035,74 @@ func TestSshKeyDelete_NotFound(t *testing.T) {
 		t.Fatalf("want not found, got %v", err)
 	}
 }
+
+// ── audit sessions ───────────────────────────────────────────────────────────
+
+func TestAuditSessionsList_NamespaceRequired(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.AuditCmd, "sessions", "list").Execute()
+	if err == nil || !strings.Contains(err.Error(), "namespace required") {
+		t.Fatalf("want namespace required, got %v", err)
+	}
+}
+
+func TestAuditSessionsList_ServerNsRequired(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/sessions": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 400, map[string]any{"error": "ns_required", "code": "ns_required"})
+		},
+	}))
+	err := rootFor(cmd.AuditCmd, "sessions", "list", "--ns", "myorg").Execute()
+	if err == nil || !strings.Contains(err.Error(), "ns_required") {
+		t.Fatalf("want ns_required in error, got %v", err)
+	}
+}
+
+func TestAuditSessionsList_InvalidSince(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/sessions": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 400, map[string]any{"error": "invalid_since", "code": "invalid_since"})
+		},
+	}))
+	err := rootFor(cmd.AuditCmd, "sessions", "list", "--ns", "myorg", "--since", "not-a-valid-window").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid_since") {
+		t.Fatalf("want invalid_since in error, got %v", err)
+	}
+}
+
+func TestAuditSessionsList_Empty(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/sessions": func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("ns") != "myorg" {
+				t.Fatalf("ns=%q", r.URL.Query().Get("ns"))
+			}
+			writeJSON(t, w, 200, map[string]any{"sessions": []map[string]any{}})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "sessions", "list", "-n", "myorg").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditSessionsShow_NotFound(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/sessions/sess1": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 404, map[string]any{"error": "audit_session_not_found"})
+		},
+	}))
+	err := rootFor(cmd.AuditCmd, "sessions", "show", "sess1").Execute()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestAuditSessionsShow_MinJSONWithoutOperatorConsole(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/sessions/minimal": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"session": map[string]any{"id": "minimal"}, "events": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "sessions", "show", "minimal", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}

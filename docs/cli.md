@@ -197,6 +197,32 @@ citadel-cli ssh-key delete <key-id>
 
 Opt-in: **`CITADEL_TEST_SSH_KEYS_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`** (see `cmd/ssh_key_live_test.go`). CI skips when unset.
 
+## Audit sessions
+
+Inspect grouped audit **sessions** for a namespace (distinct from **`citadel-cli audit list`**, which lists raw events with cursor pagination).
+
+### List sessions
+
+**`--ns`** or **`--namespace` / `-n`** selects the namespace (maps to the daemon `ns` query parameter). Optional **`--since`** accepts durations (`1h`, `7d`, …) or RFC3339. Pagination uses **`--limit`** and **`--offset`** (not `--cursor`).
+
+```bash
+citadel-cli audit sessions list --ns myorg
+citadel-cli audit sessions list -n myorg --since 7d --limit 50 --offset 0 --output json
+```
+
+### Show session detail
+
+Prints the drill-down JSON from the server (including operator-only fields only when the API returns them).
+
+```bash
+citadel-cli audit sessions show <session-id>
+citadel-cli audit sessions show <session-id> --output yaml
+```
+
+### Live integration test
+
+Opt-in: **`CITADEL_TEST_AUDIT_SESSIONS_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`** and **`CITADEL_TEST_AUDIT_SESSIONS_NS`** set to a namespace you can read audit for (see `cmd/audit_sessions_live_test.go`). CI skips when unset.
+
 ## Server URL configuration
 
 The CLI defaults to `https://api.src.land`. Override it via:
