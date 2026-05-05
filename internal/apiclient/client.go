@@ -134,6 +134,36 @@ func (c *Client) Delete(ctx context.Context, path string) error {
 	return c.do(ctx, http.MethodDelete, path, nil, nil)
 }
 
+// GetEventStream issues a GET with Accept: text/event-stream for SSE consumers.
+// The caller must close resp.Body. Non-success statuses return *HTTPError with
+// the body drained.
+func (c *Client) GetEventStream(ctx context.Context, path string, lastEventID string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.server+path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Cache-Control", "no-cache")
+	if lastEventID != "" {
+		req.Header.Set("Last-Event-ID", lastEventID)
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		return nil, &HTTPError{
+			StatusCode: resp.StatusCode,
+			Body:       strings.TrimSpace(string(b)),
+			RetryAfter: ParseRetryAfterSeconds(resp.Header.Get("Retry-After")),
+		}
+	}
+	return resp, nil
+}
+
 func (c *Client) do(ctx context.Context, method, path string, body, out any) error {
 	var rdr io.Reader
 	if body != nil {

@@ -232,6 +232,15 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
 	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
+	if watchFlag(cmd) {
+		if err := validateDescCursor(cursor); err != nil {
+			return fmt.Errorf("invalid --cursor: %w", err)
+		}
+		return runNsListWatch(cmd, c, limit, cursor, all)
+	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
@@ -344,6 +353,15 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 	}
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
+	if watchFlag(cmd) {
+		if err := validateMemberCursor(cursor); err != nil {
+			return fmt.Errorf("invalid --cursor: %w", err)
+		}
+		return runNsMembersWatch(cmd, c, slug, limit, cursor, all)
 	}
 	if err := validateMemberCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
@@ -463,6 +481,15 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 	}
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
+	if watchFlag(cmd) {
+		if err := validateDescCursor(cursor); err != nil {
+			return fmt.Errorf("invalid --cursor: %w", err)
+		}
+		return runNsTransferListPendingWatch(cmd, c, limit, cursor, all)
 	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
@@ -662,6 +689,7 @@ func init() {
 		nsTransferInitiateCmd, nsTransferListPendingCmd,
 		nsTransferAcceptCmd, nsTransferDeclineCmd, nsTransferRevokeCmd)
 	addPaginationFlags(nsListCmd, nsMembersCmd, nsTransferListPendingCmd)
+	addWatchFlag(nsListCmd, nsMembersCmd, nsTransferListPendingCmd)
 	addYesFlag(nsDeleteCmd, nsTransferInitiateCmd, nsTransferRevokeCmd)
 	addDryRunFlag(nsDeleteCmd, nsTransferRevokeCmd)
 	nsTransferInitiateCmd.Flags().String("to", "", "Recipient username (required)")

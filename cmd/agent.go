@@ -131,6 +131,15 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
 	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
+	if watchFlag(cmd) {
+		if err := validateDescCursor(cursor); err != nil {
+			return fmt.Errorf("invalid --cursor: %w", err)
+		}
+		return runAgentListWatch(cmd, c, limit, cursor, all)
+	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
@@ -294,6 +303,7 @@ func init() {
 
 	addOutputFlag(agentListCmd, agentGetCmd, agentDeleteCmd, agentRotateTokenCmd)
 	addPaginationFlags(agentListCmd)
+	addWatchFlag(agentListCmd)
 	addYesFlag(agentDeleteCmd, agentRotateTokenCmd)
 	addDryRunFlag(agentDeleteCmd)
 

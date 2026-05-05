@@ -78,12 +78,15 @@ func retryAfterDelay(h http.Header) time.Duration {
 	return time.Duration(secs) * time.Second
 }
 
-// backoff returns the expo-jittered delay for attempt n (0-indexed).
-func backoff(n int) time.Duration {
+// Backoff returns the expo-jittered delay for reconnect attempt n (0-indexed).
+// Matches the retry policy used by RetryTransport (250 ms floor, 4 s cap).
+func Backoff(n int) time.Duration {
 	d := min(retryBaseBackoff<<n, retryMaxBackoff)
 	half := d / 2
 	return half + time.Duration(rand.Int64N(int64(half)+1))
 }
+
+func backoff(n int) time.Duration { return Backoff(n) }
 
 // RetryTransport wraps a base RoundTripper with idempotent-verb retry on
 // transient errors and 5xx/429/408/425 responses.
