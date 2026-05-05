@@ -127,7 +127,7 @@ waitLoop:
 			if err != nil {
 				t.Fatalf("ExecuteContext ended early: %v stdout=%q resume=%v", err, out.String(), sawResume.Load())
 			}
-			t.Fatalf("ExecuteContext returned nil before cancel stdout=%q resume=%v srvGen=%d", out.String(), sawResume.Load(), gen.Load())
+			t.Fatalf("ExecuteContext returned nil before cancel stdout=%q resume=%v", out.String(), sawResume.Load())
 		case <-deadline:
 			types := ndjsonWatchEventTypes(out.String())
 			t.Fatalf("timeout: got types=%v (want %d); stdout=%q resume=%v", types, len(wantTypes), out.String(), sawResume.Load())
