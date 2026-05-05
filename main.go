@@ -3,13 +3,16 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
 	"github.com/spf13/cobra"
 )
 
-func main() {
+// newRootCmd builds the citadel-cli cobra root with every subcommand wired in.
+// Exposed so tests can drive the same tree main() ships.
+func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "citadel-cli",
 		Short: "Citadel CLI — authentication, token, and MCP agent interface",
@@ -33,14 +36,27 @@ Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --s
 	root.AddCommand(cmd.AgentCmd)
 	root.AddCommand(cmd.OauthCmd)
 
+	return root
+}
+
+// run executes the CLI with the given args and returns the process exit code.
+// Stays in package main for testability — main() is then a tiny shim.
+func run(args []string, stderr io.Writer) int {
+	root := newRootCmd()
+	root.SetArgs(args)
 	if err := root.Execute(); err != nil {
-		// errToolCallFailed is the sentinel signaling tools/call returned
+		// ErrToolCallFailed is the sentinel signaling tools/call returned
 		// isError=true; the result has already been printed, so suppress
 		// the duplicate "Error:" line and exit with code 2.
 		if errors.Is(err, cmd.ErrToolCallFailed) {
-			os.Exit(2)
+			return 2
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+		return 1
 	}
+	return 0
+}
+
+func main() {
+	os.Exit(run(os.Args[1:], os.Stderr))
 }

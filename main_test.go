@@ -2,47 +2,54 @@ package main
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
-	"github.com/spf13/cobra"
 )
 
-func TestRootCommandHelp(t *testing.T) {
-	root := &cobra.Command{
-		Use:   "citadel-cli",
-		Short: "Citadel CLI — authentication, token, and MCP agent interface",
-		Long: `Citadel is a command-line client for managing authentication, agent tokens,
-and MCP tool interactions with the Citadel server.
-
-Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --server.`,
-		Version: "0.0.1-alpha",
+func TestRun_HelpExitsZero(t *testing.T) {
+	var stderr bytes.Buffer
+	if got := run([]string{"--help"}, &stderr); got != 0 {
+		t.Fatalf("run --help exit = %d, stderr=%q", got, stderr.String())
 	}
+}
 
-	root.AddCommand(cmd.AuthCmd)
-	root.AddCommand(cmd.TokenCmd)
-	root.AddCommand(cmd.McpCmd)
-
-	// Test that help runs without error
-	buf := new(bytes.Buffer)
-	root.SetOut(buf)
-	root.SetArgs([]string{"--help"})
-
-	if err := root.Execute(); err != nil {
-		t.Fatalf("Help command failed: %v", err)
+func TestRun_VersionExitsZero(t *testing.T) {
+	var stderr bytes.Buffer
+	if got := run([]string{"--version"}, &stderr); got != 0 {
+		t.Fatalf("run --version exit = %d", got)
 	}
+}
 
-	help := buf.String()
-	if help == "" {
-		t.Error("Help output is empty")
+func TestRun_UnknownCommand_ExitsOne(t *testing.T) {
+	var stderr bytes.Buffer
+	if got := run([]string{"definitely-not-a-command"}, &stderr); got != 1 {
+		t.Fatalf("run unknown exit = %d", got)
 	}
+	if !strings.Contains(stderr.String(), "Error:") {
+		t.Errorf("stderr missing Error prefix: %q", stderr.String())
+	}
+}
 
-	// Verify expected subcommands are in help
-	expectedCommands := []string{"auth", "token", "mcp"}
-	for _, cmd := range expectedCommands {
-		if !bytes.Contains(buf.Bytes(), []byte(cmd)) {
-			t.Errorf("Expected subcommand %q not found in help output", cmd)
+func TestNewRootCmd_HasAllSubcommands(t *testing.T) {
+	root := newRootCmd()
+	want := []string{"auth", "token", "mcp", "kg", "repo", "namespace", "agent", "oauth"}
+	for _, name := range want {
+		found := false
+		for _, sub := range root.Commands() {
+			if sub.Name() == name {
+				found = true
+				break
+			}
 		}
+		if !found {
+			t.Errorf("missing subcommand %q", name)
+		}
+	}
+	// The persistent --server flag must be present so subcommands inherit it.
+	if root.PersistentFlags().Lookup("server") == nil {
+		t.Error("expected persistent --server flag")
 	}
 }
 
