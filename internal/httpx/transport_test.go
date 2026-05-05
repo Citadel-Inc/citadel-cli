@@ -2,9 +2,12 @@ package httpx
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -82,5 +85,74 @@ func TestRetryAfterDelay_ParseSeconds(t *testing.T) {
 	h.Set("Retry-After", "-1")
 	if got := retryAfterDelay(h); got != 0 {
 		t.Fatalf("negative: %v", got)
+	}
+}
+
+type boomReader struct{}
+
+func (boomReader) Read([]byte) (int, error) { return 0, errors.New("read body") }
+
+// A GET with a body is unusual but legal; replayable transports must still
+// surface body read failures instead of sending a corrupt stream.
+func TestRetryTransport_ReadBodyError(t *testing.T) {
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.test/", io.NopCloser(boomReader{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt := &RetryTransport{Base: http.DefaultTransport}
+	_, err = rt.RoundTrip(req)
+	if err == nil || !strings.Contains(err.Error(), "read request body") {
+		t.Fatalf("want body read error, got %v", err)
+	}
+}
+
+type seqRoundTripper struct {
+	n   int
+	ok  http.RoundTripper
+	err error
+}
+
+func (s *seqRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	s.n++
+	if s.n == 1 {
+		return nil, s.err
+	}
+	return s.ok.RoundTrip(req)
+}
+
+func TestRetryTransport_RetriesAfterBaseTransportError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+
+	base := &seqRoundTripper{ok: srv.Client().Transport}
+	base.err = fmt.Errorf("transient: %w", io.ErrUnexpectedEOF)
+
+	c := &http.Client{Transport: &RetryTransport{Base: base}}
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+	if base.n < 2 {
+		t.Fatalf("expected retry after transport error, got %d calls", base.n)
+	}
+}
+
+func TestSleepCtx_Cancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.test/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sleepCtx(req, time.Hour); !errors.Is(err, context.Canceled) {
+		t.Fatalf("want context.Canceled, got %v", err)
 	}
 }

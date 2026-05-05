@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -131,5 +132,51 @@ func TestRetryOn429ThenSuccess(t *testing.T) {
 	}
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("want 200, got %d", resp.StatusCode)
+	}
+}
+
+type errRoundTripper struct{}
+
+func (errRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("upstream unavailable")
+}
+
+// Verbose mode should still log when the base round-trip fails (DNS, TLS,
+// refused connection, etc.).
+func TestVerboseTransport_LogsLineOnTransportError(t *testing.T) {
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stderr
+	os.Stderr = pw
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(&buf, pr)
+		close(done)
+	}()
+
+	c := &http.Client{Transport: Stack(errRoundTripper{}, Options{Verbose: true})}
+	req, err := http.NewRequest(http.MethodGet, "http://example.test/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Do(req)
+	if err == nil {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		t.Fatal("expected error")
+	}
+
+	os.Stderr = old
+	_ = pw.Close()
+	<-done
+	_ = pr.Close()
+
+	out := buf.String()
+	if !strings.Contains(out, "GET") || !strings.Contains(out, "upstream unavailable") {
+		t.Fatalf("expected verbose error line, got: %q", out)
 	}
 }
