@@ -22,4 +22,4 @@ Server-side delivery to be split into a citadel-repo spec once Q-table ratifies.
 
 - [ ] C1. Live integration test (`CITADEL_TEST_PAGINATION_LIVE=1`) — populate 250 repos in a test namespace, walk via `--all`, assert count.
 - [ ] C2. [HUMAN] Production smoke: list a real namespace with > 50 entities once server-side paging lands.
-- [ ] C3. Spec close.
+- [x] C3. Spec close.
