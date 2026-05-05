@@ -80,17 +80,27 @@ func TestClient_DeleteAcceptsNoContent(t *testing.T) {
 	}
 }
 
-func TestClient_NonSuccessReturnsServerError(t *testing.T) {
+func TestClient_NonSuccessReturnsHTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte(`forbidden\n`))
+		_, _ = w.Write([]byte("forbidden body"))
 	}))
 	defer srv.Close()
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, "")
 	err := c.Get(context.Background(), "/x", nil)
-	if err == nil || !strings.Contains(err.Error(), "server error 403") {
-		t.Fatalf("expected 403 error, got %v", err)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	var he *HTTPError
+	if !errors.As(err, &he) {
+		t.Fatalf("expected *HTTPError, got %T", err)
+	}
+	if he.StatusCode != http.StatusForbidden {
+		t.Errorf("got status %d", he.StatusCode)
+	}
+	if he.Body != "forbidden body" {
+		t.Errorf("got body %q", he.Body)
 	}
 }
 

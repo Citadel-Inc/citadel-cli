@@ -1,6 +1,9 @@
 // Package apiclient is the Bearer-authenticated HTTP wrapper used by every
 // citadel-cli subcommand handler against the Citadel JSON API. It centralises
 // the load-config / require-token / build-request / decode-or-error chain.
+//
+// Non-2xx responses surface as *HTTPError; handlers that need to branch on
+// status (e.g. 412 mfa_required) use errors.As to recover it.
 package apiclient
 
 import (
@@ -15,6 +18,17 @@ import (
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
+
+// HTTPError is returned for any non-2xx response. Body is the trimmed
+// response payload (best-effort read; may be empty).
+type HTTPError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("server error %d: %s", e.StatusCode, e.Body)
+}
 
 // Client is a thin Citadel-API client: server URL + bearer token + http.Client.
 type Client struct {
@@ -89,7 +103,7 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
+		return &HTTPError{StatusCode: resp.StatusCode, Body: strings.TrimSpace(string(b))}
 	}
 	if out == nil || resp.StatusCode == http.StatusNoContent {
 		return nil
