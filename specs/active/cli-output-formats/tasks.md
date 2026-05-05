@@ -1,6 +1,6 @@
 # Tasks — cli-output-formats
 
-Status: DRAFT 080800ZMAY26
+Status: APPROVED 051044ZMAY26
 
 ## P0
 

@@ -2,10 +2,9 @@
 
 | | |
 |---|---|
-| Status | DRAFT 080800ZMAY26 |
+| Status | APPROVED 051044ZMAY26 |
 | Authored | 080800ZMAY26 |
 | Owner | Bastion (J-3) |
-| Carry-forward from | second-pass review of `citadel-cli` (2026-05-05): operators piping CLI output into `jq` / spreadsheets need ndjson + csv, not just `--output json | <empty>`. |
 
 ## Why
 
@@ -19,9 +18,9 @@ Every list/get verb today supports `--output json` (one JSON value per call) or 
 
 ## In scope
 
-- **`--output ndjson`** on every list verb (`repo list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`). One JSON object per line, no array wrapper, no trailing newline after the last line.
-- **`--output csv`** on every list verb. Per-verb fixed column ordering (frozen as part of acceptance — changing it breaks scripts). Headers always emitted unless `--no-header` is also specified.
-- **`--output yaml`** on every list + get verb. `gopkg.in/yaml.v3` for the encoder. Maps `time.Time` → ISO-8601 strings to keep the output round-trippable.
+- **`--output ndjson`** on every list verb (`repo list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`). One JSON object per line, no array wrapper; LF after every record including the last.
+- **`--output csv`** on every list verb. Per-verb fixed column ordering (frozen as part of acceptance — changing it breaks scripts). Headers always emitted for v1 (see Out of scope for `--no-header`).
+- **`--output yaml`** on every list + get verb. Encoder uses `go.yaml.in/yaml/v3`; payloads are bridged through JSON so field names match `--output json`. Timestamp-like API strings stay ISO-8601/RFC3339 where applicable.
 - **Documentation**: per-verb help text spells out the csv schema (column names + ordering); README gets a "Output formats" section.
 - **`emitList` / `emitOne` plumbing**: the existing helpers in `cmd/output.go` grow case branches for the new formats. No new helpers per verb — the per-format logic stays centralised.
 
@@ -37,11 +36,11 @@ Every list/get verb today supports `--output json` (one JSON value per call) or 
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | yaml dep: `gopkg.in/yaml.v3` vs. stdlib-only? | **Open** — yaml.v3 (BurntSushi/toml is already a dep; one more is fine). |
-| Q2 | csv: emit per-verb hardcoded column order, or allow `--columns slug,path`? | **Open** — hardcoded at v1; `--columns` is a clean v2 add. |
-| Q3 | csv `time.Time` rendering: ISO-8601 vs. unix epoch? | **Open** — ISO-8601; spreadsheet-friendly. |
-| Q4 | ndjson trailing-newline policy: present (LF after every record incl. last) vs. omitted on last? | **Open** — present (LF after every record); RFC 8259 friendly + `wc -l` correct. |
-| Q5 | yaml for `--output yaml` on get verbs: emit document separator (`---`) prefix or bare doc? | **Open** — bare doc; `---` breaks `yq r` on single-doc inputs. |
+| Q1 | yaml dep: `gopkg.in/yaml.v3` vs. stdlib-only? | **Ratified 051800ZMAY26** — `go.yaml.in/yaml/v3` (repo-standard encoder). |
+| Q2 | csv: emit per-verb hardcoded column order, or allow `--columns slug,path`? | **Ratified 051800ZMAY26** — hardcoded at v1; `--columns` is a clean v2 add. |
+| Q3 | csv `time.Time` rendering: ISO-8601 vs. unix epoch? | **Ratified 051800ZMAY26** — RFC3339 UTC in CSV (`Z`). |
+| Q4 | ndjson trailing-newline policy: present (LF after every record incl. last) vs. omitted on last? | **Ratified 051800ZMAY26** — present (LF after every record); `wc -l` friendly. |
+| Q5 | yaml for `--output yaml` on get verbs: emit document separator (`---`) prefix or bare doc? | **Ratified 051800ZMAY26** — bare doc; JSON-key-aligned payloads via JSON bridge. |
 
 ## Acceptance
 
