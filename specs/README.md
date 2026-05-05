@@ -7,14 +7,13 @@
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
 | cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
-| cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
-| cli-projectgraph | DRAFT | 050506ZMAY26 | Bastion (J-3) |
-| cli-kg-extended | DRAFT | 050506ZMAY26 | Bastion (J-3) |
-| cli-audit-sessions | DRAFT | 050506ZMAY26 | Bastion (J-3) |
-| cli-ssh-keys | DRAFT | 050506ZMAY26 | Bastion (J-3) |
-| cli-org-invitations | DRAFT | 050506ZMAY26 | Bastion (J-3) |
-| cli-global-search | DRAFT | 050506ZMAY26 | Bastion (J-3) |
 | cli-account-security | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-audit-sessions | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-global-search | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-kg-extended | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-projectgraph | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-ssh-keys | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
 
 ## Done
 
@@ -22,6 +21,7 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-org-invitations | 052317ZMAY26 | Delivered `citadel-cli org invitation` (pending, list, create, revoke, accept) with output formats, TTY email prompt, token-file accept, httptest matrix for 409/404/400 paths, docs/cli.md, plan RECON appendix, and opt-in live pending test behind CITADEL_TEST_ORG_INVITATIONS_LIVE=1. |
 | cli-watch | 051430ZMAY26 | CLI watch shipped end-to-end: Citadel exposes SSE list watches on repos, orgs, agents, OAuth clients, members, pending transfers, and agent tokens (polling snapshot diff + keepalive + Last-Event-ID); citadel-cli streams via `--watch`, ndjson/table modes, reconnect/backoff, and B6 scripted SSE tests. P2 C2 operator smoke stays human-owned. |
 | cli-audit | 051145ZMAY26 | Shipped Citadel GET /api/audit/events and GET /api/audit/events/{id} with RBAC, time and kind filters, cli-pagination cursors, cascade linkage from purge, and agent.created audit rows. Delivered citadel-cli audit list/show with standard output modes, live opt-in test, and documentation. Deferred: P1 B6 expanded RBAC HTTP matrix for events; P2 operator smoke, tail-mode carry-forward, and spec hygiene. |
 | cli-error-format | 051045ZMAY26 | Error envelope, exit-code map, errmap→CLIError migration, and main.go branching were already landed; Q-table ratified with Retry-After HTTP-date support aligned to apiclient. README/HUMANS document structured errors for json/yaml/ndjson. Live 429 integration and operator exit-code review stay in P2 per HUMAN_BLOCKERS. |

@@ -1,6 +1,6 @@
 # Tasks — cli-org-invitations
 
-Status: IN_PROGRESS 052313ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 052317ZMAY26 — Delivered `citadel-cli org invitation` (pending, list, create, revoke, accept) with output formats, TTY email prompt, token-file accept, httptest matrix for 409/404/400 paths, docs/cli.md, plan RECON appendix, and opt-in live pending test behind CITADEL_TEST_ORG_INVITATIONS_LIVE=1.
 
 ## P0
 
