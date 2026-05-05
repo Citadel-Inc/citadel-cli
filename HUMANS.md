@@ -6,7 +6,27 @@ If you are an engineer onboarding to `citadel-cli`, read this file first. For LL
 
 `citadel-cli` is the official command-line client for [Citadel](https://github.com/Rethunk-Tech/citadel) — Rethunk's substrate for repos, namespaces, agents, OAuth clients, and the knowledge graph. It also embeds an MCP client for agentic-workflow integrations.
 
-## Quick start
+## Getting started
+
+### Install
+
+```bash
+go install github.com/Rethunk-Tech/citadel-cli@latest
+```
+
+This installs to `~/go/bin/citadel-cli`; ensure `~/go/bin` is on your `PATH`.
+
+Pre-built release binaries (linux-amd64, linux-arm64, darwin-arm64) are published to GitHub Releases on every `v*` tag — see <https://github.com/Rethunk-Tech/citadel-cli/releases>.
+
+### First run
+
+```bash
+citadel-cli auth login        # OAuth flow via the configured Citadel server
+citadel-cli auth status       # confirm authentication
+citadel-cli repo list         # query the API
+```
+
+### Local development
 
 Prerequisites: Go 1.25+, `golangci-lint` (for `make verify`).
 
@@ -53,8 +73,24 @@ Live integration tests (e.g. `oauth_clients_live_test.go`) self-skip without `CI
 - **Server URL:** `~/.config/citadel/config.toml` (key: `server_url`) or `CITADEL_SERVER` env var.
 - **Auth tokens:** `~/.config/citadel/config.toml` (mode 0600); written by `citadel-cli auth login`.
 - **Override access token:** `CITADEL_ACCESS_TOKEN` env var (1-hour pinned expiry; for CI / scripting).
-- **Repo context:** `CITADEL_REPO=<namespace>/<slug>` selects a repo without `-R`. Only the **`origin`** remote is used for CWD inference; if `origin` is not a Citadel host, pass `-R` explicitly (see README “Repo context”). For private git endpoints, set comma-separated **`CITADEL_GIT_HOSTS`**.
-- **Shell completion:** install scripts with `citadel-cli completion bash|zsh|fish|powershell` (see `citadel-cli completion --help`). Dynamic tab completion for resource arguments — repo slugs (scoped via `-R`, `CITADEL_REPO`, or CWD inference), org namespace slugs on `namespace get|members|delete|transfer initiate`, agent names on `agent get|delete|rotate-token`, OAuth client resource UUIDs on `oauth clients show|revoke`, token UUIDs on `token revoke` — issues authenticated list calls against the Citadel API. With no access token, completion yields no candidates and never prompts for credentials. JSON cache files live under `$XDG_CACHE_HOME/citadel-cli/completion/<server-host>/` with a 60-second TTL. Set **`CITADEL_NO_COMPLETION_CACHE=1`** to skip disk cache reads and writes (in-memory only; useful for debugging).
+
+### Repo context
+
+Commands that target a single repository accept `-R <namespace>/<slug>` (same meaning as `gh -R`). If you omit it, the CLI uses the `CITADEL_REPO` environment variable, then (unless `--no-cwd-repo` is set) infers the repo from `git remote get-url origin` when that remote uses a [Citadel git host](https://src.land) (for example `src.land` or `git.src.land`). Comma-separated `CITADEL_GIT_HOSTS` extends the default host list for self‑hosted deployments.
+
+`--no-cwd-repo` disables CWD inference so scripts never pick up a surprise repo from the current directory; combine it with `-R` or `CITADEL_REPO` when you need an explicit path.
+
+```bash
+cd ~/code/myorg/myrepo          # citadel clone
+citadel-cli repo get            # inferred when origin is a Citadel remote
+citadel-cli repo get -R other/ns   # explicit repo
+```
+
+Full reference: [docs/cli.md](docs/cli.md).
+
+### Shell completion
+
+Install scripts with `citadel-cli completion bash|zsh|fish|powershell` (see `citadel-cli completion --help`). Dynamic tab completion for resource arguments — repo slugs (scoped via `-R`, `CITADEL_REPO`, or CWD inference), org namespace slugs on `namespace get|members|delete|transfer initiate`, agent names on `agent get|delete|rotate-token`, OAuth client resource UUIDs on `oauth clients show|revoke`, token UUIDs on `token revoke` — issues authenticated list calls against the Citadel API. With no access token, completion yields no candidates and never prompts for credentials. JSON cache files live under `$XDG_CACHE_HOME/citadel-cli/completion/<server-host>/` with a 60-second TTL. Set **`CITADEL_NO_COMPLETION_CACHE=1`** to skip disk cache reads and writes (in-memory only; useful for debugging).
 
 ## Structured errors (`--output json` / `yaml` / `ndjson`)
 
