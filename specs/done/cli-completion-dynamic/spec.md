@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 050921ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 050935ZMAY26 — Delivered dynamic shell completion with a 60s disk cache under XDG, ValidArgsFunction wiring for repos/namespaces/agents/OAuth client UUIDs/agent tokens, async PostRun invalidation on mutating verbs, static --output completion aligned to cli-output-formats, integration tests plus cache TTL tests, and README/HUMANS documentation including CITADEL_NO_COMPLETION_CACHE. Operator latency smoke (C2) remains for a human with a live namespace. |
 | Authored | 050826ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | 2026-05-05 enhancement sweep: `citadel-cli completion` ships shells but every positional argument (repo slug, namespace, agent id, oauth client id) has zero `ValidArgsFunction` coverage. Tab completion today returns nothing for any resource identifier. |
