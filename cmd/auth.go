@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -121,7 +122,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		defer cancel()
 
 		server := &http.Server{Handler: mux}
-		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errChan <- fmt.Errorf("serve: %w", err)
 		}
 		_ = server.Shutdown(ctx)
@@ -164,25 +165,22 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("decode token response: %w", err)
 	}
 
-	// Extract user UUID from access token (unverified parse)
+	// Extract user UUID from access token (unverified parse — server validates
+	// signatures; the CLI only inspects claims).
 	claims := jwt.MapClaims{}
-	if _, err := jwt.ParseWithClaims(tokenResp.AccessToken, claims, func(token *jwt.Token) (any, error) {
-		return nil, nil // Don't verify signature here
-	}); err != nil {
+	if _, _, err := jwt.NewParser().ParseUnverified(tokenResp.AccessToken, claims); err != nil {
 		return fmt.Errorf("parse access token: %w", err)
 	}
 
 	userUUID := ""
-	if sub, ok := claims["sub"]; ok {
-		userUUID = sub.(string)
+	if sub, ok := claims["sub"].(string); ok {
+		userUUID = sub
 	}
 
 	// Compute expiry from exp claim
-	expiresAt := time.Now().Add(1 * time.Hour) // Default to 1 hour
-	if exp, ok := claims["exp"]; ok {
-		if expF, ok := exp.(float64); ok {
-			expiresAt = time.Unix(int64(expF), 0)
-		}
+	expiresAt := time.Now().Add(time.Hour) // Default to 1 hour
+	if expF, ok := claims["exp"].(float64); ok {
+		expiresAt = time.Unix(int64(expF), 0)
 	}
 
 	// Save config
@@ -218,10 +216,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	var exp time.Time
-	if expFloat, ok := claims["exp"]; ok {
-		if ef, ok := expFloat.(float64); ok {
-			exp = time.Unix(int64(ef), 0)
-		}
+	if ef, ok := claims["exp"].(float64); ok {
+		exp = time.Unix(int64(ef), 0)
 	}
 
 	remaining := time.Until(exp)
