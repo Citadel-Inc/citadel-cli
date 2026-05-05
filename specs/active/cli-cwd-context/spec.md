@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 081550ZMAY26 |
+| Status | IN_PROGRESS 050912ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 081550ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | third-pass review of `citadel-cli` (2026-05-05): smart-context detection from CWD git remote. Mirrors `gh -R` defaulting from local repo. |

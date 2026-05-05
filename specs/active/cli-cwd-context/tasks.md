@@ -1,6 +1,6 @@
 # Tasks — cli-cwd-context
 
-Status: DRAFT 081550ZMAY26
+Status: IN_PROGRESS 050912ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 
