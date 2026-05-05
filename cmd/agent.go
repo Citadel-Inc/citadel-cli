@@ -151,6 +151,11 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if dryRunFlag(cmd) {
+		fmt.Printf("Would DELETE /agents/%s (skipped; --dry-run)\n", a.ID)
+		return nil
+	}
+
 	if err := confirmSlug(yesFlag(cmd), "delete agent", name); err != nil {
 		return err
 	}
@@ -194,10 +199,7 @@ func init() {
 	AgentCmd.AddCommand(agentDeleteCmd)
 	AgentCmd.AddCommand(agentRotateTokenCmd)
 
-	addOutputFlag(agentListCmd)
-	addOutputFlag(agentGetCmd)
-	addOutputFlag(agentDeleteCmd)
-	addOutputFlag(agentRotateTokenCmd)
-	addYesFlag(agentDeleteCmd)
-	addYesFlag(agentRotateTokenCmd)
+	addOutputFlag(agentListCmd, agentGetCmd, agentDeleteCmd, agentRotateTokenCmd)
+	addYesFlag(agentDeleteCmd, agentRotateTokenCmd)
+	addDryRunFlag(agentDeleteCmd)
 }

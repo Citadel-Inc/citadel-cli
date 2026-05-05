@@ -403,6 +403,10 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 	}
 	transferID := args[0]
 
+	if dryRunFlag(cmd) {
+		fmt.Printf("Would DELETE /transfers/%s (skipped; --dry-run)\n", transferID)
+		return nil
+	}
 	if err := confirmSlug(yesFlag(cmd), "revoke transfer", transferID); err != nil {
 		return err
 	}
@@ -420,6 +424,10 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	slug := strings.TrimSpace(args[0])
+	if dryRunFlag(cmd) {
+		fmt.Printf("Would DELETE /namespaces/%s (skipped; --dry-run)\n", slug)
+		return nil
+	}
 	if err := confirmSlug(yesFlag(cmd), "delete namespace", slug); err != nil {
 		return err
 	}
@@ -471,6 +479,7 @@ func init() {
 		nsTransferInitiateCmd, nsTransferListPendingCmd,
 		nsTransferAcceptCmd, nsTransferDeclineCmd, nsTransferRevokeCmd)
 	addYesFlag(nsDeleteCmd, nsTransferInitiateCmd, nsTransferRevokeCmd)
+	addDryRunFlag(nsDeleteCmd, nsTransferRevokeCmd)
 	nsTransferInitiateCmd.Flags().String("to", "", "Recipient username (required)")
 	_ = nsTransferInitiateCmd.MarkFlagRequired("to")
 }

@@ -211,6 +211,11 @@ func runRepoDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if dryRunFlag(cmd) {
+		fmt.Printf("Would DELETE /namespaces/%s/%s (skipped; --dry-run)\n", ns, slug)
+		return nil
+	}
+
 	if err := confirmSlug(yesFlag(cmd), "delete", slug); err != nil {
 		return err
 	}
@@ -231,6 +236,7 @@ func init() {
 
 	addOutputFlag(repoCreateCmd, repoListCmd, repoGetCmd, repoDeleteCmd)
 	addYesFlag(repoDeleteCmd)
+	addDryRunFlag(repoDeleteCmd)
 
 	repoCreateCmd.Flags().String("namespace", "", "Parent namespace slug (required)")
 	repoCreateCmd.Flags().String("slug", "", "Repository slug (required)")

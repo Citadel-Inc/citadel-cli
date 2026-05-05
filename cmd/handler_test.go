@@ -1094,6 +1094,52 @@ func TestRepoDelete_DeleteFails(t *testing.T) {
 	}
 }
 
+// ── --dry-run preview tests ─────────────────────────────────────────────────
+
+func TestRepoDelete_DryRun(t *testing.T) {
+	// httptest server that fails the test if any DELETE actually fires.
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	if err := rootFor(cmd.RepoCmd, "delete", "myorg/r1", "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNsDelete_DryRun(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	if err := rootFor(cmd.NamespaceCmd, "delete", "myorg", "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNsTransferRevoke_DryRun(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	if err := rootFor(cmd.NamespaceCmd, "transfer", "revoke", "abc", "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAgentDelete_DryRun(t *testing.T) {
+	const agentID = "00000000-0000-0000-0000-00000000000a"
+	// Server sees the GET /agents lookup but no DELETE — the dry-run skip
+	// happens after the find-by-name resolution.
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, []map[string]any{{"id": agentID, "name": "alpha", "owner_user_id": "u1"}})
+		},
+	}))
+	if err := rootFor(cmd.AgentCmd, "delete", "alpha", "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOAuthRevoke_DryRun(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	if err := rootFor(cmd.OauthCmd, "clients", "revoke",
+		"00000000-0000-0000-0000-000000000001", "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMcpCall_ToolError(t *testing.T) {
 	withMCPServer(t, map[string]func() any{
 		"tools/call": func() any {

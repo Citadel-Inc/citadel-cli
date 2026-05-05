@@ -30,6 +30,15 @@ func addJSONFlag(cmds ...*cobra.Command) {
 	}
 }
 
+// addDryRunFlag registers the standard `--dry-run` flag on each command.
+// Destructive verbs honor it by printing the action that would have been
+// taken and skipping the API round trip.
+func addDryRunFlag(cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.Flags().Bool("dry-run", false, "Print the action without executing it")
+	}
+}
+
 // outputFlag returns the resolved `--output` flag value (empty if unset).
 func outputFlag(cmd *cobra.Command) string {
 	v, _ := cmd.Flags().GetString("output")
@@ -45,6 +54,12 @@ func yesFlag(cmd *cobra.Command) bool {
 // jsonFlag returns the resolved `--json` flag value.
 func jsonFlag(cmd *cobra.Command) bool {
 	v, _ := cmd.Flags().GetBool("json")
+	return v
+}
+
+// dryRunFlag returns the resolved `--dry-run` flag value.
+func dryRunFlag(cmd *cobra.Command) bool {
+	v, _ := cmd.Flags().GetBool("dry-run")
 	return v
 }
 
