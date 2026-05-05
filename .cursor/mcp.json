@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "citadel-sdd": {
+      "command": "node",
+      "args": ["/usr/local/src/com.github/Rethunk-Tech/citadel-sdd/dist/index.js"],
+      "cwd": "/usr/local/src/com.github/Rethunk-Tech/citadel-cli"
+    }
+  }
+}
