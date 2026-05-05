@@ -22,11 +22,16 @@ jobs:
         run: go mod download
 
       - name: Build CLI (cross-compile)
-        run: make build-cli-all
+        run: make build-all
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd dist
+          sha256sum citadel-cli-* > SHA256SUMS
 
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          files: dist/cli/*
+          files: dist/*
           draft: false
           prerelease: false
