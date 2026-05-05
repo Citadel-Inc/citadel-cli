@@ -4,15 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
+	"slices"
 	"text/tabwriter"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
 // AgentCmd is the top-level `citadel agent` command.
@@ -94,21 +93,10 @@ func findAgentByName(ctx context.Context, c *apiclient.Client, name string) (age
 	if err != nil {
 		return agentRow{}, err
 	}
-	for _, a := range rows {
-		if a.Name == name {
-			return a, nil
-		}
+	if i := slices.IndexFunc(rows, func(a agentRow) bool { return a.Name == name }); i >= 0 {
+		return rows[i], nil
 	}
 	return agentRow{}, fmt.Errorf("agent '%s' not found", name)
-}
-
-func newAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
-	cfg, err := clicfg.Load()
-	if err != nil {
-		return nil, fmt.Errorf("load config: %w", err)
-	}
-	flagServer, _ := cmd.Flags().GetString("server")
-	return apiclient.New(cfg, flagServer)
 }
 
 func runAgentList(cmd *cobra.Command, _ []string) error {
@@ -130,7 +118,7 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 			if a.ModelHint != nil {
 				hint = *a.ModelHint
 			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, a.ID.String(), hint)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, a.ID, hint)
 		}
 	})
 }
@@ -140,25 +128,17 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
-	name := args[0]
-
-	rows, err := listAgentRows(cmd.Context(), c)
+	a, err := findAgentByName(cmd.Context(), c, args[0])
 	if err != nil {
 		return err
 	}
-	for _, a := range rows {
-		if a.Name == name {
-			return emitOne(output, a, func(w *tabwriter.Writer, a agentRow) {
-				_, _ = fmt.Fprintf(w, "Name:\t%s\n", a.Name)
-				_, _ = fmt.Fprintf(w, "ID:\t%s\n", a.ID.String())
-				if a.ModelHint != nil {
-					_, _ = fmt.Fprintf(w, "Model hint:\t%s\n", *a.ModelHint)
-				}
-			})
+	return emitOne(outputFlag(cmd), a, func(w *tabwriter.Writer, a agentRow) {
+		_, _ = fmt.Fprintf(w, "Name:\t%s\n", a.Name)
+		_, _ = fmt.Fprintf(w, "ID:\t%s\n", a.ID)
+		if a.ModelHint != nil {
+			_, _ = fmt.Fprintf(w, "Model hint:\t%s\n", *a.ModelHint)
 		}
-	}
-	return fmt.Errorf("agent '%s' not found", name)
+	})
 }
 
 func runAgentDelete(cmd *cobra.Command, args []string) error {
@@ -177,7 +157,7 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := c.Delete(cmd.Context(), "/agents/"+url.PathEscape(a.ID.String())); err != nil {
+	if err := c.Delete(cmd.Context(), "/agents/"+a.ID.String()); err != nil {
 		return err
 	}
 	fmt.Printf("Agent '%s' deleted.\n", name)
@@ -207,9 +187,10 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("issue token: %w", err)
 	}
 
-	// List existing tokens to revoke all but the new one.
+	// List existing tokens to revoke all but the new one. UUIDs need no
+	// query escape — canonical form is alphanumeric + dashes.
 	var existingTokens []token
-	if err := c.Get(cmd.Context(), "/agent-tokens?agent_id="+url.QueryEscape(agentID), &existingTokens); err != nil {
+	if err := c.Get(cmd.Context(), "/agent-tokens?agent_id="+agentID, &existingTokens); err != nil {
 		return fmt.Errorf("list tokens: %w", err)
 	}
 
@@ -219,7 +200,7 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 		if t.ID == newTok.ID || t.RevokedAt != nil {
 			continue
 		}
-		if err := c.Delete(cmd.Context(), "/agent-tokens/"+url.PathEscape(t.ID.String())); err != nil {
+		if err := c.Delete(cmd.Context(), "/agent-tokens/"+t.ID.String()); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to revoke token %s: %v\n", t.ID, err)
 			revokeErrs = append(revokeErrs, err)
 		}

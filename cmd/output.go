@@ -9,19 +9,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// addOutputFlag registers the standard `--output` flag on c.
-func addOutputFlag(c *cobra.Command) {
-	c.Flags().String("output", "", "Output format: json")
+// addOutputFlag registers the standard `--output` flag on each command.
+func addOutputFlag(cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.Flags().String("output", "", "Output format: json")
+	}
 }
 
-// addYesFlag registers the standard `--yes` flag on c.
-func addYesFlag(c *cobra.Command) {
-	c.Flags().Bool("yes", false, "Skip confirmation prompt")
+// addYesFlag registers the standard `--yes` flag on each command.
+func addYesFlag(cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.Flags().Bool("yes", false, "Skip confirmation prompt")
+	}
 }
 
-// addJSONFlag registers the standard `--json` flag on c.
-func addJSONFlag(c *cobra.Command) {
-	c.Flags().Bool("json", false, "Output raw JSON")
+// addJSONFlag registers the standard `--json` flag on each command.
+func addJSONFlag(cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.Flags().Bool("json", false, "Output raw JSON")
+	}
 }
 
 // outputFlag returns the resolved `--output` flag value (empty if unset).
@@ -39,6 +45,12 @@ func yesFlag(cmd *cobra.Command) bool {
 // jsonFlag returns the resolved `--json` flag value.
 func jsonFlag(cmd *cobra.Command) bool {
 	v, _ := cmd.Flags().GetBool("json")
+	return v
+}
+
+// serverFlag returns the resolved persistent `--server` flag value.
+func serverFlag(cmd *cobra.Command) string {
+	v, _ := cmd.Flags().GetString("server")
 	return v
 }
 
