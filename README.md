@@ -24,6 +24,27 @@ Cobra emits integration scripts via `citadel-cli completion bash|zsh|fish|powers
 
 When a command fails with `--output json`, `yaml`, or `ndjson`, the CLI writes one structured **error** object to **stdout** (stderr stays empty) and exits with a class-specific code (for example `6` for rate limits). Human/table modes keep the usual `Error: …` line on stderr. See [HUMANS.md § Structured errors](HUMANS.md#structured-errors-output-json--yaml--ndjson) for the full shape, `kind` values, and exit-code table.
 
+## Output formats
+
+Machine-readable list output uses `--output json|yaml|ndjson|csv|table` (default human table). **Get/show** verbs accept `json|yaml|table` only — `csv` and `ndjson` are list/stream shapes.
+
+- **`json`** — one indented JSON value per invocation; with pagination that is a single page (array of rows). **`--all` with `--output json` is rejected**; use **`ndjson`** (or human/`table`) to stream.
+- **`ndjson`** — one compact JSON object per row and per line; newline after every record, including the last.
+- **`csv`** — RFC 4180-style rows to stdout; **header emitted once** at the first data batch (empty lists emit a header-only row). Column order is **frozen per command** (see table below).
+- **`yaml`** — one YAML document; for lists, a sequence. Keys match **`json`** output (stable for scripting).
+
+| List command | CSV columns (exact order) |
+|--------------|---------------------------|
+| `repo list` | slug, path, visibility, default_branch, description, namespace_id, parent_slug, created_at |
+| `agent list` | id, owner_user_id, name, model_hint |
+| `token list` | id, agent_id, created_at, expires_at, revoked_at, scopes |
+| `oauth clients list` | id, client_id, name, allowed_scopes, is_public, owner_slug, created_at, updated_at, revoked_at |
+| `namespace list` | namespace_id, slug, display_name, legal_entity_name, created_at |
+| `namespace members` | user_id, email, slug, display_name, is_owner, permissions, joined_at |
+| `namespace transfer list-pending` | id, org_namespace_id, org_slug, org_name, from_user_id, from_user_slug, to_user_id, to_user_slug, expires_at, created_at |
+
+Time-like CSV fields use **RFC3339 UTC** (`…Z`). See [HUMANS.md § List pagination](HUMANS.md#list-pagination) for `--all` + `--output ndjson` streaming.
+
 ## Documentation
 
 - [docs/cli.md](docs/cli.md) — full command reference
