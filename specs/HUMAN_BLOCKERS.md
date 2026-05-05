@@ -16,3 +16,10 @@ Items that need **human / live-environment** follow-up outside what CI and httpt
 | P2 C2 — exit-code map review | NOMAD / operator | Confirm per-kind exit codes **1–7** do not break in-house wrapper scripts; document any intentional breakage. |
 
 When an item is cleared, remove its row here and reflect closure in the spec / tasks via **citadel-sdd** (`spec_task_check`, `spec_close`, etc.) — do not edit checkbox state by hand.
+
+## [`cli-watch`](done/cli-watch/)
+
+| Task | Owner | Notes |
+|------|--------|-------|
+| P0 A1 — SSE on every list path | Citadel core / companion server spec | Server emits init/add/update/remove, `:keepalive`, `Last-Event-ID`; CLI client and B6 httptest already assume this contract. |
+| P2 C2 — operator live watch smoke | NOMAD / operator | Run `repo list --watch` against a live namespace, mutate from another shell, confirm stdout events. |
