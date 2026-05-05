@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 050506ZMAY26 |
+| Status | IN_PROGRESS 052313ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 closed-alpha org ops: `orgsmembersapi` implements invitations + pending inbox + accept-by-token; `citadel-cli` has **members** + **transfer** but no invitation lifecycle. |
