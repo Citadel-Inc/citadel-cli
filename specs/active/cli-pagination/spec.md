@@ -41,16 +41,16 @@ Tracked here for symmetry; will be split into a daemon-side spec when this one l
 - **Per-namespace count summary** (`namespace stats --count repos`). Different feature.
 - **Web app pagination UI** — the web app does its own list rendering today; updating its server calls is out of scope here.
 
-## Decision log
+## Decisions
 
-| Q | Proposal | Status |
-|---|----------|--------|
-| Q1 | Cursor encoding: `(created_at, id)` vs. row offset (`limit/offset`)? | **Open** — tuple cursor; offset is unsafe under concurrent inserts. |
-| Q2 | Default `--limit`: 50 (matches server today) vs. 100 (better for human ergonomics)? | **Open** — 50 to keep first-page latency stable; `--all` covers heavy users. |
-| Q3 | Max `--limit` cap: 200 vs. 500? | **Open** — 200 unless an operator surfaces a use case for 500. |
-| Q4 | Server response: `{ "next_cursor": "..." }` envelope vs. `Link:` HTTP header (RFC 5988)? | **Open** — envelope. Header parsing on the CLI side is a needless dep. |
-| Q5 | Should `--all` cap implicitly to avoid runaway fetches? | **Open** — no implicit cap; `--all` is opt-in, document the cost. |
-| Q6 | Should `--all` parallelise pages, or strictly serial? | **Open** — strictly serial. Cursor causality requires it; parallel adds confusion for marginal latency win. |
+| # | Question | Proposed default | NOMAD |
+|---|----------|------------------|-------|
+| Q1 | Cursor encoding: `(created_at, id)` vs. row offset (`limit/offset`)? | Tuple cursor `(created_at, id)`; not `limit`/`offset` (unsafe under concurrent inserts). | TBD |
+| Q2 | Default `--limit`: 50 (matches server today) vs. 100 (better for human ergonomics)? | 50 to keep first-page latency stable; `--all` covers heavy users. | TBD |
+| Q3 | Max `--limit` cap: 200 vs. 500? | 200 unless an operator surfaces a use case for 500. | TBD |
+| Q4 | Server response: `{ "next_cursor": "..." }` envelope vs. `Link:` HTTP header (RFC 5988)? | JSON envelope with `next_cursor`; not `Link:` header. | TBD |
+| Q5 | Should `--all` cap implicitly to avoid runaway fetches? | No implicit cap; `--all` is opt-in; document the cost. | TBD |
+| Q6 | Should `--all` parallelise pages, or strictly serial? | Strictly serial; cursor causality requires it. | TBD |
 
 ## Acceptance
 
