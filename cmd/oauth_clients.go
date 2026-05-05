@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -148,7 +149,8 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	name := strings.TrimSpace(must(cmd.Flags().GetString("name")))
+	nameRaw, _ := cmd.Flags().GetString("name")
+	name := strings.TrimSpace(nameRaw)
 	redirects, _ := cmd.Flags().GetStringSlice("redirect-uri")
 	orgSlug, _ := cmd.Flags().GetString("org")
 	isPublic, _ := cmd.Flags().GetBool("public")
@@ -156,11 +158,8 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 	scopes, _ := cmd.Flags().GetStringSlice("scope")
 	output := outputFlag(cmd)
 
-	if name == "" {
-		return fmt.Errorf("--name is required")
-	}
 	if len(redirects) == 0 {
-		return fmt.Errorf("at least one --redirect-uri is required")
+		return errors.New("at least one --redirect-uri is required")
 	}
 
 	payload := map[string]any{
@@ -292,10 +291,6 @@ func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// must is a helper for cobra Get* lookups whose only failure mode is
-// "flag not registered" — programmer error caught at init().
-func must[T any](v T, _ error) T { return v }
-
 func copySecretToClipboard(s string) error {
 	c, err := clipboardCommand()
 	if err != nil {
@@ -334,18 +329,15 @@ func init() {
 	oauthClientsCmd.AddCommand(oauthClientsRotateSecretCmd)
 	oauthClientsCmd.AddCommand(oauthClientsRevokeCmd)
 
-	for _, c := range []*cobra.Command{
-		oauthClientsListCmd, oauthClientsCreateCmd, oauthClientsShowCmd,
-		oauthClientsRotateSecretCmd, oauthClientsRevokeCmd,
-	} {
-		addOutputFlag(c)
-	}
+	addOutputFlag(oauthClientsListCmd, oauthClientsCreateCmd, oauthClientsShowCmd,
+		oauthClientsRotateSecretCmd, oauthClientsRevokeCmd)
 	addYesFlag(oauthClientsRevokeCmd)
 
 	oauthClientsListCmd.Flags().String("org", "", "Org namespace slug (omit for personal-scope clients)")
 
 	oauthClientsCreateCmd.Flags().String("name", "", "Display name (required)")
 	oauthClientsCreateCmd.Flags().StringSlice("redirect-uri", nil, "Redirect URI (repeat flag for multiple)")
+	_ = oauthClientsCreateCmd.MarkFlagRequired("name")
 	oauthClientsCreateCmd.Flags().String("org", "", "Register under this org namespace slug")
 	oauthClientsCreateCmd.Flags().Bool("public", false, "Register a public (PKCE-only) client")
 	oauthClientsCreateCmd.Flags().String("description", "", "Optional description")

@@ -98,12 +98,6 @@ func runRepoCreate(cmd *cobra.Command, _ []string) error {
 	output := outputFlag(cmd)
 	ns, _ := cmd.Flags().GetString("namespace")
 	slug, _ := cmd.Flags().GetString("slug")
-	if ns == "" {
-		return fmt.Errorf("--namespace is required")
-	}
-	if slug == "" {
-		return fmt.Errorf("--slug is required")
-	}
 
 	desc, _ := cmd.Flags().GetString("description")
 	visibility, _ := cmd.Flags().GetString("visibility")
@@ -158,9 +152,6 @@ func listRepos(cmd *cobra.Command, ns string) ([]repoRow, error) {
 func runRepoList(cmd *cobra.Command, _ []string) error {
 	output := outputFlag(cmd)
 	ns, _ := cmd.Flags().GetString("namespace")
-	if ns == "" {
-		return fmt.Errorf("--namespace is required")
-	}
 
 	repos, err := listRepos(cmd, ns)
 	if err != nil {
@@ -230,9 +221,7 @@ func init() {
 	RepoCmd.AddCommand(repoGetCmd)
 	RepoCmd.AddCommand(repoDeleteCmd)
 
-	for _, c := range []*cobra.Command{repoCreateCmd, repoListCmd, repoGetCmd, repoDeleteCmd} {
-		addOutputFlag(c)
-	}
+	addOutputFlag(repoCreateCmd, repoListCmd, repoGetCmd, repoDeleteCmd)
 	addYesFlag(repoDeleteCmd)
 
 	repoCreateCmd.Flags().String("namespace", "", "Parent namespace slug (required)")
@@ -241,6 +230,9 @@ func init() {
 	repoCreateCmd.Flags().String("visibility", "private", "Visibility: public or private")
 	repoCreateCmd.Flags().String("default-branch", "main", "Default branch name")
 	repoCreateCmd.Flags().Bool("init-with-readme", false, "Initialize with a README")
+	_ = repoCreateCmd.MarkFlagRequired("namespace")
+	_ = repoCreateCmd.MarkFlagRequired("slug")
 
 	repoListCmd.Flags().String("namespace", "", "Parent namespace slug (required)")
+	_ = repoListCmd.MarkFlagRequired("namespace")
 }

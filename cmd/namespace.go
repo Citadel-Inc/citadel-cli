@@ -318,9 +318,6 @@ func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
 	output := outputFlag(cmd)
 	orgSlug := args[0]
 	to, _ := cmd.Flags().GetString("to")
-	if to == "" {
-		return fmt.Errorf("--to is required")
-	}
 
 	if err := confirmSlug(yesFlag(cmd), "transfer", orgSlug); err != nil {
 		return err
@@ -470,15 +467,10 @@ func init() {
 	nsTransferCmd.AddCommand(nsTransferDeclineCmd)
 	nsTransferCmd.AddCommand(nsTransferRevokeCmd)
 
-	for _, c := range []*cobra.Command{
-		nsListCmd, nsGetCmd, nsMembersCmd, nsDeleteCmd,
+	addOutputFlag(nsListCmd, nsGetCmd, nsMembersCmd, nsDeleteCmd,
 		nsTransferInitiateCmd, nsTransferListPendingCmd,
-		nsTransferAcceptCmd, nsTransferDeclineCmd, nsTransferRevokeCmd,
-	} {
-		addOutputFlag(c)
-	}
-	for _, c := range []*cobra.Command{nsDeleteCmd, nsTransferInitiateCmd, nsTransferRevokeCmd} {
-		addYesFlag(c)
-	}
+		nsTransferAcceptCmd, nsTransferDeclineCmd, nsTransferRevokeCmd)
+	addYesFlag(nsDeleteCmd, nsTransferInitiateCmd, nsTransferRevokeCmd)
 	nsTransferInitiateCmd.Flags().String("to", "", "Recipient username (required)")
+	_ = nsTransferInitiateCmd.MarkFlagRequired("to")
 }
