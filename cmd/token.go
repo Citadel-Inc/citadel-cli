@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
-	"io"
-	"net/http"
+	"net/url"
 	"os"
 	"text/tabwriter"
 	"time"
@@ -13,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 )
 
 var TokenCmd = &cobra.Command{
@@ -67,74 +65,74 @@ type agent struct {
 	Name string    `json:"name"`
 }
 
-func runTokenList(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+// listAgentsViaClient is the apiclient-based replacement for the legacy
+// listAgents helper. agentRow (from cmd/agent.go) is the canonical shape; we
+// re-decode here as []agent for the uuid.UUID-typed fields used by token verbs.
+func listAgentsViaClient(ctx context.Context, c *apiclient.Client) ([]agent, error) {
+	var rows []agent
+	if err := c.Get(ctx, "/agents", &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// findOrCreateAgent returns the agent's UUID for name, creating a new agent
+// if no match exists.
+func findOrCreateAgent(ctx context.Context, c *apiclient.Client, name string) (uuid.UUID, error) {
+	rows, err := listAgentsViaClient(ctx, c)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return uuid.Nil, err
 	}
-
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
+	for _, a := range rows {
+		if a.Name == name {
+			return a.ID, nil
+		}
 	}
+	var created agent
+	if err := c.Post(ctx, "/agents", map[string]string{"name": name}, &created); err != nil {
+		return uuid.Nil, fmt.Errorf("create agent: %w", err)
+	}
+	return created.ID, nil
+}
 
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
+// findAgentID returns the agent's UUID for name, or an error if not found.
+func findAgentID(ctx context.Context, c *apiclient.Client, name string) (uuid.UUID, error) {
+	rows, err := listAgentsViaClient(ctx, c)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	for _, a := range rows {
+		if a.Name == name {
+			return a.ID, nil
+		}
+	}
+	return uuid.Nil, fmt.Errorf("agent not found: %s", name)
+}
 
+func runTokenList(cmd *cobra.Command, _ []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	agentName, _ := cmd.Flags().GetString("agent")
 	if agentName == "" {
 		return fmt.Errorf("--agent flag required")
 	}
 
-	// Look up agent ID by name
-	agents, err := listAgents(cfg)
+	agentID, err := findAgentID(cmd.Context(), c, agentName)
 	if err != nil {
 		return err
 	}
 
-	var agentID uuid.UUID
-	for _, a := range agents {
-		if a.Name == agentName {
-			agentID = a.ID
-			break
-		}
-	}
-
-	if agentID == uuid.Nil {
-		return fmt.Errorf("agent not found: %s", agentName)
-	}
-
-	// List tokens for this agent
-	listURL := fmt.Sprintf("%s/agent-tokens?agent_id=%s", serverURL, agentID.String())
-
-	req, _ := http.NewRequest("GET", listURL, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.AccessToken))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error: %s", string(body))
-	}
-
 	var tokens []token
-	if err := json.NewDecoder(resp.Body).Decode(&tokens); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	if err := c.Get(cmd.Context(), "/agent-tokens?agent_id="+url.QueryEscape(agentID.String()), &tokens); err != nil {
+		return err
 	}
 
 	output, _ := cmd.Flags().GetString("output")
 	if output == "json" {
-		out, err := json.MarshalIndent(tokens, "", "  ")
-		if err != nil {
-			return fmt.Errorf("encode json: %w", err)
-		}
-		fmt.Println(string(out))
-		return nil
+		return emitJSON(tokens)
 	}
-
 	if len(tokens) == 0 {
 		fmt.Printf("No tokens for agent '%s'\n", agentName)
 		return nil
@@ -161,79 +159,26 @@ func runTokenList(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if err := w.Flush(); err != nil {
-		return err
-	}
-
-	return nil
+	return w.Flush()
 }
 
-func runTokenIssue(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+func runTokenIssue(cmd *cobra.Command, _ []string) error {
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
 	agentName, _ := cmd.Flags().GetString("agent")
 	if agentName == "" {
 		return fmt.Errorf("--agent flag required")
 	}
-
 	scopes, _ := cmd.Flags().GetStringSlice("scopes")
 	expiresStr, _ := cmd.Flags().GetString("expires")
 
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
-
-	// Create or find agent
-	agents, err := listAgents(cfg)
+	agentID, err := findOrCreateAgent(cmd.Context(), c, agentName)
 	if err != nil {
 		return err
 	}
 
-	var agentID uuid.UUID
-	for _, a := range agents {
-		if a.Name == agentName {
-			agentID = a.ID
-			break
-		}
-	}
-
-	if agentID == uuid.Nil {
-		// Create agent
-		createURL := fmt.Sprintf("%s/agents", serverURL)
-		createReq := struct {
-			Name string `json:"name"`
-		}{Name: agentName}
-
-		body, _ := json.Marshal(createReq)
-		req, _ := http.NewRequest("POST", createURL, bytes.NewReader(body))
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.AccessToken))
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return fmt.Errorf("create agent request failed: %w", err)
-		}
-		defer func() { _ = resp.Body.Close() }()
-
-		if resp.StatusCode != http.StatusCreated {
-			body, _ := io.ReadAll(resp.Body)
-			return fmt.Errorf("create agent failed: %s", string(body))
-		}
-
-		var ag agent
-		if err := json.NewDecoder(resp.Body).Decode(&ag); err != nil {
-			return fmt.Errorf("decode agent response: %w", err)
-		}
-		agentID = ag.ID
-	}
-
-	// Issue token
 	var expiresIn *int64
 	if expiresStr != "" {
 		d, err := time.ParseDuration(expiresStr)
@@ -243,8 +188,7 @@ func runTokenIssue(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	issueURL := fmt.Sprintf("%s/agent-tokens", serverURL)
-	issueReq := struct {
+	body := struct {
 		AgentID          uuid.UUID `json:"agent_id"`
 		ExpiresInSeconds *int64    `json:"expires_in_seconds,omitempty"`
 		Scopes           []string  `json:"scopes,omitempty"`
@@ -254,99 +198,28 @@ func runTokenIssue(cmd *cobra.Command, args []string) error {
 		Scopes:           scopes,
 	}
 
-	body, _ := json.Marshal(issueReq)
-	req, _ := http.NewRequest("POST", issueURL, bytes.NewReader(body))
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.AccessToken))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("issue token request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("issue token failed: %s", string(body))
-	}
-
 	var tok tokenWithCleartext
-	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
-		return fmt.Errorf("decode token response: %w", err)
+	if err := c.Post(cmd.Context(), "/agent-tokens", body, &tok); err != nil {
+		return err
 	}
 
 	// Print the token (once, no debug noise)
 	fmt.Println(tok.CleartextToken)
-
 	return nil
 }
 
 func runTokenRevoke(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
 	tokenID := args[0]
 
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
-
-	revokeURL := fmt.Sprintf("%s/agent-tokens/%s", serverURL, tokenID)
-
-	req, _ := http.NewRequest("DELETE", revokeURL, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.AccessToken))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
+	if err := c.Delete(cmd.Context(), "/agent-tokens/"+url.PathEscape(tokenID)); err != nil {
+		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("revoke failed: %s", string(body))
-	}
-
 	fmt.Printf("Token revoked: %s\n", tokenID)
 	return nil
-}
-
-// Helper to list agents for the authenticated user. Server URL precedence
-// follows env + stored config; the --server flag is not visible from this
-// helper (no cobra.Command in scope), so callers that want flag override
-// must pass the resolved URL or call the endpoint directly. v1 acceptable
-// since listAgents is only used by token issue / list which compute the
-// flag-aware URL upstream and could be threaded through later.
-func listAgents(cfg clicfg.Config) ([]agent, error) {
-	serverURL := cfg.ResolveServerURL("")
-
-	listURL := fmt.Sprintf("%s/agents", serverURL)
-
-	req, _ := http.NewRequest("GET", listURL, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.AccessToken))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("server error: %s", string(body))
-	}
-
-	var agents []agent
-	if err := json.NewDecoder(resp.Body).Decode(&agents); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
-	}
-
-	return agents, nil
 }
 
 func init() {
@@ -354,7 +227,6 @@ func init() {
 	TokenCmd.AddCommand(issueCmd)
 	TokenCmd.AddCommand(revokeCmd)
 
-	// Add flags
 	listCmd.Flags().String("agent", "", "Agent name (required)")
 	listCmd.Flags().String("output", "", "Output format: json")
 	issueCmd.Flags().String("agent", "", "Agent name (required)")
