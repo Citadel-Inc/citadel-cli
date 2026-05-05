@@ -11,10 +11,20 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/internal/term"
 )
 
+// outputFormatCompletions matches cli-output-formats acceptance (static list).
+var outputFormatCompletions = []string{"json", "yaml", "ndjson", "csv", "table"}
+
+func completeOutputFormats(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+	out := make([]string, len(outputFormatCompletions))
+	copy(out, outputFormatCompletions)
+	return out, cobra.ShellCompDirectiveNoFileComp
+}
+
 // addOutputFlag registers the standard `--output` flag on each command.
 func addOutputFlag(cmds ...*cobra.Command) {
 	for _, c := range cmds {
 		c.Flags().String("output", "", "Output format: json")
+		_ = c.RegisterFlagCompletionFunc("output", completeOutputFormats)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
+	"github.com/Rethunk-Tech/citadel-cli/internal/completion"
 )
 
 var TokenCmd = &cobra.Command{
@@ -175,6 +176,17 @@ func runTokenRevoke(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func completeTokenIDs(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	vals, err := completion.Lookup(cmd.Context(), serverFlag(cmd), completion.KeyAgentTokens, completion.FetchAgentTokenIDs)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return vals, cobra.ShellCompDirectiveNoFileComp
+}
+
 func init() {
 	TokenCmd.AddCommand(listCmd)
 	TokenCmd.AddCommand(issueCmd)
@@ -187,4 +199,13 @@ func init() {
 	issueCmd.Flags().StringSlice("scopes", []string{}, "Token scopes (optional)")
 	issueCmd.Flags().String("expires", "", "Expiration duration (optional, e.g. '24h')")
 	_ = issueCmd.MarkFlagRequired("agent")
+
+	revokeCmd.ValidArgsFunction = completeTokenIDs
+
+	issueCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyAgentTokens)
+	}
+	revokeCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyAgentTokens)
+	}
 }

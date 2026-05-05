@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
+	"github.com/Rethunk-Tech/citadel-cli/internal/completion"
 )
 
 // AgentCmd is the top-level `citadel agent` command.
@@ -193,6 +194,17 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func completeAgentNames(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	vals, err := completion.Lookup(cmd.Context(), serverFlag(cmd), completion.KeyAgents, completion.FetchAgentNames)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return vals, cobra.ShellCompDirectiveNoFileComp
+}
+
 func init() {
 	AgentCmd.AddCommand(agentListCmd)
 	AgentCmd.AddCommand(agentGetCmd)
@@ -202,4 +214,15 @@ func init() {
 	addOutputFlag(agentListCmd, agentGetCmd, agentDeleteCmd, agentRotateTokenCmd)
 	addYesFlag(agentDeleteCmd, agentRotateTokenCmd)
 	addDryRunFlag(agentDeleteCmd)
+
+	agentGetCmd.ValidArgsFunction = completeAgentNames
+	agentDeleteCmd.ValidArgsFunction = completeAgentNames
+	agentRotateTokenCmd.ValidArgsFunction = completeAgentNames
+
+	agentDeleteCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyAgents, completion.KeyAgentTokens)
+	}
+	agentRotateTokenCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyAgents, completion.KeyAgentTokens)
+	}
 }

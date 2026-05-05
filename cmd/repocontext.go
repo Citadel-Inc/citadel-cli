@@ -171,3 +171,28 @@ func resolveRepoFromPosOrFlag(cmd *cobra.Command, positional string) (ns, slug s
 	}
 	return resolveRepoFlag(cmd)
 }
+
+// ResolveRepoNamespaceForCompletion returns the parent namespace slug used to
+// scope repo slug completion (mirrors resolveRepoFromPosOrFlag without a
+// positional path).
+func ResolveRepoNamespaceForCompletion(cmd *cobra.Command) (string, error) {
+	repoFlag, _ := cmd.Flags().GetString("repo")
+	repoFlag = strings.TrimSpace(repoFlag)
+	if repoFlag != "" {
+		if ns, _, err := splitRepoArg(repoFlag); err == nil {
+			return ns, nil
+		}
+		// Partial "-R myorg" without repo segment: still scope listings to myorg.
+		if i := strings.Index(repoFlag, "/"); i > 0 {
+			return repoFlag[:i], nil
+		}
+		return "", errors.New("namespace not available for completion")
+	}
+	if ev := strings.TrimSpace(os.Getenv(citadelRepoEnv)); ev != "" {
+		if ns, _, err := splitRepoArg(ev); err == nil {
+			return ns, nil
+		}
+	}
+	ns, _, err := resolveRepoFlag(cmd)
+	return ns, err
+}

@@ -9,6 +9,7 @@ package cmd_test
 // than --args reset, which Cobra handles via SetArgs).
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -306,6 +308,60 @@ func TestRepoDelete_Happy(t *testing.T) {
 	}))
 	if err := rootFor(cmd.RepoCmd, "delete", "myorg/r1", "--yes").Execute(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRepoGetCompletionSortedSlugs(t *testing.T) {
+	var getCalls int
+	const uniqNS = "cmpltest987"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /namespaces/" + uniqNS + "/repos": func(w http.ResponseWriter, _ *http.Request) {
+			getCalls++
+			writeJSON(t, w, 200, map[string]any{"repos": []any{
+				map[string]any{"slug": "charlie", "path": uniqNS + "/charlie"},
+				map[string]any{"slug": "alpha", "path": uniqNS + "/alpha"},
+				map[string]any{"slug": "alpha", "path": uniqNS + "/alpha"},
+			}})
+		},
+	}))
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	root := cmd.NewRootCmd()
+	var getCmd *cobra.Command
+outer:
+	for _, c := range root.Commands() {
+		if c.Name() != "repo" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() == "get" {
+				getCmd = sc
+				break outer
+			}
+		}
+	}
+	if getCmd == nil {
+		t.Fatal("repo get subcommand not found on root")
+	}
+	resetFlagsRecursive(root)
+	if err := getCmd.Flags().Set("repo", uniqNS+"/existing"); err != nil {
+		t.Fatal(err)
+	}
+	getCmd.SetContext(context.Background())
+	fn := getCmd.ValidArgsFunction
+	if fn == nil {
+		t.Fatal("repo get: ValidArgsFunction not set")
+	}
+	vals, dir := fn(getCmd, []string{}, "")
+	if dir != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("unexpected directive %v", dir)
+	}
+	if getCalls != 1 {
+		t.Fatalf("expected 1 API call, got %d", getCalls)
+	}
+	want := []string{"alpha", "charlie"}
+	if !slices.Equal(vals, want) {
+		t.Fatalf("completions = %q want %q", vals, want)
 	}
 }
 

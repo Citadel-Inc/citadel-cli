@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
+	"github.com/Rethunk-Tech/citadel-cli/internal/completion"
 )
 
 // NamespaceCmd is the top-level `citadel namespace` command.
@@ -462,6 +463,17 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func completeOrgNamespaceSlugs(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	vals, err := completion.Lookup(cmd.Context(), serverFlag(cmd), completion.KeyOrgs, completion.FetchOrgNamespaceSlugs)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return vals, cobra.ShellCompDirectiveNoFileComp
+}
+
 func init() {
 	NamespaceCmd.AddCommand(nsListCmd)
 	NamespaceCmd.AddCommand(nsGetCmd)
@@ -482,4 +494,25 @@ func init() {
 	addDryRunFlag(nsDeleteCmd, nsTransferRevokeCmd)
 	nsTransferInitiateCmd.Flags().String("to", "", "Recipient username (required)")
 	_ = nsTransferInitiateCmd.MarkFlagRequired("to")
+
+	nsGetCmd.ValidArgsFunction = completeOrgNamespaceSlugs
+	nsMembersCmd.ValidArgsFunction = completeOrgNamespaceSlugs
+	nsDeleteCmd.ValidArgsFunction = completeOrgNamespaceSlugs
+	nsTransferInitiateCmd.ValidArgsFunction = completeOrgNamespaceSlugs
+
+	nsDeleteCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyOrgs)
+	}
+	nsTransferInitiateCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyOrgs)
+	}
+	nsTransferAcceptCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyOrgs)
+	}
+	nsTransferDeclineCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyOrgs)
+	}
+	nsTransferRevokeCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyOrgs)
+	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
+	"github.com/Rethunk-Tech/citadel-cli/internal/completion"
 )
 
 // OauthCmd is the top-level `citadel-cli oauth` command.
@@ -325,6 +326,17 @@ func clipboardCommand() (*exec.Cmd, error) {
 	return nil, fmt.Errorf("install wl-copy or xclip, or copy manually")
 }
 
+func completeOAuthClientIDs(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	vals, err := completion.Lookup(cmd.Context(), serverFlag(cmd), completion.KeyOAuthClients, completion.FetchOAuthClientIDs)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return vals, cobra.ShellCompDirectiveNoFileComp
+}
+
 func init() {
 	OauthCmd.AddCommand(oauthClientsCmd)
 	oauthClientsCmd.AddCommand(oauthClientsListCmd)
@@ -349,4 +361,17 @@ func init() {
 	oauthClientsCreateCmd.Flags().StringSlice("scope", nil, "Allowed OAuth scope (repeatable; default server set if omitted)")
 
 	oauthClientsRotateSecretCmd.Flags().Bool("copy-to-clipboard", false, "Copy rotated secret to clipboard (after printing)")
+
+	oauthClientsShowCmd.ValidArgsFunction = completeOAuthClientIDs
+	oauthClientsRevokeCmd.ValidArgsFunction = completeOAuthClientIDs
+
+	oauthClientsCreateCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyOAuthClients)
+	}
+	oauthClientsRevokeCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyOAuthClients)
+	}
+	oauthClientsRotateSecretCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyOAuthClients)
+	}
 }

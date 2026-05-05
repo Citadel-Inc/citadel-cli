@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
+	"github.com/Rethunk-Tech/citadel-cli/internal/completion"
 )
 
 // RepoCmd is the top-level `citadel repo` command.
@@ -242,6 +244,23 @@ func runRepoDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func completeRepoSlugs(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	ns, err := ResolveRepoNamespaceForCompletion(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	vals, err := completion.Lookup(cmd.Context(), serverFlag(cmd), completion.RepoKey(ns), func(ctx context.Context, c *apiclient.Client) ([]string, error) {
+		return completion.FetchRepoSlugs(ctx, c, ns)
+	})
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return vals, cobra.ShellCompDirectiveNoFileComp
+}
+
 func init() {
 	RepoCmd.AddCommand(repoCreateCmd)
 	RepoCmd.AddCommand(repoListCmd)
@@ -264,4 +283,23 @@ func init() {
 
 	repoListCmd.Flags().String("namespace", "", "Parent namespace slug (required)")
 	_ = repoListCmd.MarkFlagRequired("namespace")
+
+	repoGetCmd.ValidArgsFunction = completeRepoSlugs
+	repoDeleteCmd.ValidArgsFunction = completeRepoSlugs
+
+	repoCreateCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		ns, _ := cmd.Flags().GetString("namespace")
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.RepoKey(strings.TrimSpace(ns)))
+	}
+	repoDeleteCmd.PostRun = func(cmd *cobra.Command, args []string) {
+		pos := ""
+		if len(args) > 0 {
+			pos = args[0]
+		}
+		ns, _, err := resolveRepoFromPosOrFlag(cmd, pos)
+		if err != nil {
+			return
+		}
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.RepoKey(ns))
+	}
 }

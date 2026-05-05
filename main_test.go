@@ -34,7 +34,7 @@ func TestRun_UnknownCommand_ExitsOne(t *testing.T) {
 
 func TestNewRootCmd_HasAllSubcommands(t *testing.T) {
 	root := newRootCmd()
-	want := []string{"auth", "token", "mcp", "kg", "repo", "namespace", "agent", "oauth"}
+	want := []string{"auth", "token", "mcp", "kg", "repo", "namespace", "agent", "oauth", "completion", "doctor", "man"}
 	for _, name := range want {
 		found := false
 		for _, sub := range root.Commands() {
