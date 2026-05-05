@@ -69,7 +69,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	results := []checkResult{
 		checkServer(cmd.Context(), server),
 		checkAuthToken(cfg),
-		checkMCP(cmd.Context(), cfg, server),
+		checkMCP(cmd.Context(), cfg, server, mcpclient.Options{Verbose: verboseFlag(cmd), DebugHTTP: debugHTTPFlag(cmd)}),
 		checkConfigPerms(),
 	}
 	for _, r := range results {
@@ -138,14 +138,14 @@ func checkAuthToken(cfg clicfg.Config) checkResult {
 	return checkResult{name, statusPass, fmt.Sprintf("authenticated (expires in %s)", remaining.Round(time.Second))}
 }
 
-func checkMCP(ctx context.Context, cfg clicfg.Config, server string) checkResult {
+func checkMCP(ctx context.Context, cfg clicfg.Config, server string, opts mcpclient.Options) checkResult {
 	const name = "mcp-endpoint"
 	token := pickToken("", cfg.AccessToken)
 	if token == "" {
 		return checkResult{name, statusWarn, "skipped: no auth token (cannot test MCP without credentials)"}
 	}
 	mcpURL := resolveMCPURL(server)
-	c := mcpclient.New(mcpURL, token, 5*time.Second)
+	c := mcpclient.New(mcpURL, token, 5*time.Second, opts)
 	if err := c.Initialize(ctx); err != nil {
 		if mcpclient.IsUnauthorized(err) {
 			return checkResult{name, statusFail, "MCP rejected our token (401) — run `citadel-cli auth login`"}

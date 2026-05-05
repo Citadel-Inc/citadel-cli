@@ -14,6 +14,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/Rethunk-Tech/citadel-cli/internal/httpx"
 )
 
 // ProtocolVersion is the MCP version this client speaks. Must match the
@@ -74,16 +76,28 @@ type MCPPromptArgument struct {
 	Required    *bool  `json:"required,omitempty"`
 }
 
-// New constructs a Client with the given timeout. Pass 0 for no timeout
-// override (uses 60s default per spec R2).
-func New(serverURL, token string, timeout time.Duration) *Client {
+// Options are the per-invocation knobs surfaced from the CLI persistent
+// flags. JSON-RPC retry on POST is intentionally NOT included — tools/call
+// is not idempotent in general; reads/lists could be retried in a future
+// pass via a per-method allowlist.
+type Options struct {
+	Verbose   bool
+	DebugHTTP bool
+}
+
+// New constructs a Client with the given timeout and observability options.
+// Pass 0 timeout for the 60s default (per spec R2).
+func New(serverURL, token string, timeout time.Duration, opts Options) *Client {
 	if timeout <= 0 {
 		timeout = 60 * time.Second
 	}
 	return &Client{
 		ServerURL: serverURL,
 		Token:     token,
-		HTTP:      &http.Client{Timeout: timeout},
+		HTTP: &http.Client{
+			Timeout:   timeout,
+			Transport: httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP}),
+		},
 	}
 }
 

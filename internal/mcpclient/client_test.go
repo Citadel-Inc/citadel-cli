@@ -76,7 +76,7 @@ func TestInitializeAndToolsList(t *testing.T) {
 	})
 	defer srv.Close()
 
-	c := New(srv.URL, "tok-123", 5*time.Second)
+	c := New(srv.URL, "tok-123", 5*time.Second, Options{})
 	if err := c.Initialize(context.Background()); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestToolsCall(t *testing.T) {
 		}
 	})
 	defer srv.Close()
-	c := New(srv.URL, "t", 5*time.Second)
+	c := New(srv.URL, "t", 5*time.Second, Options{})
 	if err := c.Initialize(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestUnauthorizedHTTP401(t *testing.T) {
 		w.WriteHeader(http.StatusUnauthorized)
 	})
 	defer srv.Close()
-	c := New(srv.URL, "bad", time.Second)
+	c := New(srv.URL, "bad", time.Second, Options{})
 	err := c.Initialize(context.Background())
 	if !IsUnauthorized(err) {
 		t.Fatalf("want unauthorized, got %v", err)
@@ -161,7 +161,7 @@ func TestMethodNotFound(t *testing.T) {
 		}
 	})
 	defer srv.Close()
-	c := New(srv.URL, "t", time.Second)
+	c := New(srv.URL, "t", time.Second, Options{})
 	if err := c.Initialize(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +177,7 @@ func TestVersionMismatch(t *testing.T) {
 		writeResult(w, "s", req.ID, map[string]any{"protocolVersion": "1999-01-01"})
 	})
 	defer srv.Close()
-	c := New(srv.URL, "t", time.Second)
+	c := New(srv.URL, "t", time.Second, Options{})
 	err := c.Initialize(context.Background())
 	e, ok := err.(*Error)
 	if !ok || e.Kind != KindVersionMismatch {
@@ -194,7 +194,7 @@ func TestNoSessionHeader(t *testing.T) {
 		_, _ = w.Write(body)
 	})
 	defer srv.Close()
-	c := New(srv.URL, "t", time.Second)
+	c := New(srv.URL, "t", time.Second, Options{})
 	if err := c.Initialize(context.Background()); err == nil || !strings.Contains(err.Error(), "Mcp-Session-Id") {
 		t.Fatalf("want session-header error, got %v", err)
 	}
@@ -212,7 +212,7 @@ func TestResourcesList(t *testing.T) {
 		}
 	})
 	defer srv.Close()
-	c := New(srv.URL, "t", time.Second)
+	c := New(srv.URL, "t", time.Second, Options{})
 	if err := c.Initialize(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestResourcesRead(t *testing.T) {
 		}
 	})
 	defer srv.Close()
-	c := New(srv.URL, "t", time.Second)
+	c := New(srv.URL, "t", time.Second, Options{})
 	if err := c.Initialize(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestPromptsList(t *testing.T) {
 		}
 	})
 	defer srv.Close()
-	c := New(srv.URL, "t", time.Second)
+	c := New(srv.URL, "t", time.Second, Options{})
 	if err := c.Initialize(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -290,7 +290,7 @@ func TestPromptsGet(t *testing.T) {
 		}
 	})
 	defer srv.Close()
-	c := New(srv.URL, "t", time.Second)
+	c := New(srv.URL, "t", time.Second, Options{})
 	if err := c.Initialize(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +304,7 @@ func TestPromptsGet(t *testing.T) {
 }
 
 func TestResourcesList_NotInitialized(t *testing.T) {
-	c := New("http://nope", "t", time.Second)
+	c := New("http://nope", "t", time.Second, Options{})
 	if _, err := c.ResourcesList(context.Background()); err == nil || !strings.Contains(err.Error(), "not initialized") {
 		t.Fatalf("want not-initialized, got %v", err)
 	}
