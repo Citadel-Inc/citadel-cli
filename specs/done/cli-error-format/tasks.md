@@ -1,6 +1,6 @@
 # Tasks — cli-error-format
 
-Status: IN_PROGRESS 051044ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 051045ZMAY26 — Error envelope, exit-code map, errmap→CLIError migration, and main.go branching were already landed; Q-table ratified with Retry-After HTTP-date support aligned to apiclient. README/HUMANS document structured errors for json/yaml/ndjson. Live 429 integration and operator exit-code review stay in P2 per HUMAN_BLOCKERS.
 
 ## P0
 

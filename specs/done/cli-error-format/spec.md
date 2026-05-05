@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 051044ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 051045ZMAY26 — Error envelope, exit-code map, errmap→CLIError migration, and main.go branching were already landed; Q-table ratified with Retry-After HTTP-date support aligned to apiclient. README/HUMANS document structured errors for json/yaml/ndjson. Live 429 integration and operator exit-code review stay in P2 per HUMAN_BLOCKERS. |
 | Authored | 050900ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | 2026-05-05 enhancement sweep: every CLI error today goes to stderr as plain text via `Error: %v` in main.go. Scripts piping `--output json` get a JSON document on stdout for the success path and an unparseable English sentence on stderr for the failure path. Operators must regex-match error strings to branch on error class. |
