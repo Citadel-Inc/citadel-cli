@@ -139,8 +139,7 @@ func runMcpCall(cmd *cobra.Command, args []string) error {
 	if rawJSON {
 		var pretty any
 		_ = json.Unmarshal(res.Raw, &pretty)
-		out, _ := json.MarshalIndent(pretty, "", "  ")
-		fmt.Println(string(out))
+		_ = emitJSON(pretty)
 	} else {
 		printToolResult(res)
 	}
@@ -184,9 +183,7 @@ func runMcpResourcesRead(cmd *cobra.Command, args []string) error {
 	if rawJSON {
 		var pretty any
 		_ = json.Unmarshal(raw, &pretty)
-		out, _ := json.MarshalIndent(pretty, "", "  ")
-		fmt.Println(string(out))
-		return nil
+		return emitJSON(pretty)
 	}
 	var parsed struct {
 		Contents []map[string]any `json:"contents"`
@@ -199,8 +196,7 @@ func runMcpResourcesRead(cmd *cobra.Command, args []string) error {
 			fmt.Println(t)
 			continue
 		}
-		out, _ := json.MarshalIndent(block, "", "  ")
-		fmt.Println(string(out))
+		_ = emitJSON(block)
 	}
 	return nil
 }
@@ -257,9 +253,7 @@ func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
 	if rawJSON {
 		var pretty any
 		_ = json.Unmarshal(raw, &pretty)
-		out, _ := json.MarshalIndent(pretty, "", "  ")
-		fmt.Println(string(out))
-		return nil
+		return emitJSON(pretty)
 	}
 	var parsed struct {
 		Description string           `json:"description"`
@@ -284,8 +278,7 @@ func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
 				continue
 			}
 		}
-		out, _ := json.MarshalIndent(m, "", "  ")
-		fmt.Println(string(out))
+		_ = emitJSON(m)
 	}
 	return nil
 }
@@ -365,8 +358,7 @@ func printToolResult(res *mcpclient.ToolCallResult) {
 				continue
 			}
 		}
-		out, _ := json.MarshalIndent(c, "", "  ")
-		fmt.Println(string(out))
+		_ = emitJSON(c)
 	}
 }
 
