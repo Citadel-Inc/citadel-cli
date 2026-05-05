@@ -63,3 +63,18 @@ func TestValidateMemberCursor_invalid(t *testing.T) {
 		t.Fatal("desc cursor must not validate as member")
 	}
 }
+
+func TestValidateAuditCursor_roundTrip(t *testing.T) {
+	ts := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	s := pagination.EncodeAuditDesc(ts, 999)
+	if err := validateAuditCursor(s); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestValidateAuditCursor_rejectsDesc(t *testing.T) {
+	s := pagination.EncodeDesc(time.Unix(0, 0).UTC(), uuid.Nil)
+	if err := validateAuditCursor(s); err == nil {
+		t.Fatal("desc cursor must not validate as audit cursor")
+	}
+}

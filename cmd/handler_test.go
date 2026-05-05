@@ -1373,6 +1373,51 @@ func TestNsTransferRevoke_DryRun(t *testing.T) {
 	}
 }
 
+// ── audit ────────────────────────────────────────────────────────────────────
+
+func TestAuditList_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"events": []map[string]any{{
+					"id": "42", "ts": "2026-05-05T12:00:00Z", "kind": "agent.created",
+					"actor_slug": "alice", "actor_type": "user", "namespace_slug": "myorg",
+					"subject_id": "subj", "payload": map[string]any{},
+				}},
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditList_OutputJSON(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"events": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "list", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAuditShow_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events/7": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"id": "7", "ts": "2026-05-05T12:00:00Z", "kind": "repo.deleted",
+				"actor_type": "user", "payload": map[string]any{"a": 1},
+				"cascade_children": []any{},
+			})
+		},
+	}))
+	if err := rootFor(cmd.AuditCmd, "show", "7").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAgentDelete_DryRun(t *testing.T) {
 	const agentID = "00000000-0000-0000-0000-00000000000a"
 	// Server sees the GET /agents lookup but no DELETE — the dry-run skip

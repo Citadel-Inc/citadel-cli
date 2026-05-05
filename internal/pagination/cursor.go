@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	cursorV1Desc = byte(1)
-	cursorV2Mem  = byte(2)
+	cursorV1Desc  = byte(1)
+	cursorV2Mem   = byte(2)
+	cursorV3Audit = byte(3)
 )
 
 const (
@@ -59,6 +60,33 @@ func DecodeDesc(s string) (DescCursor, error) {
 	return z, nil
 }
 
+// AuditDescCursor orders audit_log rows by ts DESC, id DESC.
+type AuditDescCursor struct {
+	TimeUnixNano int64
+	ID           int64
+}
+
+// EncodeAuditDesc encodes a V3 audit list cursor (mirrors the Citadel server).
+func EncodeAuditDesc(t time.Time, id int64) string {
+	buf := make([]byte, 1+8+8)
+	buf[0] = cursorV3Audit
+	binary.BigEndian.PutUint64(buf[1:9], uint64(t.UTC().UnixNano()))
+	binary.BigEndian.PutUint64(buf[9:17], uint64(id))
+	return base64.RawURLEncoding.EncodeToString(buf)
+}
+
+// DecodeAuditDesc decodes a V3 audit list cursor.
+func DecodeAuditDesc(s string) (AuditDescCursor, error) {
+	var z AuditDescCursor
+	raw, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil || len(raw) != 17 || raw[0] != cursorV3Audit {
+		return z, fmt.Errorf("%w: audit", ErrInvalidCursor)
+	}
+	z.TimeUnixNano = int64(binary.BigEndian.Uint64(raw[1:9]))
+	z.ID = int64(binary.BigEndian.Uint64(raw[9:17]))
+	return z, nil
+}
+
 type MemberAscCursor struct {
 	NotOwner   bool
 	JoinedNano int64
@@ -85,4 +113,22 @@ func ClampLimit(n int) int {
 		return MaxLimit
 	}
 	return n
+}
+
+// ParseLimit parses the raw "limit" query value; empty or invalid yields DefaultLimit.
+func ParseLimit(raw string) int {
+	if raw == "" {
+		return DefaultLimit
+	}
+	var n int
+	for _, c := range raw {
+		if c < '0' || c > '9' {
+			return DefaultLimit
+		}
+		n = n*10 + int(c-'0')
+		if n > MaxLimit*10 {
+			return MaxLimit
+		}
+	}
+	return ClampLimit(n)
 }

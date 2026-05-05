@@ -66,7 +66,15 @@ Makefile                         build / build-all / test / vet / lint / verify
 | Pre-push gate | `make verify` |
 | Cut a release | tag `vX.Y.Z`; `cli-release.yml` builds + publishes to GH Releases |
 
-Live integration tests (e.g. `oauth_clients_live_test.go`) self-skip without `CITADEL_TEST_OAUTH_JWT` set. Repository list pagination against a real instance is gated on `CITADEL_TEST_PAGINATION_LIVE=1` (see `repo_pagination_live_test.go`).
+Live integration tests (e.g. `oauth_clients_live_test.go`) self-skip without `CITADEL_TEST_OAUTH_JWT` set. Repository list pagination against a real instance is gated on `CITADEL_TEST_PAGINATION_LIVE=1` (see `repo_pagination_live_test.go`). Audit list round-trip (agent create → `agent.created` row) is gated on `CITADEL_TEST_AUDIT_LIVE=1` plus `CITADEL_TEST_OAUTH_JWT` (see `audit_live_test.go`).
+
+## Audit log access
+
+Use `citadel-cli audit list` and `citadel-cli audit show <id>` against the Citadel HTTP API (`/api/audit/events`). Filters include `--since` / `--until` (Go duration or RFC3339), `--kind` (dot-separated glob: `*` is one segment, `**` matches a multi-segment suffix), `--namespace`, and `--actor` (UUID or user slug). Output follows the standard `--output` formats plus cursor pagination (`--limit`, `--cursor`, `--all`).
+
+Operator-only fields such as client IP are omitted for non-operator callers; the server decides redaction per RBAC.
+
+**Kinds commonly surfaced for investigations** (non-exhaustive; your deployment may emit more): `repo.deleted`, `org.deleted`, `namespace.hard_purged` (and other cleanup actions), `agent.created`, OAuth flows under `oauth.*`, org transfer and membership actions, `mcp.tools.call` for agent tool usage. Use `audit list --kind 'prefix.**'` to explore a family.
 
 ## Configuration
 

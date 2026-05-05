@@ -47,3 +47,11 @@ func validateMemberCursor(cur string) error {
 	_, err := pagination.DecodeMemberAsc(cur)
 	return err
 }
+
+func validateAuditCursor(cur string) error {
+	if cur == "" {
+		return nil
+	}
+	_, err := pagination.DecodeAuditDesc(cur)
+	return err
+}

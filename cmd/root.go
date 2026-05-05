@@ -40,6 +40,7 @@ Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --s
 	root.AddCommand(CompletionCmd)
 	root.AddCommand(DoctorCmd)
 	root.AddCommand(ManCmd)
+	root.AddCommand(AuditCmd)
 
 	return root
 }

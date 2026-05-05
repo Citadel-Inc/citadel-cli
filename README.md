@@ -10,7 +10,7 @@
 
 Operator and developer command-line interface for [Citadel](https://github.com/Rethunk-Tech/citadel).
 
-`citadel-cli` is the official client for managing repositories, namespaces, agents, OAuth clients, and the Citadel Knowledge Graph. It also embeds an MCP client for integrating Citadel into agentic workflows.
+`citadel-cli` is the official client for managing repositories, namespaces, agents, OAuth clients, audit log queries, and the Citadel Knowledge Graph. It also embeds an MCP client for integrating Citadel into agentic workflows.
 
 ## Getting started
 
@@ -42,6 +42,7 @@ Machine-readable list output uses `--output json|yaml|ndjson|csv|table` (default
 | `namespace list` | namespace_id, slug, display_name, legal_entity_name, created_at |
 | `namespace members` | user_id, email, slug, display_name, is_owner, permissions, joined_at |
 | `namespace transfer list-pending` | id, org_namespace_id, org_slug, org_name, from_user_id, from_user_slug, to_user_id, to_user_slug, expires_at, created_at |
+| `audit list` | id, ts, kind, actor_slug, actor_id, namespace_slug, namespace_id, subject_id, actor_type |
 
 Time-like CSV fields use **RFC3339 UTC** (`…Z`). See [HUMANS.md § List pagination](HUMANS.md#list-pagination) for `--all` + `--output ndjson` streaming.
 

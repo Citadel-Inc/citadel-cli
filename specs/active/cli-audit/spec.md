@@ -38,12 +38,12 @@ Add `citadel-cli audit list` + `audit show` so operators can answer "what happen
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Server endpoint shape: `GET /api/audit/events?since=...&kind=...&namespace=...` returning paginated list? | **Open** — recommended; matches existing API conventions. Daemon-side companion spec needed. |
-| Q2 | Time-filter unit: durations (`--since 1h`) vs. absolute timestamps (`--since 2026-05-05T00:00:00Z`)? | **Open** — both: parse a value matching `time.ParseDuration` first, fall back to RFC3339. |
-| Q3 | Default `--since`: 24h vs. 1h vs. unbounded? | **Open** — 24h; long enough to catch yesterday-evening events without dumping the whole table. |
-| Q4 | `--kind <glob>`: literal `*` glob vs. regex? | **Open** — glob (`fnmatch`-style); operators don't want to escape regex specials in shell. |
-| Q5 | Show actor as UUID vs. resolved slug (extra round trip)? | **Open** — slug if cached locally, else UUID; no extra round trip. |
-| Q6 | RBAC: are non-operator users allowed to query audit events for namespaces they own? | **Open** — yes, scoped to namespaces they own + actions they performed. Operator role unlocks cross-tenant. |
+| Q1 | Server endpoint shape: `GET /api/audit/events?since=...&kind=...&namespace=...` returning paginated list? | **Ratified 051200ZMAY26** — `GET /api/audit/events` (+ `GET /api/audit/events/{id}`) with `next_cursor` pagination; mounted under existing JWT + audit gate like `/api/audit/sessions`. |
+| Q2 | Time-filter unit: durations (`--since 1h`) vs. absolute timestamps (`--since 2026-05-05T00:00:00Z`)? | **Ratified 051200ZMAY26** — both: `time.ParseDuration` first, else RFC3339, for `since` and `until`. |
+| Q3 | Default `--since`: 24h vs. 1h vs. unbounded? | **Ratified 051200ZMAY26** — 24h default server-side when `since` omitted; `until` defaults to now. |
+| Q4 | `--kind <glob>`: literal `*` glob vs. regex? | **Ratified 051200ZMAY26** — dot-separated glob: `*` one segment, `**` multi-segment tail; translated to an anchored POSIX regexp server-side. |
+| Q5 | Show actor as UUID vs. resolved slug (extra round trip)? | **Ratified 051200ZMAY26** — server enriches `actor_slug` in one pass (user root namespace + agent name); else UUID; CLI does not add resolver round trips. |
+| Q6 | RBAC: are non-operator users allowed to query audit events for namespaces they own? | **Ratified 051200ZMAY26** — yes: rows where the caller is `actor_id`, or `namespace_id` is non-null and the caller has `audit:read` on that namespace (owner/grant walk); `operator:audit:read` bypasses scope. Operator-only payload fields stripped server-side for others. |
 
 ## Acceptance
 

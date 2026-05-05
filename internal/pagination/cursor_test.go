@@ -92,3 +92,16 @@ func TestClampLimit(t *testing.T) {
 		}
 	}
 }
+
+func TestEncodeDecodeAuditDesc(t *testing.T) {
+	ts := time.Date(2024, 1, 2, 3, 4, 5, 6, time.UTC)
+	id := int64(9007199254740991)
+	s := EncodeAuditDesc(ts, id)
+	got, err := DecodeAuditDesc(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != id || got.TimeUnixNano != ts.UTC().UnixNano() {
+		t.Fatalf("%+v", got)
+	}
+}
