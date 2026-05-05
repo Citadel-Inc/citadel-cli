@@ -53,13 +53,13 @@ Session views group related actions for **incident response** and **“what did 
 - **SSE tail / follow** — deferred per `cli-audit` retrospective.
 - **Mutating audit** — read-only API.
 
-## Decision log
+## Decisions
 
-| Q | Proposal | Status |
-|---|----------|--------|
-| Q1 | Nested `audit sessions` vs top-level `audit-session`? | **Open** — nested under `audit sessions`. |
-| Q2 | Add `--namespace` alias for `--ns`? | **Open** — yes for consistency with other verbs. |
-| Q3 | Offset pagination vs migrate server to cursor later? | **Open** — CLI mirrors server `offset`/`limit` until daemon changes. |
+| # | Question | Proposed default | NOMAD |
+|---|----------|------------------|-------|
+| Q1 | Nested `audit sessions` vs top-level `audit-session`? | Nested `audit sessions list` / `audit sessions show`. | Ratified 052320ZMAY26 |
+| Q2 | Add `--namespace` alias for `--ns`? | Yes — either **`--ns`** or **`--namespace`** / **`-n`** (same semantics). | Ratified 052320ZMAY26 |
+| Q3 | Offset pagination vs migrate server to cursor later? | CLI exposes **`--limit`** / **`--offset`** matching the daemon until cursors exist. | Ratified 052320ZMAY26 |
 
 ## Acceptance
 
