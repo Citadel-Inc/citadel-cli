@@ -16,4 +16,4 @@ Status: IN_PROGRESS 052313ZMAY26 — Bastion (J-3) claims execution
 ## P2
 
 - [x] C1. Live test `CITADEL_TEST_ORG_INVITATIONS_LIVE=1`.
-- [ ] C2. Spec close.
+- [x] C2. Spec close.
