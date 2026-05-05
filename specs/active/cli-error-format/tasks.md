@@ -4,7 +4,7 @@ Status: IN_PROGRESS 051044ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 
-- [ ] [HUMAN] NOMAD ratifies Q-table (Q1–Q5).
+- [x] [HUMAN] NOMAD ratifies Q-table (Q1–Q5).
 - [x] A1. Define `cmd.CLIError` (Kind, Message, HTTPStatus, RetryAfter, Hint, Details) implementing `error` with the today-equivalent `Error()` string.
 - [x] A2. Migrate `cmd/errmap.go` to return `*CLIError` for every classification branch (DNS, dial, deadline, 401/403/404/409/412/429/5xx). Keep the existing `error.Error()` text byte-identical so `errmap_test.go` passes unchanged.
 - [x] A3. Migrate `main.go` top-level error path: detect `--output=json` (resolved from any verb's `--output` flag), marshal envelope to stdout, exit with the kind-mapped code; default to today's `Error: %v` stderr line.
