@@ -1,19 +1,13 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
-
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
 // RepoCmd is the top-level `citadel repo` command.
@@ -88,19 +82,21 @@ type repoRow struct {
 	CreatedAt     string `json:"created_at"`
 }
 
-func runRepoCreate(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+// splitRepoArg parses the canonical "<namespace>/<repo>" cobra arg shape.
+func splitRepoArg(arg string) (ns, slug string, err error) {
+	parts := strings.SplitN(arg, "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", fmt.Errorf("argument must be <namespace>/<repo>")
+	}
+	return parts[0], parts[1], nil
+}
+
+func runRepoCreate(cmd *cobra.Command, _ []string) error {
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
 	output, _ := cmd.Flags().GetString("output")
-
 	ns, _ := cmd.Flags().GetString("namespace")
 	slug, _ := cmd.Flags().GetString("slug")
 	if ns == "" {
@@ -133,26 +129,9 @@ func runRepoCreate(cmd *cobra.Command, args []string) error {
 		reqBody.DefaultBranch = &defaultBranch
 	}
 
-	bodyBytes, _ := json.Marshal(reqBody)
-	apiURL := fmt.Sprintf("%s/namespaces/%s/repos", serverURL, url.PathEscape(ns))
-	req, _ := http.NewRequest(http.MethodPost, apiURL, bytes.NewReader(bodyBytes))
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
-
 	var row repoRow
-	if err := json.NewDecoder(resp.Body).Decode(&row); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	if err := c.Post(cmd.Context(), "/namespaces/"+url.PathEscape(ns)+"/repos", reqBody, &row); err != nil {
+		return err
 	}
 
 	if output == "json" {
@@ -162,105 +141,61 @@ func runRepoCreate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runRepoList(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+// listRepos fetches all repos in a parent namespace.
+func listRepos(cmd *cobra.Command, ns string) ([]repoRow, error) {
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return nil, err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
+	var payload struct {
+		Repos []repoRow `json:"repos"`
 	}
+	if err := c.Get(cmd.Context(), "/namespaces/"+url.PathEscape(ns)+"/repos", &payload); err != nil {
+		return nil, err
+	}
+	return payload.Repos, nil
+}
 
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
+func runRepoList(cmd *cobra.Command, _ []string) error {
 	output, _ := cmd.Flags().GetString("output")
-
 	ns, _ := cmd.Flags().GetString("namespace")
 	if ns == "" {
 		return fmt.Errorf("--namespace is required")
 	}
 
-	apiURL := fmt.Sprintf("%s/namespaces/%s/repos", serverURL, url.PathEscape(ns))
-	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
+	repos, err := listRepos(cmd, ns)
 	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
-
-	var payload struct {
-		Repos []repoRow `json:"repos"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+		return err
 	}
 
 	if output == "json" {
-		return emitJSON(payload.Repos)
+		return emitJSON(repos)
 	}
-
-	if len(payload.Repos) == 0 {
+	if len(repos) == 0 {
 		fmt.Printf("No repositories in namespace '%s'\n", ns)
 		return nil
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(w, "PATH\tVISIBILITY\tBRANCH\tCREATED")
-	for _, r := range payload.Repos {
+	for _, r := range repos {
 		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.Path, r.Visibility, r.DefaultBranch, r.CreatedAt)
 	}
 	return w.Flush()
 }
 
 func runRepoGet(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
-	if err != nil {
-		return fmt.Errorf("load config: %w", err)
-	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
 	output, _ := cmd.Flags().GetString("output")
-
-	parts := strings.SplitN(args[0], "/", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return fmt.Errorf("argument must be <namespace>/<repo>")
-	}
-	ns, slug := parts[0], parts[1]
-
-	apiURL := fmt.Sprintf("%s/namespaces/%s/repos", serverURL, url.PathEscape(ns))
-	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
+	ns, slug, err := splitRepoArg(args[0])
 	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
+		return err
 	}
 
-	var payload struct {
-		Repos []repoRow `json:"repos"`
+	repos, err := listRepos(cmd, ns)
+	if err != nil {
+		return err
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return fmt.Errorf("decode response: %w", err)
-	}
-
-	for _, r := range payload.Repos {
+	for _, r := range repos {
 		if strings.EqualFold(r.Slug, slug) {
 			if output == "json" {
 				return emitJSON(r)
@@ -280,22 +215,14 @@ func runRepoGet(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoDelete(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
+	ns, slug, err := splitRepoArg(args[0])
+	if err != nil {
+		return err
 	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := cfg.ResolveServerURL(flagServer)
-
-	parts := strings.SplitN(args[0], "/", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return fmt.Errorf("argument must be <namespace>/<repo>")
-	}
-	ns, slug := parts[0], parts[1]
 
 	yes, _ := cmd.Flags().GetBool("yes")
 	if err := confirmSlug(yes, "delete", slug); err != nil {
@@ -303,23 +230,9 @@ func runRepoDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// DELETE route has no /repos segment: /namespaces/{parent}/{repo}.
-	// Caller-side base URL already has the /api prefix where needed (apex
-	// proxies it via Caddy on api.src.land); CLI sends the bare path.
-	apiURL := fmt.Sprintf("%s/namespaces/%s/%s", serverURL, url.PathEscape(ns), url.PathEscape(slug))
-	req, _ := http.NewRequest(http.MethodDelete, apiURL, nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
+	if err := c.Delete(cmd.Context(), "/namespaces/"+url.PathEscape(ns)+"/"+url.PathEscape(slug)); err != nil {
+		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, string(body))
-	}
-
 	fmt.Printf("Deleted %s/%s\n", ns, slug)
 	return nil
 }
