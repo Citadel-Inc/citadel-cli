@@ -1,6 +1,6 @@
 # Tasks — cli-watch
 
-Status: DRAFT 050826ZMAY26
+Status: IN_PROGRESS 050953ZMAY26 — Bastion (J-3) claims execution
 
 Server-side delivery to be split into a citadel-repo spec once Q-table ratifies. CLI tasks below assume the SSE contract is in place.
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 050826ZMAY26 |
+| Status | IN_PROGRESS 050953ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 050826ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | 2026-05-05 enhancement sweep: operators today poll `repo list` / `agent list` in a `watch -n` loop to monitor namespace activity. The CLI should ship native streaming. |
