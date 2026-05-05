@@ -1,6 +1,9 @@
 package pager
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 // TestResolveCitadelOverride asserts CITADEL_PAGER wins over the others.
 func TestResolveCitadelOverride(t *testing.T) {
@@ -28,5 +31,37 @@ func TestResolveExplicitEmpty(t *testing.T) {
 	t.Setenv("GIT_PAGER", "delta")
 	if got := Resolve(); got != "" {
 		t.Fatalf("explicit-empty CITADEL_PAGER must short-circuit, got %q", got)
+	}
+}
+
+// When no pager tier is set, match git: fall back to less with sane flags.
+func TestResolve_DefaultLessWhenEnvUnset(t *testing.T) {
+	keys := []string{"CITADEL_PAGER", "GIT_PAGER", "PAGER"}
+	saved := make([]struct {
+		key string
+		val string
+		ok  bool
+	}, 0, len(keys))
+	for _, k := range keys {
+		v, ok := os.LookupEnv(k)
+		saved = append(saved, struct {
+			key string
+			val string
+			ok  bool
+		}{k, v, ok})
+		_ = os.Unsetenv(k)
+	}
+	t.Cleanup(func() {
+		for _, e := range saved {
+			if e.ok {
+				_ = os.Setenv(e.key, e.val)
+			} else {
+				_ = os.Unsetenv(e.key)
+			}
+		}
+	})
+
+	if got := Resolve(); got != "less -FRX" {
+		t.Fatalf("default pager, got %q", got)
 	}
 }

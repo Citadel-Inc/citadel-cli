@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -140,5 +141,57 @@ func TestFriendlyError_MCPUnauthorized(t *testing.T) {
 	var ce *CLIError
 	if !errors.As(got, &ce) || ce.Kind != KindAuthRequired {
 		t.Fatalf("got %#v", got)
+	}
+}
+
+func TestFriendlyError_HTTP404409412400(t *testing.T) {
+	cases := []struct {
+		code int
+		body string
+		kind CLIErrorKind
+		sub  string
+	}{
+		{http.StatusNotFound, "", KindNotFound, "not found"},
+		{http.StatusConflict, `{"error":"x"}`, KindConflict, "conflict"},
+		{http.StatusPreconditionFailed, "", KindMFARequired, "MFA"},
+		{http.StatusBadRequest, `{"error":"bad","field":"name"}`, KindValidation, "validation"},
+	}
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("status_%d", tc.code), func(t *testing.T) {
+			got := FriendlyError(&apiclient.HTTPError{StatusCode: tc.code, Body: tc.body})
+			var ce *CLIError
+			if !errors.As(got, &ce) || ce.Kind != tc.kind {
+				t.Fatalf("got %v want kind %s", got, tc.kind)
+			}
+			if !strings.Contains(strings.ToLower(ce.Error()), strings.ToLower(tc.sub)) {
+				t.Fatalf("message %q missing %q", ce.Message, tc.sub)
+			}
+			if ce.HTTPStatus != tc.code {
+				t.Fatalf("HTTPStatus = %d", ce.HTTPStatus)
+			}
+		})
+	}
+}
+
+func TestFriendlyError_HTTPUnknownPassesThrough(t *testing.T) {
+	in := &apiclient.HTTPError{StatusCode: 418, Body: "teapot"}
+	got := FriendlyError(in)
+	if got != in {
+		t.Fatalf("want pass-through, got %T %v", got, got)
+	}
+}
+
+func TestFriendlyError_validationDetailsCurated(t *testing.T) {
+	body := `{"error":"invalid","detail":"d0","extra":"drop","nested":{"x":1}}`
+	got := FriendlyError(&apiclient.HTTPError{StatusCode: http.StatusBadRequest, Body: body})
+	var ce *CLIError
+	if !errors.As(got, &ce) || ce.Details == nil {
+		t.Fatalf("got %#v", got)
+	}
+	if _, ok := ce.Details["error"]; !ok {
+		t.Fatalf("details = %#v", ce.Details)
+	}
+	if _, bad := ce.Details["nested"]; bad {
+		t.Fatal("nested should not be in curated subset")
 	}
 }

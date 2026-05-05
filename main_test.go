@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -119,5 +122,159 @@ func TestMcpSubcommands(t *testing.T) {
 		if !found {
 			t.Errorf("Expected mcp subcommand %q not found", expected)
 		}
+	}
+}
+
+func TestRunWriters_NamespaceListJSON_NoToken(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	var stdout, stderr bytes.Buffer
+	code := runWriters([]string{"namespace", "list", "--output", "json"}, &stdout, &stderr)
+	if code != 3 {
+		t.Fatalf("exit %d want 3 (auth_required)", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr=%q want empty", stderr.String())
+	}
+	var outer struct {
+		Error struct {
+			Kind string `json:"kind"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &outer); err != nil {
+		t.Fatalf("stdout=%q: %v", stdout.String(), err)
+	}
+	if outer.Error.Kind != "auth_required" {
+		t.Fatalf("kind=%q full=%s", outer.Error.Kind, stdout.String())
+	}
+}
+
+func TestRunWriters_NamespaceListHuman_NoToken(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	var stdout, stderr bytes.Buffer
+	code := runWriters([]string{"namespace", "list"}, &stdout, &stderr)
+	if code != 3 {
+		t.Fatalf("exit %d want 3", code)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout=%q", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "Error:") || !strings.Contains(stderr.String(), "not authenticated") {
+		t.Fatalf("stderr=%q", stderr.String())
+	}
+}
+
+func TestRunWriters_JSONThenHuman_NoStaleOutputFlag(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	var s1, e1 bytes.Buffer
+	if c := runWriters([]string{"namespace", "list", "--output", "json"}, &s1, &e1); c != 3 {
+		t.Fatalf("first exit %d", c)
+	}
+	var s2, e2 bytes.Buffer
+	if c := runWriters([]string{"namespace", "list"}, &s2, &e2); c != 3 {
+		t.Fatalf("second exit %d", c)
+	}
+	if s2.Len() != 0 {
+		t.Fatalf("second stdout=%q want empty (human error path)", s2.String())
+	}
+	if !strings.Contains(e2.String(), "Error:") {
+		t.Fatalf("second stderr=%q", e2.String())
+	}
+}
+
+func mcpJSONRPCHandler(t *testing.T, byMethod map[string]func() any) http.HandlerFunc {
+	t.Helper()
+	if _, ok := byMethod["initialize"]; !ok {
+		byMethod["initialize"] = func() any {
+			return map[string]any{
+				"protocolVersion": "2025-11-25",
+				"serverInfo":      map[string]any{"name": "citadel-mcp-test", "version": "1"},
+			}
+		}
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ID     int    `json:"id"`
+			Method string `json:"method"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode MCP request: %v", err)
+		}
+		fn, ok := byMethod[req.Method]
+		if !ok {
+			t.Fatalf("unhandled MCP method %q", req.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Mcp-Session-Id", "test-sess")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"jsonrpc": "2.0",
+			"id":      req.ID,
+			"result":  fn(),
+		})
+	}
+}
+
+// tools/call with isError=true is a normal server outcome; main maps it to exit 2.
+func TestRunWriters_McpToolCallError_ExitCode2(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/mcp" {
+			http.NotFound(w, r)
+			return
+		}
+		mcpJSONRPCHandler(t, map[string]func() any{
+			"tools/call": func() any {
+				return map[string]any{
+					"isError": true,
+					"content": []map[string]any{{"type": "text", "text": "boom"}},
+				}
+			},
+		})(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	var stdout, stderr bytes.Buffer
+	code := runWriters([]string{"mcp", "call", "x"}, &stdout, &stderr)
+	if code != 2 {
+		t.Fatalf("exit=%d want 2 stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+}
+
+func TestRunWriters_RepoNotFound_JSONEnvelope(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/namespaces/acme/wheat" {
+			http.NotFound(w, r)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	var stdout, stderr bytes.Buffer
+	code := runWriters([]string{"repo", "get", "-R", "acme/wheat", "--output", "json"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit=%d want 1 stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	var outer struct {
+		Error struct {
+			Kind    string `json:"kind"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &outer); err != nil {
+		t.Fatalf("stdout=%q: %v", stdout.String(), err)
+	}
+	if outer.Error.Kind != "internal" {
+		t.Fatalf("kind=%q want internal for fmt-wrapped repo handler error stdout=%q", outer.Error.Kind, stdout.String())
+	}
+	if !strings.Contains(outer.Error.Message, "not found") {
+		t.Fatalf("message=%q", outer.Error.Message)
 	}
 }

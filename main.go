@@ -18,6 +18,19 @@ func newRootCmd() *cobra.Command {
 	return cmd.NewRootCmd()
 }
 
+// resetOutputFlagDefaults clears --output on every subcommand. Package-global
+// cobra commands retain parsed flag values across runWriters calls in the same
+// process (e.g. tests); resetting before each Execute avoids leaking --output
+// json into a later invocation that omits the flag.
+func resetOutputFlagDefaults(cmd *cobra.Command) {
+	for _, child := range cmd.Commands() {
+		resetOutputFlagDefaults(child)
+	}
+	if f := cmd.Flags().Lookup("output"); f != nil {
+		_ = cmd.Flags().Set(f.Name, f.DefValue)
+	}
+}
+
 // run executes the CLI with the given args and returns the process exit code.
 // Stays in package main for testability — main() is then a tiny shim.
 func run(args []string, stderr io.Writer) int {
@@ -26,6 +39,7 @@ func run(args []string, stderr io.Writer) int {
 
 func runWriters(args []string, stdout, stderr io.Writer) int {
 	root := newRootCmd()
+	resetOutputFlagDefaults(root)
 	root.SetArgs(args)
 
 	// Pre-parse flags to honor --no-pager / CITADEL_NO_PAGER before any

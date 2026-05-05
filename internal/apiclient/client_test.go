@@ -104,6 +104,52 @@ func TestClient_NonSuccessReturnsHTTPError(t *testing.T) {
 	}
 }
 
+func TestClient_NonSuccessCapturesRetryAfter(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "45")
+		// 403 is not retried on GET; 429 would loop in RetryTransport.
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"error":"nope"}`))
+	}))
+	defer srv.Close()
+
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	err := c.Get(context.Background(), "/x", nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var he *HTTPError
+	if !errors.As(err, &he) {
+		t.Fatalf("got %T: %v", err, err)
+	}
+	if he.StatusCode != http.StatusForbidden || he.RetryAfter != 45 {
+		t.Fatalf("HTTPError = %#v", he)
+	}
+}
+
+// POST is not auto-retried by the transport; Retry-After can use a large value.
+func TestClient_Post429CapturesRetryAfterSeconds(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "45")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":"slow"}`))
+	}))
+	defer srv.Close()
+
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	err := c.Post(context.Background(), "/x", map[string]string{"k": "v"}, nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var he *HTTPError
+	if !errors.As(err, &he) {
+		t.Fatalf("got %T", err)
+	}
+	if he.StatusCode != http.StatusTooManyRequests || he.RetryAfter != 45 {
+		t.Fatalf("HTTPError = %#v", he)
+	}
+}
+
 func TestHTTPError_ErrorAndDecodeBody(t *testing.T) {
 	he := &HTTPError{StatusCode: 409, Body: `{"error":"has_repos","detail":"x"}`}
 	if got := he.Error(); !strings.Contains(got, "409") || !strings.Contains(got, "has_repos") {
