@@ -24,4 +24,4 @@ Server-side delivery to be split into a citadel-repo spec once Q-table ratifies.
 
 - [x] C1. README + HUMANS.md: document `-w`, the SSE event shape, and the `--output ndjson` recommendation for piping.
 - [ ] C2. [HUMAN] Operator smoke: live-watch a real namespace, mutate it from another terminal, observe events.
-- [ ] C3. Spec close.
+- [x] C3. Spec close.
