@@ -8,6 +8,13 @@
 |------|-------|-----|-------|
 | cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
+| cli-projectgraph | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-kg-extended | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-audit-sessions | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-ssh-keys | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-org-invitations | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-global-search | DRAFT | 050506ZMAY26 | Bastion (J-3) |
+| cli-account-security | DRAFT | 050506ZMAY26 | Bastion (J-3) |
 
 ## Done
 
