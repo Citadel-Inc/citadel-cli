@@ -19,4 +19,4 @@ Status: DONE 051045ZMAY26 — Delivered machine-readable list output: json/yaml/
 
 - [x] C1. Cross-cutting test: `--all` (cli-pagination spec) under `--output ndjson` produces one valid JSON object per line across pages.
 - [ ] C2. [HUMAN] Operator smoke: spreadsheet-paste a real csv export.
-- [ ] C3. Spec close.
+- [x] C3. Spec close.
