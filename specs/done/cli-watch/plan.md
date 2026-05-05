@@ -18,29 +18,15 @@ Event types: `init` (snapshot), `add` (new row), `update` (existing row mutated)
 
 ## CLI handler shape
 
+Same REST list path as pagination; the HTTP client sets `Accept: text/event-stream` (see `apiclient.Client.GetEventStream`). Example:
+
 ```go
-// cmd/repo.go
-func runRepoListWatch(ctx context.Context, cmd *cobra.Command) error {
-    c, err := newAPIClient(cmd)
-    if err != nil { return err }
-
-    stream, err := sseclient.Open(ctx, c, "/api/namespaces/"+ns+"/repos:watch", "")
-    if err != nil { return err }
-    defer stream.Close()
-
-    out := watchEmitter(cmd) // chooses ndjson, table-redraw, or append based on flags + TTY
-    for {
-        ev, err := stream.Next()
-        if errors.Is(err, io.EOF) {
-            return nil
-        }
-        if err != nil { // transient: sseclient already retries; surface terminal only
-            return err
-        }
-        if err := out.Emit(ev); err != nil { return err }
-    }
-}
+// cmd/watch.go — repos
+path := "/namespaces/" + url.PathEscape(ns) + "/repos?" + sseWatchQuery(limit, cursor, all, nil)
+return consumeSSEWatch(cmd, c, path, h)
 ```
+
+`sseclient.Open` owns reconnect + `Last-Event-ID`; `consumeSSEWatch` loops `Next()` until SIGINT/context cancel.
 
 ## Reconnect policy
 

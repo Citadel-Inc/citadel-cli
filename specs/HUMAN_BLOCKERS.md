@@ -21,5 +21,4 @@ When an item is cleared, remove its row here and reflect closure in the spec / t
 
 | Task | Owner | Notes |
 |------|--------|-------|
-| P0 A1 — SSE on every list path | Citadel core / companion server spec | Server emits init/add/update/remove, `:keepalive`, `Last-Event-ID`; CLI client and B6 httptest already assume this contract. |
 | P2 C2 — operator live watch smoke | NOMAD / operator | Run `repo list --watch` against a live namespace, mutate from another shell, confirm stdout events. |

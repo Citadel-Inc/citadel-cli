@@ -1,8 +1,8 @@
 # Tasks — cli-watch
 
-Status: DONE 051112ZMAY26 — CLI watch is complete for in-repo work: B6 adds an httptest scripted SSE sequence (init×3, add, update, remove, disconnect, Last-Event-ID resume, add) asserting ndjson event order on stdout, plus cobra context reset so repeated ExecuteContext tests against the global command tree stay reliable. P0 A1 remains server-side; P2 C2 is operator smoke only.
+Status: DONE 051430ZMAY26 — CLI + Citadel deliver cli-watch: polling SSE v1 on every list path (`internal/api/listwatch`: init/add/update/remove, `:keepalive`, Last-Event-ID ring replay), CLI `sseclient` + `--watch`, B6 httptest sequence, and cobra ctx reset for repeatable ExecuteContext. P2 C2 remains operator live smoke only.
 
-Server-side delivery to be split into a citadel-repo spec once Q-table ratifies. CLI tasks below assume the SSE contract is in place.
+Automation covers SSE contract via Citadel handlers + CLI integration tests; operator smoke is still human-owned (C2).
 
 ## P0
 
