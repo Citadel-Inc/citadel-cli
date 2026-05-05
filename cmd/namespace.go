@@ -14,7 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
 // NamespaceCmd is the top-level `citadel namespace` command.

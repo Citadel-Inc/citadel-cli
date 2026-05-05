@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/Rethunk-Tech/citadel/cmd/citadel-cli/cmd"
+	"github.com/Rethunk-Tech/citadel-cli/cmd"
 	"github.com/spf13/cobra"
 )
 

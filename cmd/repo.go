@@ -13,7 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
 // RepoCmd is the top-level `citadel repo` command.

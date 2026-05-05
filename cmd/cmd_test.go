@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel/cmd/citadel-cli/cmd"
+	"github.com/Rethunk-Tech/citadel-cli/cmd"
 )
 
 // hasSubcmd reports whether parent has a direct subcommand named name.

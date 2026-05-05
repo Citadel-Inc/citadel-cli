@@ -17,7 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
 // OauthCmd is the top-level `citadel-cli oauth` command.

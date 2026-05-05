@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
 // KgCmd is the parent for `citadel-cli kg ...`. Talks to the JWT-gated

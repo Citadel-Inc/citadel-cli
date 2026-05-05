@@ -12,8 +12,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel/cmd/citadel-cli/internal/mcpclient"
-	"github.com/Rethunk-Tech/citadel/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/mcpclient"
+	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
 // McpCmd is the parent for `citadel-cli mcp ...`. Speaks the MCP Streamable
