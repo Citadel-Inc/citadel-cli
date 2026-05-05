@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
+	"github.com/Rethunk-Tech/citadel-cli/internal/pager"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +23,10 @@ and MCP tool interactions against the Citadel server (the server binary is "cita
 
 Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --server.`,
 		Version: "0.0.1-alpha",
+		// Did-you-mean: cobra emits "Did you mean ...?" hints on unknown
+		// subcommand. Distance 2 catches typos like `rpo` → `repo` while
+		// staying tight enough to avoid noise on genuinely-new verbs.
+		SuggestionsMinimumDistance: 2,
 	}
 
 	// --server flag + CITADEL_SERVER env var. Persistent so every subcommand
@@ -30,6 +36,7 @@ Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --s
 	root.PersistentFlags().BoolP("quiet", "q", false, "Suppress non-essential stderr output (overrides --verbose)")
 	root.PersistentFlags().Bool("debug-http", false, "Dump full HTTP request/response (Authorization redacted) to stderr")
 	root.PersistentFlags().String("color", "auto", "Color output: auto|always|never (honors NO_COLOR)")
+	root.PersistentFlags().Bool("no-pager", false, "Do not pipe stdout through $PAGER (CITADEL_PAGER > GIT_PAGER > PAGER > less -FRX)")
 
 	root.AddCommand(cmd.AuthCmd)
 	root.AddCommand(cmd.TokenCmd)
@@ -51,6 +58,17 @@ Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --s
 func run(args []string, stderr io.Writer) int {
 	root := newRootCmd()
 	root.SetArgs(args)
+
+	// Pre-parse flags to honor --no-pager / CITADEL_NO_PAGER before any
+	// subcommand writes to stdout. Cheap, idempotent: cobra parses again
+	// during Execute. Skipped when args clearly target a non-paging path
+	// (--help / --version / completion script generation).
+	disablePager := slices.ContainsFunc(args, func(a string) bool {
+		return a == "--no-pager" || a == "completion" || a == "--help" || a == "-h" || a == "--version"
+	}) || os.Getenv("CITADEL_NO_PAGER") != ""
+	cleanup, _ := pager.Start(disablePager)
+	defer cleanup()
+
 	if err := root.Execute(); err != nil {
 		// ErrToolCallFailed is the sentinel signaling tools/call returned
 		// isError=true; the result has already been printed, so suppress
