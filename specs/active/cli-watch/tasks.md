@@ -18,7 +18,7 @@ Server-side delivery to be split into a citadel-repo spec once Q-table ratifies.
 - [x] B3. [CLI] `--output json --watch` rejected with a friendly error pointing at `--output ndjson`.
 - [x] B4. [CLI] Reconnect: exponential backoff (250 ms → 4 s) re-using the apiclient retry policy; unbounded attempts; SIGINT ends the loop.
 - [x] B5. [CLI] SIGINT/SIGTERM handler: cancel context, flush stdout, exit 0.
-- [ ] B6. Tests: `httptest.Server` emitting a scripted SSE sequence (init×3 → add → update → remove → drop → reconnect → add); assert event ordering on stdout.
+- [x] B6. Tests: `httptest.Server` emitting a scripted SSE sequence (init×3 → add → update → remove → drop → reconnect → add); assert event ordering on stdout.
 
 ## P2
 
