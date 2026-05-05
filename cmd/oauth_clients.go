@@ -1,11 +1,8 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -17,7 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 )
 
 // OauthCmd is the top-level `citadel-cli oauth` command.
@@ -107,52 +104,36 @@ type oauthClientWithSecret struct {
 	ClientSecret string `json:"client_secret,omitempty"`
 }
 
+// requireUUID validates the cobra arg is a UUID and returns the trimmed form.
+func requireUUID(arg string) (string, error) {
+	id := strings.TrimSpace(arg)
+	if _, err := uuid.Parse(id); err != nil {
+		return "", fmt.Errorf("id must be a UUID: %w", err)
+	}
+	return id, nil
+}
+
 func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
-	cfg, err := clicfg.Load()
-	if err != nil {
-		return fmt.Errorf("load config: %w", err)
-	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := strings.TrimRight(cfg.ResolveServerURL(flagServer), "/")
-	orgSlug, _ := cmd.Flags().GetString("org")
-	output, _ := cmd.Flags().GetString("output")
-
-	u, err := url.Parse(serverURL + "/oauth/clients")
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
+	orgSlug, _ := cmd.Flags().GetString("org")
+	output, _ := cmd.Flags().GetString("output")
+
+	path := "/oauth/clients"
 	if orgSlug != "" {
-		q := u.Query()
-		q.Set("namespace", orgSlug)
-		u.RawQuery = q.Encode()
-	}
-
-	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		path += "?namespace=" + url.QueryEscape(orgSlug)
 	}
 
 	var clients []oauthClient
-	if err := json.Unmarshal(body, &clients); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	if err := c.Get(cmd.Context(), path, &clients); err != nil {
+		return err
 	}
 
 	if output == "json" {
 		return emitJSON(clients)
 	}
-
 	if len(clients) == 0 {
 		fmt.Println("No OAuth clients.")
 		return nil
@@ -160,36 +141,29 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tSCOPES\tLAST USED")
-	for _, c := range clients {
-		scopes := strings.Join(c.AllowedScopes, ",")
+	for _, oc := range clients {
+		scopes := strings.Join(oc.AllowedScopes, ",")
 		if scopes == "" {
 			scopes = "—"
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", c.ClientID, c.Name, scopes, "—")
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", oc.ClientID, oc.Name, scopes, "—")
 	}
 	return w.Flush()
 }
 
 func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-
-	name, _ := cmd.Flags().GetString("name")
+	name := strings.TrimSpace(must(cmd.Flags().GetString("name")))
 	redirects, _ := cmd.Flags().GetStringSlice("redirect-uri")
 	orgSlug, _ := cmd.Flags().GetString("org")
 	isPublic, _ := cmd.Flags().GetBool("public")
 	desc, _ := cmd.Flags().GetString("description")
 	scopes, _ := cmd.Flags().GetStringSlice("scope")
 	output, _ := cmd.Flags().GetString("output")
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := strings.TrimRight(cfg.ResolveServerURL(flagServer), "/")
 
-	name = strings.TrimSpace(name)
 	if name == "" {
 		return fmt.Errorf("--name is required")
 	}
@@ -198,10 +172,9 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 	}
 
 	payload := map[string]any{
-		"name":           name,
-		"redirect_uris":  redirects,
-		"is_public":      isPublic,
-		"allowed_scopes": scopes,
+		"name":          name,
+		"redirect_uris": redirects,
+		"is_public":     isPublic,
 	}
 	if desc != "" {
 		payload["description"] = desc
@@ -209,32 +182,13 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 	if orgSlug != "" {
 		payload["owner_namespace_slug"] = orgSlug
 	}
-	if len(scopes) == 0 {
-		delete(payload, "allowed_scopes")
-	}
-
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	req, _ := http.NewRequest(http.MethodPost, serverURL+"/oauth/clients", bytes.NewReader(raw))
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
+	if len(scopes) > 0 {
+		payload["allowed_scopes"] = scopes
 	}
 
 	var created oauthClientWithSecret
-	if err := json.Unmarshal(respBody, &created); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	if err := c.Post(cmd.Context(), "/oauth/clients", payload, &created); err != nil {
+		return err
 	}
 
 	if output == "json" {
@@ -252,38 +206,19 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 }
 
 func runOAuthClientsShow(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
+	id, err := requireUUID(args[0])
+	if err != nil {
+		return err
 	}
-	id := strings.TrimSpace(args[0])
-	if _, err := uuid.Parse(id); err != nil {
-		return fmt.Errorf("id must be a UUID: %w", err)
-	}
-
 	output, _ := cmd.Flags().GetString("output")
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := strings.TrimRight(cfg.ResolveServerURL(flagServer), "/")
-
-	req, _ := http.NewRequest(http.MethodGet, serverURL+"/oauth/clients/"+url.PathEscape(id), nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
-	}
 
 	var row oauthClient
-	if err := json.Unmarshal(body, &row); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	if err := c.Get(cmd.Context(), "/oauth/clients/"+url.PathEscape(id), &row); err != nil {
+		return err
 	}
 
 	if output == "json" {
@@ -306,50 +241,30 @@ func runOAuthClientsShow(cmd *cobra.Command, args []string) error {
 }
 
 func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
+	id, err := requireUUID(args[0])
+	if err != nil {
+		return err
 	}
-	id := strings.TrimSpace(args[0])
-	if _, err := uuid.Parse(id); err != nil {
-		return fmt.Errorf("id must be a UUID: %w", err)
-	}
-
 	output, _ := cmd.Flags().GetString("output")
 	copyClip, _ := cmd.Flags().GetBool("copy-to-clipboard")
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := strings.TrimRight(cfg.ResolveServerURL(flagServer), "/")
-
-	req, _ := http.NewRequest(http.MethodPost, serverURL+"/oauth/clients/"+url.PathEscape(id)+"/rotate-secret", nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode == http.StatusPreconditionRequired && strings.Contains(string(body), "mfa_required") {
-		return fmt.Errorf("recent MFA required: obtain an aal2 JWT within ~5 minutes (re-login with MFA) or complete recent-verify in the web app, then retry")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
-	}
 
 	var out oauthClientWithSecret
-	if err := json.Unmarshal(body, &out); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	err = c.Post(cmd.Context(), "/oauth/clients/"+url.PathEscape(id)+"/rotate-secret", nil, &out)
+	if err != nil {
+		var he *apiclient.HTTPError
+		if errors.As(err, &he) && he.StatusCode == 428 && strings.Contains(he.Body, "mfa_required") {
+			return fmt.Errorf("recent MFA required: obtain an aal2 JWT within ~5 minutes (re-login with MFA) or complete recent-verify in the web app, then retry")
+		}
+		return err
 	}
 
 	if output == "json" {
 		return emitJSON(out)
 	}
-
 	if out.ClientSecret == "" {
 		return fmt.Errorf("server returned no client_secret (public clients have no secret)")
 	}
@@ -363,39 +278,23 @@ func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {
 }
 
 func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
-	cfg, err := clicfg.Load()
+	c, err := newAPIClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return err
 	}
-	if cfg.AccessToken == "" {
-		return fmt.Errorf("not authenticated; run 'citadel-cli auth login' first")
-	}
-	id := strings.TrimSpace(args[0])
-	if _, err := uuid.Parse(id); err != nil {
-		return fmt.Errorf("id must be a UUID: %w", err)
+	id, err := requireUUID(args[0])
+	if err != nil {
+		return err
 	}
 
 	yes, _ := cmd.Flags().GetBool("yes")
 	if err := confirmTypedValue(yes, "revoke OAuth client", id); err != nil {
 		return err
 	}
-
 	output, _ := cmd.Flags().GetString("output")
-	flagServer, _ := cmd.Flags().GetString("server")
-	serverURL := strings.TrimRight(cfg.ResolveServerURL(flagServer), "/")
 
-	req, _ := http.NewRequest(http.MethodDelete, serverURL+"/oauth/clients/"+url.PathEscape(id), nil)
-	req.Header.Set("Authorization", "Bearer "+cfg.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("server error %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	if err := c.Delete(cmd.Context(), "/oauth/clients/"+url.PathEscape(id)); err != nil {
+		return err
 	}
 
 	if output == "json" {
@@ -404,6 +303,10 @@ func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(os.Stderr, "OAuth client %s revoked.\n", id)
 	return nil
 }
+
+// must is a helper for cobra Get* lookups whose only failure mode is
+// "flag not registered" — programmer error caught at init().
+func must[T any](v T, _ error) T { return v }
 
 func copySecretToClipboard(s string) error {
 	var c *exec.Cmd
