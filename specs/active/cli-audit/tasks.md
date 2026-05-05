@@ -1,6 +1,6 @@
 # Tasks — cli-audit
 
-Status: DRAFT 081550ZMAY26
+Status: IN_PROGRESS 051143ZMAY26 — Bastion (J-3) claims execution
 
 Blocked by: daemon-side `/api/audit/events` endpoint. File companion citadel spec before A2.
 
