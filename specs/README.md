@@ -7,7 +7,6 @@
 | cli-audit | DRAFT | 081550ZMAY26 | Bastion (J-3) |
 | cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
-| cli-watch | IN_PROGRESS | 050953ZMAY26 | Bastion (J-3) |
 | cli-mcp-stdio | DRAFT | 030619ZMAY26 | Bastion (J-3) |
 | cli-mcp-stream | DRAFT | 030619ZMAY26 | Bastion (J-3) |
 
@@ -16,6 +15,7 @@
 | Slug | DTG | Note |
 |------|-----|------|
 | go-citadel-cli | 292032ZAPR26 | shipped (in-line with the B-track ratifications) |
+| cli-watch | 051112ZMAY26 | CLI watch is complete for in-repo work: B6 adds an httptest scripted SSE sequence (init×3, add, update, remove, disconnect, Last-Event-ID resume, add) asserting ndjson event order on stdout, plus cobra context reset so repeated ExecuteContext tests against the global command tree stay reliable. P0 A1 remains server-side; P2 C2 is operator smoke only. |
 | cli-error-format | 051045ZMAY26 | Error envelope, exit-code map, errmap→CLIError migration, and main.go branching were already landed; Q-table ratified with Retry-After HTTP-date support aligned to apiclient. README/HUMANS document structured errors for json/yaml/ndjson. Live 429 integration and operator exit-code review stay in P2 per HUMAN_BLOCKERS. |
 | cli-output-formats | 051045ZMAY26 | Delivered machine-readable list output: json/yaml/ndjson/csv/table with validation, frozen CSV columns per list verb, yaml keyed like json, and cmd-scoped stdout writers. Added httptest coverage for repo csv/yaml, ndjson across pages, and CSV helpers. README documents schemas; operator CSV paste smoke remains in P2. |
 | cli-pagination | 051011ZMAY26 | Server list endpoints and citadel-cli list verbs now support opaque cursor pagination (?limit/?cursor, next_cursor), including members-specific cursors, ndjson streaming under --all, human tail hints, bounded completion fetch, and handler-level multi-page tests. P2 leaves the gated live 250-repo walk and operator production smoke as follow-ups. |

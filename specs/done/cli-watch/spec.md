@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 050953ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 051112ZMAY26 — CLI watch is complete for in-repo work: B6 adds an httptest scripted SSE sequence (init×3, add, update, remove, disconnect, Last-Event-ID resume, add) asserting ndjson event order on stdout, plus cobra context reset so repeated ExecuteContext tests against the global command tree stay reliable. P0 A1 remains server-side; P2 C2 is operator smoke only. |
 | Authored | 050826ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | 2026-05-05 enhancement sweep: operators today poll `repo list` / `agent list` in a `watch -n` loop to monitor namespace activity. The CLI should ship native streaming. |
