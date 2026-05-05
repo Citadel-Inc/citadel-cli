@@ -21,4 +21,4 @@ Status: DONE 051045ZMAY26 — Error envelope, exit-code map, errmap→CLIError m
 
 - [ ] C1. Live integration assertion: provoke a 429 against a real (or staged) server, confirm `--output json` emits the envelope with `retry_after_seconds`.
 - [ ] C2. [HUMAN] Operator review: confirm the new exit-code map doesn't break any in-house wrapper scripts; document any breakage.
-- [ ] C3. Spec close.
+- [x] C3. Spec close.
