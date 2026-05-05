@@ -2,11 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+
+	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 )
 
 // RepoCmd is the top-level `citadel repo` command.
@@ -173,24 +176,29 @@ func runRepoGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	repos, err := listRepos(cmd, ns)
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	for _, r := range repos {
-		if strings.EqualFold(r.Slug, slug) {
-			return emitOne(output, r, func(w *tabwriter.Writer, r repoRow) {
-				_, _ = fmt.Fprintf(w, "Path:\t%s\n", r.Path)
-				_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", r.Visibility)
-				_, _ = fmt.Fprintf(w, "Default branch:\t%s\n", r.DefaultBranch)
-				if r.Description != "" {
-					_, _ = fmt.Fprintf(w, "Description:\t%s\n", r.Description)
-				}
-				_, _ = fmt.Fprintf(w, "Created:\t%s\n", r.CreatedAt)
-			})
+
+	var r repoRow
+	path := "/namespaces/" + url.PathEscape(ns) + "/" + url.PathEscape(slug)
+	if err := c.Get(cmd.Context(), path, &r); err != nil {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("repository '%s/%s' not found", ns, slug)
 		}
+		return err
 	}
-	return fmt.Errorf("repository '%s/%s' not found", ns, slug)
+
+	return emitOne(output, r, func(w *tabwriter.Writer, r repoRow) {
+		_, _ = fmt.Fprintf(w, "Path:\t%s\n", r.Path)
+		_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", r.Visibility)
+		_, _ = fmt.Fprintf(w, "Default branch:\t%s\n", r.DefaultBranch)
+		if r.Description != "" {
+			_, _ = fmt.Fprintf(w, "Description:\t%s\n", r.Description)
+		}
+		_, _ = fmt.Fprintf(w, "Created:\t%s\n", r.CreatedAt)
+	})
 }
 
 func runRepoDelete(cmd *cobra.Command, args []string) error {

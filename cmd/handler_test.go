@@ -200,28 +200,15 @@ func TestAgentRotateToken_Happy(t *testing.T) {
 	const (
 		agentID = "00000000-0000-0000-0000-00000000000a"
 		newTok  = "00000000-0000-0000-0000-00000000000b"
-		oldTok  = "00000000-0000-0000-0000-00000000000c"
 	)
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, 200, []map[string]any{{"id": agentID, "name": "alpha", "owner_user_id": "u1"}})
 		},
-		"POST /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
+		"POST /agents/" + agentID + "/rotate-token": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, 201, map[string]any{
 				"id": newTok, "agent_id": agentID, "created_at": "2026-01-01T00:00:00Z", "cleartext_token": "sb_at_xxx",
 			})
-		},
-		"GET /agent-tokens": func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Query().Get("agent_id") != agentID {
-				t.Errorf("missing agent_id query")
-			}
-			writeJSON(t, w, 200, []map[string]any{
-				{"id": oldTok, "agent_id": agentID, "created_at": "2026-01-01T00:00:00Z"},
-				{"id": newTok, "agent_id": agentID, "created_at": "2026-01-01T00:00:00Z"},
-			})
-		},
-		"DELETE /agent-tokens/" + oldTok: func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
 	if err := rootFor(cmd.AgentCmd, "rotate-token", "alpha", "--yes").Execute(); err != nil {
@@ -281,10 +268,10 @@ func TestRepoList_Empty(t *testing.T) {
 
 func TestRepoGet_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
-		"GET /namespaces/myorg/repos": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{
-				{"slug": "r1", "path": "myorg/r1", "visibility": "private", "default_branch": "main", "description": "d", "created_at": "2026-01-01"},
-			}})
+		"GET /namespaces/myorg/r1": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"slug": "r1", "path": "myorg/r1", "visibility": "private", "default_branch": "main", "description": "d", "created_at": "2026-01-01",
+			})
 		},
 	}))
 	if err := rootFor(cmd.RepoCmd, "get", "myorg/r1").Execute(); err != nil {
@@ -301,8 +288,8 @@ func TestRepoGet_BadArg(t *testing.T) {
 
 func TestRepoGet_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
-		"GET /namespaces/myorg/repos": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{}})
+		"GET /namespaces/myorg/missing": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
 		},
 	}))
 	err := rootFor(cmd.RepoCmd, "get", "myorg/missing").Execute()
