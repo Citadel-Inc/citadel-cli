@@ -188,18 +188,15 @@ func runRepoGet(cmd *cobra.Command, args []string) error {
 	}
 	for _, r := range repos {
 		if strings.EqualFold(r.Slug, slug) {
-			if output == "json" {
-				return emitJSON(r)
-			}
-			w := newTabWriter()
-			_, _ = fmt.Fprintf(w, "Path:\t%s\n", r.Path)
-			_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", r.Visibility)
-			_, _ = fmt.Fprintf(w, "Default branch:\t%s\n", r.DefaultBranch)
-			if r.Description != "" {
-				_, _ = fmt.Fprintf(w, "Description:\t%s\n", r.Description)
-			}
-			_, _ = fmt.Fprintf(w, "Created:\t%s\n", r.CreatedAt)
-			return w.Flush()
+			return emitOne(output, r, func(w *tabwriter.Writer, r repoRow) {
+				_, _ = fmt.Fprintf(w, "Path:\t%s\n", r.Path)
+				_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", r.Visibility)
+				_, _ = fmt.Fprintf(w, "Default branch:\t%s\n", r.DefaultBranch)
+				if r.Description != "" {
+					_, _ = fmt.Fprintf(w, "Description:\t%s\n", r.Description)
+				}
+				_, _ = fmt.Fprintf(w, "Created:\t%s\n", r.CreatedAt)
+			})
 		}
 	}
 	return fmt.Errorf("repository '%s/%s' not found", ns, slug)

@@ -42,3 +42,15 @@ func emitList[T any](output string, rows []T, emptyMsg string, table func(w *tab
 	table(w, rows)
 	return w.Flush()
 }
+
+// emitOne centralises the single-object "json or human" dispatch used by
+// get / show / create / accept / etc. verbs. In json mode it emits v;
+// otherwise it calls human with a configured tabwriter and flushes.
+func emitOne[T any](output string, v T, human func(w *tabwriter.Writer, v T)) error {
+	if output == "json" {
+		return emitJSON(v)
+	}
+	w := newTabWriter()
+	human(w, v)
+	return w.Flush()
+}

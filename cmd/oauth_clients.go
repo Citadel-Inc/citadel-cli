@@ -213,23 +213,19 @@ func runOAuthClientsShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output == "json" {
-		return emitJSON(row)
-	}
-
-	w := newTabWriter()
-	_, _ = fmt.Fprintf(w, "id:\t%s\n", row.ID)
-	_, _ = fmt.Fprintf(w, "client_id:\t%s\n", row.ClientID)
-	_, _ = fmt.Fprintf(w, "name:\t%s\n", row.Name)
-	_, _ = fmt.Fprintf(w, "is_public:\t%v\n", row.IsPublic)
-	_, _ = fmt.Fprintf(w, "redirect_uris:\t%s\n", strings.Join(row.RedirectURIs, ", "))
-	_, _ = fmt.Fprintf(w, "allowed_scopes:\t%s\n", strings.Join(row.AllowedScopes, ", "))
-	if row.RevokedAt != nil {
-		_, _ = fmt.Fprintf(w, "revoked_at:\t%s\n", row.RevokedAt.Format(time.RFC3339))
-	}
-	_, _ = fmt.Fprintf(w, "created_at:\t%s\n", row.CreatedAt.Format(time.RFC3339))
-	_, _ = fmt.Fprintf(w, "updated_at:\t%s\n", row.UpdatedAt.Format(time.RFC3339))
-	return w.Flush()
+	return emitOne(output, row, func(w *tabwriter.Writer, row oauthClient) {
+		_, _ = fmt.Fprintf(w, "id:\t%s\n", row.ID)
+		_, _ = fmt.Fprintf(w, "client_id:\t%s\n", row.ClientID)
+		_, _ = fmt.Fprintf(w, "name:\t%s\n", row.Name)
+		_, _ = fmt.Fprintf(w, "is_public:\t%v\n", row.IsPublic)
+		_, _ = fmt.Fprintf(w, "redirect_uris:\t%s\n", strings.Join(row.RedirectURIs, ", "))
+		_, _ = fmt.Fprintf(w, "allowed_scopes:\t%s\n", strings.Join(row.AllowedScopes, ", "))
+		if row.RevokedAt != nil {
+			_, _ = fmt.Fprintf(w, "revoked_at:\t%s\n", row.RevokedAt.Format(time.RFC3339))
+		}
+		_, _ = fmt.Fprintf(w, "created_at:\t%s\n", row.CreatedAt.Format(time.RFC3339))
+		_, _ = fmt.Fprintf(w, "updated_at:\t%s\n", row.UpdatedAt.Format(time.RFC3339))
+	})
 }
 
 func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {

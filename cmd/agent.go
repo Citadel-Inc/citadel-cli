@@ -163,16 +163,13 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 	}
 	for _, a := range rows {
 		if a.Name == name {
-			if output == "json" {
-				return emitJSON(a)
-			}
-			w := newTabWriter()
-			_, _ = fmt.Fprintf(w, "Name:\t%s\n", a.Name)
-			_, _ = fmt.Fprintf(w, "ID:\t%s\n", a.ID)
-			if a.ModelHint != nil {
-				_, _ = fmt.Fprintf(w, "Model hint:\t%s\n", *a.ModelHint)
-			}
-			return w.Flush()
+			return emitOne(output, a, func(w *tabwriter.Writer, a agentRow) {
+				_, _ = fmt.Fprintf(w, "Name:\t%s\n", a.Name)
+				_, _ = fmt.Fprintf(w, "ID:\t%s\n", a.ID)
+				if a.ModelHint != nil {
+					_, _ = fmt.Fprintf(w, "Model hint:\t%s\n", *a.ModelHint)
+				}
+			})
 		}
 	}
 	return fmt.Errorf("agent '%s' not found", name)

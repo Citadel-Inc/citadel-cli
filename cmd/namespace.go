@@ -266,23 +266,19 @@ func runNsGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output == "json" {
-		return emitJSON(ns)
-	}
-
-	w := newTabWriter()
-	_, _ = fmt.Fprintf(w, "Slug:\t%s\n", ns.Slug)
-	_, _ = fmt.Fprintf(w, "Kind:\t%s\n", ns.Kind)
-	_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", ns.Visibility)
-	if ns.DisplayName != "" {
-		_, _ = fmt.Fprintf(w, "Display name:\t%s\n", ns.DisplayName)
-	}
-	if ns.Description != "" {
-		_, _ = fmt.Fprintf(w, "Description:\t%s\n", ns.Description)
-	}
-	_, _ = fmt.Fprintf(w, "Namespace ID:\t%s\n", ns.NamespaceID)
-	_, _ = fmt.Fprintf(w, "Created:\t%s\n", ns.CreatedAt.Format(time.RFC3339))
-	return w.Flush()
+	return emitOne(output, ns, func(w *tabwriter.Writer, ns nsRow) {
+		_, _ = fmt.Fprintf(w, "Slug:\t%s\n", ns.Slug)
+		_, _ = fmt.Fprintf(w, "Kind:\t%s\n", ns.Kind)
+		_, _ = fmt.Fprintf(w, "Visibility:\t%s\n", ns.Visibility)
+		if ns.DisplayName != "" {
+			_, _ = fmt.Fprintf(w, "Display name:\t%s\n", ns.DisplayName)
+		}
+		if ns.Description != "" {
+			_, _ = fmt.Fprintf(w, "Description:\t%s\n", ns.Description)
+		}
+		_, _ = fmt.Fprintf(w, "Namespace ID:\t%s\n", ns.NamespaceID)
+		_, _ = fmt.Fprintf(w, "Created:\t%s\n", ns.CreatedAt.Format(time.RFC3339))
+	})
 }
 
 func runNsMembers(cmd *cobra.Command, args []string) error {
