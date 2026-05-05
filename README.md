@@ -12,41 +12,13 @@ Operator and developer command-line interface for [Citadel](https://github.com/R
 
 `citadel-cli` is the official client for managing repositories, namespaces, agents, OAuth clients, and the Citadel Knowledge Graph. It also embeds an MCP client for integrating Citadel into agentic workflows.
 
-## Install
+## Getting started
 
-```bash
-go install github.com/Rethunk-Tech/citadel-cli@latest
-```
-
-This installs to `~/go/bin/citadel-cli`; ensure `~/go/bin` is on your `PATH`.
-
-Pre-built release binaries (linux-amd64, linux-arm64, darwin-arm64) are published to GitHub Releases on every `v*` tag — see <https://github.com/Rethunk-Tech/citadel-cli/releases>.
-
-## Quick start
-
-```bash
-citadel-cli auth login        # OAuth flow via the configured Citadel server
-citadel-cli auth status       # confirm authentication
-citadel-cli repo list         # query the API
-```
-
-## Repo context (`-R` / CWD)
-
-Commands that target a single repository accept `-R <namespace>/<slug>` (same meaning as `gh -R`). If you omit it, the CLI uses the `CITADEL_REPO` environment variable, then (unless `--no-cwd-repo` is set) infers the repo from `git remote get-url origin` when that remote uses a [Citadel git host](https://src.land) (for example `src.land` or `git.src.land`). Comma-separated `CITADEL_GIT_HOSTS` extends the default host list for self‑hosted deployments.
-
-`--no-cwd-repo` disables CWD inference so scripts never pick up a surprise repo from the current directory; combine it with `-R` or `CITADEL_REPO` when you need an explicit path.
-
-```bash
-cd ~/code/myorg/myrepo          # citadel clone
-citadel-cli repo get            # inferred when origin is a Citadel remote
-citadel-cli repo get -R other/ns   # explicit repo
-```
-
-Full reference: [docs/cli.md](docs/cli.md).
+Install, authenticate, and first-run commands live in [HUMANS.md § Getting started](HUMANS.md#getting-started). Repository defaults (`-R`, `CITADEL_REPO`, CWD inference, `CITADEL_GIT_HOSTS`) are documented in [HUMANS.md § Repo context](HUMANS.md#repo-context).
 
 ## Shell completion
 
-Cobra emits integration scripts via `citadel-cli completion bash|zsh|fish|powershell`. How dynamic completion uses your session, what gets completed, on-disk caching, and related environment variables are covered in [HUMANS.md § Configuration](HUMANS.md#configuration).
+Cobra emits integration scripts via `citadel-cli completion bash|zsh|fish|powershell`. How dynamic completion uses your session, what gets completed, on-disk caching, and related environment variables are covered in [HUMANS.md § Shell completion](HUMANS.md#shell-completion).
 
 ## JSON error envelope
 
