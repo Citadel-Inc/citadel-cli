@@ -2,19 +2,19 @@
 
 ## ORIENT
 
-- Server: `internal/api/orgsmembersapi/handler.go` — routes and handler names for list/create/revoke/pending/accept.
-- Related existing CLI: `namespace members` (read-only members list) — invitations are separate product path.
+- **Server:** `internal/api/orgsmembersapi/handler.go` — routes registered in `Routes()`; **frontend base** for claim URLs uses `CITADEL_FRONTEND_BASE` (CLI irrelevant except debugging).
+- **Permissions:** must match **`orgs.ValidatePermissions`** allow-list — P0 A1 should paste **doc link or atom list** from server help text.
 
 ## RECON
 
-- Read `HandleCreateInvitation` request body struct tags.
-- Confirm whether `list` returns cursor — align flags with `internal/pagination` usage in server.
+- Read **`HandlePendingInvitations`** / **`HandleListInvitations`** response JSON keys (invitation row struct).
+- **`HandleRevokeInvitation`** path param name (`{id}` UUID).
+- **`HandleAcceptInvitation`** success body shape.
 
 ## Implementation sketch
 
-- New `cmd/org_invitation.go` or nested under `cmd/namespace.go` — prefer dedicated file to limit merge conflicts.
-- `accept` uses token as positional arg; POST path `/api/invitations/{token}/accept`.
+- **`cmd/org_invitation.go`** — parent `orgCmd` **may** already be absent: today `namespace` holds org flows — decide whether to hang under **`namespace invitation`** vs new **`org`** top-level (Q1). If new **`org`** root: aligns with spec title; requires **`root.go`** registration.
 
 ## Risks
 
-- **Token in shell history** — document `--token-file` or stdin pattern for accept verb if sensitive.
+- **Permission strings** are easy to mistype — consider **`--permissions` from file** as P2 if repeated flags prove brittle.

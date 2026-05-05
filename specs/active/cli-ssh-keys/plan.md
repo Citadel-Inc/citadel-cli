@@ -2,18 +2,17 @@
 
 ## ORIENT
 
-- Handlers: `accountapi/ssh_keys.go` — list/create/delete.
-- Client: same `newAPIClient` JWT path as other account routes.
+- **Server:** `internal/api/accountapi/ssh_keys.go` — structs **`sshKeyRow`**, **`sshKeysListResponse`**, **`sshKeyCreateRequest`** (exact JSON tags).
+- **CLI auth:** same `newAPIClient` as other account routes (JWT from `auth login`).
 
 ## RECON
 
-Read request/response structs from `ssh_keys.go` for JSON field names (`label`, `public_key`, etc.).
+- Read **`HandleSSHKeysCreate`** validation branches (empty key, malformed SSH public key parsing via `golang.org/x/crypto/ssh`) — document user-visible errors for errmap.
 
 ## Implementation sketch
 
-- New `cmd/ssh_key.go` (or `sshkey.go` per package naming).
-- `delete` requires UUID arg — completion hook optional P2.
+- **`cmd/ssh_key.go`** — `sshKeyCmd`; delete takes UUID string; optional **`ValidArgsFunction`** completion for IDs from list cache **P2**.
 
 ## Risks
 
-- **Fingerprint collision errors** — surface server message verbatim via errmap.
+- **Windows paths** for `--key-file` — use stdlib `os.ReadFile`; no shell expansion required.

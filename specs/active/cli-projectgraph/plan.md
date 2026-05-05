@@ -2,34 +2,30 @@
 
 ## ORIENT
 
-- Server package: `github.com/Rethunk-Tech/citadel/internal/api/projectgraphapi` — subtree mounted at `/api/projectgraph/` (`cmd/citadel/main.go`).
-- Slug path uses a **manual dispatcher** because `{slug}` can contain `/` (multi-segment); CLI must use `url.PathEscape` per segment or join path safely — mirror how integration tests build URLs.
-- CLI patterns: `internal/apiclient.Client`, `newAPIClient`, output helpers from `cli-output-formats`, repo-style `-R` **not** applicable (project slug is namespace-shaped, not repo pair).
+- **Server:** `internal/api/projectgraphapi/handler.go` — `Routes()` returns `http.HandlerFunc` dispatching on method + path suffix; see `projectgraphapi.Handler` struct.
+- **Companion spec:** `citadel/specs/active/go-projectgraph/spec.md` for domain semantics (edge kinds, ingest).
+- **CLI patterns:** `internal/apiclient.Client` — paths are appended to configured API base (`ResolveServerURL`); no automatic `/api` prefix — follow existing commands (`GET "/orgs"`, etc.) → paths **include** `/api/...` where required.
 
-## RECON (routes)
+## RECON (completed baseline)
 
-From `projectgraphapi.Handler.Routes()`:
+| Topic | Finding |
+|-------|---------|
+| Prefix | `/api/projectgraph/` + tail built from slug + suffix (`pin-chain`, `walk`, `neighbors`, …). |
+| Slug in path | `r.PathValue("slug")` set by dispatcher after stripping suffix; **walk/neighbors** also accept `?ns=` overriding target namespace. |
+| Walk | **`kind` query required** — `400 kind_required` if missing. **`max_depth`** optional int. |
+| Pin chain | **`repo` namespace only** — else `400 repo_namespace_required`. |
+| Neighbors | Query: `kind`, `direction`, `include_deleted=true`. |
+| POST edges | Body struct **`postEdgeBody`** in handler.go — `source` must be `"manual"` or server rejects (`manual_source_only`). RBAC: **`PermProjectgraphManage`** on **from** namespace (`403 forbidden` vs opaque `404` depending on branch — tests lock actual behaviour). |
+| RBAC read | `requireProjectgraphRead` → resolver `PermProjectgraphRead`; denial **`404 not_found`** (opaque). |
 
-| Method | Path suffix | Handler |
-|--------|-------------|---------|
-| GET | `{slug}/pin-chain` | pin chain rows |
-| GET | `{slug}/walk` | bounded walk |
-| GET | `{slug}/neighbors` | neighbors |
-| GET | `{slug}/status-rollup` | rollup |
-| GET | `{slug}/status-rollup/drilldown` | drilldown |
-| POST | `{slug}/edges` | create edge |
-| DELETE | `{slug}/edges/{edge_id}` | delete |
-| POST | `{slug}/edges/{edge_id}/restore` | restore |
-| POST | `{slug}/reindex` | reindex ingest |
-| POST | `admin/recovery-scan` | admin recovery |
+**P0 implementation task:** Read `handleStatusRollup`, `handleStatusRollupDrilldown`, `handleReindex`, `handleRecoveryScan` for exact query/body contracts and paste into this plan appendix when implementing.
 
 ## Implementation sketch
 
-- New `cmd/project.go` with `ProjectCmd` and subcommands; positional `<slug>` as first arg after subcommand (e.g. `project pin-chain Rethunk-Tech/Bastion`).
-- Shared helper `projectAPIPath(slug, suffix string) string` building `/api/projectgraph/` + escaped segments.
-- Tests: extend `handler_test.go` pattern from `kg` / `audit` with mux stubs for each verb.
+- **`cmd/project.go`:** `projectCmd` + subcommands; shared **`buildProjectgraphURL(slug, suffix string)`** that URL-encodes each segment of `slug` when joining (never split on `/` incorrectly).
+- **Tests:** `cmd/handler_test.go` style — map route → JSON fixture; include **`429 rate_limited`** stub optional.
 
 ## Risks
 
-- **Slug ambiguity**: users may pass single-segment vs full path — document examples in `--help`.
-- **Large JSON**: walk/pin-chain payloads may be huge; recommend `--output json` + jq for scripting.
+- **Payload size:** walk/rollup JSON may be MB-scale — document memory/streaming expectations (客户端 uses normal `Get`, acceptable for v1).
+- **Permission UX:** users confuse **404** with “wrong slug” — stderr hint when stderr allowed: “may be permissions — verify projectgraph:read”.

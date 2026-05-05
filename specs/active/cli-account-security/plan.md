@@ -2,19 +2,20 @@
 
 ## ORIENT
 
-- Routes registered in `citadel/cmd/citadel/main.go` — search for `passkey`, `device`, `mfa`, `gatePasskey`, `recentMFA`.
-- Many mutations require **step-up / recent MFA** (`recentMFA` middleware) — CLI must surface `403` / structured errors clearly.
+- **Routing:** `cmd/citadel/main.go` comments near **passkey**, **device**, **mfa** mounts (lines ~344–374 region — verify on merge).
+- **Handlers:** likely under `internal/api/accountapi` + `internal/api/authapi` — P0 A1 indexes concrete Go types for JSON bodies.
 
 ## RECON
 
-- For each handler: request method, path, JSON body, and whether WebAuthn/browser is required.
-- Decide v1 cut: **list/delete passkeys** and **list/delete devices** are usually feasible; enrol flows may remain web-only.
+1. **Passkey list/delete/patch** — read handler funcs for exact JSON + error codes.
+2. **Devices list/delete** — confirm DELETE requires recent MFA — CLI must print actionable message referencing web step-up when server rejects.
+3. **MFA recovery GET/POST** — determine whether GET returns one-time printable codes — if yes, gate stdout carefully.
 
 ## Implementation sketch
 
-- Parent: `citadel-cli account` with subgroups `passkey`, `device`, `mfa` (hidden until commands exist).
-- Reuse `newAPIClient`; no new token storage.
+- **`cmd/account.go`** with subcommand groups **`passkey`**, **`device`**, **`mfa`** (hidden until shipped).
+- Prefer **thin** GET/DELETE wrappers before touching MFA recovery.
 
 ## Risks
 
-- **WebAuthn in terminal** — likely unsupported for enrol; avoid half-baked flows that leak partial state.
+- **Step-up MFA** on device delete may block **fully non-interactive CI** — document exemption path (skip test) vs operator expectation.

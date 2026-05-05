@@ -5,44 +5,70 @@
 | Status | DRAFT 050506ZMAY26 |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
-| Carry-forward from | Phase 0 L0 git wire: operators must register SSH public keys for `git@git.src.land` without opening the SPA. Server: `internal/api/accountapi` — `GET/POST/DELETE /api/account/ssh-keys`. |
+| Carry-forward from | Phase 0 L0 git wire: users need SSH public keys registered for `git@git.src.land`. Server: `internal/api/accountapi/ssh_keys.go`. |
 
-## Why
+## Daemon HTTP contract
 
-SSH authentication to Citadel git endpoints requires registered keys on the user account. Today only HTTP APIs exist; CLI users configure keys manually via HTTP clients.
+| Method | Path | Handler |
+|--------|------|---------|
+| GET | `/api/account/ssh-keys` | `HandleSSHKeysList` |
+| POST | `/api/account/ssh-keys` | `HandleSSHKeysCreate` |
+| DELETE | `/api/account/ssh-keys/{id}` | `HandleSSHKeysDelete` |
+
+**Auth:** JWT (`requireUser`); no separate scope beyond authenticated account.
+
+**List response**
+
+```json
+{"keys":[{"id":"uuid","fingerprint":"…","public_key":"…","label":null,"created_at":"…"}, …]}
+```
+
+**Create request**
+
+```json
+{"public_key":"<ssh-ed25519 AAA… or rsa …>","label":"optional"}
+```
+
+- `DisallowUnknownFields()` on decoder — **unknown JSON keys → 400**.
+- Duplicate fingerprint → server-dependent error (survey handler — likely conflict / validation).
+
+**Delete**
+
+- UUID `{id}` path segment; wrong user → not found / forbidden per handler.
+
+**Errors:** `db_unavailable`, `list_failed`, **trimmed validation messages** — map via `httputil.WriteJSONError` codes in handler source.
 
 ## In scope
 
-**Parent command:** `citadel-cli ssh-key` (singular noun matches GitHub `ssh-key` UX; alternatives ratified in Q-table).
+**Parent command:** `citadel-cli ssh-key` (see Q-table).
 
-| Verb | HTTP |
-|------|------|
-| `ssh-key list` | `GET /api/account/ssh-keys` |
-| `ssh-key add --key-file …` or `--key …` | `POST /api/account/ssh-keys` |
-| `ssh-key delete <id>` | `DELETE /api/account/ssh-keys/{id}` |
+| CLI | HTTP |
+|-----|------|
+| `ssh-key list` | GET |
+| `ssh-key add --key-file PATH` **and/or** `--public-key` string | POST |
+| `ssh-key delete <id>` | DELETE |
 
-**Cross-cutting**
+**UX**
 
-- Auth: existing JWT from `auth login`.
-- **cli-output-formats** on list.
-- Add from file reads PEM/OpenSSH public key material; validate non-empty before POST.
+- Reading key material from **`--key-file`** (preferred) or stdin when piped.
+- Optional **`--label`** flag mapping to request `label`.
 
 ## Out of scope
 
-- **Generating keypairs** — users run `ssh-keygen`; we only upload public material.
-- **Per-repo deploy keys** — not in account SSH API surveyed.
+- **`ssh-keygen`** — users generate keys locally.
+- **Deploy keys / per-repo keys** — not in this API surface.
 
 ## Decision log
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Command name `ssh-key` vs `account ssh-key`? | **Open** — top-level `ssh-key` for brevity. |
-| Q2 | Add: stdin vs `--key-file` default? | **Open** — `--key-file` required unless stdin piped (mirror patterns elsewhere). |
+| Q1 | Command group name `ssh-key` vs `account ssh-key`? | **Open** — top-level `ssh-key`. |
+| Q2 | stdin adds key vs require explicit `-` flag? | **Open** — mirror patterns from other stdin-reading verbs. |
 
 ## Acceptance
 
-- A1. Three verbs implemented + httptest coverage.
-- A2. `make verify` passes.
-- A3. Docs in `docs/cli.md`.
+- A1. Three verbs + httptest matrix (happy, bad JSON, delete missing id).
+- A2. Never echo full private key material (only public key surfaces — enforce in review).
+- A3. `docs/cli.md`.
 - A4. Q-table ratified.
-- A5. Optional live test `CITADEL_TEST_SSH_KEYS_LIVE=1`.
+- A5. Optional `CITADEL_TEST_SSH_KEYS_LIVE=1`.

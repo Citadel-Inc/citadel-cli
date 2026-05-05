@@ -2,27 +2,21 @@
 
 ## ORIENT
 
-- Existing: `cmd/kg.go` — `kg impact` uses `GET /kg/{owner}/impact` (apiclient path style — verify whether base URL prepends `/api` via client).
-- Server: `internal/api/kgapi/handler.go` registers routes on `/api/...` — confirm `apiclient` path conventions in `internal/apiclient` (prefix `/api` or raw).
+- **Server:** `internal/api/kgapi/handler.go` — comments at top of file list canonical query strings per route.
+- **Architecture narrative:** `citadel/docs/architecture.md` (KG section) — long-form parameter semantics.
+- **Existing CLI:** `cmd/kg.go` — `runKgImpact`, `resolveSymbolID` hitting **`/kg/{owner}/symbols`** (note: path may differ from `/api/namespaces/...` — verify at P0 A1).
 
-## RECON
+## RECON checklist (P0 A1 — blocking implementation)
 
-Registered routes:
+1. For each verb, record **exact** path string passed to `apiclient.Get` (including whether `/api` prefix is present).
+2. Capture **`HandleSymbols`**, **`HandleWalk`**, **`HandleFulltext`**, **`HandleDiff`** query-param validation errors from handler source (duplicate into plan appendix).
+3. **`HandleKGSearch`**: mandatory `scope=cross-namespace`; forbidden `mode=regex`; document `cursor` encoding.
 
-- `GET /api/kg/search`
-- `GET /api/namespaces/{slug}/kg/symbols`
-- `GET /api/namespaces/{slug}/kg/files`
-- `GET /api/namespaces/{slug}/kg/walk`
-- `GET /api/namespaces/{slug}/kg/impact` (existing)
-- `GET /api/namespaces/{slug}/kg/fulltext`
-- `GET /api/namespaces/{slug}/kg/diff`
-- `GET /api/kg/diff` (slug query param variant)
+## Implementation sketch
 
-## Implementation notes
-
-- Share flag helpers with `kg impact` for `--repo`, `--json`, depth where relevant.
-- For `fulltext`/`diff`, expose query params verbatim with sane defaults documented in `--help`.
+- Extend `cmd/kg.go` or split `cmd/kg_extended.go` if file size grows — keep package `cmd`.
+- Shared **`namespaceSlugFromRepoFlag(cmd)`** aligned with `splitRepoArg` / `-R`.
 
 ## Risks
 
-- **Path prefix drift**: if CLI today calls `/kg/` without `/api`, align all kg verbs to one convention to avoid subtle bugs.
+- **Dual mount legends** (`/kg/...` vs `/api/namespaces/.../kg/...`) cause subtle 404s — mitigate with Q2 ratification + single doc table.

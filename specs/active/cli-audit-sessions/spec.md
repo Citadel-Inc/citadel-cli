@@ -5,42 +5,65 @@
 | Status | DRAFT 050506ZMAY26 |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
-| Carry-forward from | `cli-audit` shipped **events** (`audit list` / `audit show`). Same server package registers **sessions** (`GET /api/audit/sessions`, `GET /api/audit/sessions/{session_id}`) for drill-down / replay narratives per PoL appendix K `audit.session`. |
+| Carry-forward from | `cli-audit` (DONE) ships **events** only. `internal/api/auditapi` also implements **sessions** list + detail for the same audit gate (`package auditapi` comment references fe-audit-session-drilldown). |
 
 ## Why
 
-Operators investigating incidents need **session-scoped** views (related events grouped by session id) as well as flat event timelines. The daemon exposes session list + detail with RBAC aligned to audit events.
+Session views group related actions for **incident response** and **“what did this token do in one login”** narratives. PoL appendix K lists `audit.session`; parity requires CLI access beside **`audit list` / `audit show`** on events.
+
+## Daemon HTTP contract (`auditapi.Handler.Routes`)
+
+| Route | Handler | Purpose |
+|-------|---------|---------|
+| `GET /api/audit/sessions` | `handleListSessions` | List session summaries for a namespace — **`ns` query parameter REQUIRED** (`400 ns_required` if absent after decode). Namespace resolved via `auth.ResolveNamespace`; RBAC `audit:read` on resolved namespace — denial surfaces as **`404 audit_sessions_unavailable`** (opaque). |
+| `GET /api/audit/sessions/{session_id}` | `handleGetSession` | Session drill-down payload; RBAC + optional operator-only fields (`ShowOperatorConsole` when `operator:audit:read`). Missing session → **`404 audit_session_not_found`**. |
+
+**List query semantics** (`handleListSessions`):
+
+| Param | Behaviour |
+|-------|-----------|
+| `ns` | Namespace slug (path-decoded like issues API — `%2F` → `/`). **Required.** |
+| `since` | RFC3339 **or** shorthand `1h`, `24h`/`1d`, `7d`, `30d`; empty → default **last 24h** window from server clock. Invalid → `400 invalid_since`. |
+| `limit` | Optional int, default **20**, positive only parsed. |
+| `offset` | Optional int, default **0**, non-negative. |
+| `actor_type` | Optional filter string (`actorFilter`). |
+
+**Response shape:** `{"sessions": [...summaries]}` (exact fields — copy from `audit.Service.ListSessions` row struct during implementation).
+
+**Rate limits:** `userBucketLimiter` — `429 rate_limited`.
+
+**Note:** Pagination here uses **`offset`/`limit`**, not necessarily opaque cursor — **do not** blindly reuse `cli-pagination` cursor flags unless extended intentionally (Q-table).
 
 ## In scope
 
-Extend **`citadel-cli audit`** (same parent command as events):
+**Extend parent:** `citadel-cli audit` — nested commands:
 
-| Verb | HTTP |
-|------|------|
+| CLI | HTTP |
+|-----|------|
 | `audit sessions list` | `GET /api/audit/sessions` |
 | `audit sessions show <session_id>` | `GET /api/audit/sessions/{session_id}` |
 
-**Cross-cutting**
+**Flags**
 
-- Filters on list endpoint must match server query params (survey `auditapi` — `since`, `until`, `namespace`, pagination if present).
-- **cli-pagination** + **cli-output-formats** parity with `audit list`.
-- Human output: session summary table; show verb prints ordered steps or JSON.
+- `list`: **`--ns`** (required) mapping to `ns=` query; **`--since`** matching server shorthand + RFC3339; **`--limit`**, **`--offset`**; **`--actor-type`** if exposed.
+- **cli-output-formats** on both verbs.
 
 ## Out of scope
 
-- **SSE live tail** — deferred in original cli-audit retrospective; unchanged.
-- **Cross-tenant operator bypass** — follows existing audit RBAC; no new semantics.
+- **SSE tail / follow** — deferred per `cli-audit` retrospective.
+- **Mutating audit** — read-only API.
 
 ## Decision log
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Subcommand shape: `audit sessions list` vs top-level `audit-session`? | **Open** — nested under `audit sessions` for cohesion. |
-| Q2 | Show output: full JSON only vs pretty narrative? | **Open** — json/yaml + compact human list of contained events if API returns nested structure. |
+| Q1 | Nested `audit sessions` vs top-level `audit-session`? | **Open** — nested under `audit sessions`. |
+| Q2 | Add `--namespace` alias for `--ns`? | **Open** — yes for consistency with other verbs. |
+| Q3 | Offset pagination vs migrate server to cursor later? | **Open** — CLI mirrors server `offset`/`limit` until daemon changes. |
 
 ## Acceptance
 
-- A1. Both endpoints wired; httptest coverage mirroring `audit` event tests.
-- A2. Flags documented; `make verify` passes.
+- A1. Both routes wired; tests cover **`ns_required`**, **`invalid_since`**, empty sessions list, show **404** paths.
+- A2. Operator-console field suppression respected (tests mock JSON shapes).
 - A3. Q-table ratified.
 - A4. Optional `CITADEL_TEST_AUDIT_SESSIONS_LIVE=1`.

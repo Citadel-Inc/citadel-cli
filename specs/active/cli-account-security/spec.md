@@ -5,50 +5,79 @@
 | Status | DRAFT 050506ZMAY26 |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
-| Carry-forward from | Power users need terminal access to **passkeys**, **registered devices**, and **MFA recovery** flows without the SPA. Citadel exposes JWT-gated routes under `/api/account/passkeys*`, `/api/auth/devices*`, `/api/auth/mfa/*` (see `cmd/citadel/main.go`). |
+| Carry-forward from | Terminal parity for account security settings (passkeys, sessions/devices, MFA recovery) exposed by Citadel auth routes but absent from `citadel-cli`. |
 
-## Why
+## Daemon HTTP contract (baseline from `cmd/citadel/main.go`)
 
-Security-sensitive account operations are often scripted or performed in locked-down environments where opening a browser is undesirable. Thin CLI wrappers improve parity with the web app and reduce support friction.
+All routes require JWT unless noted; many mutate flows wrap **`recentMFA`** (step-up) — expect **`412`** / structured **`mfa_required`**-class errors (exact mapping — survey `httputil` + auth handlers during P0).
 
-## In scope (phased)
+### Passkeys (`gatePasskey` — same gate bundle)
 
-**Phase A — read/list + low-risk mutations**
+| Method | Path |
+|--------|------|
+| POST | `/api/account/passkey/begin-enrol` |
+| POST | `/api/account/passkey/finish-enrol` |
+| POST | `/api/account/passkey/begin-auth` |
+| POST | `/api/account/passkey/finish-auth` |
+| GET | `/api/account/passkeys` |
+| DELETE | `/api/account/passkeys/{id}` |
+| PATCH | `/api/account/passkeys/{id}` |
 
-| Verb area | Example commands | HTTP (indicative) |
-|-----------|-------------------|-------------------|
-| Passkeys | `account passkey list`, `account passkey delete <id>` | `GET/DELETE /api/account/passkeys…` |
-| Devices | `account device list`, `account device revoke <id>` | `GET/DELETE /api/auth/devices…` |
+**WebAuthn reality:** enrol/finish flows exchange crypto payloads meant for **browser WebAuthn APIs** — likely **not implementable** in pure CLI (Q1 ratifies CLI scope).
 
-**Phase B — MFA recovery material (stdout-sensitive)**
+### Devices (`devicePrivate` middleware)
 
-| Verb area | Example | Notes |
-|-----------|---------|-------|
-| Recovery codes | `account mfa recovery-codes` | May **print secrets once** — mirror web UX warnings; TTY-only or `--force` gate. |
-| Redeem / verify | defer or minimal flags | Survey CSRF/step-up requirements in RECON. |
+| Method | Path | MFA step-up |
+|--------|------|---------------|
+| POST | `/api/auth/devices/register` | no |
+| GET | `/api/auth/devices` | no |
+| DELETE | `/api/auth/devices/{id}` | **yes** (`recentMFA`) |
 
-**Phase C — passkey enrol crypto flows**
+### MFA recovery (`mfaRoutes`; some with `recentMFA`)
 
-| Area | Notes |
-|------|-------|
-| `begin-enrol` / `finish-enrol` | Likely requires WebAuthn client — **may be impossible** in pure CLI; Q-table may ratify **web-only enrol** + CLI **list/delete only**. |
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/api/auth/mfa/recovery-codes` | step-up |
+| GET | `/api/auth/mfa/recovery-codes` | list / regenerate policy — **survey** |
+| POST | `/api/auth/mfa/redeem-recovery` | redeem |
+| POST | `/api/auth/mfa/recent-verify` | step-up ping |
+
+## In scope (phased — default CLI-first subset)
+
+**Phase A (target v1)**
+
+| Feature | CLI shape | Server paths |
+|---------|-----------|--------------|
+| Passkeys | `account passkey list`, `account passkey delete <id>`, `account passkey rename …` if PATCH maps to label — **RECON** | GET/DELETE/PATCH |
+| Devices | `account device list`, `account device revoke <id>` | GET + DELETE |
+
+**Phase B (secrets — high caution)**
+
+| Feature | Risk | Gate |
+|---------|------|------|
+| Recovery codes display/regen | prints **high-entropy secrets** | TTY-only + **`--force`** for scripts; never log |
+
+**Phase C (defer / unlikely)**
+
+- WebAuthn **begin/finish** enrol — browser-only unless future platform helper exists.
 
 ## Out of scope
 
-- **Replacing Supabase Auth dashboard entirely.**
-- **Password change** — separate endpoints if any; defer unless trivial GET/POST survey says otherwise.
+- **Replacing web settings hub entirely**
+- **Password change**, **email change** — different endpoints (`/api/auth/email-change` etc.) — separate spec if needed.
 
 ## Decision log
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Phase A only at v1 if WebAuthn blocks enrol in CLI? | **Open** — ship list/delete for passkeys + devices first. |
-| Q2 | Recovery codes: never print to non-TTY without `--force`? | **Open** — yes. |
+| Q1 | Ship Phase A only; defer WebAuthn enrol CLIs? | **Open** — **yes** until browser-less enrol exists. |
+| Q2 | MFA recovery output rules | **Open** — stderr banner + confirm prompt; **`NO_COLOR`** respected. |
+| Q3 | Device delete step-up: interactive WebAuthn impossible — document “run from logged-in browser session first” vs proxy cookie — **needs product answer**. |
 
 ## Acceptance
 
-- A1. Phase A verbs implemented + tests OR Q-table explicitly scopes Phase B/C follow-ons.
-- A2. Secrets never logged in verbose HTTP debug (respect existing redaction).
-- A3. `make verify` passes.
-- A4. Q-table ratified.
-- A5. Docs warn users about recovery-code sensitivity.
+- A1. Phase A verbs implemented **OR** Q1 narrows scope further with explicit list.
+- A2. No secrets in **`--debug-http`** logs (verify redaction).
+- A3. Structured MFA/step-up errors surface via **`cli-error-format`** conventions.
+- A4. Q-table ratified (incl. Q3 disposition).
+- A5. Security section in `docs/cli.md`.

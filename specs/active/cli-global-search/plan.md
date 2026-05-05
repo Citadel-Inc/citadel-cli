@@ -2,19 +2,20 @@
 
 ## ORIENT
 
-- Server: `internal/api/searchapi/handler.go` — `HandleSearch`, `HandlePublicNamespaces`.
-- Main mounts gate — verify `gateSearch` vs public route auth in `cmd/citadel/main.go` during implementation.
+- **Server:** `internal/api/searchapi/handler.go` — `parseSearchInput`, `HandleSearch`, `HandlePublicNamespaces`.
+- **CLI blocker:** `internal/apiclient.New` returns error when **`cfg.AccessToken == ""`** — public search requires an **explicit design** (see spec Q1).
 
 ## RECON
 
-- Parse rules from `pure_test.go` URL cases (`q` length, scope enum, limit bounds).
-- Response JSON shape: `[]result` with fields from handler.
+- Confirm **`gateSearch`** in `main.go` — authenticated `/api/search` behind JWT.
+- Confirm public route has **no JWT** — enables anonymous discovery.
 
-## Implementation sketch
+## Implementation options (for Q1 ratification)
 
-- New `cmd/search.go`; thin GET wrapper + query param builder.
-- Default scope `all` if server supports it.
+1. **`httpx` direct GET** for public endpoint only (no Bearer) — duplicate timeout/trace behaviour cautiously.
+2. **`apiclient` extension:** `NewAllowAnonymous(cfg)` or optional token empty only for allow-listed paths (risk: accidental misuse).
+3. **Defer public subcommand** until Q1 resolved — ship authenticated search only at v1.
 
 ## Risks
 
-- **Public endpoint without JWT** — if middleware still requires JWT, document that `search --public` needs login for consistency with server reality.
+- **Marketing vs security:** public namespace enumeration is intentional server-side — CLI should not add extra leaking beyond server.
