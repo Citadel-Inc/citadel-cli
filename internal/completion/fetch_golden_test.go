@@ -133,3 +133,31 @@ func TestFetchAgentTokenIDs_DecodesTokenList(t *testing.T) {
 		t.Fatalf("got %q want sorted ids", got)
 	}
 }
+
+func TestFetchSSHKeyIDs_DecodesKeyList(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/account/ssh-keys" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"keys": []any{
+				map[string]any{"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"},
+				map[string]any{"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"},
+			},
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := apiclient.New(clicfg.Config{AccessToken: "t"}, apiclient.Options{Server: srv.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := FetchSSHKeyIDs(context.Background(), c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0] != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" {
+		t.Fatalf("got %q want sorted ids", got)
+	}
+}
