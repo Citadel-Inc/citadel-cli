@@ -27,7 +27,7 @@ $ citadel-cli issue list -R myorg/myrepo  # ditto
 - **Host whitelist**: only treat `api.src.land`, `src.land`, `mcp.src.land`, and `git.src.land` (or whatever the canonical Citadel git host turns out to be) as Citadel hosts. Other hosts → ignore + fall through to "specify -R" error.
 - **`--repo` env var**: `CITADEL_REPO=ns/slug` overrides CWD inference. Honored when no `-R` flag and CWD inference doesn't apply.
 - **Opt-out flag**: `--no-cwd-repo` forces strict mode (don't infer; fail fast). For scripts that must not pick up arbitrary CWD context.
-- **Verbs in scope**: `repo get`, `repo delete` (when ratified Q3 below covers positional vs `-R`), `issue *` (cli-issue-pr spec), `pr *` (cli-issue-pr spec), `kg impact`. Anything else taking `<ns>/<slug>` as an explicit positional remains explicit at v1.
+- **Verbs in scope**: `repo get`, `repo delete` (when ratified Q3 below covers positional vs `-R`), `issue *` (follow-on `cli-issues` spec), and `kg impact`. Anything else taking `<ns>/<slug>` as an explicit positional remains explicit at v1.
 
 ## Out of scope
 
@@ -49,7 +49,7 @@ $ citadel-cli issue list -R myorg/myrepo  # ditto
 ## Acceptance
 
 - A1. `cmd/repocontext.go`: `resolveRepoFlag(cmd) (ns, slug string, err error)` helper handling `-R` flag, `CITADEL_REPO` env, CWD inference, `--no-cwd-repo` opt-out, and the friendly failure path.
-- A2. `repo get`, `repo delete` (positional retained), and `kg impact` accept `-R` at v1; the cli-issue-pr spec uses the same helper.
+- A2. `repo get`, `repo delete` (positional retained), and `kg impact` accept `-R` at v1; the `cli-issues` follow-on spec uses the same helper.
 - A3. CWD inference works against SSH (`git@src.land:myorg/myrepo.git`) and HTTPS (`https://src.land/myorg/myrepo`, with or without trailing `.git`) origin URLs.
 - A4. Friendly inference TTY hint on stderr (`Inferred -R myorg/myrepo from CWD`).
 - A5. `CITADEL_GIT_HOSTS` env override accepts comma-separated list.

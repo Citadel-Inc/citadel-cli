@@ -7,7 +7,7 @@
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
 | cli-oauth-login | IN_PROGRESS | 061800ZMAY26 | Bastion (J-3) |
-| cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
+| cli-issues | DRAFT | 062323ZMAY26 | Bastion (J-3) |
 
 ## Done
 
@@ -16,7 +16,7 @@
 | Slug | DTG | Note |
 |------|-----|------|
 | cli-projectgraph | 060539ZMAY26 | Delivered top-level `citadel-cli project` with URL-encoded multi-segment namespace paths, read verbs (pin-chain, walk, neighbors, status rollup/drilldown), write verbs (edge add/delete/restore, reindex) with typed confirm/--yes, httptest matrix incl. multi-segment pin-chain + read/write 404 paths, docs/cli.md, optional live test behind CITADEL_TEST_PROJECTGRAPH_LIVE + CITADEL_TEST_PROJECTGRAPH_SLUG. Q4 recovery-scan intentionally unimplemented; P1 B2 remains open. |
-| cli-global-search | 060535ZMAY26 | Shipped top-level `citadel-cli search` with JWT-only GET /api/search, default scope=namespaces, --public for scope=all, httptest coverage for query_too_short/invalid_scope/invalid_limit, optional CITADEL_TEST_SEARCH_LIVE=1, and docs/cli.md QoS framing. |
+| cli-global-search | 060535ZMAY26 | Shipped top-level `citadel-cli search` with authenticated GET /api/search, default scope=namespaces, --public for scope=all, httptest coverage for query_too_short/invalid_scope/invalid_limit, optional CITADEL_TEST_SEARCH_LIVE=1, and docs/cli.md QoS framing. |
 | cli-kg-extended | 060504ZMAY26 | Shipped extended KG HTTP verbs (search, symbols, files, walk, fulltext, diff); migrated kg impact + symbol resolution to /api/namespaces/{slug}/kg/*; added httptest (401/404/429), docs/cli.md section, plan appendix, and opt-in live test. P1 pagination/table polish remains open. |
 | cli-account-security | 060459ZMAY26 | Phase A delivered: account passkey list/rename/delete, device list/revoke, PATCH client support, httptest + opt-in live tests (CITADEL_TEST_ACCOUNT_SECURITY_LIVE), docs and CSV contracts. Phase B MFA recovery verbs intentionally deferred (P1 B1 remains open). |
 | cli-ssh-keys | 060441ZMAY26 | SSH key surface complete: list/add/delete against /account/ssh-keys, private-key rejection, output modes, httptest coverage, docs/cli.md, live opt-in list test, and shell tab completion for delete UUIDs via cached GET /account/ssh-keys (KeySSHKeys) with PostRun invalidation after add/delete. |
@@ -32,7 +32,7 @@
 | cli-oauth-clients | 040041ZMAY26 | P1 B3: opt-in live integration test (oauth_clients_live_test.go) + §71 runbook. P2 C1 remains operator citadel-cli smoke — see specs/HUMAN_BLOCKERS.md §71. |
 | cli-mcp-resources | 032359ZMAY26 | Shipped MCP resources/list, resources/read, prompts/list, prompts/get, citadel-cli `mcp resources` / `mcp prompts`, waitlist parity with tools/call, and automated conformance tests. SDD closeout complete (P2 C2). Remaining follow-up is P2 live HTTPS-MCP-client smoke against a real server; this is environment-dependent but not a HUMAN_BLOCKERS item. |
 | go-citadel-cli-repo | 032036ZMAY26 | Shipped repo/namespace/agent CRUD CLI verbs against live APIs. repo create/list/get/delete; namespace list/get/members/transfer (with initiate/list-pending/accept/decline/revoke subcommands); agent list/get/delete/rotate-token. All verbs carry --help + --output json (A1). cmd_test.go integration suite covers command-tree structure, flag presence, and destructive-verb --yes gates (A2). Destructive verbs gate on typed-slug confirm (A3). Q-table ratified (A4). repo rename descoped (no server endpoint). namespace transfer org-only for now; personal namespace transfer deferred to server-side follow-on. |
-| cli-mcp-tools | 010300ZMAY26 | shipped; HUMAN follow-up = positive prod smoke with real JWT |
+| cli-mcp-tools | 010300ZMAY26 | shipped; HUMAN follow-up = positive prod smoke with a real authenticated session |
 | go-citadel-cli | 292032ZAPR26 | shipped (in-line with the B-track ratifications) |
 
 ## Parked
@@ -43,7 +43,5 @@
 |------|-----|------|
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
-
-
 
 

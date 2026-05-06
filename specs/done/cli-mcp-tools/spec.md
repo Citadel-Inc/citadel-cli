@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **DONE 010300ZMAY26** — shipped; HUMAN follow-up = positive prod smoke with real JWT |
+| Status | **DONE 010300ZMAY26** — shipped; HUMAN follow-up = positive prod smoke with a real authenticated session |
 | Authored | 010200ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | `go-citadel-cli` (task C5 carry-forward) |
@@ -23,7 +23,7 @@ This spec lands the two CLI verbs against the existing MCP transport.
 
 ### Auth
 
-- Reuses the existing `~/.config/citadel/config.toml` access token from `citadel auth login`. Bearer-token-injects on every Streamable-HTTP request.
+- Reuses the existing `~/.config/citadel/config.toml` access token from `citadel auth login` (now normally an opaque agent token). Bearer-token-injects on every Streamable-HTTP request.
 - On 401 / `-32001 unauthorized`, surfaces "Run `citadel auth login` to refresh your session." and exits 1.
 
 ### Transport
@@ -71,7 +71,7 @@ R3. **Server-version drift.** MCP server bumps protocol version (`2025-11-25` to
 | Q4 | Output format | **Pretty by default; `--json` for raw** | RATIFIED 010230Z |
 | Q5 | Resource browsing | **Out of scope; `cli-mcp-resources` follow-on** | RATIFIED 010230Z |
 
-Token model clarification (010230Z): default Bearer = `cfg.AccessToken` (Supabase JWT from `citadel auth login`); `--token` / `CITADEL_AGENT_TOKEN` override for agent / CI use. Both work — the MCP server's `verifyBearer` (per `go-mcp-oauth` A2) tries JWT first then falls through to `agent_tokens`.
+Token model clarification (updated for `cli-oauth-login`): default Bearer = `cfg.AccessToken` from `citadel auth login` (normally an opaque agent token); `--token` / `CITADEL_AGENT_TOKEN` override for agent / CI use. Both OAuth JWTs and opaque agent tokens work where the MCP server accepts them.
 
 ## Carry-forward
 
@@ -85,7 +85,7 @@ Token model clarification (010230Z): default Bearer = `cfg.AccessToken` (Supabas
 
 **Token-model deviation.** Original `mcp.go` deliberately rejected `cfg.AccessToken` (citing waitlist + OIDC concerns). Post-go-mcp-oauth A2 the MCP server's `verifyBearer` accepts JWTs first then opaque tokens; the docstring's premise no longer held. Spec ratification clarified this with a token-model note and the new code uses JWT-by-default with agent-token override.
 
-**HUMAN follow-up.** Positive production smoke (real JWT → `tools/list` → `tools/call get_namespace --arg path=damon`) requires interactive `citadel auth login` against the live Supabase, which the agent cannot drive. Tracked in `specs/HUMAN_BLOCKERS.md` §19 (see also **§08** for go-mcp-oauth inspector / consent flows).
+**HUMAN follow-up.** Positive production smoke (real authenticated session → `tools/list` → `tools/call get_namespace --arg path=damon`) requires interactive `citadel auth login` against the live service. Tracked in `specs/HUMAN_BLOCKERS.md` §19 (see also **§08** for go-mcp-oauth inspector / consent flows).
 
 **Did NOT do.**
 - Token auto-refresh on 401 (Q3 ratified: out of scope).

@@ -1,6 +1,6 @@
 # Tasks — cli-mcp-tools
 
-Status: **DONE 010300ZMAY26** — all P0/P1/P2 landed; HUMAN follow-up = positive prod smoke against real JWT (operator-side login).
+Status: **DONE 010300ZMAY26** — all P0/P1/P2 landed; HUMAN follow-up = positive prod smoke against a real authenticated session (operator-side login).
 
 ## P0
 - [x] [HUMAN] NOMAD ratifies scope + 5 decision-log defaults — RATIFIED 010230Z.
@@ -16,5 +16,5 @@ Status: **DONE 010300ZMAY26** — all P0/P1/P2 landed; HUMAN follow-up = positiv
 ## P2
 - [x] C1. Update `docs/cli.md` MCP section with verb examples + arg coercion table + flags + exit codes + auth-failure copy.
 - [x] C2. Local smoke — `/tmp/citadel mcp tools` (no token → friendly error), `/tmp/citadel mcp tools --token bogus` (→ "unauthorized: run `citadel auth login`"). Confirms transport + auth-gate + Initialize semantics.
-- [x] C3. Production smoke partial — `curl https://mcp.src.land/mcp` with bogus Bearer returns `{"error":{"code":-32001,"message":"unauthorized"}}` + HTTP 401. Confirms reachability + auth-gate operative. Positive smoke (real JWT → `tools/list` → `tools/call get_namespace`) is HUMAN follow-up since it requires interactive `citadel auth login`.
+- [x] C3. Production smoke partial — `curl https://mcp.src.land/mcp` with bogus Bearer returns `{"error":{"code":-32001,"message":"unauthorized"}}` + HTTP 401. Confirms reachability + auth-gate operative. Positive smoke (real authenticated session → `tools/list` → `tools/call get_namespace`) is HUMAN follow-up since it requires interactive `citadel auth login`.
 - [x] C4. Spec close — moved to `specs/done/cli-mcp-tools/`; retrospective in `spec.md`; `specs/README.md` Active → Done.

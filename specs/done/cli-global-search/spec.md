@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DONE 060535ZMAY26 — Shipped top-level `citadel-cli search` with JWT-only GET /api/search, default scope=namespaces, --public for scope=all, httptest coverage for query_too_short/invalid_scope/invalid_limit, optional CITADEL_TEST_SEARCH_LIVE=1, and docs/cli.md QoS framing. |
+| Status | DONE 060535ZMAY26 — Shipped top-level `citadel-cli search` with authenticated GET /api/search, default scope=namespaces, --public for scope=all, httptest coverage for query_too_short/invalid_scope/invalid_limit, optional CITADEL_TEST_SEARCH_LIVE=1, and docs/cli.md QoS framing. |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Discovery gap: dashboard Cmd-K search exists server-side (`internal/api/searchapi`) but CLI cannot drive it. |
@@ -11,7 +11,7 @@
 
 ### Authenticated search — `GET /api/search`
 
-- **Auth:** JWT required (`requireUser` — **401** without claims). The CLI documents that **every** command, including search, requires login so Citadel can enforce per-user rate limits and protect quality of service.
+- **Auth:** authenticated user session required (`requireUser` — **401** without claims). The CLI documents that **every** command, including search, requires login so Citadel can enforce per-user rate limits and protect quality of service.
 - **Query parsing:** `parseSearchInput(w, r, scoped=true)` (`handler.go`):
 
 | Param | Rule |
@@ -37,7 +37,7 @@
 |-----|-----------|
 | `search <query>` | Authenticated **`GET /api/search`** — default CLI **`scope=namespaces`** (user-accessible namespaces first). |
 | Flags | `--scope namespaces|repos|all`, `--limit` (1–25; respect server cap), `--public` (implies **`scope=all`** unless `--scope` overrides), `--output` / `--json`. |
-| `--public` | Opt-in to broader discovery (unrelated namespaces), still JWT-authenticated; not the anonymous public HTTP route. |
+| `--public` | Opt-in to broader discovery (unrelated namespaces), still session-authenticated; not the anonymous public HTTP route. |
 
 ## Out of scope
 
