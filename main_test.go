@@ -38,7 +38,11 @@ func TestRun_UnknownCommand_ExitsOne(t *testing.T) {
 
 func TestNewRootCmd_HasAllSubcommands(t *testing.T) {
 	root := newRootCmd()
-	want := []string{"auth", "token", "mcp", "kg", "repo", "namespace", "agent", "oauth", "completion", "doctor", "man"}
+	want := []string{
+		"auth", "account", "token", "mcp", "kg", "repo", "namespace", "org",
+		"agent", "oauth", "ssh-key", "completion", "doctor", "man", "audit",
+		"search", "project",
+	}
 	for _, name := range want {
 		found := false
 		for _, sub := range root.Commands() {
@@ -54,6 +58,28 @@ func TestNewRootCmd_HasAllSubcommands(t *testing.T) {
 	// The persistent --server flag must be present so subcommands inherit it.
 	if root.PersistentFlags().Lookup("server") == nil {
 		t.Error("expected persistent --server flag")
+	}
+}
+
+func TestAccountSubcommands(t *testing.T) {
+	if cmd.AccountCmd == nil {
+		t.Fatal("AccountCmd is nil")
+	}
+	if len(cmd.AccountCmd.Commands()) == 0 {
+		t.Error("AccountCmd has no subcommands")
+	}
+	expectedAccount := []string{"passkey", "device"}
+	for _, expected := range expectedAccount {
+		found := false
+		for _, subcmd := range cmd.AccountCmd.Commands() {
+			if subcmd.Name() == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected account subcommand %q not found", expected)
+		}
 	}
 }
 
@@ -312,8 +338,8 @@ func TestRunWriters_RepoList_JSON429_RetryAfterOnFinalResponse(t *testing.T) {
 	}
 	var outer struct {
 		Error struct {
-			Kind                string  `json:"kind"`
-			RetryAfterSeconds   float64 `json:"retry_after_seconds"`
+			Kind              string  `json:"kind"`
+			RetryAfterSeconds float64 `json:"retry_after_seconds"`
 		} `json:"error"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &outer); err != nil {
