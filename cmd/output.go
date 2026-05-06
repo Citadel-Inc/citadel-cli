@@ -259,7 +259,7 @@ func newTabWriter(cmd *cobra.Command) *tabwriter.Writer {
 	return tabwriter.NewWriter(commandOut(cmd), 0, 0, 2, ' ', 0)
 }
 
-// emitOne centralises the single-object "json or human" dispatch used by
+// emitOne centralizes the single-object "json or human" dispatch used by
 // get / show / create / accept / etc. verbs. In json mode it emits v;
 // otherwise it calls human with a configured tabwriter and flushes.
 func emitOne[T any](cmd *cobra.Command, output string, v T, human func(w *tabwriter.Writer, v T)) error {

@@ -145,7 +145,7 @@ func TestRetryTransport_RetriesAfterBaseTransportError(t *testing.T) {
 	}
 }
 
-func TestSleepCtx_Cancelled(t *testing.T) {
+func TestSleepCtx_Canceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.test/", nil)

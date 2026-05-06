@@ -215,6 +215,15 @@ func httpErrorToCLI(he *apiclient.HTTPError) *CLIError {
 				Hint:       hint,
 			}
 		}
+		if he.StatusCode >= 400 {
+			return &CLIError{
+				Kind:       KindValidation,
+				Message:    fmt.Sprintf("request rejected by the server (HTTP %d)", he.StatusCode),
+				HTTPStatus: he.StatusCode,
+				Details:    curatedValidationDetails(he.Body),
+				Hint:       hint,
+			}
+		}
 	}
 	return nil
 }

@@ -193,6 +193,10 @@ func runAccountPasskeyDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	id := strings.TrimSpace(args[0])
+	if dryRunFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /account/passkeys/%s (skipped; --dry-run)\n", id)
+		return nil
+	}
 	path := "/account/passkeys/" + url.PathEscape(id)
 	if err := c.Delete(cmd.Context(), path); err != nil {
 		var he *apiclient.HTTPError
@@ -305,6 +309,10 @@ func runAccountDeviceRevoke(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	id := strings.TrimSpace(args[0])
+	if dryRunFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /auth/devices/%s (skipped; --dry-run)\n", id)
+		return nil
+	}
 	path := "/auth/devices/" + url.PathEscape(id)
 	if err := c.Delete(cmd.Context(), path); err != nil {
 		var he *apiclient.HTTPError
@@ -330,6 +338,7 @@ func init() {
 
 	addOutputFlag(accountPasskeyListCmd, accountDeviceListCmd)
 	addOutputFlag(accountPasskeyRenameCmd)
+	addDryRunFlag(accountPasskeyDeleteCmd, accountDeviceRevokeCmd)
 	accountPasskeyRenameCmd.Flags().String("name", "", "New display name (required)")
 	_ = accountPasskeyRenameCmd.MarkFlagRequired("name")
 }

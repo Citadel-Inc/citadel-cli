@@ -95,7 +95,7 @@ func terminalHTTP(err error) bool {
 	}
 }
 
-// Next blocks until one SSE event is decoded, the context is cancelled, or a
+// Next blocks until one SSE event is decoded, the context is canceled, or a
 // terminal server error is returned. Transient disconnects reconnect internally.
 func (s *Stream) Next() (Event, error) {
 	for {

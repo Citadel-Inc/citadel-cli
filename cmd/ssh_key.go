@@ -212,6 +212,10 @@ func runSSHKeyDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	id := strings.TrimSpace(args[0])
+	if dryRunFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /account/ssh-keys/%s (skipped; --dry-run)\n", id)
+		return nil
+	}
 	path := "/account/ssh-keys/" + url.PathEscape(id)
 	if err := c.Delete(cmd.Context(), path); err != nil {
 		var he *apiclient.HTTPError
@@ -241,6 +245,7 @@ func init() {
 	SSHKeyCmd.AddCommand(sshKeyDeleteCmd)
 
 	addOutputFlag(sshKeyListCmd, sshKeyAddCmd)
+	addDryRunFlag(sshKeyDeleteCmd)
 	sshKeyAddCmd.Flags().String("public-key", "", "Public key string (single line)")
 	sshKeyAddCmd.Flags().String("key-file", "", "Path to a .pub file; use - for stdin")
 	sshKeyAddCmd.Flags().String("label", "", "Optional human-readable label stored with the key")

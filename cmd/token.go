@@ -269,11 +269,14 @@ func runTokenRevoke(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	tokenID := args[0]
-
+	if dryRunFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /agent-tokens/%s (skipped; --dry-run)\n", tokenID)
+		return nil
+	}
 	if err := c.Delete(cmd.Context(), "/agent-tokens/"+url.PathEscape(tokenID)); err != nil {
 		return err
 	}
-	fmt.Printf("Token revoked: %s\n", tokenID)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Token revoked: %s\n", tokenID)
 	return nil
 }
 
@@ -304,6 +307,7 @@ func init() {
 	_ = issueCmd.MarkFlagRequired("agent")
 
 	revokeCmd.ValidArgsFunction = completeTokenIDs
+	addDryRunFlag(revokeCmd)
 
 	issueCmd.PostRun = func(cmd *cobra.Command, _ []string) {
 		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyAgentTokens)

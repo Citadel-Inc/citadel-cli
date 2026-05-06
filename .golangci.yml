@@ -4,6 +4,12 @@ run:
   timeout: 5m
 linters:
   default: standard
+  enable:
+    - ineffassign
+    - misspell
+    - unconvert
   settings:
     staticcheck:
       checks: ["all"]
+    misspell:
+      locale: US

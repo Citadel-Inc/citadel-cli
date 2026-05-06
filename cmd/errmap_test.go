@@ -180,11 +180,32 @@ func TestFriendlyError_HTTP404409412400(t *testing.T) {
 	}
 }
 
-func TestFriendlyError_HTTPUnknownPassesThrough(t *testing.T) {
+// TestFriendlyError_HTTPUnknown4xxMapsToValidation verifies that unrecognized
+// 4xx status codes (not handled by a dedicated case) are classified as
+// KindValidation rather than passing through as a raw HTTPError.
+func TestFriendlyError_HTTPUnknown4xxMapsToValidation(t *testing.T) {
 	in := &apiclient.HTTPError{StatusCode: 418, Body: "teapot"}
 	got := FriendlyError(in)
+	var ce *CLIError
+	if !errors.As(got, &ce) {
+		t.Fatalf("want *CLIError, got %T %v", got, got)
+	}
+	if ce.Kind != KindValidation {
+		t.Fatalf("want KindValidation, got %v", ce.Kind)
+	}
+	if ce.HTTPStatus != 418 {
+		t.Fatalf("want HTTPStatus 418, got %d", ce.HTTPStatus)
+	}
+}
+
+// TestFriendlyError_HTTP1xxPassesThrough verifies that non-error HTTP statuses
+// (1xx/2xx/3xx) that somehow surface as HTTPError still pass through unchanged
+// so errors.Is/errors.As on the original chain keep working.
+func TestFriendlyError_HTTP1xxPassesThrough(t *testing.T) {
+	in := &apiclient.HTTPError{StatusCode: 100, Body: "continue"}
+	got := FriendlyError(in)
 	if got != in {
-		t.Fatalf("want pass-through, got %T %v", got, got)
+		t.Fatalf("want pass-through for 1xx, got %T %v", got, got)
 	}
 }
 

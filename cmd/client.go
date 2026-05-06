@@ -29,6 +29,7 @@ func newAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
 		Server:     serverFlag(cmd),
 		Verbose:    verboseFlag(cmd),
 		DebugHTTP:  debugHTTPFlag(cmd),
+		UserAgent:  "citadel-cli/" + Version,
 		RetryOn401: rotateAccessTokenOn401Hook(cmd),
 	})
 }
@@ -52,6 +53,7 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 			Server:    serverFlag(cmd),
 			Verbose:   verboseFlag(cmd),
 			DebugHTTP: debugHTTPFlag(cmd),
+			UserAgent: "citadel-cli/" + Version,
 		})
 		if err != nil {
 			return "", err

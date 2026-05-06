@@ -1,5 +1,5 @@
 // Package apiclient is the Bearer-authenticated HTTP wrapper used by every
-// citadel-cli subcommand handler against the Citadel JSON API. It centralises
+// citadel-cli subcommand handler against the Citadel JSON API. It centralizes
 // the load-config / require-token / build-request / decode-or-error chain.
 //
 // Non-2xx responses surface as *HTTPError; handlers that need to branch on
@@ -78,10 +78,11 @@ func ParseRetryAfterSeconds(raw string) int {
 
 // Client is a thin Citadel-API client: server URL + bearer token + http.Client.
 type Client struct {
-	server      string
-	token       string
-	http        *http.Client
-	retryOn401  func(context.Context) (newAccessToken string, err error)
+	server     string
+	token      string
+	userAgent  string
+	http       *http.Client
+	retryOn401 func(context.Context) (newAccessToken string, err error)
 }
 
 // Options are the per-invocation knobs surfaced by root persistent flags.
@@ -91,10 +92,14 @@ type Client struct {
 // RetryOn401, when set, is invoked after a 401 response to obtain a new
 // bearer token; the original request is retried exactly once with the new
 // token. Used for agent-token rotation (see cmd rotate-on-401 wiring).
+//
+// UserAgent, when non-empty, is sent as the User-Agent header on every
+// request. Defaults to "citadel-cli" when empty.
 type Options struct {
 	Server     string
 	Verbose    bool
 	DebugHTTP  bool
+	UserAgent  string
 	RetryOn401 func(ctx context.Context) (newAccessToken string, err error)
 }
 
@@ -105,10 +110,15 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	if cfg.AccessToken == "" {
 		return nil, errors.New("not authenticated; run 'citadel-cli auth login' first")
 	}
+	ua := opts.UserAgent
+	if ua == "" {
+		ua = "citadel-cli"
+	}
 	rt := httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP})
 	return &Client{
 		server:     strings.TrimRight(cfg.ResolveServerURL(opts.Server), "/"),
 		token:      cfg.AccessToken,
+		userAgent:  ua,
 		http:       &http.Client{Timeout: defaultTimeout, Transport: rt},
 		retryOn401: opts.RetryOn401,
 	}, nil
@@ -156,6 +166,7 @@ func (c *Client) GetEventStream(ctx context.Context, path string, lastEventID st
 			return nil, fmt.Errorf("build request: %w", err)
 		}
 		req.Header.Set("Authorization", "Bearer "+c.token)
+		req.Header.Set("User-Agent", c.userAgent)
 		req.Header.Set("Accept", "text/event-stream")
 		req.Header.Set("Cache-Control", "no-cache")
 		if lastEventID != "" {
@@ -208,6 +219,7 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 			return fmt.Errorf("build request: %w", err)
 		}
 		req.Header.Set("Authorization", "Bearer "+c.token)
+		req.Header.Set("User-Agent", c.userAgent)
 		if body != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}
