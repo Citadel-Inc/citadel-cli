@@ -191,8 +191,8 @@ func runProjectEdgeAdd(cmd *cobra.Command, args []string) error {
 	attrStr, _ := cmd.Flags().GetString("attrs-json")
 	attrStr = strings.TrimSpace(attrStr)
 	var attrs json.RawMessage
-	switch {
-	case attrStr == "":
+	switch attrStr {
+	case "":
 		attrs = json.RawMessage([]byte("{}"))
 	default:
 		if !json.Valid([]byte(attrStr)) {
