@@ -29,6 +29,11 @@ Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --s
 	root.PersistentFlags().String("color", "auto", "Color output: auto|always|never (honors NO_COLOR)")
 	root.PersistentFlags().Bool("no-pager", false, "Do not pipe stdout through $PAGER (CITADEL_PAGER > GIT_PAGER > PAGER > less -FRX)")
 
+	root.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		maybeEagerMigrateLegacyJWT(cmd)
+		return nil
+	}
+
 	root.AddCommand(AuthCmd)
 	root.AddCommand(AccountCmd)
 	root.AddCommand(TokenCmd)

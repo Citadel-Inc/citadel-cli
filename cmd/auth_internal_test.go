@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -129,6 +131,76 @@ func TestBootstrapAgentToken_Happy(t *testing.T) {
 	}
 	if !cfg.ExpiresAt.Equal(exp) {
 		t.Errorf("ExpiresAt = %v want %v", cfg.ExpiresAt, exp)
+	}
+}
+
+func TestMaybeEagerMigrateLegacyJWT_RootExecute(t *testing.T) {
+	agentID := "20000000-0000-4000-8000-000000000002"
+	exp := time.Now().Add(90 * 24 * time.Hour).UTC()
+	var rotateHits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/agents":
+			_, _ = w.Write([]byte(`{"agents":[],"next_cursor":""}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/agents":
+			var body struct {
+				Name string `json:"name"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			_ = json.NewEncoder(w).Encode(map[string]string{"id": agentID, "name": body.Name})
+		case r.Method == http.MethodPost && r.URL.Path == "/agents/"+agentID+"/rotate-token":
+			rotateHits++
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":              "99999999-9999-9999-9999-999999999999",
+				"agent_id":        agentID,
+				"cleartext_token": "post-migrate-token",
+				"expires_at":      exp.Format(time.RFC3339Nano),
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	jwt := makeUnsignedJWT(t, jwt.MapClaims{
+		"sub": "33333333-3333-3333-3333-333333333333",
+		"exp": float64(time.Now().Add(time.Hour).Unix()),
+	})
+	cfgDir := filepath.Join(xdg, "citadel")
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	toml := "server_url = \"" + srv.URL + "\"\naccess_token = \"" + jwt + "\"\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	root := NewRootCmd()
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetArgs([]string{"agent", "list"})
+	root.SilenceUsage = true
+	root.SilenceErrors = true
+	if err := root.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	loaded, err := clicfg.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.AccessToken != "post-migrate-token" {
+		t.Fatalf("token not upgraded: %q", loaded.AccessToken)
+	}
+	if loaded.AgentID != agentID {
+		t.Fatalf("agent id %q", loaded.AgentID)
+	}
+	if rotateHits != 1 {
+		t.Fatalf("rotate hits = %d", rotateHits)
 	}
 }
 

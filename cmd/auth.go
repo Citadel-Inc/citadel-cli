@@ -30,6 +30,53 @@ import (
 // (Citadel-mediated authorize/token; see specs/active/cli-oauth-login).
 const oauthClientID = "citadel-cli"
 
+// maybeEagerMigrateLegacyJWT upgrades a JWT-only on-disk config (no agent_id)
+// to an agent token on CLI startup (ratified Q4 / tasks B2).
+func maybeEagerMigrateLegacyJWT(cmd *cobra.Command) {
+	if cmd == nil {
+		return
+	}
+	if cmd.Root() == nil || cmd.Root().Name() != "citadel-cli" {
+		return
+	}
+	path := cmd.CommandPath()
+	if strings.HasPrefix(path, "citadel-cli auth login") ||
+		strings.HasPrefix(path, "citadel-cli completion") ||
+		strings.HasPrefix(path, "citadel-cli man") {
+		return
+	}
+	cfg, err := clicfg.Load()
+	if err != nil {
+		return
+	}
+	if strings.TrimSpace(cfg.AccessToken) == "" || strings.TrimSpace(cfg.AgentID) != "" {
+		return
+	}
+	if strings.Count(cfg.AccessToken, ".") != 2 {
+		return
+	}
+	claims, err := claimsFromJWT(cfg.AccessToken)
+	if err != nil {
+		return
+	}
+	ctx := cmd.Context()
+	flagServer := serverFlag(cmd)
+	serverURL := cfg.ResolveServerURL(flagServer)
+	if err := bootstrapAgentToken(ctx, cmd, &cfg, serverURL, flagServer, cfg.AccessToken); err != nil {
+		if verboseFlag(cmd) {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli: JWT→agent migration: %v\n", err)
+		}
+		return
+	}
+	cfg.UserUUID = cmp.Or(strings.TrimSpace(cfg.UserUUID), userUUIDFromClaims(claims))
+	if strings.TrimSpace(cfg.ServerURL) == "" {
+		cfg.ServerURL = serverURL
+	}
+	if err := cfg.Save(); err != nil && verboseFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli: save after migration: %v\n", err)
+	}
+}
+
 var AuthCmd = &cobra.Command{
 	Use:   "auth",
 	Short: "Manage authentication (login, logout, status)",
