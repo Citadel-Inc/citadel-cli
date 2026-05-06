@@ -112,7 +112,7 @@ func TestSaveLoad_XDGBranch(t *testing.T) {
 func TestResolveServerURL_EmptyStored(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	c := Config{}
-	if got := c.ResolveServerURL(""); got != "https://api.src.land" {
+	if got := c.ResolveServerURL(""); got != "https://mcp.src.land" {
 		t.Fatalf("default fallback: got %q", got)
 	}
 }

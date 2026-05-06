@@ -133,10 +133,10 @@ func (c Config) Save() error {
 //  1. --server flag (passed as flagOverride; empty string = unset)
 //  2. CITADEL_SERVER env var
 //  3. stored config (c.ServerURL)
-//  4. default https://api.src.land
+//  4. default https://mcp.src.land
 //
 // Used by every subcommand that issues HTTP requests so the precedence
 // is consistent.
 func (c Config) ResolveServerURL(flagOverride string) string {
-	return cmp.Or(flagOverride, os.Getenv("CITADEL_SERVER"), c.ServerURL, "https://api.src.land")
+	return cmp.Or(flagOverride, os.Getenv("CITADEL_SERVER"), c.ServerURL, "https://mcp.src.land")
 }

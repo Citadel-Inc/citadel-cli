@@ -21,7 +21,7 @@ func TestSaveAndLoad(t *testing.T) {
 	}()
 
 	cfg := Config{
-		ServerURL:    "https://api.src.land",
+		ServerURL:    "https://mcp.src.land",
 		AccessToken:  "test_access_token",
 		RefreshToken: "test_refresh_token",
 		ExpiresAt:    time.Unix(1234567890, 0).UTC(),
@@ -149,7 +149,7 @@ func TestResolveServerURL(t *testing.T) {
 		t.Errorf("flag override, got %q", got)
 	}
 	t.Setenv("CITADEL_SERVER", "")
-	if got := (Config{}).ResolveServerURL(""); got != "https://api.src.land" {
+	if got := (Config{}).ResolveServerURL(""); got != "https://mcp.src.land" {
 		t.Errorf("default, got %q", got)
 	}
 }

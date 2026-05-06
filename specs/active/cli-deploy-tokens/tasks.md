@@ -21,5 +21,5 @@ Status: DRAFT
 
 ## P2
 
-- [ ] C1. [HUMAN] Live smoke: create and revoke a deploy token against `https://api.src.land`.
+- [ ] C1. [HUMAN] Live smoke: create and revoke a deploy token against the live production host (`https://mcp.src.land` as of 2026-05-06).
 - [ ] C2. Spec close.
