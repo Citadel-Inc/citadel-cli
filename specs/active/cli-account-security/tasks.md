@@ -1,6 +1,6 @@
 # Tasks — cli-account-security
 
-Status: DRAFT 050506ZMAY26
+Status: IN_PROGRESS 060455ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 

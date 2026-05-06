@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 050506ZMAY26 |
+| Status | IN_PROGRESS 060455ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Terminal parity for account security settings (passkeys, sessions/devices, MFA recovery) exposed by Citadel auth routes but absent from `citadel-cli`. |
@@ -70,9 +70,9 @@ All routes require JWT unless noted; many mutate flows wrap **`recentMFA`** (ste
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Ship Phase A only; defer WebAuthn enrol CLIs? | **Open** — **yes** until browser-less enrol exists. |
-| Q2 | MFA recovery output rules | **Open** — stderr banner + confirm prompt; **`NO_COLOR`** respected. |
-| Q3 | Device delete step-up: interactive WebAuthn impossible — document “run from logged-in browser session first” vs proxy cookie — **needs product answer**. |
+| Q1 | Ship Phase A only; defer WebAuthn enrol CLIs? | **Ratified 051430ZMAY26** — Phase A only for v1 (passkey list/delete/rename via PATCH; device list/revoke); defer WebAuthn begin/finish enrol CLIs until a browser-less enrol path exists. |
+| Q2 | MFA recovery output rules | **Ratified 051430ZMAY26** — MFA recovery output (Phase B): stderr banner + interactive confirm; honour **`NO_COLOR`**. |
+| Q3 | Device delete step-up: interactive WebAuthn impossible — document “run from logged-in browser session first” vs proxy cookie | **Ratified 051430ZMAY26** — Document that callers complete MFA step-up in a logged-in browser session before CLI device revoke; WebAuthn cannot be driven interactively in the terminal. |
 
 ## Acceptance
 
