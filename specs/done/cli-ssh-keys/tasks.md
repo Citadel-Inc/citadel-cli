@@ -1,6 +1,6 @@
 # Tasks — cli-ssh-keys
 
-Status: IN_PROGRESS 060441ZMAY26 — reopened — Normalize DONE summary: P1 B1 SSH key delete completion is now shipped.
+Status: DONE 060441ZMAY26 — SSH key surface complete: list/add/delete against /account/ssh-keys, private-key rejection, output modes, httptest coverage, docs/cli.md, live opt-in list test, and shell tab completion for delete UUIDs via cached GET /account/ssh-keys (KeySSHKeys) with PostRun invalidation after add/delete.
 
 ## P0
 
