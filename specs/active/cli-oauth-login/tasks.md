@@ -2,7 +2,7 @@
 
 Status: DRAFT 075800ZMAY26
 
-Blocked by: `citadel/specs/active/go-cli-oauth-provider/` P0 + P1 (server endpoints + handoff page must exist before A1 can be tested end-to-end).
+**Companion daemon:** `go-cli-oauth-provider` is **DONE** (`citadel/specs/done/go-cli-oauth-provider/`, 060608ZMAY26); P0+P1 shipped (authorize/token, handoff, consent). CLI work is no longer blocked on that spec.
 
 ## P0
 
@@ -13,7 +13,7 @@ Blocked by: `citadel/specs/active/go-cli-oauth-provider/` P0 + P1 (server endpoi
 ## P1
 
 - [ ] B1. Refresh handling: on 401 from any verb, attempt one rotate-token round trip. If still 401, surface friendly "session expired" error.
-- [ ] B2. `clicfg.Config` extension: add `AgentID`, `AgentName` fields alongside `AccessToken`. Migration: a config with only `access_token` continues to work; first 401 re-prompts.
+- [ ] B2. `clicfg.Config` extension: add `AgentID`, `AgentName` fields alongside `AccessToken`. Migration: a config with only `access_token` (JWT, no `agent_id`) is upgraded eagerly on next CLI launch (find-or-create + rotate-token), not deferred to first 401.
 - [ ] B3. `auth status` rewrite to show agent name + ID + expiry first; user UUID retained as cross-reference.
 - [ ] B4. `auth set-token` doc string update: explicitly call out as the headless / CI / SSH-only bypass.
 - [ ] B5. Tests: rewrite handler-test fixtures for the new auth flow; add a `TestRunLogin_FlowSmoke` that pumps a fake Citadel server (httptest) end-to-end.

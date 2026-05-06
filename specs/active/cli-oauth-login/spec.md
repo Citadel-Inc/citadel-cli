@@ -5,7 +5,7 @@
 | Status | DRAFT 075800ZMAY26 |
 | Authored | 075800ZMAY26 |
 | Owner | Bastion (J-3) |
-| Carry-forward from | `citadel-cli@4996580` (2026-05-05) flagged `loginCmd` as EXPERIMENTAL pending a productised auth flow. Server-side counterpart: `citadel/specs/active/go-cli-oauth-provider/`. |
+| Carry-forward from | `citadel-cli@4996580` (2026-05-05) flagged `loginCmd` as EXPERIMENTAL pending a productised auth flow. Server-side counterpart: `citadel/specs/done/go-cli-oauth-provider/` (DONE 060608ZMAY26). |
 
 ## Why
 
@@ -23,7 +23,7 @@ End-to-end success: `citadel-cli auth login`, browser flow, return to terminal. 
 - **Status semantics**: `auth status` should show the bound agent ID + agent name (instead of, or in addition to, the user UUID). The user UUID is no longer the durable identity from the CLI's point of view.
 - **Drop EXPERIMENTAL warning** from `loginCmd --help` once the path is wired end-to-end against a real server.
 - **`auth set-token` retained** as the headless / CI bypass. Documented as the intended path for non-interactive bootstraps.
-- **Migration of existing configs**: a config file with only `access_token` (a JWT) and no agent token continues to work for one expiry cycle. On the first 401 the CLI prompts for `auth login` and rolls forward to the agent-token shape.
+- **Migration of existing configs**: a config file with only `access_token` (a JWT) and no agent token continues to work for one expiry cycle. On the next CLI launch after upgrade, the CLI eagerly performs find-or-create + `rotate-token` and rewrites config to the agent-token shape (no need to wait for a 401).
 
 ## Out of scope
 
@@ -37,10 +37,10 @@ End-to-end success: `citadel-cli auth login`, browser flow, return to terminal. 
 | Q | Proposal | Status |
 |---|----------|--------|
 | Q1 | Store the Supabase JWT or the post-mint agent token? | **Ratified** — agent token only; JWT discarded after mint. (User decision 2026-05-05.) |
-| Q2 | Agent-name format: `citadel-cli@<hostname>` vs. `citadel-cli-<random>`? | **Open** — hostname (per-machine revocation legibility) unless hostname privacy concerns surface. |
-| Q3 | What does `auth status` show — bound agent or bound user UUID? | **Open** — both: agent name + ID first, user UUID below for cross-reference. |
-| Q4 | Migration: re-prompt on first 401, or eagerly mint on next launch after upgrade? | **Open** — re-prompt; lazy is simpler and avoids a forced round trip on plain CLI use. |
-| Q5 | `runLogin` listener port range — fully ephemeral vs. fixed range (e.g., 53682–53700)? | **Open** — fully ephemeral; OAuth 2.1 §10.3.1 explicitly allows it. |
+| Q2 | Agent-name format: `citadel-cli@<hostname>` vs. `citadel-cli-<random>`? | **Ratified 061430ZMAY26** — `citadel-cli@<hostname>` for per-machine revocation legibility (NOMAD). |
+| Q3 | What does `auth status` show — bound agent or bound user UUID? | **Ratified 061430ZMAY26** — Agent name + ID + expiry first; user UUID retained below for cross-reference (NOMAD). |
+| Q4 | Migration: re-prompt on first 401, or eagerly mint on next launch after upgrade? | **Ratified 061430ZMAY26** — Eager: on next CLI launch after upgrade, JWT-only configs mint the agent token before ordinary API traffic (NOMAD). |
+| Q5 | `runLogin` listener port range — fully ephemeral vs. fixed range (e.g., 53682–53700)? | **Ratified 061430ZMAY26** — Fully ephemeral kernel-assigned port; OAuth 2.1 allows it (NOMAD). |
 
 ## Acceptance
 

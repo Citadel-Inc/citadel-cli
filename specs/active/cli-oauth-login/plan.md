@@ -48,7 +48,7 @@
 `internal/clicfg/clicfg.go`:
 
 - Add `AgentID uuid.UUID`, `AgentName string` fields alongside the existing `AccessToken` etc.
-- Migration is silent: an old config without those fields decodes fine; the next successful `auth login` writes them. A config with `AccessToken` and no `AgentID` is treated as "JWT-mode legacy" — the first 401 re-prompts.
+- Migration is silent: an old config without those fields decodes fine; the next successful `auth login` writes them. A config with `AccessToken` and no `AgentID` is treated as "JWT-mode legacy" — on the next CLI launch after upgrade, eagerly run find-or-create + `rotate-token` and rewrite config (per ratified Q4), without waiting for 401.
 
 `internal/apiclient/client.go`:
 
@@ -59,7 +59,7 @@
 - **Listener port collision** in restricted environments. OAuth 2.1 explicitly allows ephemeral; if a corp firewall blocks loopback (rare), `auth set-token` is the documented escape hatch.
 - **Hostname leak via agent name.** Q2: `citadel-cli@<hostname>` makes per-machine revocation legible but exposes machine names in the agent list. Mitigation: optional `--agent-name <custom>` flag on `auth login` for users who care.
 - **Browser session-bridge UX**: if the user is not logged into the web app, the handoff redirect chain bounces them through `/login` first. Should still work, but the UX is "login twice" the first time. Document this in README.
-- **Pre-existing JWT mode**: configs from set-token won't have `AgentID`. `auth login` overwrites cleanly; the lazy migration is fine.
+- **Pre-existing JWT mode**: configs from set-token won't have `AgentID`. `auth login` overwrites cleanly; eager launch-time migration covers legacy JWT-only configs.
 
 ## Estimated delta
 
