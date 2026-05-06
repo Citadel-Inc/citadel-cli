@@ -59,6 +59,16 @@ func TestCSVHeaders_matchREADMEFrozenContract(t *testing.T) {
 			want: []string{"id", "fingerprint", "public_key", "label", "created_at"},
 		},
 		{
+			name: "account passkey list",
+			got:  (passkeyRow{}).CSVHeader(),
+			want: []string{"id", "name", "created_at"},
+		},
+		{
+			name: "account device list",
+			got:  (deviceRow{}).CSVHeader(),
+			want: []string{"id", "name", "user_agent", "last_seen_at", "created_at"},
+		},
+		{
 			name: "org invitation list/pending",
 			got:  (orgInvitationRow{}).CSVHeader(),
 			want: []string{"id", "org_slug", "email", "user_slug", "status", "permissions", "created_at", "expires_at"},
@@ -120,6 +130,12 @@ func TestCSVRecord_columnCountMatchesHeader(t *testing.T) {
 
 	sk := sshKeyRow{ID: "k", Fingerprint: "f", PublicKey: "p", CreatedAt: now}
 	check(t, "ssh-key", sk.CSVHeader(), sk.CSVRecord())
+
+	pk := passkeyRow{ID: "p", Name: "n", CreatedAt: now}
+	check(t, "account passkey", pk.CSVHeader(), pk.CSVRecord())
+
+	dv := deviceRow{ID: "d", Name: "n", UserAgent: "ua", LastSeenAt: now, CreatedAt: now}
+	check(t, "account device", dv.CSVHeader(), dv.CSVRecord())
 
 	inv := orgInvitationRow{ID: "i", CreatedAt: now}
 	check(t, "invitation", inv.CSVHeader(), inv.CSVRecord())

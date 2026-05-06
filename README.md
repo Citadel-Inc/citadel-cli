@@ -43,6 +43,8 @@ Machine-readable list output uses `--output json|yaml|ndjson|csv|table` (default
 | `namespace members` | user_id, email, slug, display_name, is_owner, permissions, joined_at |
 | `namespace transfer list-pending` | id, org_namespace_id, org_slug, org_name, from_user_id, from_user_slug, to_user_id, to_user_slug, expires_at, created_at |
 | `ssh-key list` | id, fingerprint, public_key, label, created_at |
+| `account passkey list` | id, name, created_at |
+| `account device list` | id, name, user_agent, last_seen_at, created_at |
 | `org invitation list` / `org invitation list-pending` | id, org_slug, email, user_slug, status, permissions, created_at, expires_at |
 | `audit list` | id, ts, kind, actor_slug, actor_id, namespace_slug, namespace_id, subject_id, actor_type |
 | `audit sessions list` | session_id, id, actor_slug, actor_id, actor_type, namespace_slug, namespace_id, started_at, last_event_at, event_count |

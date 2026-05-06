@@ -30,6 +30,7 @@ Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --s
 	root.PersistentFlags().Bool("no-pager", false, "Do not pipe stdout through $PAGER (CITADEL_PAGER > GIT_PAGER > PAGER > less -FRX)")
 
 	root.AddCommand(AuthCmd)
+	root.AddCommand(AccountCmd)
 	root.AddCommand(TokenCmd)
 	root.AddCommand(McpCmd)
 	root.AddCommand(KgCmd)

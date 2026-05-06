@@ -208,6 +208,28 @@ func TestClient_ServerAndToken(t *testing.T) {
 	}
 }
 
+func TestClient_PatchSendsJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			t.Errorf("method = %s", r.Method)
+		}
+		var body struct{ Name string }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Name != "x" {
+			t.Errorf("got %q", body.Name)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	if err := c.Patch(context.Background(), "/things/1", map[string]string{"name": "x"}, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestClient_PutSendsJSON(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
