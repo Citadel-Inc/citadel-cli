@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 060535ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 060535ZMAY26 — Shipped top-level `citadel-cli search` with JWT-only GET /api/search, default scope=namespaces, --public for scope=all, httptest coverage for query_too_short/invalid_scope/invalid_limit, optional CITADEL_TEST_SEARCH_LIVE=1, and docs/cli.md QoS framing. |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Discovery gap: dashboard Cmd-K search exists server-side (`internal/api/searchapi`) but CLI cannot drive it. |

@@ -6,7 +6,6 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-global-search | IN_PROGRESS | 060535ZMAY26 | Bastion (J-3) |
 | cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
 | cli-projectgraph | DRAFT | 050506ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
@@ -17,6 +16,7 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-global-search | 060535ZMAY26 | Shipped top-level `citadel-cli search` with JWT-only GET /api/search, default scope=namespaces, --public for scope=all, httptest coverage for query_too_short/invalid_scope/invalid_limit, optional CITADEL_TEST_SEARCH_LIVE=1, and docs/cli.md QoS framing. |
 | cli-kg-extended | 060504ZMAY26 | Shipped extended KG HTTP verbs (search, symbols, files, walk, fulltext, diff); migrated kg impact + symbol resolution to /api/namespaces/{slug}/kg/*; added httptest (401/404/429), docs/cli.md section, plan appendix, and opt-in live test. P1 pagination/table polish remains open. |
 | cli-account-security | 060459ZMAY26 | Phase A delivered: account passkey list/rename/delete, device list/revoke, PATCH client support, httptest + opt-in live tests (CITADEL_TEST_ACCOUNT_SECURITY_LIVE), docs and CSV contracts. Phase B MFA recovery verbs intentionally deferred (P1 B1 remains open). |
 | cli-ssh-keys | 060441ZMAY26 | SSH key surface complete: list/add/delete against /account/ssh-keys, private-key rejection, output modes, httptest coverage, docs/cli.md, live opt-in list test, and shell tab completion for delete UUIDs via cached GET /account/ssh-keys (KeySSHKeys) with PostRun invalidation after add/delete. |
@@ -43,4 +43,5 @@
 |------|-----|------|
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
+
 
