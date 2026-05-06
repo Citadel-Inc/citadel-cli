@@ -21,8 +21,11 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      - name: Verify
+        run: make verify
+
       - name: Build CLI (cross-compile)
-        run: make build-all
+        run: make build-all VERSION=${{ github.ref_name }}
 
       - name: Generate SHA256SUMS
         run: |

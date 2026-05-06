@@ -4,6 +4,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Version is set at build time via -ldflags. Local/source builds default to
+// "dev" so `citadel-cli --version` still returns a useful non-empty value.
+var Version = "dev"
+
 // NewRootCmd builds the citadel-cli cobra root with every subcommand and the
 // persistent flags that handlers expect. Mirrors main wiring so integration
 // tests and shell completion exercise the same tree as the binary.
@@ -15,7 +19,7 @@ func NewRootCmd() *cobra.Command {
 and MCP tool interactions against the Citadel server (the server binary is "citadel", cmd/citadel).
 
 Server URL defaults to https://api.src.land; override with CITADEL_SERVER or --server.`,
-		Version: "0.0.1-alpha",
+		Version: Version,
 		// Did-you-mean: cobra emits "Did you mean ...?" hints on unknown
 		// subcommand. Distance 2 catches typos like `rpo` → `repo` while
 		// staying tight enough to avoid noise on genuinely-new verbs.
