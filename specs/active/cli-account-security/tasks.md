@@ -16,5 +16,5 @@ Status: IN_PROGRESS 060455ZMAY26 — Bastion (J-3) claims execution
 
 ## P2
 
-- [ ] C1. Env-gated live tests per verb family.
-- [ ] C2. Spec close.
+- [x] C1. Env-gated live tests per verb family.
+- [x] C2. Spec close.
