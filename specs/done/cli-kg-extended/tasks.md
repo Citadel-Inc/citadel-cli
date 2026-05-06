@@ -1,6 +1,6 @@
 # Tasks — cli-kg-extended
 
-Status: IN_PROGRESS 060503ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 060504ZMAY26 — Shipped extended KG HTTP verbs (search, symbols, files, walk, fulltext, diff); migrated kg impact + symbol resolution to /api/namespaces/{slug}/kg/*; added httptest (401/404/429), docs/cli.md section, plan appendix, and opt-in live test. P1 pagination/table polish remains open.
 
 ## P0
 

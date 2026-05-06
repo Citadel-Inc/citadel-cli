@@ -8,7 +8,6 @@
 |------|-------|-----|-------|
 | cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
 | cli-global-search | DRAFT | 050506ZMAY26 | Bastion (J-3) |
-| cli-kg-extended | DRAFT | 050506ZMAY26 | Bastion (J-3) |
 | cli-projectgraph | DRAFT | 050506ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
 
@@ -18,6 +17,7 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-kg-extended | 060504ZMAY26 | Shipped extended KG HTTP verbs (search, symbols, files, walk, fulltext, diff); migrated kg impact + symbol resolution to /api/namespaces/{slug}/kg/*; added httptest (401/404/429), docs/cli.md section, plan appendix, and opt-in live test. P1 pagination/table polish remains open. |
 | cli-account-security | 060459ZMAY26 | Phase A delivered: account passkey list/rename/delete, device list/revoke, PATCH client support, httptest + opt-in live tests (CITADEL_TEST_ACCOUNT_SECURITY_LIVE), docs and CSV contracts. Phase B MFA recovery verbs intentionally deferred (P1 B1 remains open). |
 | cli-ssh-keys | 060441ZMAY26 | SSH key surface complete: list/add/delete against /account/ssh-keys, private-key rejection, output modes, httptest coverage, docs/cli.md, live opt-in list test, and shell tab completion for delete UUIDs via cached GET /account/ssh-keys (KeySSHKeys) with PostRun invalidation after add/delete. |
 | cli-audit-sessions | 052320ZMAY26 | Added `citadel-cli audit sessions list` and `audit sessions show` backed by `/audit/sessions` with required namespace (`--ns` or `--namespace`/`-n`), `since`/limit/offset pagination (no cursor), output formats on list, JSON/YAML/table passthrough on show, CSV projection types, httptest coverage for client and server `ns_required`/`invalid_since`/404 paths and minimal drill-down JSON without operator-console fields, user docs + plan appendix, and opt-in live list behind `CITADEL_TEST_AUDIT_SESSIONS_LIVE` + `CITADEL_TEST_AUDIT_SESSIONS_NS`. P1 B1 (cross-link cli-audit retrospective) left open until sibling directory lands under specs/done. |

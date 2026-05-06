@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 060503ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 060504ZMAY26 — Shipped extended KG HTTP verbs (search, symbols, files, walk, fulltext, diff); migrated kg impact + symbol resolution to /api/namespaces/{slug}/kg/*; added httptest (401/404/429), docs/cli.md section, plan appendix, and opt-in live test. P1 pagination/table polish remains open. |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 gap analysis: `citadel-cli kg impact` (+ symbol resolution via `/…/symbols`) covers impact analysis only; `internal/api/kgapi` exposes broader read APIs documented in `citadel/docs/architecture.md` and `go-kg-query` specs. |
