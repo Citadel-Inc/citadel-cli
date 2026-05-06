@@ -69,16 +69,23 @@ func TestFriendlyError_EOFConnectionCut(t *testing.T) {
 }
 
 func TestKindToExitCode(t *testing.T) {
+	// Full matrix for CLIErrorKind — stable contract for scripts (`--output json` + exit codes).
 	cases := []struct {
 		k    CLIErrorKind
 		want int
 	}{
 		{KindInternal, 1},
+		{KindDryRun, 2},
 		{KindValidation, 2},
 		{KindAuthRequired, 3},
+		{KindMFARequired, 3},
+		{KindForbidden, 3},
 		{KindNotFound, 4},
 		{KindConflict, 5},
 		{KindRateLimited, 6},
+		{KindServerUnavailable, 7},
+		{KindServerError, 7},
+		{KindTimeout, 7},
 		{KindNetwork, 7},
 	}
 	for _, tc := range cases {

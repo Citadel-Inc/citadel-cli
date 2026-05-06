@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
@@ -276,5 +277,55 @@ func TestRunWriters_RepoNotFound_JSONEnvelope(t *testing.T) {
 	}
 	if !strings.Contains(outer.Error.Message, "not found") {
 		t.Fatalf("message=%q", outer.Error.Message)
+	}
+}
+
+// GET repo list uses the idempotent retry stack; three consecutive 429s exhaust retries,
+// surfacing the last response (including Retry-After) to the JSON error envelope.
+func TestRunWriters_RepoList_JSON429_RetryAfterOnFinalResponse(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/namespaces/myorg/repos" || r.Method != http.MethodGet {
+			http.NotFound(w, r)
+			return
+		}
+		n := calls.Add(1)
+		if n < 3 {
+			w.Header().Set("Retry-After", "0")
+		} else {
+			w.Header().Set("Retry-After", "77")
+		}
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	var stdout, stderr bytes.Buffer
+	code := runWriters([]string{"repo", "list", "--namespace", "myorg", "--output", "json"}, &stdout, &stderr)
+	if code != 6 {
+		t.Fatalf("exit=%d want 6 (rate_limited) stderr=%q stdout=%q", code, stderr.String(), stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr=%q want empty for json envelope path", stderr.String())
+	}
+	var outer struct {
+		Error struct {
+			Kind                string  `json:"kind"`
+			RetryAfterSeconds   float64 `json:"retry_after_seconds"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &outer); err != nil {
+		t.Fatalf("stdout=%q: %v", stdout.String(), err)
+	}
+	if outer.Error.Kind != "rate_limited" {
+		t.Fatalf("kind=%q stdout=%s", outer.Error.Kind, stdout.String())
+	}
+	if int(outer.Error.RetryAfterSeconds) != 77 {
+		t.Fatalf("retry_after_seconds=%v want 77 stdout=%s", outer.Error.RetryAfterSeconds, stdout.String())
+	}
+	if calls.Load() != 3 {
+		t.Fatalf("server calls=%d want 3", calls.Load())
 	}
 }
