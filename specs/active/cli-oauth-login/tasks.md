@@ -6,7 +6,7 @@ Status: DRAFT 075800ZMAY26
 
 ## P0
 
-- [ ] [HUMAN] NOMAD ratifies Q-table (Q2-Q5).
+- [x] [HUMAN] NOMAD ratifies Q-table (Q2-Q5).
 - [ ] A1. Rewrite `runLogin` in `cmd/auth.go` to POST against Citadel `/api/oauth/authorize` + `/api/oauth/token` with PKCE. Hardcoded `client_id=citadel-cli`. Loopback `http://127.0.0.1:N/callback`.
 - [ ] A2. Post-auth agent-token bootstrap: find-or-create `citadel-cli@<hostname>` via `/api/agents`, then `/api/agents/{id}/rotate-token`. Persist the agent token; drop the JWT.
 
