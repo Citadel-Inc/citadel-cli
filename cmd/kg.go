@@ -15,18 +15,19 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 )
 
-// KgCmd is the parent for `citadel-cli kg ...`. Talks to the JWT-gated
+// KgCmd is the parent for `citadel-cli kg ...`. Talks to the authenticated
 // /api/kg/{slug}/* endpoints via internal/apiclient.
 var KgCmd = &cobra.Command{
 	Use:   "kg",
 	Short: "Knowledge-graph queries (search, symbols, impact, …)",
-	Long: `Commands for querying the Citadel knowledge-graph JSON API (JWT-gated).
+	Long: `Commands for querying the Citadel knowledge-graph JSON API.
 
 Use kg search for cross-namespace fulltext; namespace-scoped verbs (symbols, files,
 walk, fulltext, diff, impact) resolve repository context from -R / CITADEL_REPO /
 git origin unless you pass an explicit namespace/repo prefix.
 
-Authentication uses your Supabase JWT from 'citadel-cli auth login'.`,
+Authentication uses your saved Citadel CLI session from 'citadel-cli auth login'
+(normally an opaque agent token).`,
 }
 
 var kgImpactCmd = &cobra.Command{

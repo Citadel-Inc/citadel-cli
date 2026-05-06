@@ -1,6 +1,6 @@
 # Citadel CLI — Installation and usage
 
-The **`citadel-cli`** binary is the command-line **client** for authentication, agent tokens, and MCP tool calls against the Citadel **server**. The server binary lives in the [Rethunk-Tech/citadel](https://github.com/Rethunk-Tech/citadel) repository and is named **`citadel`** (HTTP, SSH, MCP); do not confuse the two names on disk. All CLI commands authenticate via Supabase Auth (OAuth/PKCE) and store credentials locally in `~/.config/citadel/config.toml` (mode 0600).
+The **`citadel-cli`** binary is the command-line **client** for authentication, agent tokens, and MCP tool calls against the Citadel **server**. The server binary lives in the [Rethunk-Tech/citadel](https://github.com/Rethunk-Tech/citadel) repository and is named **`citadel`** (HTTP, SSH, MCP); do not confuse the two names on disk. The browser login flow brokers through Citadel's OAuth 2.1 endpoints, then stores a Citadel-issued **agent token** locally in `~/.config/citadel/config.toml` (mode 0600).
 
 ## Installation
 
@@ -34,9 +34,9 @@ Pre-built binaries for linux-amd64, linux-arm64, and darwin-arm64 are published 
 citadel-cli auth login
 ```
 
-This opens your default browser to Supabase's OAuth authorization endpoint. After you authenticate (GitHub or your configured provider), the browser redirects to a local loopback server running on your machine, which exchanges the authorization code for an access token and refresh token. Both are stored in `~/.config/citadel/config.toml` (mode 0600).
+This opens your default browser to Citadel's OAuth authorization endpoint (`/api/oauth/authorize`). After you authenticate, the browser redirects to a local loopback server running on your machine; the CLI exchanges the authorization code against `/api/oauth/token`, then immediately mints and stores a long-lived Citadel **agent token** for `citadel-cli@<hostname>`. The short-lived OAuth JWT is discarded after bootstrap.
 
-The CLI defaults to server URL `https://api.src.land`; if your server is at a different URL, set the `CITADEL_SERVER` environment variable or edit the config file directly (key: `server_url`).
+The CLI defaults to server URL `https://mcp.src.land`; if your server is at a different URL, set the `CITADEL_SERVER` environment variable or edit the config file directly (key: `server_url`).
 
 ### Headless / CI bootstrap
 
@@ -59,7 +59,7 @@ environments where `citadel-cli auth login` is unavailable.
 citadel-cli auth status
 ```
 
-Prints the authenticated user UUID, access token expiry time, and configured server URL. If not authenticated, prints "not authenticated" and exits 0.
+Prints the bound agent name + id, token expiry time, authenticated user UUID when known, and configured server URL. If not authenticated, prints "not authenticated" and exits 0.
 
 ### Logout
 
@@ -77,7 +77,7 @@ Generate scripts for your shell (bash, zsh, fish, or PowerShell):
 citadel-cli completion bash   # often: source <(citadel-cli completion bash)
 ```
 
-Dynamic completion for resource arguments (repos, namespaces, agents, OAuth clients, tokens) uses your stored access token to query list endpoints. Cache layout, TTL, and the `CITADEL_NO_COMPLETION_CACHE` bypass are described under **Configuration** in the repo’s [HUMANS.md](../HUMANS.md#configuration) (not duplicated here).
+Dynamic completion for resource arguments (repos, namespaces, agents, OAuth clients, tokens) uses your stored bearer session to query list endpoints. Cache layout, TTL, and the `CITADEL_NO_COMPLETION_CACHE` bypass are described under **Configuration** in the repo’s [HUMANS.md](../HUMANS.md#configuration) (not duplicated here).
 
 ## Daily commands
 
@@ -287,7 +287,7 @@ Opt-in: set **`CITADEL_TEST_ACCOUNT_SECURITY_LIVE=1`** with **`CITADEL_ACCESS_TO
 
 ## Knowledge graph (HTTP)
 
-Query the Citadel **knowledge-graph REST API** (`kgapi`) with your JWT. Commands follow **`cli-cwd-context`**: pass **`-R namespace/repo`**, set **`CITADEL_REPO`**, or rely on **`git remote origin`** when the remote host is recognised.
+Query the Citadel **knowledge-graph REST API** (`kgapi`) with your saved session bearer (normally the agent token minted by `auth login`). Commands follow **`cli-cwd-context`**: pass **`-R namespace/repo`**, set **`CITADEL_REPO`**, or rely on **`git remote origin`** when the remote host is recognised.
 
 ### Cross-namespace search
 
@@ -343,7 +343,7 @@ Opt-in: **`CITADEL_TEST_AUDIT_SESSIONS_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`**
 
 ## Server URL configuration
 
-The CLI defaults to `https://api.src.land`. Override it via:
+The CLI defaults to `https://mcp.src.land`. Override it via:
 
 1. **`--server` flag** (highest precedence; persistent on the root command).
 2. **Environment variable**: `CITADEL_SERVER`.
@@ -361,7 +361,7 @@ citadel-cli token list --agent my-app
 
 The `citadel-cli mcp` group speaks the [Streamable HTTP MCP protocol](https://modelcontextprotocol.io/specification/2025-11-25/server) against the Citadel MCP server. The server URL defaults to `https://mcp.src.land/mcp` (resolved from `--server` / `CITADEL_SERVER`; `api.src.land` is auto-swapped to `mcp.src.land`).
 
-Authentication uses your **Supabase JWT** from `citadel-cli auth login` by default. Override with `--token` or `CITADEL_AGENT_TOKEN` for agent / CI workflows — both work because the MCP server's bearer-validator tries JWTs first and falls through to opaque agent tokens.
+Authentication uses your saved Citadel CLI session by default (typically an opaque **agent token** minted by `citadel-cli auth login`). Override with `--token` or `CITADEL_AGENT_TOKEN` for explicit agent / CI workflows; the server accepts both OAuth JWTs and opaque agent tokens where the route supports them.
 
 ### List tools
 
@@ -411,7 +411,7 @@ Edge cases that fall through to string: `.5`, `5.`, `1.2.3`, anything with non-d
 ### Flags
 
 - `--server <url>` (root, persistent) — override server URL.
-- `--token <bearer>` (mcp group, persistent) — override default JWT.
+- `--token <bearer>` (mcp group, persistent) — override the stored session bearer.
 - `--timeout <secs>` (mcp group, persistent) — per-call HTTP timeout (default 60).
 - `--arg key=value` (call) — repeatable; coerced.
 - `--arg-string key=value` (call) — repeatable; raw string.
@@ -442,7 +442,7 @@ Below, treat **`<tool>`** as a name from that list. Argument shapes mirror the P
 | Resolve namespace / org | `citadel-cli mcp call <tool> --arg path=<slug>` — typical discovery tool (historically `get_namespace`; confirm via `mcp tools`). |
 | Knowledge graph | Tools such as **`kg_find_symbol`**, **`kg_list_files`**, **`kg_walk`** (examples; verify list). Pass repo/namespace args your server’s schema expects, often `--arg namespace_path=…` or `--arg-string` for opaque IDs. |
 | Project-as-graph | Project tools accept **`project_path`** or **`namespace_path`**-style args per server registration — use `--json` when responses are large. |
-| Issues | When issue MCP tools are enabled, use **`issue.list` / `issue.get`**-style names from `mcp tools` (not yet mirrored by dedicated `citadel-cli issue` verbs — see spec **`cli-issue-pr`**). |
+| Issues | When issue MCP tools are enabled, use **`issue_*`** names from `mcp tools` (for example `issue_list`, `issue_get`, `issue_comment`) until first-class CLI issue verbs land; tracked under active spec **`cli-issues`**. |
 | Audit | **`audit.list`** / session tools — align filters (`namespace_path`, `since`) with MCP schema; parity with `citadel-cli audit list` when both exist. |
 | SSH keys | **`key.list` / `key.add` / `key.delete`** per appendix K — same semantics as future `citadel-cli ssh-key` REST wrappers. |
 
@@ -459,7 +459,7 @@ citadel-cli mcp call get_namespace --arg path=Rethunk-Tech --json
 citadel-cli mcp --token "$CITADEL_AGENT_TOKEN" tools
 ```
 
-**REST parity:** Most MCP tools have equivalent **`GET/POST /api/...`** handlers on the Citadel API host (`api.src.land`). Prefer MCP for agent-shaped workflows; prefer **`citadel-cli <verb>`** when we ship first-class commands (repos, namespaces, audit events) — fewer typed arguments to assemble by hand.
+**REST parity:** Today the live production CLI/API surface is exposed from `mcp.src.land` as well as `/mcp`; older `api.src.land` examples are stale for OAuth, agent, search, audit, and OAuth-client routes. Prefer MCP for agent-shaped workflows; prefer **`citadel-cli <verb>`** when we ship first-class commands (repos, namespaces, audit events) — fewer typed arguments to assemble by hand.
 
 ### Auth failures
 
@@ -469,7 +469,7 @@ A 401 / `-32001 unauthorized` from the server prints:
 unauthorized: run `citadel-cli auth login` to refresh your session, or pass --token / set CITADEL_AGENT_TOKEN
 ```
 
-The CLI does **not** auto-refresh tokens. Re-authenticate explicitly.
+The CLI retries once on **401** by rotating the stored agent token when it has an agent binding. If that one-shot refresh also fails, re-authenticate explicitly.
 
 ## Agent token semantics
 

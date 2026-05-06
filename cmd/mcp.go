@@ -23,19 +23,19 @@ var ErrToolCallFailed = errors.New("tool call returned isError")
 // McpCmd is the parent for `citadel-cli mcp ...`. Speaks the MCP Streamable
 // HTTP protocol against /mcp.
 //
-// Authentication: defaults to cfg.AccessToken (Supabase JWT from
-// `citadel-cli auth login`). Override with --token or CITADEL_AGENT_TOKEN
-// for agent / CI use. The MCP server's verifyBearer (per go-mcp-oauth
-// A2) tries JWT first then falls through to agent_tokens, so either
-// works at the resource-server boundary.
+// Authentication: defaults to cfg.AccessToken (normally the opaque agent token
+// minted by `citadel-cli auth login`). Override with --token or
+// CITADEL_AGENT_TOKEN for agent / CI use. The MCP server accepts both OAuth
+// JWTs and opaque agent tokens where the route supports them.
 var McpCmd = &cobra.Command{
 	Use:   "mcp",
 	Short: "Interact with MCP tools, resources, and prompts",
 	Long: `Commands for listing MCP tools, resources, and prompts and invoking
 tool / resource / prompt RPCs via the Citadel MCP server.
 
-Authentication defaults to your Supabase JWT from 'citadel-cli auth login'.
-Override with --token or CITADEL_AGENT_TOKEN for agent / CI workflows.`,
+Authentication defaults to your saved Citadel CLI session from 'citadel-cli auth
+login' (normally an opaque agent token). Override with --token or
+CITADEL_AGENT_TOKEN for explicit agent / CI workflows.`,
 }
 
 var toolsCmd = &cobra.Command{
