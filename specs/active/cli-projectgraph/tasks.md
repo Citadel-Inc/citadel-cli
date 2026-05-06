@@ -19,4 +19,4 @@ Status: IN_PROGRESS 060539ZMAY26 — Bastion (J-3) claims execution
 
 - [x] C1. `docs/cli.md` + HUMANS cross-links.
 - [x] C2. Live test `CITADEL_TEST_PROJECTGRAPH_LIVE=1`.
-- [ ] C3. Spec close.
+- [x] C3. Spec close.
