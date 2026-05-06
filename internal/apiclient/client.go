@@ -78,18 +78,24 @@ func ParseRetryAfterSeconds(raw string) int {
 
 // Client is a thin Citadel-API client: server URL + bearer token + http.Client.
 type Client struct {
-	server string
-	token  string
-	http   *http.Client
+	server      string
+	token       string
+	http        *http.Client
+	retryOn401  func(context.Context) (newAccessToken string, err error)
 }
 
 // Options are the per-invocation knobs surfaced by root persistent flags.
 // Server is the resolved --server flag value; Verbose / DebugHTTP wire the
 // trace transport; retry/backoff is always on for idempotent verbs.
+//
+// RetryOn401, when set, is invoked after a 401 response to obtain a new
+// bearer token; the original request is retried exactly once with the new
+// token. Used for agent-token rotation (see cmd rotate-on-401 wiring).
 type Options struct {
-	Server    string
-	Verbose   bool
-	DebugHTTP bool
+	Server     string
+	Verbose    bool
+	DebugHTTP  bool
+	RetryOn401 func(ctx context.Context) (newAccessToken string, err error)
 }
 
 // New builds a Client from a loaded clicfg.Config and the resolved CLI
@@ -101,9 +107,10 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	}
 	rt := httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP})
 	return &Client{
-		server: strings.TrimRight(cfg.ResolveServerURL(opts.Server), "/"),
-		token:  cfg.AccessToken,
-		http:   &http.Client{Timeout: defaultTimeout, Transport: rt},
+		server:     strings.TrimRight(cfg.ResolveServerURL(opts.Server), "/"),
+		token:      cfg.AccessToken,
+		http:       &http.Client{Timeout: defaultTimeout, Transport: rt},
+		retryOn401: opts.RetryOn401,
 	}, nil
 }
 
@@ -143,68 +150,98 @@ func (c *Client) Delete(ctx context.Context, path string) error {
 // The caller must close resp.Body. Non-success statuses return *HTTPError with
 // the body drained.
 func (c *Client) GetEventStream(ctx context.Context, path string, lastEventID string) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.server+path, nil)
-	if err != nil {
-		return nil, fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("Cache-Control", "no-cache")
-	if lastEventID != "" {
-		req.Header.Set("Last-Event-ID", lastEventID)
-	}
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	for attempt := 0; attempt < 2; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.server+path, nil)
+		if err != nil {
+			return nil, fmt.Errorf("build request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+c.token)
+		req.Header.Set("Accept", "text/event-stream")
+		req.Header.Set("Cache-Control", "no-cache")
+		if lastEventID != "" {
+			req.Header.Set("Last-Event-ID", lastEventID)
+		}
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("request failed: %w", err)
+		}
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return resp, nil
+		}
 		b, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 && c.retryOn401 != nil {
+			newTok, rerr := c.retryOn401(ctx)
+			if rerr != nil {
+				return nil, rerr
+			}
+			if newTok != "" {
+				c.token = newTok
+				continue
+			}
+		}
 		return nil, &HTTPError{
 			StatusCode: resp.StatusCode,
 			Body:       strings.TrimSpace(string(b)),
 			RetryAfter: ParseRetryAfterSeconds(resp.Header.Get("Retry-After")),
 		}
 	}
-	return resp, nil
+	return nil, errors.New("event stream: exhausted 401 retries")
 }
 
 func (c *Client) do(ctx context.Context, method, path string, body, out any) error {
-	var rdr io.Reader
+	var bodyBytes []byte
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
 			return fmt.Errorf("marshal request: %w", err)
 		}
-		rdr = bytes.NewReader(b)
+		bodyBytes = b
 	}
-	req, err := http.NewRequestWithContext(ctx, method, c.server+path, rdr)
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	for attempt := 0; attempt < 2; attempt++ {
+		var rdr io.Reader
+		if bodyBytes != nil {
+			rdr = bytes.NewReader(bodyBytes)
+		}
+		req, err := http.NewRequestWithContext(ctx, method, c.server+path, rdr)
+		if err != nil {
+			return fmt.Errorf("build request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+c.token)
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return fmt.Errorf("request failed: %w", err)
+		}
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			defer func() { _ = resp.Body.Close() }()
+			if out == nil || resp.StatusCode == http.StatusNoContent {
+				return nil
+			}
+			if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+				return fmt.Errorf("decode response: %w", err)
+			}
+			return nil
+		}
 		b, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 && c.retryOn401 != nil {
+			newTok, rerr := c.retryOn401(ctx)
+			if rerr != nil {
+				return rerr
+			}
+			if newTok != "" {
+				c.token = newTok
+				continue
+			}
+		}
 		return &HTTPError{
 			StatusCode: resp.StatusCode,
 			Body:       strings.TrimSpace(string(b)),
 			RetryAfter: ParseRetryAfterSeconds(resp.Header.Get("Retry-After")),
 		}
 	}
-	if out == nil || resp.StatusCode == http.StatusNoContent {
-		return nil
-	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return fmt.Errorf("decode response: %w", err)
-	}
-	return nil
+	return errors.New("api client: exhausted 401 retries")
 }

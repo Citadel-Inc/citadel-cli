@@ -42,6 +42,79 @@ func TestClient_GetDecodes(t *testing.T) {
 	}
 }
 
+func TestClient_Get401RetryAfterHook(t *testing.T) {
+	var n int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		n++
+		switch {
+		case n == 1 && auth == "Bearer old":
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":"nope"}`))
+		case n == 2 && auth == "Bearer new":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"name":"alice"}`))
+		default:
+			t.Errorf("unexpected request #%d auth %q", n, auth)
+			w.WriteHeader(http.StatusTeapot)
+		}
+	}))
+	defer srv.Close()
+
+	hookCalls := 0
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "old"}, Options{
+		RetryOn401: func(ctx context.Context) (string, error) {
+			hookCalls++
+			return "new", nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out struct{ Name string }
+	if err := c.Get(context.Background(), "/v", &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Name != "alice" {
+		t.Fatalf("got %+v", out)
+	}
+	if hookCalls != 1 {
+		t.Fatalf("hook calls = %d", hookCalls)
+	}
+	if n != 2 {
+		t.Fatalf("server requests = %d", n)
+	}
+}
+
+func TestClient_Get401TwiceAfterHookReturnsHTTPError(t *testing.T) {
+	var n int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n++
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte("no"))
+	}))
+	defer srv.Close()
+
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "old"}, Options{
+		RetryOn401: func(ctx context.Context) (string, error) {
+			return "new", nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = c.Get(context.Background(), "/v", nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !IsStatus(err, http.StatusUnauthorized) {
+		t.Fatalf("got %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("want 2 server hits, got %d", n)
+	}
+}
+
 func TestClient_PostSendsJSON(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {

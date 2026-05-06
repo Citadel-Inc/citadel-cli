@@ -23,6 +23,14 @@ func FriendlyError(err error) error {
 		return nil
 	}
 
+	if errors.Is(err, errSessionExpired) {
+		return &CLIError{
+			Kind:    KindAuthRequired,
+			Message: errSessionExpired.Error(),
+			Hint:    statusSrcLandHint,
+		}
+	}
+
 	if deepest, ok := DeepestCLIError(err); ok {
 		return deepest
 	}
@@ -131,7 +139,7 @@ func httpErrorToCLI(he *apiclient.HTTPError) *CLIError {
 	case http.StatusUnauthorized:
 		return &CLIError{
 			Kind:       KindAuthRequired,
-			Message:    "authentication failed: run `citadel-cli auth login` to refresh your session, or pass --token / set CITADEL_AGENT_TOKEN",
+			Message:    "session expired — run `citadel-cli auth login` again, or pass --token / set CITADEL_AGENT_TOKEN",
 			HTTPStatus: he.StatusCode,
 			Hint:       hint,
 		}

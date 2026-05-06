@@ -37,7 +37,7 @@ func TestFriendlyError_DeadlineExceeded(t *testing.T) {
 
 func TestFriendlyError_HTTPStatusBranches(t *testing.T) {
 	cases := map[int]string{
-		401: "authentication failed",
+		401: "session expired",
 		403: "forbidden",
 		429: "rate limit",
 		503: "temporarily unavailable",
@@ -96,7 +96,7 @@ func TestKindToExitCode(t *testing.T) {
 }
 
 func TestResolveCLIExit_WrappedExistingCLIError(t *testing.T) {
-	inner := &CLIError{Kind: KindAuthRequired, Message: "authentication failed: run `citadel-cli auth login` to refresh your session, or pass --token / set CITADEL_AGENT_TOKEN"}
+	inner := &CLIError{Kind: KindAuthRequired, Message: "session expired — run `citadel-cli auth login` again, or pass --token / set CITADEL_AGENT_TOKEN"}
 	wrapped := fmt.Errorf("namespace get: %w", inner)
 	f := FriendlyError(wrapped)
 	ce, code := ResolveCLIExit(wrapped, f)
