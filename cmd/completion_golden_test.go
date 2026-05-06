@@ -204,6 +204,44 @@ func findTokenRevoke(t *testing.T, root *cobra.Command) *cobra.Command {
 	return nil
 }
 
+func TestCompleteSSHKeyIDs_HappyPath(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/account/ssh-keys" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"keys": []any{
+			map[string]any{"id": "cccccccc-cccc-cccc-cccc-cccccccccccc", "fingerprint": "SHA256:x", "public_key": "ssh-ed25519 AAAA"},
+		}})
+	})
+	root := NewRootCmd()
+	del := findSSHKeyDelete(t, root)
+	del.SetContext(context.Background())
+	vals, d := completeSSHKeyIDs(del, []string{}, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 1 || vals[0] != "cccccccc-cccc-cccc-cccc-cccccccccccc" {
+		t.Fatalf("got %q", vals)
+	}
+}
+
+func findSSHKeyDelete(t *testing.T, root *cobra.Command) *cobra.Command {
+	t.Helper()
+	for _, c := range root.Commands() {
+		if c.Name() != "ssh-key" && c.Name() != "ssh-keys" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() == "delete" {
+				return sc
+			}
+		}
+	}
+	t.Fatal("ssh-key delete not found")
+	return nil
+}
+
 func TestResolveRepoNamespaceForCompletion_FromRFlag(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	root := NewRootCmd()

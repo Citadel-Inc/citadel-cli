@@ -14,6 +14,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
+	"github.com/Rethunk-Tech/citadel-cli/internal/completion"
 )
 
 // SSHKeyCmd is the top-level `citadel-cli ssh-key` command.
@@ -223,6 +224,17 @@ func runSSHKeyDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func completeSSHKeyIDs(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	vals, err := completion.Lookup(cmd.Context(), serverFlag(cmd), completion.KeySSHKeys, completion.FetchSSHKeyIDs)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return vals, cobra.ShellCompDirectiveNoFileComp
+}
+
 func init() {
 	SSHKeyCmd.AddCommand(sshKeyListCmd)
 	SSHKeyCmd.AddCommand(sshKeyAddCmd)
@@ -232,4 +244,12 @@ func init() {
 	sshKeyAddCmd.Flags().String("public-key", "", "Public key string (single line)")
 	sshKeyAddCmd.Flags().String("key-file", "", "Path to a .pub file; use - for stdin")
 	sshKeyAddCmd.Flags().String("label", "", "Optional human-readable label stored with the key")
+
+	sshKeyDeleteCmd.ValidArgsFunction = completeSSHKeyIDs
+	sshKeyAddCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeySSHKeys)
+	}
+	sshKeyDeleteCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeySSHKeys)
+	}
 }

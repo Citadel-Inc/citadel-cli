@@ -20,6 +20,7 @@ const (
 	KeyAgents       = "agents"
 	KeyOAuthClients = "oauth_clients"
 	KeyAgentTokens  = "agent_tokens"
+	KeySSHKeys      = "ssh_keys"
 )
 
 // RepoKey returns the cache resource key for repo slugs in a namespace.
@@ -227,6 +228,25 @@ func FetchAgentTokenIDs(ctx context.Context, c *apiclient.Client) ([]string, err
 	out := make([]string, 0, len(rows))
 	for _, r := range rows {
 		if s := strings.TrimSpace(r.ID); s != "" {
+			out = append(out, s)
+		}
+	}
+	return sortDedupe(out), nil
+}
+
+// FetchSSHKeyIDs lists SSH public key resource UUIDs from GET /account/ssh-keys.
+func FetchSSHKeyIDs(ctx context.Context, c *apiclient.Client) ([]string, error) {
+	var payload struct {
+		Keys []struct {
+			ID string `json:"id"`
+		} `json:"keys"`
+	}
+	if err := c.Get(ctx, "/account/ssh-keys", &payload); err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(payload.Keys))
+	for _, k := range payload.Keys {
+		if s := strings.TrimSpace(k.ID); s != "" {
 			out = append(out, s)
 		}
 	}
