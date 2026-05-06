@@ -1,6 +1,6 @@
 # Tasks — cli-kg-extended
 
-Status: DRAFT 050506ZMAY26
+Status: IN_PROGRESS 060503ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 

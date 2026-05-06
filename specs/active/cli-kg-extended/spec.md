@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 050506ZMAY26 |
+| Status | IN_PROGRESS 060503ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 gap analysis: `citadel-cli kg impact` (+ symbol resolution via `/…/symbols`) covers impact analysis only; `internal/api/kgapi` exposes broader read APIs documented in `citadel/docs/architecture.md` and `go-kg-query` specs. |
@@ -58,9 +58,9 @@ Add subcommands under **`citadel-cli kg`**:
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Flat `kg search` vs nested `kg query search`? | **Open** — flat (`kg search`, `kg symbols`, …). |
-| Q2 | Standardise all verbs on `/api/namespaces/{slug}/kg/...` vs keep `/kg/{owner}/...` for impact only? | **Open** — recommend **one style per verb family** in v1 to minimise confusion. |
-| Q3 | `kg diff` default: namespace path vs global `/api/kg/diff?slug=`? | **Open** — prefer explicit `-R` repo path → namespace slug. |
+| Q1 | Flat `kg search` vs nested `kg query search`? | **Ratified 060500ZMAY26** — flat verbs: `kg search`, `kg symbols`, `kg files`, `kg walk`, `kg fulltext`, `kg diff` (no `kg query` nesting). |
+| Q2 | Standardise all verbs on `/api/namespaces/{slug}/kg/...` vs keep `/kg/{owner}/...` for impact only? | **Ratified 060500ZMAY26** — **`kg impact`** migrates to **`GET /api/namespaces/{slug}/kg/impact`** (same query params as today); symbol resolution uses **`/api/namespaces/{slug}/kg/symbols`**. Legacy `/kg/...` short paths are no longer called by the CLI. |
+| Q3 | `kg diff` default: namespace path vs global `/api/kg/diff?slug=`? | **Ratified 060500ZMAY26** — Default **`GET /api/namespaces/{namespace}/kg/diff`** with namespace (+ optional `repo` query) from `-R` / `CITADEL_REPO` / CWD; **`/api/kg/diff?slug=`** reserved for explicit scripting if added later (not the default UX). |
 
 ## Acceptance
 
