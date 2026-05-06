@@ -6,8 +6,8 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
+| cli-global-search | IN_PROGRESS | 060535ZMAY26 | Bastion (J-3) |
 | cli-issue-pr | DRAFT | 081550ZMAY26 | Bastion (J-3) |
-| cli-global-search | DRAFT | 050506ZMAY26 | Bastion (J-3) |
 | cli-projectgraph | DRAFT | 050506ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | DRAFT | 075800ZMAY26 | Bastion (J-3) |
 
@@ -43,3 +43,4 @@
 |------|-----|------|
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
+

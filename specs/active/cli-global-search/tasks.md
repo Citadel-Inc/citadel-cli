@@ -1,6 +1,6 @@
 # Tasks — cli-global-search
 
-Status: DRAFT 050506ZMAY26
+Status: IN_PROGRESS 060535ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 
