@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 075800ZMAY26 |
+| Status | IN_PROGRESS 061800ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 075800ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | `citadel-cli@4996580` (2026-05-05) flagged `loginCmd` as EXPERIMENTAL pending a productised auth flow. Server-side counterpart: `citadel/specs/done/go-cli-oauth-provider/` (DONE 060608ZMAY26). |

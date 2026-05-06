@@ -1,6 +1,6 @@
 # Tasks — cli-oauth-login
 
-Status: DRAFT 075800ZMAY26
+Status: IN_PROGRESS 061800ZMAY26 — Bastion (J-3) claims execution
 
 **Companion daemon:** `go-cli-oauth-provider` is **DONE** (`citadel/specs/done/go-cli-oauth-provider/`, 060608ZMAY26); P0+P1 shipped (authorize/token, handoff, consent). CLI work is no longer blocked on that spec.
 
