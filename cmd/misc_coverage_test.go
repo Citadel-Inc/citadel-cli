@@ -802,6 +802,22 @@ t.Fatal(err)
 
 // ── namespace delete ──────────────────────────────────────────────────────────
 
+// ── token revoke: --dry-run branch ───────────────────────────────────────────
+
+func TestTokenRevoke_DryRun(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	var sb strings.Builder
+	if err := rootForOut(cmd.TokenCmd, &sb, "revoke", "test-token-uuid", "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := sb.String()
+	if !strings.Contains(out, "Would DELETE") || !strings.Contains(out, "test-token-uuid") {
+		t.Fatalf("expected dry-run output, got %q", out)
+	}
+}
+
+// ── namespace delete ──────────────────────────────────────────────────────────
+
 func TestNsDelete_Success(t *testing.T) {
 withServer(t, route(t, map[string]http.HandlerFunc{
 "GET /namespaces/myorg": func(w http.ResponseWriter, _ *http.Request) {
