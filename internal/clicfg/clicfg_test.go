@@ -26,6 +26,8 @@ func TestSaveAndLoad(t *testing.T) {
 		RefreshToken: "test_refresh_token",
 		ExpiresAt:    time.Unix(1234567890, 0).UTC(),
 		UserUUID:     "test-user-uuid-1234",
+		AgentID:      "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+		AgentName:    "citadel-cli@test",
 	}
 
 	// Save the config
@@ -64,6 +66,12 @@ func TestSaveAndLoad(t *testing.T) {
 	}
 	if loaded.UserUUID != cfg.UserUUID {
 		t.Errorf("UserUUID mismatch: got %q, want %q", loaded.UserUUID, cfg.UserUUID)
+	}
+	if loaded.AgentID != cfg.AgentID {
+		t.Errorf("AgentID mismatch: got %q, want %q", loaded.AgentID, cfg.AgentID)
+	}
+	if loaded.AgentName != cfg.AgentName {
+		t.Errorf("AgentName mismatch: got %q, want %q", loaded.AgentName, cfg.AgentName)
 	}
 }
 

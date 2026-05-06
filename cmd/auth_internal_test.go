@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +12,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/spf13/cobra"
+
+	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
 // makeUnsignedJWT crafts an HS256-signed JWT with the given claims. The
@@ -62,6 +67,68 @@ func TestRandomOAuthState(t *testing.T) {
 	}
 	if a == "" || b == "" || a == b {
 		t.Fatalf("unexpected states %q %q", a, b)
+	}
+}
+
+func TestBootstrapAgentToken_Happy(t *testing.T) {
+	ctx := context.Background()
+	agentID := "10000000-0000-4000-8000-000000000001"
+	exp := time.Now().Add(48 * time.Hour).UTC().Round(time.Second)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/agents":
+			_, _ = w.Write([]byte(`{"agents":[],"next_cursor":""}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/agents":
+			var body struct {
+				Name string `json:"name"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Errorf("decode POST /agents: %v", err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]string{"id": agentID, "name": body.Name})
+		case r.Method == http.MethodPost && r.URL.Path == "/agents/"+agentID+"/rotate-token":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":              "88888888-8888-8888-8888-888888888888",
+				"agent_id":        agentID,
+				"cleartext_token": "opaque-agent-token",
+				"expires_at":      exp.Format(time.RFC3339Nano),
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	jwt := makeUnsignedJWT(t, jwt.MapClaims{
+		"sub": "22222222-2222-2222-2222-222222222222",
+		"exp": float64(time.Now().Add(time.Hour).Unix()),
+	})
+	var cfg clicfg.Config
+	cmd := &cobra.Command{}
+	if err := bootstrapAgentToken(ctx, cmd, &cfg, srv.URL, "", jwt); err != nil {
+		t.Fatalf("bootstrapAgentToken: %v", err)
+	}
+	if cfg.AccessToken != "opaque-agent-token" {
+		t.Errorf("AccessToken = %q", cfg.AccessToken)
+	}
+	if cfg.AgentID != agentID {
+		t.Errorf("AgentID = %q", cfg.AgentID)
+	}
+	wantName, err := defaultCLIAgentName()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AgentName != wantName {
+		t.Errorf("AgentName = %q want %q", cfg.AgentName, wantName)
+	}
+	if cfg.RefreshToken != "" {
+		t.Errorf("RefreshToken should be cleared, got %q", cfg.RefreshToken)
+	}
+	if !cfg.ExpiresAt.Equal(exp) {
+		t.Errorf("ExpiresAt = %v want %v", cfg.ExpiresAt, exp)
 	}
 }
 

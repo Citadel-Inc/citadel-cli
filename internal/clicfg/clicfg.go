@@ -17,6 +17,8 @@ type Config struct {
 	RefreshToken string    `toml:"refresh_token"`
 	ExpiresAt    time.Time `toml:"expires_at"`
 	UserUUID     string    `toml:"user_uuid"`
+	AgentID      string    `toml:"agent_id,omitempty"`
+	AgentName    string    `toml:"agent_name,omitempty"`
 }
 
 // configPath returns the full path to the config file.

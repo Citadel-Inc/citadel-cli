@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"cmp"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -21,6 +22,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
 
+	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
@@ -192,24 +194,18 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("parse access token: %w", err)
 	}
 	userUUID := userUUIDFromClaims(claims)
-	fallbackExp := time.Now().Add(time.Hour)
-	if tokenResp.ExpiresIn > 0 {
-		fallbackExp = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	if err := bootstrapAgentToken(cmd.Context(), cmd, &cfg, serverURL, flagServer, tokenResp.AccessToken); err != nil {
+		return err
 	}
-	expiresAt := expiryFromClaims(claims, fallbackExp)
 
-	// Save config
 	cfg.ServerURL = serverURL
-	cfg.AccessToken = tokenResp.AccessToken
-	cfg.RefreshToken = tokenResp.RefreshToken
-	cfg.ExpiresAt = expiresAt
 	cfg.UserUUID = userUUID
 
 	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("save config: %w", err)
 	}
 
-	fmt.Printf("Authentication successful! User UUID: %s\n", userUUID)
+	fmt.Printf("Authentication successful! User: %s, agent: %s (%s)\n", userUUID, cfg.AgentName, cfg.AgentID)
 	return nil
 }
 
@@ -274,6 +270,8 @@ func runSetToken(cmd *cobra.Command, _ []string) error {
 	cfg.AccessToken = tok
 	cfg.RefreshToken = ""
 	cfg.UserUUID = userUUIDFromClaims(claims)
+	cfg.AgentID = ""
+	cfg.AgentName = ""
 	cfg.ExpiresAt = expiryFromClaims(claims, time.Now().Add(time.Hour))
 
 	if err := cfg.Save(); err != nil {
@@ -294,12 +292,67 @@ func runLogout(cmd *cobra.Command, args []string) error {
 	cfg.RefreshToken = ""
 	cfg.ExpiresAt = time.Time{}
 	cfg.UserUUID = ""
+	cfg.AgentID = ""
+	cfg.AgentName = ""
 
 	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("save config: %w", err)
 	}
 
 	fmt.Println("Logged out successfully.")
+	return nil
+}
+
+// defaultCLIAgentName returns the per-host agent name (citadel-cli@<hostname>).
+func defaultCLIAgentName() (string, error) {
+	host, err := os.Hostname()
+	if err != nil {
+		return "", err
+	}
+	if host == "" {
+		return "", errors.New("hostname is empty")
+	}
+	return "citadel-cli@" + host, nil
+}
+
+// bootstrapAgentToken exchanges the short-lived OAuth JWT for a long-lived
+// agent token via find-or-create + rotate-token, mutating cfg in place.
+func bootstrapAgentToken(ctx context.Context, cmd *cobra.Command, cfg *clicfg.Config, serverURL, flagServer, jwt string) error {
+	agentName, err := defaultCLIAgentName()
+	if err != nil {
+		return fmt.Errorf("agent name: %w", err)
+	}
+	work := *cfg
+	work.ServerURL = serverURL
+	work.AccessToken = jwt
+	c, err := apiclient.New(work, apiclient.Options{
+		Server:    flagServer,
+		Verbose:   verboseFlag(cmd),
+		DebugHTTP: debugHTTPFlag(cmd),
+	})
+	if err != nil {
+		return fmt.Errorf("api client for bootstrap: %w", err)
+	}
+	agentID, err := findOrCreateAgent(ctx, c, agentName)
+	if err != nil {
+		return fmt.Errorf("find or create agent: %w", err)
+	}
+	var newTok tokenWithCleartext
+	if err := c.Post(ctx, "/agents/"+agentID.String()+"/rotate-token", nil, &newTok); err != nil {
+		return fmt.Errorf("rotate agent token: %w", err)
+	}
+	if newTok.CleartextToken == "" {
+		return errors.New("rotate token: empty cleartext_token in response")
+	}
+	cfg.AccessToken = newTok.CleartextToken
+	cfg.RefreshToken = ""
+	cfg.AgentID = agentID.String()
+	cfg.AgentName = agentName
+	if newTok.ExpiresAt != nil {
+		cfg.ExpiresAt = *newTok.ExpiresAt
+	} else {
+		cfg.ExpiresAt = time.Now().Add(90 * 24 * time.Hour)
+	}
 	return nil
 }
 
