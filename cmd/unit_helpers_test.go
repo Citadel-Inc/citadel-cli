@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -158,5 +159,79 @@ func TestResolveSSHPublicKeyMaterial_fileMissing(t *testing.T) {
 	_, _, err := resolveSSHPublicKeyMaterial("", "/nonexistent/path/key.pub")
 	if err == nil || !strings.Contains(err.Error(), "--key-file") {
 		t.Fatalf("want read error, got %v", err)
+	}
+}
+
+func TestResolveSSHPublicKeyMaterial_stdinDash(t *testing.T) {
+	const content = "ssh-ed25519 AAAA stdindata"
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.WriteString(w, content); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = orig; _ = r.Close() })
+
+	mat, src, err := resolveSSHPublicKeyMaterial("", "-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mat != content {
+		t.Fatalf("mat=%q want %q", mat, content)
+	}
+	if src != "stdin" {
+		t.Fatalf("src=%q want stdin", src)
+	}
+}
+
+func TestResolveSSHPublicKeyMaterial_pipedStdin(t *testing.T) {
+	const content = "ssh-rsa AAAAB3Nz piped"
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.WriteString(w, content); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = orig; _ = r.Close() })
+
+	mat, src, err := resolveSSHPublicKeyMaterial("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mat != content {
+		t.Fatalf("mat=%q want %q", mat, content)
+	}
+	if src != "stdin" {
+		t.Fatalf("src=%q want stdin", src)
+	}
+}
+
+// ── completion early-return (args already provided) ───────────────────────────
+
+func TestCompleteCompletions_EarlyReturnWithArgs(t *testing.T) {
+	c := &cobra.Command{}
+	funcs := []struct {
+		name string
+		fn   func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective)
+	}{
+		{"completeTokenIDs", completeTokenIDs},
+		{"completeSSHKeyIDs", completeSSHKeyIDs},
+	}
+	for _, tc := range funcs {
+		got, dir := tc.fn(c, []string{"existing-arg"}, "")
+		if got != nil {
+			t.Errorf("%s: expected nil completions when args present, got %v", tc.name, got)
+		}
+		if dir != cobra.ShellCompDirectiveNoFileComp {
+			t.Errorf("%s: expected NoFileComp directive, got %v", tc.name, dir)
+		}
 	}
 }
