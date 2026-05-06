@@ -2377,3 +2377,94 @@ func TestSearch_TableMapsType(t *testing.T) {
 		t.Fatalf("unexpected table output: %q", out)
 	}
 }
+
+// ── project graph ─────────────────────────────────────────────────────────────
+
+func TestProject_PinChain_MultiSegmentPath(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/org/proj/repo/pin-chain": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, []map[string]any{{"id": "1"}})
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "pin-chain", "org/proj/repo", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProject_Walk_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/ns/walk": func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("kind") != "repo" {
+				t.Fatalf("kind=%q", r.URL.Query().Get("kind"))
+			}
+			writeJSON(t, w, 200, []any{map[string]any{"n": 1}})
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "walk", "ns", "--kind", "repo", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProject_Read_NotFound(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/ns/pin-chain": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 404, map[string]any{"error": "not_found"})
+		},
+	}))
+	err := rootFor(cmd.ProjectCmd, "pin-chain", "ns").Execute()
+	if err == nil || (!strings.Contains(strings.ToLower(err.Error()), "not found") && !strings.Contains(err.Error(), "404")) {
+		t.Fatalf("want 404 not found, got %v", err)
+	}
+}
+
+func TestProject_EdgeAdd_Created(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /api/projectgraph/ns/edges": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 201, map[string]any{"status": "ok"})
+		},
+	}))
+	err := rootFor(cmd.ProjectCmd, "edge", "add", "ns",
+		"--from-namespace-id", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"--from-kind", "repo",
+		"--to-kind", "repo",
+		"--edge-type", "pins",
+		"--output", "json",
+	).Execute()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProject_EdgeDelete_NotFound(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /api/projectgraph/ns/edges/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 404, map[string]any{"error": "not_found"})
+		},
+	}))
+	err := rootFor(cmd.ProjectCmd, "edge", "delete", "ns", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "--yes").Execute()
+	if err == nil || (!strings.Contains(strings.ToLower(err.Error()), "not found") && !strings.Contains(err.Error(), "404")) {
+		t.Fatalf("want 404 not found, got %v", err)
+	}
+}
+
+func TestProject_Reindex_OK(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /api/projectgraph/ns/reindex": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"status": "scheduled"})
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "reindex", "ns", "--yes").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProject_StatusRollup_JSON(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/ns/status-rollup": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"rollup": true})
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "status", "rollup", "ns", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}

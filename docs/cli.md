@@ -80,6 +80,35 @@ By default, search uses **`scope=namespaces`** (namespaces you own or belong to)
 
 Repository-scoped knowledge-graph search continues to live under **`citadel-cli kg search`** (different API).
 
+### Project graph (pins, walks, edges)
+
+Inspect or mutate the Citadel **project graph** for a namespace path (flat `org/repo` or nested `org/project/repo`). All verbs require **`citadel-cli auth login`**.
+
+Read-heavy outputs (`walk`, `neighbors`) default to a short human preview; pass **`--output json`** for the full JSON payload.
+
+```bash
+citadel-cli project pin-chain org/repo
+citadel-cli project walk org/repo --kind repo --output json
+citadel-cli project neighbors org/repo --kind repo --direction incoming
+citadel-cli project status rollup org/repo
+citadel-cli project status drilldown org/repo
+citadel-cli project edge add org/repo \
+  --from-namespace-id <uuid> --from-kind repo --to-kind repo \
+  --edge-type pins --output json
+citadel-cli project edge delete org/repo <edge-uuid> --yes
+citadel-cli project reindex org/repo --yes
+```
+
+HTTP **404** responses may indicate RBAC denial (`projectgraph:read` / `projectgraph:manage`) rather than a wrong path — verify grants before assuming the slug is invalid.
+
+Opt-in live smoke (requires **`CITADEL_TEST_PROJECTGRAPH_LIVE=1`**, **`CITADEL_ACCESS_TOKEN`**, and **`CITADEL_TEST_PROJECTGRAPH_SLUG`**):
+
+```bash
+CITADEL_TEST_PROJECTGRAPH_LIVE=1 \
+CITADEL_TEST_PROJECTGRAPH_SLUG=org/repo \
+go test ./cmd -run TestLiveProjectGraph -count=1
+```
+
 ### List agent tokens
 
 ```bash
