@@ -375,6 +375,154 @@ func TestGeneratePKCE(t *testing.T) {
 
 // TestRunLogin_FlowSmoke exercises Citadel token exchange + agent bootstrap
 // against a single fake API server (no browser / loopback callback).
+// ── maybeEagerMigrateLegacyJWT early-return branches ─────────────────────────
+
+func TestMaybeEagerMigrateLegacyJWT_NilCmd(t *testing.T) {
+	maybeEagerMigrateLegacyJWT(nil) // must not panic
+}
+
+func TestMaybeEagerMigrateLegacyJWT_WrongRootName(t *testing.T) {
+	cmd := &cobra.Command{Use: "other-tool"}
+	maybeEagerMigrateLegacyJWT(cmd) // root name != "citadel-cli" → skip
+}
+
+func TestMaybeEagerMigrateLegacyJWT_SkipPath(t *testing.T) {
+	root := &cobra.Command{Use: "citadel-cli"}
+	auth := &cobra.Command{Use: "auth"}
+	login := &cobra.Command{Use: "login", RunE: func(*cobra.Command, []string) error { return nil }}
+	auth.AddCommand(login)
+	root.AddCommand(auth)
+	maybeEagerMigrateLegacyJWT(login) // "citadel-cli auth login" → skip
+}
+
+// ── rotateAccessTokenOn401Hook branches ───────────────────────────────────────
+
+func TestRotateAccessTokenOn401Hook_EmptyAgentID(t *testing.T) {
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	cfgDir := filepath.Join(xdg, "citadel")
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"),
+		[]byte("access_token = \"sometoken\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
+	tok, err := hook(context.Background())
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if tok != "" {
+		t.Fatalf("expected empty token, got %q", tok)
+	}
+}
+
+func TestRotateAccessTokenOn401Hook_RotateSuccess(t *testing.T) {
+	agentID := "40000000-0000-4000-8000-000000000004"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/agents/"+agentID+"/rotate-token" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":              "55555555-5555-5555-5555-555555555555",
+				"agent_id":        agentID,
+				"cleartext_token": "rotated-xyz",
+			})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	cfgDir := filepath.Join(xdg, "citadel")
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	toml := "access_token = \"old-token\"\nagent_id = \"" + agentID + "\"\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
+	tok, err := hook(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tok != "rotated-xyz" {
+		t.Fatalf("token = %q want %q", tok, "rotated-xyz")
+	}
+}
+
+func TestRotateAccessTokenOn401Hook_Rotate401(t *testing.T) {
+	agentID := "41000000-0000-4000-8000-000000000004"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(srv.Close)
+
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	cfgDir := filepath.Join(xdg, "citadel")
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	toml := "access_token = \"old-token\"\nagent_id = \"" + agentID + "\"\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
+	tok, err := hook(context.Background())
+	if tok != "" {
+		t.Fatalf("expected empty token, got %q", tok)
+	}
+	if err == nil || !strings.Contains(err.Error(), "session expired") {
+		t.Fatalf("expected session expired error, got %v", err)
+	}
+}
+
+func TestRotateAccessTokenOn401Hook_EmptyToken(t *testing.T) {
+	agentID := "42000000-0000-4000-8000-000000000004"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id":              "66666666-6666-6666-6666-666666666666",
+			"agent_id":        agentID,
+			"cleartext_token": "",
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	cfgDir := filepath.Join(xdg, "citadel")
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	toml := "access_token = \"old-token\"\nagent_id = \"" + agentID + "\"\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
+	_, err := hook(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "empty cleartext_token") {
+		t.Fatalf("expected empty token error, got %v", err)
+	}
+}
+
+// ── TestRunLogin_FlowSmoke ────────────────────────────────────────────────────
+
 func TestRunLogin_FlowSmoke(t *testing.T) {
 	jwt := makeUnsignedJWT(t, jwt.MapClaims{
 		"sub": "44444444-4444-4444-4444-444444444444",
