@@ -10,7 +10,7 @@ Status: DONE 052318ZMAY26 — Shipped top-level `citadel-cli ssh-key` (list/add/
 
 ## P1
 
-- [ ] B1. Completion for delete IDs (optional).
+- [x] B1. Completion for delete IDs (optional).
 
 ## P2
 
