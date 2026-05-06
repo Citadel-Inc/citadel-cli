@@ -16,7 +16,7 @@ func liveOAuthBaseURL() string {
 	u := strings.TrimSpace(os.Getenv("CITADEL_SERVER"))
 	u = strings.TrimSuffix(u, "/")
 	if u == "" {
-		return "https://api.src.land"
+		return "https://mcp.src.land"
 	}
 	return u
 }

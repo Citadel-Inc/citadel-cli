@@ -19,7 +19,7 @@ func TestLiveSshKeys_list_optIn(t *testing.T) {
 	}
 	base := strings.TrimSuffix(strings.TrimSpace(os.Getenv("CITADEL_SERVER")), "/")
 	if base == "" {
-		base = "https://api.src.land"
+		base = "https://mcp.src.land"
 	}
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_SERVER", base)
