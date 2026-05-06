@@ -14,7 +14,7 @@ Operator and developer command-line interface for [Citadel](https://github.com/R
 
 ## Getting started
 
-Install, authenticate, and first-run commands live in [HUMANS.md § Getting started](HUMANS.md#getting-started). Repository defaults (`-R`, `CITADEL_REPO`, CWD inference, `CITADEL_GIT_HOSTS`) are documented in [HUMANS.md § Repo context](HUMANS.md#repo-context).
+Install, authenticate, and first-run commands live in [HUMANS.md § Getting started](HUMANS.md#getting-started). Use `citadel-cli auth login` for the browser OAuth flow (PKCE) that stores a Citadel agent token; use `citadel-cli auth set-token` for headless JWT bootstrap (see HUMANS for migration behaviour). Repository defaults (`-R`, `CITADEL_REPO`, CWD inference, `CITADEL_GIT_HOSTS`) are documented in [HUMANS.md § Repo context](HUMANS.md#repo-context).
 
 ## Shell completion
 
