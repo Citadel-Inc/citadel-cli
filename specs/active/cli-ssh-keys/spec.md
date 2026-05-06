@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DONE 052318ZMAY26 — Shipped top-level `citadel-cli ssh-key` (list/add/delete) against `/account/ssh-keys`, with public-key-only uploads, private-key rejection, output formats on list, `--output json` on add, httptest matrix including 400/404 paths, `docs/cli.md`, and opt-in `TestLiveSshKeys_list_optIn`. Left P1 B1 (optional delete-ID completion) deliberately open. |
+| Status | IN_PROGRESS 060441ZMAY26 — reopened — Normalize DONE summary: P1 B1 SSH key delete completion is now shipped. |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 L0 git wire: users need SSH public keys registered for `git@git.src.land`. Server: `internal/api/accountapi/ssh_keys.go`. |
