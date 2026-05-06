@@ -21,7 +21,7 @@ Pre-built release binaries (linux-amd64, linux-arm64, darwin-arm64) are publishe
 ### First run
 
 ```bash
-citadel-cli auth login        # OAuth flow via the configured Citadel server
+citadel-cli auth login        # browser OAuth (PKCE) → long-lived agent token
 citadel-cli auth status       # confirm authentication
 citadel-cli repo list         # query the API
 ```
@@ -33,7 +33,7 @@ Prerequisites: Go 1.25+, `golangci-lint` (for `make verify`).
 ```sh
 go build -o ./citadel-cli .          # local build
 ./citadel-cli --help                  # explore subcommands
-./citadel-cli auth login              # OAuth login against configured server
+./citadel-cli auth login              # browser OAuth → agent token (see `auth set-token` for headless)
 make verify                           # vet + race tests + golangci-lint
 ```
 
@@ -79,7 +79,7 @@ Operator-only fields such as client IP are omitted for non-operator callers; the
 ## Configuration
 
 - **Server URL:** `~/.config/citadel/config.toml` (key: `server_url`) or `CITADEL_SERVER` env var.
-- **Auth tokens:** `~/.config/citadel/config.toml` (mode 0600); written by `citadel-cli auth login`.
+- **Auth tokens:** `~/.config/citadel/config.toml` (mode 0600); `citadel-cli auth login` stores a Citadel-issued **agent token** (plus agent id/name). For headless hosts, `citadel-cli auth set-token` accepts a Supabase JWT; on the next CLI launch the client **eagerly upgrades** a JWT-only file to an agent token when the API is reachable.
 - **Override access token:** `CITADEL_ACCESS_TOKEN` env var (1-hour pinned expiry; for CI / scripting).
 
 ### Repo context
