@@ -885,7 +885,7 @@ func TestOAuthRotateSecret_MFARequired(t *testing.T) {
 func TestKgImpact_WithUUID(t *testing.T) {
 	id := "01234567-89ab-cdef-0123-456789abcdef"
 	withServer(t, route(t, map[string]http.HandlerFunc{
-		"GET /kg/myorg/impact": func(w http.ResponseWriter, r *http.Request) {
+		"GET /api/namespaces/myorg/kg/impact": func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Query().Get("symbol") != id {
 				t.Errorf("want symbol=%s, got %s", id, r.URL.Query().Get("symbol"))
 			}
@@ -905,12 +905,12 @@ func TestKgImpact_WithUUID(t *testing.T) {
 func TestKgImpact_ResolveByName(t *testing.T) {
 	id := "01234567-89ab-cdef-0123-456789abcdef"
 	withServer(t, route(t, map[string]http.HandlerFunc{
-		"GET /kg/myorg/symbols": func(w http.ResponseWriter, _ *http.Request) {
+		"GET /api/namespaces/myorg/kg/symbols": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, 200, map[string]any{"matches": []map[string]any{
 				{"id": id, "name": "foo", "kind": "function", "path": "x.go"},
 			}})
 		},
-		"GET /kg/myorg/impact": func(w http.ResponseWriter, _ *http.Request) {
+		"GET /api/namespaces/myorg/kg/impact": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, 200, map[string]any{
 				"symbol": map[string]any{"id": id, "kind": "function", "name": "foo", "path": "x.go"},
 			})
@@ -923,7 +923,7 @@ func TestKgImpact_ResolveByName(t *testing.T) {
 
 func TestKgImpact_NoMatches(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
-		"GET /kg/myorg/symbols": func(w http.ResponseWriter, _ *http.Request) {
+		"GET /api/namespaces/myorg/kg/symbols": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, 200, map[string]any{"matches": []map[string]any{}})
 		},
 	}))
@@ -935,7 +935,7 @@ func TestKgImpact_NoMatches(t *testing.T) {
 
 func TestKgImpact_Ambiguous(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
-		"GET /kg/myorg/symbols": func(w http.ResponseWriter, _ *http.Request) {
+		"GET /api/namespaces/myorg/kg/symbols": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, 200, map[string]any{"matches": []map[string]any{
 				{"id": "00000000-0000-0000-0000-000000000001", "name": "foo", "kind": "function", "path": "a.go"},
 				{"id": "00000000-0000-0000-0000-000000000002", "name": "foo", "kind": "function", "path": "b.go"},
@@ -950,7 +950,7 @@ func TestKgImpact_Ambiguous(t *testing.T) {
 
 func TestKgImpact_Unauthorized(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
-		"GET /kg/myorg/impact": func(w http.ResponseWriter, _ *http.Request) {
+		"GET /api/namespaces/myorg/kg/impact": func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "no", http.StatusUnauthorized)
 		},
 	}))
@@ -958,6 +958,78 @@ func TestKgImpact_Unauthorized(t *testing.T) {
 	err := rootFor(cmd.KgCmd, "impact", "myorg", id).Execute()
 	if err == nil || !strings.Contains(err.Error(), "unauthorized") {
 		t.Fatalf("want unauthorized message, got %v", err)
+	}
+}
+
+func TestKgSearch_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/kg/search": func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("scope") != "cross-namespace" {
+				t.Errorf("want scope=cross-namespace, got %q", r.URL.Query().Get("scope"))
+			}
+			if r.URL.Query().Get("q") != "hello world" {
+				t.Errorf("query q=%q", r.URL.Query().Get("q"))
+			}
+			writeJSON(t, w, 200, map[string]any{"pages": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.KgCmd, "search", "hello", "world").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestKgSymbols_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/kg/symbols": func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("q") != "foo" {
+				t.Errorf("q=%q", r.URL.Query().Get("q"))
+			}
+			if r.URL.Query().Get("repo") != "r1" {
+				t.Errorf("repo=%q", r.URL.Query().Get("repo"))
+			}
+			writeJSON(t, w, 200, map[string]any{"matches": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.KgCmd, "symbols", "--q", "foo", "-R", "acme/r1").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestKgSearch_Unauthorized(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/kg/search": func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "no", http.StatusUnauthorized)
+		},
+	}))
+	err := rootFor(cmd.KgCmd, "search", "x").Execute()
+	if err == nil || !strings.Contains(err.Error(), "unauthorized") {
+		t.Fatalf("want unauthorized message, got %v", err)
+	}
+}
+
+func TestKgSymbols_NotFound(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/missing/kg/symbols": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		},
+	}))
+	err := rootFor(cmd.KgCmd, "symbols", "--q", "x", "-R", "missing/r").Execute()
+	if err == nil || !strings.Contains(err.Error(), "404") {
+		t.Fatalf("want 404 path, got %v", err)
+	}
+}
+
+func TestKgSearch_RateLimited(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/kg/search": func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Retry-After", "10")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte(`{"error":"slow down"}`))
+		},
+	}))
+	err := rootFor(cmd.KgCmd, "search", "q").Execute()
+	if err == nil || !strings.Contains(err.Error(), "429") {
+		t.Fatalf("want rate limit, got %v", err)
 	}
 }
 

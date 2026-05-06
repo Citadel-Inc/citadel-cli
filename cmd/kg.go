@@ -19,8 +19,12 @@ import (
 // /api/kg/{slug}/* endpoints via internal/apiclient.
 var KgCmd = &cobra.Command{
 	Use:   "kg",
-	Short: "Knowledge-graph queries (impact analysis)",
-	Long: `Commands for querying the knowledge-graph substrate populated by go-kg-indexer.
+	Short: "Knowledge-graph queries (search, symbols, impact, …)",
+	Long: `Commands for querying the Citadel knowledge-graph JSON API (JWT-gated).
+
+Use kg search for cross-namespace fulltext; namespace-scoped verbs (symbols, files,
+walk, fulltext, diff, impact) resolve repository context from -R / CITADEL_REPO /
+git origin unless you pass an explicit namespace/repo prefix.
 
 Authentication uses your Supabase JWT from 'citadel-cli auth login'.`,
 }
@@ -29,11 +33,13 @@ var kgImpactCmd = &cobra.Command{
 	Use:   "impact [<owner>[/<repo>]] <symbol>",
 	Short: "Find direct + transitive callers of a symbol",
 	Long: `Projects a callers-direction BFS into the rename-impact shape:
-direct callers + transitive callers + affected files. Default depth = 2.
+direct callers + transitive callers + affected files. Default depth = 2 server-side.
+
+Uses GET /api/namespaces/{namespace}/kg/impact (JWT required).
 
 The repository may be given as <owner>, <owner>/<repo>, or omitted when -R/--repo,
 ` + "`CITADEL_REPO`" + `, or git origin in the current directory supplies it.
-<symbol> accepts a UUID (direct call) or a name (resolved via /kg/<owner>/symbols first; if more
+<symbol> accepts a UUID (direct call) or a name (resolved via /api/namespaces/{ns}/kg/symbols first; if more
 than one symbol matches, prints the candidates so you can disambiguate).
 
 Pretty-printed by default; use --json for the raw HTTP response.`,
@@ -119,7 +125,7 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 	if repo != "" {
 		q.Set("repo", repo)
 	}
-	path := "/kg/" + url.PathEscape(owner) + "/impact?" + q.Encode()
+	path := "/api/namespaces/" + url.PathEscape(owner) + "/kg/impact?" + q.Encode()
 
 	if rawJSON {
 		var pretty any
@@ -210,7 +216,7 @@ type symbolMatch struct {
 	Path string `json:"path"`
 }
 
-// resolveSymbolID looks up a symbol UUID by name via /kg/<owner>/symbols.
+// resolveSymbolID looks up a symbol UUID by name via /api/namespaces/{slug}/kg/symbols.
 // slug accepts "<owner>" (search across owner's repos) or "<owner>/<repo>"
 // (the suffix is sent as the repo filter so duplicate names across repos
 // don't mask the user's intent).
@@ -221,7 +227,7 @@ func resolveSymbolID(ctx context.Context, c *apiclient.Client, slug, name string
 	if repo != "" {
 		q.Set("repo", repo)
 	}
-	path := "/kg/" + url.PathEscape(owner) + "/symbols?" + q.Encode()
+	path := "/api/namespaces/" + url.PathEscape(owner) + "/kg/symbols?" + q.Encode()
 
 	var sr struct {
 		Matches []symbolMatch `json:"matches"`

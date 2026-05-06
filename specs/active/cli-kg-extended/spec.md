@@ -11,7 +11,7 @@
 
 Knowledge-graph queries power discovery (symbols, files, walks), cross-namespace search, fulltext, and structural diff. Agents integrate via **HTTPS MCP** (canonical); humans and CI still need **`citadel kg …`** without composing raw URLs.
 
-**Important:** Today `kg impact` calls **`/kg/{owner}/impact`** (`cmd/kg.go`). Separately, **`kgapi.Routes`** registers **`/api/namespaces/{slug}/kg/...`** and **`/api/kg/search`**. P0 must **reconcile** these path styles against the configured API host (document outcome in plan appendix — either align legacy `/kg/` short paths or standardise on `/api/namespaces/.../kg/...` for new verbs).
+**Important:** The CLI now calls **`/api/namespaces/{slug}/kg/...`** (and **`/api/kg/search`** for cross-namespace search). Legacy **`/kg/{owner}/...`** short paths are **not** used (`cmd/kg.go`, `cmd/kg_extended.go`).
 
 ## Daemon HTTP contract (baseline RECON)
 
@@ -51,7 +51,6 @@ Add subcommands under **`citadel-cli kg`**:
 ## Out of scope
 
 - **`kg.decision_log`** (PoL appendix K) — **no REST handler** located under `kgapi` at authoring time; remains MCP-only until server ships HTTP.
-- **Changing `kg impact` behaviour** unless required for path unification (track as separate task in plan).
 - **Admin KG** (`/api/admin/kg/*`) — operator tooling.
 
 ## Decision log

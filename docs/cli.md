@@ -227,6 +227,36 @@ Do not paste **`--debug-http`** traces into tickets: Authorization is redacted, 
 
 Opt-in: set **`CITADEL_TEST_ACCOUNT_SECURITY_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`** (and optional **`CITADEL_SERVER`**). See `cmd/account_live_test.go`. CI skips when unset.
 
+## Knowledge graph (HTTP)
+
+Query the Citadel **knowledge-graph REST API** (`kgapi`) with your JWT. Commands follow **`cli-cwd-context`**: pass **`-R namespace/repo`**, set **`CITADEL_REPO`**, or rely on **`git remote origin`** when the remote host is recognised.
+
+### Cross-namespace search
+
+```bash
+citadel-cli kg search "auth middleware"
+citadel-cli kg search --query "TODO" --mode fts --path-prefix internal/
+```
+
+### Namespace-scoped verbs
+
+```bash
+citadel-cli kg symbols --q Handler -R myorg/myrepo
+citadel-cli kg files -R myorg/myrepo --path-prefix pkg/
+citadel-cli kg fulltext --q "panic(" -R myorg/myrepo
+citadel-cli kg walk --seed-id <symbol-uuid> -R myorg/myrepo --depth 2
+citadel-cli kg diff -R myorg/myrepo --from-ref main --to-ref topic-branch
+citadel-cli kg impact myorg/myrepo MyFunc   # symbol name or UUID
+```
+
+**`kg impact`** uses **`GET /api/namespaces/{namespace}/kg/impact`** (legacy **`/kg/{owner}/impact`** is no longer called).
+
+Machine output: **`--output json`** or **`yaml`** on each verb.
+
+### Live integration test
+
+Opt-in: **`CITADEL_TEST_KG_EXTENDED_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`** — see `cmd/kg_extended_live_test.go`. CI skips when unset.
+
 ## Audit sessions
 
 Inspect grouped audit **sessions** for a namespace (distinct from **`citadel-cli audit list`**, which lists raw events with cursor pagination).
