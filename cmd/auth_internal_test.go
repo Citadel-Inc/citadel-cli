@@ -51,43 +51,65 @@ func TestUserUUIDFromClaims(t *testing.T) {
 	}
 }
 
-func TestResolveSupabaseURL(t *testing.T) {
-	t.Setenv("SUPABASE_URL", "")
-	if got := resolveSupabaseURL(); got != "https://ucnlqqhgqhenzthzkdpi.supabase.co" {
-		t.Errorf("default: got %q", got)
+func TestRandomOAuthState(t *testing.T) {
+	a, err := randomOAuthState()
+	if err != nil {
+		t.Fatal(err)
 	}
-	t.Setenv("SUPABASE_URL", "https://override.example")
-	if got := resolveSupabaseURL(); got != "https://override.example" {
-		t.Errorf("env override: got %q", got)
+	b, err := randomOAuthState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a == "" || b == "" || a == b {
+		t.Fatalf("unexpected states %q %q", a, b)
 	}
 }
 
 func TestBuildAuthorizeURL(t *testing.T) {
-	got := buildAuthorizeURL("https://x.supabase.co", "http://127.0.0.1:1/callback", "CHAL")
-	for _, want := range []string{"provider=github", "code_challenge=CHAL", "code_challenge_method=S256", "response_type=code", "redirect_uri=http%3A%2F%2F127.0.0.1%3A1%2Fcallback"} {
+	got := buildAuthorizeURL("https://x.example/", "http://127.0.0.1:1/callback", "CHAL", "STATEVAL")
+	for _, want := range []string{
+		"client_id=citadel-cli",
+		"code_challenge=CHAL",
+		"code_challenge_method=S256",
+		"response_type=code",
+		"state=STATEVAL",
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("authorize URL missing %q: %s", want, got)
 		}
 	}
+	if !strings.Contains(got, "127.0.0.1") {
+		t.Errorf("expected redirect host in URL: %s", got)
+	}
+	if !strings.HasPrefix(got, "https://x.example/api/oauth/authorize?") {
+		t.Errorf("unexpected prefix: %s", got)
+	}
 }
 
 func TestExchangePKCECode_Happy(t *testing.T) {
+	redirect := "http://127.0.0.1:9/callback"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/auth/v1/token" {
+		if r.URL.Path != "/api/oauth/token" {
 			t.Errorf("path = %s", r.URL.Path)
 		}
 		if err := r.ParseForm(); err != nil {
 			t.Fatal(err)
 		}
-		if r.PostForm.Get("grant_type") != "pkce" || r.PostForm.Get("code") != "abc" || r.PostForm.Get("code_verifier") != "ver" {
+		if r.PostForm.Get("grant_type") != "authorization_code" || r.PostForm.Get("code") != "abc" || r.PostForm.Get("code_verifier") != "ver" {
 			t.Errorf("form mismatch: %v", r.PostForm)
+		}
+		if r.PostForm.Get("client_id") != oauthClientID {
+			t.Errorf("client_id = %q", r.PostForm.Get("client_id"))
+		}
+		if r.PostForm.Get("redirect_uri") != redirect {
+			t.Errorf("redirect_uri = %q", r.PostForm.Get("redirect_uri"))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"access_token":"at","refresh_token":"rt"}`))
 	}))
 	t.Cleanup(srv.Close)
 
-	got, err := exchangePKCECode(srv.URL, "abc", "ver")
+	got, err := exchangePKCECode(srv.URL, redirect, "abc", "ver")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +125,7 @@ func TestExchangePKCECode_BadStatus(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	_, err := exchangePKCECode(srv.URL, "x", "y")
+	_, err := exchangePKCECode(srv.URL, "http://127.0.0.1:1/callback", "x", "y")
 	if err == nil || !strings.Contains(err.Error(), "bad code") {
 		t.Errorf("got %v", err)
 	}
@@ -111,7 +133,7 @@ func TestExchangePKCECode_BadStatus(t *testing.T) {
 
 func TestExchangePKCECode_Unreachable(t *testing.T) {
 	// Use an obviously-bad host so http.PostForm fails immediately.
-	if _, err := exchangePKCECode("http://127.0.0.1:1", "x", "y"); err == nil {
+	if _, err := exchangePKCECode("http://127.0.0.1:1", "http://127.0.0.1:2/callback", "x", "y"); err == nil {
 		t.Error("expected dial error")
 	}
 }
@@ -122,7 +144,7 @@ func TestExchangePKCECode_BadJSON(t *testing.T) {
 		_, _ = w.Write([]byte("{not-json"))
 	}))
 	t.Cleanup(srv.Close)
-	if _, err := exchangePKCECode(srv.URL, "x", "y"); err == nil || !strings.Contains(err.Error(), "decode") {
+	if _, err := exchangePKCECode(srv.URL, "http://127.0.0.1:1/callback", "x", "y"); err == nil || !strings.Contains(err.Error(), "decode") {
 		t.Errorf("got %v", err)
 	}
 }

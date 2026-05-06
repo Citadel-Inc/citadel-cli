@@ -24,6 +24,10 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
 
+// oauthClientID is the registered public OAuth client id for citadel-cli
+// (Citadel-mediated authorize/token; see specs/active/cli-oauth-login).
+const oauthClientID = "citadel-cli"
+
 var AuthCmd = &cobra.Command{
 	Use:   "auth",
 	Short: "Manage authentication (login, logout, status)",
@@ -33,12 +37,12 @@ var AuthCmd = &cobra.Command{
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate via OAuth/PKCE flow (experimental)",
-	Long: `Starts an OAuth/PKCE authentication flow with Supabase Auth, opens a
-browser to the authorization endpoint, and stores the resulting access
+	Long: `Starts an OAuth 2.1 PKCE flow against the Citadel API (/api/oauth/authorize
+and /api/oauth/token), opens a browser, and stores the resulting access
 and refresh tokens in ~/.config/citadel/config.toml (mode 0600).
 
-EXPERIMENTAL: the OAuth client_id wiring is not yet productised. For
-practical use today, prefer 'citadel-cli auth set-token' (paste a JWT
+EXPERIMENTAL: durable agent-token bootstrap is not yet productised end-to-end.
+For practical use today, prefer 'citadel-cli auth set-token' (paste a JWT
 minted via the web app or an external SSO bridge) or set the
 CITADEL_ACCESS_TOKEN environment variable.`,
 	RunE: runLogin,
@@ -88,7 +92,12 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 	flagServer, _ := cmd.Flags().GetString("server")
 	serverURL := cfg.ResolveServerURL(flagServer)
-	supabaseURL := resolveSupabaseURL()
+	citadelBaseURL := strings.TrimRight(serverURL, "/")
+
+	oauthState, err := randomOAuthState()
+	if err != nil {
+		return fmt.Errorf("oauth state: %w", err)
+	}
 
 	// Start a loopback HTTP server for the OAuth callback
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -106,27 +115,48 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("generate PKCE: %w", err)
 	}
 
-	authURL := buildAuthorizeURL(supabaseURL, redirectURI, challenge)
+	authURL := buildAuthorizeURL(citadelBaseURL, redirectURI, challenge, oauthState)
 
 	fmt.Printf("Opening browser to authenticate...\n")
 	openBrowser(authURL)
 
 	// Wait for callback
 	var code string
-	codeChan := make(chan string, 1)
-	errChan := make(chan error, 1)
+	type oauthCallbackResult struct {
+		code string
+		err  error
+	}
+	resCh := make(chan oauthCallbackResult, 1)
+	errServe := make(chan error, 1)
 
 	go func() {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-			c := r.URL.Query().Get("code")
+			q := r.URL.Query()
+			if errName := q.Get("error"); errName != "" {
+				desc := q.Get("error_description")
+				if desc == "" {
+					desc = errName
+				}
+				resCh <- oauthCallbackResult{err: fmt.Errorf("oauth authorization failed: %s", desc)}
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte("Authorization failed. You can close this window."))
+				return
+			}
+			if got := q.Get("state"); got != oauthState {
+				resCh <- oauthCallbackResult{err: errors.New("invalid oauth state parameter")}
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte("invalid state"))
+				return
+			}
+			c := q.Get("code")
 			if c == "" {
-				errChan <- errors.New("missing code parameter")
+				resCh <- oauthCallbackResult{err: errors.New("missing code parameter")}
 				w.WriteHeader(http.StatusBadRequest)
 				_, _ = w.Write([]byte("missing code"))
 				return
 			}
-			codeChan <- c
+			resCh <- oauthCallbackResult{code: c}
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("Authentication successful! You can close this window."))
@@ -136,20 +166,23 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		// No follow-up Shutdown() is needed — Serve already returned.
 		server := &http.Server{Handler: mux}
 		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errChan <- fmt.Errorf("serve: %w", err)
+			errServe <- fmt.Errorf("serve: %w", err)
 		}
 	}()
 
 	select {
-	case code = <-codeChan:
-		// Exchange code for tokens
-	case err := <-errChan:
+	case res := <-resCh:
+		if res.err != nil {
+			return res.err
+		}
+		code = res.code
+	case err := <-errServe:
 		return err
 	case <-time.After(5 * time.Minute):
 		return errors.New("login timeout")
 	}
 
-	tokenResp, err := exchangePKCECode(supabaseURL, code, verifier)
+	tokenResp, err := exchangePKCECode(citadelBaseURL, redirectURI, code, verifier)
 	if err != nil {
 		return err
 	}
@@ -159,7 +192,11 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("parse access token: %w", err)
 	}
 	userUUID := userUUIDFromClaims(claims)
-	expiresAt := expiryFromClaims(claims, time.Now().Add(time.Hour))
+	fallbackExp := time.Now().Add(time.Hour)
+	if tokenResp.ExpiresIn > 0 {
+		fallbackExp = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	}
+	expiresAt := expiryFromClaims(claims, fallbackExp)
 
 	// Save config
 	cfg.ServerURL = serverURL
@@ -266,39 +303,46 @@ func runLogout(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// resolveSupabaseURL returns the SUPABASE_URL env override or the canonical
-// Citadel Supabase project URL. Split out so tests can verify the env-vs-default
-// precedence without spinning up runLogin.
-func resolveSupabaseURL() string {
-	return cmp.Or(os.Getenv("SUPABASE_URL"), "https://ucnlqqhgqhenzthzkdpi.supabase.co")
+// randomOAuthState returns a high-entropy OAuth 2.0 "state" value (base64url, no padding).
+func randomOAuthState() (string, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(buf), nil
 }
 
-// buildAuthorizeURL constructs the GitHub-provider PKCE authorize URL
-// served by Supabase Auth.
-func buildAuthorizeURL(supabaseURL, redirectURI, challenge string) string {
-	return fmt.Sprintf(
-		"%s/auth/v1/authorize?provider=github&client_id=&redirect_uri=%s&code_challenge=%s&code_challenge_method=S256&response_type=code",
-		supabaseURL,
-		url.QueryEscape(redirectURI),
-		challenge,
-	)
+// buildAuthorizeURL constructs the Citadel /api/oauth/authorize URL (PKCE + state).
+func buildAuthorizeURL(citadelBaseURL, redirectURI, challenge, state string) string {
+	base := strings.TrimRight(citadelBaseURL, "/")
+	q := url.Values{}
+	q.Set("client_id", oauthClientID)
+	q.Set("redirect_uri", redirectURI)
+	q.Set("response_type", "code")
+	q.Set("code_challenge", challenge)
+	q.Set("code_challenge_method", "S256")
+	q.Set("state", state)
+	return base + "/api/oauth/authorize?" + q.Encode()
 }
 
-// pkceTokenResponse is the JSON body returned by Supabase /auth/v1/token.
+// pkceTokenResponse is the JSON body returned by Citadel /api/oauth/token.
 type pkceTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"`
 }
 
-// exchangePKCECode swaps an auth code + verifier for an access/refresh token
-// pair. Split out so tests can drive the request with an httptest server.
-func exchangePKCECode(supabaseURL, code, verifier string) (pkceTokenResponse, error) {
-	tokenURL := supabaseURL + "/auth/v1/token"
+// exchangePKCECode swaps an authorization code + verifier for tokens at
+// Citadel's /api/oauth/token. Split out so tests can drive the request with an httptest server.
+func exchangePKCECode(citadelBaseURL, redirectURI, code, verifier string) (pkceTokenResponse, error) {
+	base := strings.TrimRight(citadelBaseURL, "/")
+	tokenURL := base + "/api/oauth/token"
 	form := url.Values{
-		"grant_type":    {"pkce"},
+		"grant_type":    {"authorization_code"},
 		"code":          {code},
 		"code_verifier": {verifier},
-		"client_id":     {""},
+		"client_id":     {oauthClientID},
+		"redirect_uri":  {redirectURI},
 	}
 	resp, err := http.PostForm(tokenURL, form)
 	if err != nil {
