@@ -1,6 +1,6 @@
 # Tasks — cli-projectgraph
 
-Status: IN_PROGRESS 060539ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 060539ZMAY26 — Delivered top-level `citadel-cli project` with URL-encoded multi-segment namespace paths, read verbs (pin-chain, walk, neighbors, status rollup/drilldown), write verbs (edge add/delete/restore, reindex) with typed confirm/--yes, httptest matrix incl. multi-segment pin-chain + read/write 404 paths, docs/cli.md, optional live test behind CITADEL_TEST_PROJECTGRAPH_LIVE + CITADEL_TEST_PROJECTGRAPH_SLUG. Q4 recovery-scan intentionally unimplemented; P1 B2 remains open.
 
 ## P0
 

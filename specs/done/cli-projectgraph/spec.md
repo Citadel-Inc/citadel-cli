@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 060539ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 060539ZMAY26 — Delivered top-level `citadel-cli project` with URL-encoded multi-segment namespace paths, read verbs (pin-chain, walk, neighbors, status rollup/drilldown), write verbs (edge add/delete/restore, reindex) with typed confirm/--yes, httptest matrix incl. multi-segment pin-chain + read/write 404 paths, docs/cli.md, optional live test behind CITADEL_TEST_PROJECTGRAPH_LIVE + CITADEL_TEST_PROJECTGRAPH_SLUG. Q4 recovery-scan intentionally unimplemented; P1 B2 remains open. |
 | Authored | 050506ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 / PoL gap analysis (2026-05-05): L2 Project-as-Graph is marquee; server exposes `internal/api/projectgraphapi` under `/api/projectgraph/` but `citadel-cli` had no first-class project verbs (operators had to use MCP or curl). |
