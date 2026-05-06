@@ -85,23 +85,23 @@ var AuthCmd = &cobra.Command{
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Authenticate via OAuth/PKCE flow (experimental)",
+	Short: "Authenticate via OAuth/PKCE browser flow",
 	Long: `Starts an OAuth 2.1 PKCE flow against the Citadel API (/api/oauth/authorize
-and /api/oauth/token), opens a browser, and stores the resulting access
-and refresh tokens in ~/.config/citadel/config.toml (mode 0600).
+and /api/oauth/token), opens a browser, exchanges the code for a short-lived
+identity token, then swaps it for a long-lived agent token stored in
+~/.config/citadel/config.toml (mode 0600).
 
-EXPERIMENTAL: durable agent-token bootstrap is not yet productised end-to-end.
-For practical use today, prefer 'citadel-cli auth set-token' (paste a JWT
-minted via the web app or an external SSO bridge) or set the
-CITADEL_ACCESS_TOKEN environment variable.`,
+For headless hosts, containers, or automation where a browser is unavailable,
+use 'citadel-cli auth set-token' instead.`,
 	RunE: runLogin,
 }
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Display the current authentication status",
-	Long: `Prints whether a session is active, the bound user UUID,
-the access-token expiry, and the configured server URL.`,
+	Long: `Prints whether a session is active, the bound agent (after auth login),
+the access-token expiry, the bound user UUID when known, and the configured
+server URL.`,
 	RunE: runStatus,
 }
 
@@ -119,12 +119,14 @@ var setTokenCmd = &cobra.Command{
 (in that order), parses sub/exp claims, and writes the token + derived user
 UUID + expiry to ~/.config/citadel/config.toml.
 
+This is the supported headless / CI / SSH-only bootstrap when you cannot run
+'auth login' (no browser on the host). The CLI will migrate a stored JWT to an
+agent token on the next command launch when the server is reachable.
+
 Use this when:
   - you already have a Supabase access token from elsewhere (web app dev tools,
     a CI mint job, an external SSO bridge), and
-  - the interactive 'auth login' OAuth/PKCE flow is unavailable or undesired
-    (headless host, container, runLogin's PKCE client_id is still being
-    productised — see specs/HUMAN_BLOCKERS.md).
+  - the interactive 'auth login' browser flow is unavailable or undesired.
 
 Examples:
   citadel-cli auth set-token --token "$JWT"
@@ -267,25 +269,50 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Decode JWT to get expiry (signature verified server-side; client only inspects claims).
+	resolvedServer := cfg.ResolveServerURL(serverFlag(cmd))
+
+	// Agent-token session: bearer is opaque; use stored agent metadata + expires_at.
+	if strings.TrimSpace(cfg.AgentID) != "" {
+		if !cfg.ExpiresAt.IsZero() && time.Until(cfg.ExpiresAt) < 0 {
+			fmt.Println("Session: EXPIRED")
+			fmt.Printf("Agent: %s (%s)\n", cfg.AgentName, cfg.AgentID)
+			if cfg.UserUUID != "" {
+				fmt.Printf("User UUID: %s\n", cfg.UserUUID)
+			}
+			fmt.Printf("Server: %s\n", resolvedServer)
+			return nil
+		}
+		fmt.Println("Session: ACTIVE")
+		fmt.Printf("Agent: %s (%s)\n", cfg.AgentName, cfg.AgentID)
+		if !cfg.ExpiresAt.IsZero() {
+			left := time.Until(cfg.ExpiresAt).Round(time.Second)
+			fmt.Printf("Token expires: %s (%s from now)\n", cfg.ExpiresAt.Format(time.RFC3339), left)
+		}
+		if cfg.UserUUID != "" {
+			fmt.Printf("User UUID: %s\n", cfg.UserUUID)
+		}
+		fmt.Printf("Server: %s\n", resolvedServer)
+		return nil
+	}
+
+	// Legacy JWT session: derive expiry from token claims.
 	claims, perr := claimsFromJWT(cfg.AccessToken)
 	if perr != nil {
 		fmt.Printf("Warning: could not parse access token: %v\n", perr)
 	}
 	exp := expiryFromClaims(claims, time.Time{})
-
 	remaining := time.Until(exp)
 	if remaining < 0 {
 		fmt.Println("Session: EXPIRED")
 		fmt.Printf("User UUID: %s\n", cfg.UserUUID)
-		fmt.Printf("Server: %s\n", cfg.ServerURL)
+		fmt.Printf("Server: %s\n", resolvedServer)
 		return nil
 	}
 
 	fmt.Println("Session: ACTIVE")
 	fmt.Printf("User UUID: %s\n", cfg.UserUUID)
 	fmt.Printf("Expires in: %v\n", remaining.Round(time.Second))
-	fmt.Printf("Server: %s\n", cfg.ServerURL)
+	fmt.Printf("Server: %s\n", resolvedServer)
 	return nil
 }
 

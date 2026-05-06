@@ -372,3 +372,76 @@ func TestGeneratePKCE(t *testing.T) {
 		t.Error("verifier must use base64url alphabet without padding")
 	}
 }
+
+// TestRunLogin_FlowSmoke exercises Citadel token exchange + agent bootstrap
+// against a single fake API server (no browser / loopback callback).
+func TestRunLogin_FlowSmoke(t *testing.T) {
+	jwt := makeUnsignedJWT(t, jwt.MapClaims{
+		"sub": "44444444-4444-4444-4444-444444444444",
+		"exp": float64(time.Now().Add(time.Hour).Unix()),
+	})
+	agentID := "30000000-0000-4000-8000-000000000003"
+	exp := time.Now().Add(72 * time.Hour).UTC()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/api/oauth/token" && r.Method == http.MethodPost:
+			if err := r.ParseForm(); err != nil {
+				t.Errorf("parse form: %v", err)
+				http.Error(w, "bad", http.StatusBadRequest)
+				return
+			}
+			if r.PostForm.Get("grant_type") != "authorization_code" {
+				t.Errorf("grant_type = %q", r.PostForm.Get("grant_type"))
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"access_token": jwt,
+				"expires_in":   3600,
+			})
+		case r.URL.Path == "/agents" && r.Method == http.MethodGet:
+			_, _ = w.Write([]byte(`{"agents":[],"next_cursor":""}`))
+		case r.URL.Path == "/agents" && r.Method == http.MethodPost:
+			var body struct {
+				Name string `json:"name"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			_ = json.NewEncoder(w).Encode(map[string]string{"id": agentID, "name": body.Name})
+		case r.URL.Path == "/agents/"+agentID+"/rotate-token" && r.Method == http.MethodPost:
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":              "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				"agent_id":        agentID,
+				"cleartext_token": "smoke-opaque",
+				"expires_at":      exp.Format(time.RFC3339Nano),
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	redirect := "http://127.0.0.1:1/callback"
+	verifier, _, err := generatePKCE()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr, err := exchangePKCECode(srv.URL, redirect, "dummy-code", verifier)
+	if err != nil {
+		t.Fatalf("exchange: %v", err)
+	}
+	authURL := buildAuthorizeURL(srv.URL, redirect, "CHALLENGE", "STATE")
+	if !strings.Contains(authURL, "/api/oauth/authorize?") {
+		t.Fatalf("authorize URL: %s", authURL)
+	}
+
+	var cfg clicfg.Config
+	co := &cobra.Command{}
+	if err := bootstrapAgentToken(context.Background(), co, &cfg, srv.URL, "", tr.AccessToken); err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	if cfg.AccessToken != "smoke-opaque" {
+		t.Fatalf("AccessToken = %q", cfg.AccessToken)
+	}
+	if cfg.AgentID != agentID {
+		t.Fatalf("AgentID = %q", cfg.AgentID)
+	}
+}
