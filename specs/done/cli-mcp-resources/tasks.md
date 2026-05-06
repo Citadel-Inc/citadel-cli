@@ -1,6 +1,6 @@
 # Tasks — cli-mcp-resources
 
-Status: DONE 032359ZMAY26 — Shipped MCP resources/list, resources/read, prompts/list, prompts/get, citadel-cli `mcp resources` / `mcp prompts`, waitlist parity with tools/call, and automated conformance tests. SDD closeout complete (P2 C2 checked). Remaining human follow-ups: P0 NOMAD Q-table row, P2 Claude Desktop smoke — see [HUMAN_BLOCKERS §69](../../HUMAN_BLOCKERS.md#69--cli-mcp-resources-nomad-procedural-q-table--claude-desktop-smoke).
+Status: DONE 032359ZMAY26 — Shipped MCP resources/list, resources/read, prompts/list, prompts/get, citadel-cli `mcp resources` / `mcp prompts`, waitlist parity with tools/call, and automated conformance tests. SDD closeout complete (P2 C2 checked). Remaining follow-up: P2 HTTPS-MCP client smoke against a live server (automation-capable; not a HUMAN_BLOCKERS item).
 
 ## P0
 
@@ -17,5 +17,5 @@ Status: DONE 032359ZMAY26 — Shipped MCP resources/list, resources/read, prompt
 
 ## P2
 
-- [ ] C1. Production smoke: list + read a resource via Claude Desktop.
+- [ ] C1. Production smoke: list + read a resource via an HTTPS-capable MCP client (for example VS Code MCP configuration pointed at `https://mcp.src.land/mcp`).
 - [x] C2. Spec close.

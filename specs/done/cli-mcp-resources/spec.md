@@ -2,14 +2,14 @@
 
 | | |
 |---|---|
-| Status | DONE 032359ZMAY26 — Shipped MCP resources/list, resources/read, prompts/list, prompts/get, citadel-cli `mcp resources` / `mcp prompts`, waitlist parity with tools/call, and automated conformance tests. SDD closeout complete (P2 C2). Remaining operator/NOMAD rows: P0 Q-table sign-off and P2 Claude Desktop smoke — see [specs/HUMAN_BLOCKERS.md §69](../../HUMAN_BLOCKERS.md#69--cli-mcp-resources-nomad-procedural-q-table--claude-desktop-smoke). |
+| Status | DONE 032359ZMAY26 — Shipped MCP resources/list, resources/read, prompts/list, prompts/get, citadel-cli `mcp resources` / `mcp prompts`, waitlist parity with tools/call, and automated conformance tests. SDD closeout complete (P2 C2). Remaining follow-up: P2 HTTPS-MCP client smoke against a live server (automation-capable; not a HUMAN_BLOCKERS item). |
 | Authored | 030619ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | `cli-mcp-tools` Q5 (RATIFIED OOS) + retro line 78: "`cli-mcp-resources` — `resources/list` + `resources/read` verbs." + spec §37: "Resource / prompt browsing (`resources/list`, `prompts/list`). MCP server's resource surface is stubbed today; defer to `cli-mcp-resources` follow-on." |
 
 ## Why
 
-`cli-mcp-tools` ships tool-call verbs only. MCP also defines `resources/*` (read-addressable artefacts: spec docs, CLAUDE.md, generated reports) and `prompts/*` (server-supplied templates). Other MCP clients consume these. Citadel's MCP server stubs them today; this spec lights them up so CLI users can browse / read them and other clients (Claude Desktop, IDEs) get the full surface.
+`cli-mcp-tools` ships tool-call verbs only. MCP also defines `resources/*` (read-addressable artefacts: spec docs, CLAUDE.md, generated reports) and `prompts/*` (server-supplied templates). Other MCP clients consume these. Citadel's MCP server stubs them today; this spec lights them up so CLI users can browse / read them and IDE / agent MCP clients get the full surface.
 
 ## In scope
 

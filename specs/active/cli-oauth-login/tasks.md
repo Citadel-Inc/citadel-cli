@@ -21,7 +21,7 @@ Status: IN_PROGRESS 061800ZMAY26 — Bastion (J-3) claims execution
 
 ## P2
 
-- [ ] C1. Live end-to-end test (`CITADEL_TEST_OAUTH_FULL=1`) against a real Citadel test instance + real browser via Playwright (or a manual operator runbook entry).
+- [ ] C1. Automation-capable live end-to-end test (`CITADEL_TEST_OAUTH_FULL=1`) against a real Citadel test instance + real browser via Playwright. Manual runbook is fallback only if browser automation proves impossible.
 - [x] C2. README + HUMANS.md updates: replace the "EXPERIMENTAL: prefer set-token" callout with the new canonical `auth login` instructions.
-- [ ] C3. [HUMAN] Production smoke: `citadel-cli auth login` against `https://api.src.land`, confirm token persists across CLI restarts and a subsequent verb succeeds.
+- [ ] C3. Production smoke: `citadel-cli auth login` against `https://api.src.land`, confirm token persists across CLI restarts and a subsequent verb succeeds. Live-env / secret-dependent, but not classified as human-only.
 - [ ] C4. Spec close.
