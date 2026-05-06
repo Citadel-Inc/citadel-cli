@@ -22,9 +22,9 @@ go install github.com/Rethunk-Tech/citadel-cli@latest
 
 This installs to `~/go/bin/citadel-cli`; add `~/go/bin` to your `PATH` if it is not already there.
 
-### Binary releases (future)
+### Binary releases
 
-Once v1 is stable, pre-built binaries for linux-amd64, linux-arm64, and darwin-arm64 will be published to GitHub Releases. Check <https://github.com/Rethunk-Tech/citadel-cli/releases/> for availability.
+Pre-built binaries for linux-amd64, linux-arm64, and darwin-arm64 are published to GitHub Releases on every `v*` tag. Check <https://github.com/Rethunk-Tech/citadel-cli/releases/> for the latest release.
 
 ## First-run flow
 
@@ -37,6 +37,21 @@ citadel-cli auth login
 This opens your default browser to Supabase's OAuth authorization endpoint. After you authenticate (GitHub or your configured provider), the browser redirects to a local loopback server running on your machine, which exchanges the authorization code for an access token and refresh token. Both are stored in `~/.config/citadel/config.toml` (mode 0600).
 
 The CLI defaults to server URL `https://api.src.land`; if your server is at a different URL, set the `CITADEL_SERVER` environment variable or edit the config file directly (key: `server_url`).
+
+### Headless / CI bootstrap
+
+When a browser is unavailable, persist a Supabase JWT directly and let the CLI
+upgrade it to a Citadel agent token on a later command when the server is
+reachable:
+
+```bash
+citadel-cli auth set-token --token "$JWT"
+echo "$JWT" | citadel-cli auth set-token
+CITADEL_ACCESS_TOKEN="$JWT" citadel-cli auth set-token
+```
+
+Use this path for CI, SSH-only hosts, containers, or other non-interactive
+environments where `citadel-cli auth login` is unavailable.
 
 ### Check authentication status
 
@@ -466,6 +481,15 @@ For comprehensive token lifecycle documentation, see [Rethunk-Tech/citadel docs/
 - **Revocation.** Revoked tokens are rejected immediately; no cache delay.
 
 ## Troubleshooting
+
+### Environment health check
+
+Run `citadel-cli doctor` to check server reachability, local auth state, MCP
+endpoint reachability, and config-file permissions in one pass.
+
+```bash
+citadel-cli doctor
+```
 
 ### "not authenticated" after login
 

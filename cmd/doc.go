@@ -1,3 +1,4 @@
 // Package cmd implements the cobra subcommand tree for citadel-cli:
-// auth, agent, kg, mcp, namespace, oauth, project, repo, search, and token verbs.
+// account, agent, audit, auth, completion, doctor, kg, man, mcp, namespace,
+// oauth, org, project, repo, search, ssh-key, and token verbs.
 package cmd
