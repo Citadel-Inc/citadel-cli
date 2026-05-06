@@ -17,7 +17,7 @@ End-to-end success: `citadel-cli auth login`, browser flow, return to terminal. 
 
 ## In scope
 
-- **`runLogin` rewrite**: point at `https://api.src.land/api/oauth/authorize` with PKCE. `client_id` is the CLI-side constant `citadel-cli`. Loopback redirect `http://127.0.0.1:N/callback` with N chosen at runtime. Token exchange against `https://api.src.land/api/oauth/token`.
+- **`runLogin` rewrite**: point at Citadel's live OAuth host with PKCE. In production today that surface is `https://mcp.src.land/api/oauth/authorize` and `https://mcp.src.land/api/oauth/token` (the older `api.src.land` examples are stale). `client_id` is the CLI-side constant `citadel-cli`. Loopback redirect `http://127.0.0.1:N/callback` with N chosen at runtime.
 - **Post-auth agent-token bootstrap**: after the JWT lands, call `/api/agents` to find-or-create an agent named `citadel-cli@<hostname>` (host-scoped so revocation from the web UI is per-machine). Then call `/api/agents/{id}/rotate-token` (atomic; `citadel@9af1596c`) to mint a long-lived agent token. Persist the agent token. Discard the JWT.
 - **Refresh handling**: on a 401 response from any verb, attempt a single rotate-token round trip; if that also 401s, surface a friendly "session expired — run `auth login` again" error.
 - **Status semantics**: `auth status` should show the bound agent ID + agent name (instead of, or in addition to, the user UUID). The user UUID is no longer the durable identity from the CLI's point of view.

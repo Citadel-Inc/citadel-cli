@@ -21,7 +21,7 @@ Status: IN_PROGRESS 061800ZMAY26 — Bastion (J-3) claims execution
 
 ## P2
 
-- [ ] C1. Automation-capable live end-to-end test (`CITADEL_TEST_OAUTH_FULL=1`) against a real Citadel test instance + real browser via Playwright. Manual runbook is fallback only if browser automation proves impossible.
+- [x] C1. Automation-capable live end-to-end test (`CITADEL_TEST_OAUTH_FULL=1`) against a real Citadel instance + real browser via Playwright. Supports either a signed-in Playwright storage-state file or a Citadel refresh-token bootstrap path that mints a fresh JWT, bridges the OAuth cookie, and auto-approves consent.
 - [x] C2. README + HUMANS.md updates: replace the "EXPERIMENTAL: prefer set-token" callout with the new canonical `auth login` instructions.
-- [ ] C3. Production smoke: `citadel-cli auth login` against `https://api.src.land`, confirm token persists across CLI restarts and a subsequent verb succeeds. Live-env / secret-dependent, but not classified as human-only.
+- [ ] C3. Production smoke: `citadel-cli auth login` against the live production host (`https://mcp.src.land` as of 2026-05-06), confirm token persists across CLI restarts and a subsequent verb succeeds. Current blocker in this session: only a stale legacy Supabase token pair was available locally, and the copied Chromium profile did not contain an active src.land session to reuse.
 - [ ] C4. Spec close.

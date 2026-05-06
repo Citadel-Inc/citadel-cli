@@ -66,7 +66,7 @@ Makefile                         build / build-all / test / vet / lint / verify
 | Pre-push gate | `make verify` |
 | Cut a release | tag `vX.Y.Z`; `cli-release.yml` builds + publishes to GH Releases |
 
-Live integration tests (e.g. `oauth_clients_live_test.go`) self-skip without `CITADEL_TEST_OAUTH_JWT` set. Repository list pagination against a real instance is gated on `CITADEL_TEST_PAGINATION_LIVE=1` (see `repo_pagination_live_test.go`). Audit list round-trip (agent create → `agent.created` row) is gated on `CITADEL_TEST_AUDIT_LIVE=1` plus `CITADEL_TEST_OAUTH_JWT` (see `audit_live_test.go`).
+Live integration tests self-skip unless their env gates are set. Examples: `oauth_clients_live_test.go` uses `CITADEL_TEST_OAUTH_JWT`; repository list pagination uses `CITADEL_TEST_PAGINATION_LIVE=1`; audit list round-trip uses `CITADEL_TEST_AUDIT_LIVE=1` plus `CITADEL_TEST_OAUTH_JWT`. Full browser OAuth login coverage lives in `auth_live_test.go`, gated on `CITADEL_TEST_OAUTH_FULL=1` plus either `CITADEL_TEST_OAUTH_STORAGE_STATE=/abs/path/to/playwright-storage-state.json` or `CITADEL_TEST_OAUTH_REFRESH_TOKEN=<citadel refresh token for client_id=citadel-cli>`, and a local Playwright Chromium install.
 
 ## Audit log access
 

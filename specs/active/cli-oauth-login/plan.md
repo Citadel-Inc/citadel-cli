@@ -6,7 +6,7 @@
 1. citadel-cli auth login
 2. listen on 127.0.0.1:N (kernel-assigned)
 3. open browser to:
-     https://api.src.land/api/oauth/authorize
+     https://mcp.src.land/api/oauth/authorize
        ?client_id=citadel-cli
        &redirect_uri=http://127.0.0.1:N/callback
        &response_type=code
@@ -15,7 +15,7 @@
        &state=<random>
 4. wait on local listener for callback
 5. on hit, parse code + state; verify state
-6. POST https://api.src.land/api/oauth/token
+6. POST https://mcp.src.land/api/oauth/token
      grant_type=authorization_code
      code=...
      code_verifier=<verifier>

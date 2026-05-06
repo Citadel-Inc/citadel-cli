@@ -169,7 +169,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	authURL := buildAuthorizeURL(citadelBaseURL, redirectURI, challenge, oauthState)
 
 	fmt.Printf("Opening browser to authenticate...\n")
-	openBrowser(authURL)
+	launchBrowser(authURL)
 
 	// Wait for callback
 	var code string
@@ -548,6 +548,10 @@ func openBrowser(u string) {
 	}
 	_ = cmd.Start()
 }
+
+// launchBrowser is a test hook around openBrowser so env-gated live tests can
+// drive the real OAuth flow with browser automation.
+var launchBrowser = openBrowser
 
 func init() {
 	AuthCmd.AddCommand(loginCmd)
