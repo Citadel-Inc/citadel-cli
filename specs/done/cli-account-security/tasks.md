@@ -1,6 +1,6 @@
 # Tasks — cli-account-security
 
-Status: IN_PROGRESS 060455ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 060459ZMAY26 — Phase A delivered: account passkey list/rename/delete, device list/revoke, PATCH client support, httptest + opt-in live tests (CITADEL_TEST_ACCOUNT_SECURITY_LIVE), docs and CSV contracts. Phase B MFA recovery verbs intentionally deferred (P1 B1 remains open).
 
 ## P0
 
