@@ -2468,3 +2468,370 @@ func TestProject_StatusRollup_JSON(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestProject_Neighbors_Human(t *testing.T) {
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/ns/neighbors": func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("kind") != "repo" {
+				t.Fatalf("kind=%q", r.URL.Query().Get("kind"))
+			}
+			writeJSON(t, w, 200, []any{map[string]any{"x": "y"}})
+		},
+	}))
+	if err := rootForOut(cmd.ProjectCmd, &buf, "neighbors", "ns", "--kind", "repo").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "row(s)") {
+		t.Fatalf("want human summary, got %q", buf.String())
+	}
+}
+
+func TestProject_Walk_MaxDepth(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/ns/walk": func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("max_depth") != "3" {
+				t.Fatalf("max_depth=%q", r.URL.Query().Get("max_depth"))
+			}
+			writeJSON(t, w, 200, []any{})
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "walk", "ns", "--kind", "repo", "--max-depth", "3", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProject_EdgeRestore_OK(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /api/projectgraph/ns/edges/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb/restore": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"status": "ok"})
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "edge", "restore", "ns", "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", "--yes", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProject_EdgeDelete_OK(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /api/projectgraph/ns/edges/cccccccc-cccc-cccc-cccc-cccccccccccc": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "edge", "delete", "ns", "cccccccc-cccc-cccc-cccc-cccccccccccc", "--yes").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProject_EdgeAdd_InvalidAttrsJSON(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.ProjectCmd, "edge", "add", "ns",
+		"--from-namespace-id", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"--from-kind", "repo",
+		"--to-kind", "repo",
+		"--edge-type", "pins",
+		"--attrs-json", "NOTJSON",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "attrs-json") {
+		t.Fatalf("want attrs-json error, got %v", err)
+	}
+}
+
+func TestProject_EdgeAdd_HumanOK(t *testing.T) {
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /api/projectgraph/ns/edges": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 201, map[string]any{"status": "ok"})
+		},
+	}))
+	if err := rootForOut(cmd.ProjectCmd, &buf, "edge", "add", "ns",
+		"--from-namespace-id", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"--from-kind", "repo",
+		"--to-kind", "repo",
+		"--edge-type", "pins",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "ok") {
+		t.Fatalf("want ok output, got %q", buf.String())
+	}
+}
+
+func TestProject_StatusDrilldown_Human(t *testing.T) {
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/ns/status-rollup/drilldown": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"k": "v"})
+		},
+	}))
+	if err := rootForOut(cmd.ProjectCmd, &buf, "status", "drilldown", "ns").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "k:") {
+		t.Fatalf("want table keys, got %q", buf.String())
+	}
+}
+
+func TestProject_PinChain_YAML(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/ns/pin-chain": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, []map[string]any{})
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "pin-chain", "ns", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSearch_OutputYAML(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"query": "ab", "scope": "namespaces", "results": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.SearchCmd, "ab", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSearch_ScopeReposAndLimit(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			if q.Get("scope") != "repos" || q.Get("limit") != "5" {
+				t.Fatalf("scope=%q limit=%q", q.Get("scope"), q.Get("limit"))
+			}
+			writeJSON(t, w, 200, map[string]any{"query": q.Get("q"), "scope": q.Get("scope"), "results": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.SearchCmd, "ab", "--scope", "repos", "--limit", "5").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSearch_TableAlternatePaths(t *testing.T) {
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"query": "ab",
+				"scope": "namespaces",
+				"results": []any{
+					map[string]any{"type": "customType", "kind": "", "parent_slug": "p", "slug": "s"},
+				},
+			})
+		},
+	}))
+	if err := rootForOut(cmd.SearchCmd, &buf, "ab").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "p/s") || !strings.Contains(buf.String(), "customType") {
+		t.Fatalf("unexpected output: %q", buf.String())
+	}
+}
+
+func TestProject_PinChain_BooleanResponseHuman(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/ns/pin-chain": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, true)
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "pin-chain", "ns").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProject_EdgeRestore_YAML(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /api/projectgraph/ns/edges/dddddddd-dddd-dddd-dddd-dddddddddddd/restore": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"status": "ok"})
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "edge", "restore", "ns", "dddddddd-dddd-dddd-dddd-dddddddddddd", "--yes", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSearch_EmptyHuman(t *testing.T) {
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"query": "ab", "scope": "namespaces", "results": []any{}})
+		},
+	}))
+	if err := rootForOut(cmd.SearchCmd, &buf, "ab").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "no results") {
+		t.Fatalf("want empty marker, got %q", buf.String())
+	}
+}
+
+func TestProject_EdgeAdd_InvalidFromUUID(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.ProjectCmd, "edge", "add", "ns",
+		"--from-namespace-id", "not-a-uuid",
+		"--from-kind", "repo",
+		"--to-kind", "repo",
+		"--edge-type", "pins",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "UUID") {
+		t.Fatalf("want UUID validation error, got %v", err)
+	}
+}
+
+func TestProject_EdgeAdd_InvalidToNamespaceUUID(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.ProjectCmd, "edge", "add", "ns",
+		"--from-namespace-id", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"--from-kind", "repo",
+		"--to-namespace-id", "bad",
+		"--to-kind", "repo",
+		"--edge-type", "pins",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "to-namespace-id") {
+		t.Fatalf("want to-namespace-id validation error, got %v", err)
+	}
+}
+
+func TestProject_Reindex_HumanJSONFallback(t *testing.T) {
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /api/projectgraph/ns/reindex": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"queued": true})
+		},
+	}))
+	if err := rootForOut(cmd.ProjectCmd, &buf, "reindex", "ns", "--yes").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "queued") {
+		t.Fatalf("want JSON fallback body, got %q", buf.String())
+	}
+}
+
+func TestProject_StatusDrilldown_LongValues(t *testing.T) {
+	var buf strings.Builder
+	long := strings.Repeat("x", 150)
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/ns/status-rollup/drilldown": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"blob": long})
+		},
+	}))
+	if err := rootForOut(cmd.ProjectCmd, &buf, "status", "drilldown", "ns").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "...") {
+		t.Fatalf("want truncated preview, got %q", buf.String())
+	}
+}
+
+func TestProject_Neighbors_AllQueryFlags(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/projectgraph/ns/neighbors": func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			if q.Get("kind") != "repo" || q.Get("ns") != "other" || q.Get("direction") != "out" || q.Get("include_deleted") != "true" {
+				t.Fatalf("query=%q", q.Encode())
+			}
+			writeJSON(t, w, 200, []any{})
+		},
+	}))
+	if err := rootFor(cmd.ProjectCmd, "neighbors", "ns", "--kind", "repo", "--ns", "other", "--direction", "out", "--include-deleted", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSearch_TableSlugAndKinds(t *testing.T) {
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"query": "ab",
+				"scope": "namespaces",
+				"results": []any{
+					map[string]any{"type": "namespace", "kind": "org", "path": "acme"},
+					map[string]any{"type": "", "kind": "user", "slug": "solo"},
+				},
+			})
+		},
+	}))
+	if err := rootForOut(cmd.SearchCmd, &buf, "ab").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "acme") || !strings.Contains(buf.String(), "solo") {
+		t.Fatalf("unexpected output: %q", buf.String())
+	}
+}
+
+// ── kg extended (coverage for files/walk/fulltext/diff HTTP paths) ────────────
+
+func TestKgFiles_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/org/kg/files": func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			if q.Get("path_prefix") != "internal/" || q.Get("language") != "go" || q.Get("repo") != "r1" {
+				t.Fatalf("query=%q", q.Encode())
+			}
+			writeJSON(t, w, 200, map[string]any{"items": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.KgCmd, "files", "org/r1", "--path-prefix", "internal/", "--language", "go", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestKgWalk_Happy(t *testing.T) {
+	seed := "11111111-1111-1111-1111-111111111111"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/org/kg/walk": func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			if q.Get("seed_id") != seed || q.Get("direction") != "forward" || q.Get("repo") != "r1" || q.Get("depth") != "2" {
+				t.Fatalf("query=%q", q.Encode())
+			}
+			writeJSON(t, w, 200, map[string]any{})
+		},
+	}))
+	if err := rootFor(cmd.KgCmd, "walk", "org/r1", "--seed-id", seed, "--direction", "forward", "--depth", "2", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestKgFulltext_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/org/kg/fulltext": func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			if q.Get("q") != "needle" || q.Get("repo") != "r1" || q.Get("mode") != "fts" {
+				t.Fatalf("query=%q", q.Encode())
+			}
+			writeJSON(t, w, 200, map[string]any{})
+		},
+	}))
+	if err := rootFor(cmd.KgCmd, "fulltext", "org/r1", "--q", "needle", "--mode", "fts", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestKgDiff_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/org/kg/diff": func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			if q.Get("from_ref") != "main" || q.Get("to_ref") != "topic" || q.Get("repo") != "r1" {
+				t.Fatalf("query=%q", q.Encode())
+			}
+			writeJSON(t, w, 200, map[string]any{})
+		},
+	}))
+	if err := rootFor(cmd.KgCmd, "diff", "org/r1", "--from-ref", "main", "--to-ref", "topic", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestKgFiles_OutputYAML(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/org/kg/files": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"ok": true})
+		},
+	}))
+	if err := rootFor(cmd.KgCmd, "files", "org/r1", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
