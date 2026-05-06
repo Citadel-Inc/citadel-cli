@@ -66,6 +66,20 @@ Dynamic completion for resource arguments (repos, namespaces, agents, OAuth clie
 
 ## Daily commands
 
+### Global search (namespaces & repositories)
+
+Every CLI command expects a saved session (`citadel-cli auth login`). That policy applies to search too: Citadel can attach searches to an identity, enforce per-user rate limits, and protect shared quality of service.
+
+```bash
+citadel-cli search "my query"
+citadel-cli search "acme" --public
+citadel-cli search "foo" --scope repos --limit 15 --output json
+```
+
+By default, search uses **`scope=namespaces`** (namespaces you own or belong to). Pass **`--public`** to opt into broader discovery across unrelated namespaces (**`scope=all`**, still authenticated). Use **`--scope`** to override explicitly (`namespaces`, `repos`, or `all`). Queries must be at least two characters.
+
+Repository-scoped knowledge-graph search continues to live under **`citadel-cli kg search`** (different API).
+
 ### List agent tokens
 
 ```bash

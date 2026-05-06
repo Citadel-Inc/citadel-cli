@@ -3,19 +3,19 @@
 ## ORIENT
 
 - **Server:** `internal/api/searchapi/handler.go` — `parseSearchInput`, `HandleSearch`, `HandlePublicNamespaces`.
-- **CLI blocker:** `internal/apiclient.New` returns error when **`cfg.AccessToken == ""`** — public search requires an **explicit design** (see spec Q1).
+- **CLI:** `internal/apiclient` requires a token; ratified policy keeps it that way for every verb including search.
 
 ## RECON
 
-- Confirm **`gateSearch`** in `main.go` — authenticated `/api/search` behind JWT.
-- Confirm public route has **no JWT** — enables anonymous discovery.
+- **`GET /api/search`** — JWT + scope/limit/query validation.
+- Anonymous **`GET /api/search/namespaces/public`** — out of scope for this CLI per Q1 ratification.
 
-## Implementation options (for Q1 ratification)
+## Implementation
 
-1. **`httpx` direct GET** for public endpoint only (no Bearer) — duplicate timeout/trace behaviour cautiously.
-2. **`apiclient` extension:** `NewAllowAnonymous(cfg)` or optional token empty only for allow-listed paths (risk: accidental misuse).
-3. **Defer public subcommand** until Q1 resolved — ship authenticated search only at v1.
+- **`cmd/search.go`:** build query string; default **`scope=namespaces`**; **`--public`** → **`scope=all`** unless **`--scope`** is set; validate query length (≥ 2 runes) and limit range client-side.
+- **Tests:** `cmd/handler_test.go` — happy path + `query_too_short` / `invalid_scope` / `invalid_limit` from mock server; optional live gate **`CITADEL_TEST_SEARCH_LIVE=1`**.
+- **Docs:** `docs/cli.md` — login + QoS framing; default vs `--public`.
 
 ## Risks
 
-- **Marketing vs security:** public namespace enumeration is intentional server-side — CLI should not add extra leaking beyond server.
+- **Marketing vs security:** broader **`scope=all`** still respects server-side RBAC and rate limits; CLI documents opaque **404** behaviour inherited from the API where applicable.

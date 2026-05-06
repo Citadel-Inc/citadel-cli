@@ -2268,3 +2268,112 @@ func TestAuditSessionsShow_MinJSONWithoutOperatorConsole(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// ── search ─────────────────────────────────────────────────────────────────────
+
+func TestSearch_DefaultScopeNamespaces(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			if q.Get("scope") != "namespaces" {
+				t.Fatalf("scope=%q", q.Get("scope"))
+			}
+			if q.Get("q") != "ab" {
+				t.Fatalf("q=%q", q.Get("q"))
+			}
+			writeJSON(t, w, 200, map[string]any{"query": q.Get("q"), "scope": q.Get("scope"), "results": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.SearchCmd, "ab").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSearch_PublicScopeAll(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			if q.Get("scope") != "all" {
+				t.Fatalf("scope=%q", q.Get("scope"))
+			}
+			writeJSON(t, w, 200, map[string]any{"query": q.Get("q"), "scope": q.Get("scope"), "results": []any{}})
+		},
+	}))
+	if err := rootFor(cmd.SearchCmd, "ab", "--public").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSearch_QueryTooShortLocal(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.SearchCmd, "x").Execute()
+	if err == nil || !strings.Contains(err.Error(), "at least 2") {
+		t.Fatalf("want validation error, got %v", err)
+	}
+}
+
+func TestSearch_InvalidScopeFlag(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	err := rootFor(cmd.SearchCmd, "ab", "--scope", "bogus").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid scope") {
+		t.Fatalf("want invalid scope, got %v", err)
+	}
+}
+
+func TestSearch_ServerQueryTooShort(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 400, map[string]any{"error": "query_too_short", "code": "query_too_short"})
+		},
+	}))
+	err := rootFor(cmd.SearchCmd, "ab").Execute()
+	if err == nil || !strings.Contains(err.Error(), "query_too_short") {
+		t.Fatalf("want query_too_short in error, got %v", err)
+	}
+}
+
+func TestSearch_ServerInvalidScope(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 400, map[string]any{"code": "invalid_scope"})
+		},
+	}))
+	err := rootFor(cmd.SearchCmd, "ab").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid_scope") {
+		t.Fatalf("want invalid_scope in error, got %v", err)
+	}
+}
+
+func TestSearch_ServerInvalidLimit(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 400, map[string]any{"code": "invalid_limit"})
+		},
+	}))
+	err := rootFor(cmd.SearchCmd, "ab").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid_limit") {
+		t.Fatalf("want invalid_limit in error, got %v", err)
+	}
+}
+
+func TestSearch_TableMapsType(t *testing.T) {
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/search": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"query": "ab",
+				"scope": "namespaces",
+				"results": []any{
+					map[string]any{"type": "repo", "kind": "repo", "path": "org/r1", "display_name": "r1", "score": 1.5},
+				},
+			})
+		},
+	}))
+	if err := rootForOut(cmd.SearchCmd, &buf, "ab").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "repo") || !strings.Contains(out, "org/r1") {
+		t.Fatalf("unexpected table output: %q", out)
+	}
+}
