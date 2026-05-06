@@ -18,4 +18,4 @@ Status: IN_PROGRESS 060503ZMAY26 — Bastion (J-3) claims execution
 
 - [x] C1. `docs/cli.md` KG section expansion.
 - [x] C2. Live test `CITADEL_TEST_KG_EXTENDED_LIVE=1`.
-- [ ] C3. Spec close.
+- [x] C3. Spec close.
