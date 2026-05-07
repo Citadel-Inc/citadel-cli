@@ -1,6 +1,6 @@
 # Tasks — cli-milestones
 
-Status: DRAFT 071745ZMAY26
+Status: IN_PROGRESS 071750ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 

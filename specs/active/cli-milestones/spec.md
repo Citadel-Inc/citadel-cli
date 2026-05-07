@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 071745ZMAY26 |
+| Status | IN_PROGRESS 071750ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 071745ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 review against PoL + `citadel` tracker (2026-05-07): the milestones API (`/api/namespaces/{slug}/milestones`) shipped server-side (go-issues-milestones) but has no CLI coverage. Issue view already surfaces `milestone_title` in table output; operators cannot create or manage milestones from the terminal. |
