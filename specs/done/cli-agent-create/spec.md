@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 061500ZMAY26 |
+| Status | DONE 070504ZMAY26 |
 | Authored | 061500ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Gap surfaced in citadel-cli third-pass review (2026-05-05): `agent` subcommand has list / get / delete / rotate-token but no `create`. Server-side `POST /api/agents` is confirmed live (referenced in `cli-oauth-login` spec §21). `live.ts` "Agent ergonomics" is scoped Phase 1. |
@@ -33,10 +33,10 @@ The server's `POST /api/agents` endpoint already exists; the `cli-oauth-login` s
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Token display: show initial token inline vs. force `agent rotate-token` as first action? | **Open** — inline on create; mirrors how every other tool bootstraps agents. |
-| Q2 | `--org` flag vs. positional `<org/name>` syntax? | **Open** — `--org` flag; keeps positional arg unambiguous and matches existing verb patterns in the CLI. |
-| Q3 | If name already exists (409): error-and-exit vs. return existing agent? | **Open** — error-and-exit; find-or-create semantics belong in `cli-oauth-login` auto-agent path, not user-facing `create`. |
-| Q4 | One-time token: warn-only vs. require `--confirm-token-shown` acknowledgement flag? | **Open** — warn-only at v1; flag gating is friction without clear security benefit for a local CLI session. |
+| Q1 | Token display: show initial token inline vs. force `agent rotate-token` as first action? | **Ratified** — inline on create; mirrors how every other tool bootstraps agents. |
+| Q2 | `--org` flag vs. positional `<org/name>` syntax? | **Ratified** — `--org` flag; keeps positional arg unambiguous and matches existing verb patterns in the CLI. |
+| Q3 | If name already exists (409): error-and-exit vs. return existing agent? | **Ratified** — error-and-exit; find-or-create semantics belong in `cli-oauth-login` auto-agent path, not user-facing `create`. |
+| Q4 | One-time token: warn-only vs. require `--confirm-token-shown` acknowledgement flag? | **Ratified** — warn-only at v1; flag gating is friction without clear security benefit for a local CLI session. |
 
 ## Acceptance
 
@@ -47,3 +47,7 @@ The server's `POST /api/agents` endpoint already exists; the `cli-oauth-login` s
 - A5. Token is printed exactly once with a "save this token" notice; running `agent get` afterward does not show the token.
 - A6. `make verify` passes including a handler-level test against an httptest fixture.
 - A7. Q-table ratified.
+
+## Resolution
+
+Shipped 070504ZMAY26. `citadel-cli agent create <name>` implemented in `cmd/agent.go` with `--org`, `--description`, `--output` flags. All acceptance criteria met. Server-side composite auth middleware (`auth.AgentOrJWTMiddleware`) added to `citadel` so agent tokens are accepted on REST `/api/agents` routes — fixing a root auth architecture gap that blocked smoke testing. `created_at` field bug (`RETURNING id` → `RETURNING id, created_at`) also fixed. Both server fixes committed and deployed. Smoke test confirmed: `agent create`, `agent list`, `agent delete` all work end-to-end with an opaque agent token session.

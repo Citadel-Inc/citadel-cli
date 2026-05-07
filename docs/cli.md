@@ -163,6 +163,45 @@ CITADEL_TEST_ISSUES_NS=acme/demo \
 go test ./cmd -run TestLiveIssues_roundTrip_optIn -count=1
 ```
 
+### Agents
+
+Manage the agents registered to your account. An agent is a named identity that
+holds one or more long-lived tokens for headless access (CI, scripts, other
+services).
+
+```bash
+citadel-cli agent list
+citadel-cli agent create <name> [--org <slug>] [--description "..."] [--output json]
+citadel-cli agent get <name>
+citadel-cli agent delete <name> [--yes]
+citadel-cli agent rotate-token <name>
+```
+
+#### `agent create`
+
+```bash
+citadel-cli agent create <name> [--org <slug>] [--description "..."]
+```
+
+Registers a new agent in the authenticated user's namespace (or an org namespace
+with `--org <slug>`) and prints the agent's **one-time initial token**. Save this
+token immediately — it will not be displayed again. Subsequent calls to
+`agent get` or `agent list` show metadata only.
+
+`--output json` emits a machine-readable object:
+
+```json
+{ "id": "...", "name": "...", "token": "...", "created_at": "..." }
+```
+
+Error paths:
+
+| Server response | CLI message |
+|---|---|
+| 409 Conflict | `agent name already taken` |
+| 403 Forbidden | `insufficient permission` |
+| 422 Unprocessable | field-level validation hint |
+
 ### List agent tokens
 
 ```bash
