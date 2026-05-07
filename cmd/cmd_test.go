@@ -27,12 +27,17 @@ func hasFlag(c *cobra.Command, name string) bool {
 // helpRuns verifies that --help executes without error for cmd.
 func helpRuns(t *testing.T, c *cobra.Command) {
 	t.Helper()
-	c.SetOut(new(bytes.Buffer))
-	c.SetErr(new(bytes.Buffer))
-	c.SetArgs([]string{"--help"})
+	root := cmd.NewRootCmd()
+	target := root
+	for _, name := range commandNamePath(c) {
+		target = findSubcmd(t, target, name)
+	}
+	target.SetOut(new(bytes.Buffer))
+	target.SetErr(new(bytes.Buffer))
+	target.SetArgs([]string{"--help"})
 	// ResetFlags is not needed; we just check Execute doesn't error.
 	// Cobra treats --help as a special case that always returns nil.
-	if err := c.Execute(); err != nil {
+	if err := target.Execute(); err != nil {
 		t.Fatalf("%s --help returned error: %v", c.Name(), err)
 	}
 }
@@ -113,7 +118,7 @@ func TestIssueLabelFlags(t *testing.T) {
 }
 
 func TestRepoSubcommands(t *testing.T) {
-	for _, name := range []string{"create", "list", "get", "delete", "branch", "tag"} {
+	for _, name := range []string{"create", "list", "get", "delete", "clone", "push", "pull", "branch", "tag"} {
 		if !hasSubcmd(cmd.RepoCmd, name) {
 			t.Errorf("citadel repo: missing subcommand %q", name)
 		}
@@ -152,6 +157,31 @@ func TestRepoDeleteDestructiveFlags(t *testing.T) {
 	for _, flag := range []string{"yes", "output", "repo", "no-cwd-repo"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel repo delete: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoCloneFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.RepoCmd, "clone")
+	if c.ValidArgsFunction == nil {
+		t.Fatal("citadel repo clone: missing ValidArgsFunction")
+	}
+}
+
+func TestRepoPushFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.RepoCmd, "push")
+	for _, flag := range []string{"repo", "no-cwd-repo", "remote", "create"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo push: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoPullFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.RepoCmd, "pull")
+	for _, flag := range []string{"repo", "no-cwd-repo", "remote"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo pull: missing flag --%s", flag)
 		}
 	}
 }
@@ -518,4 +548,19 @@ func findSubcmd(t *testing.T, parent *cobra.Command, name string) *cobra.Command
 	}
 	t.Fatalf("%s: subcommand %q not found", parent.Name(), name)
 	return nil
+}
+
+func commandNamePath(c *cobra.Command) []string {
+	var reversed []string
+	for cur := c; cur != nil; cur = cur.Parent() {
+		if cur.Name() == "citadel-cli" {
+			break
+		}
+		reversed = append(reversed, cur.Name())
+	}
+	path := make([]string, 0, len(reversed))
+	for i := len(reversed) - 1; i >= 0; i-- {
+		path = append(path, reversed[i])
+	}
+	return path
 }

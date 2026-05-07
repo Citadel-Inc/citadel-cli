@@ -40,6 +40,22 @@ func repoGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
 	return nil
 }
 
+func repoCloneFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	t.Helper()
+	for _, c := range root.Commands() {
+		if c.Name() != "repo" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() == "clone" {
+				return sc
+			}
+		}
+	}
+	t.Fatal("repo clone not found")
+	return nil
+}
+
 func repoBranchDeleteFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
 	t.Helper()
 	for _, c := range root.Commands() {
@@ -390,5 +406,55 @@ func TestCompleteRepoSlugs_PositionalAlreadyPresent_NoCompletion(t *testing.T) {
 	}
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
+	}
+}
+
+func TestCompleteRepoPaths_NamespacePrefix(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/orgs" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"orgs": []any{
+				map[string]any{"slug": "zebra"},
+				map[string]any{"slug": "alpha"},
+			},
+		})
+	})
+	root := NewRootCmd()
+	clone := repoCloneFromRoot(t, root)
+	clone.SetContext(context.Background())
+	vals, d := completeRepoPaths(clone, []string{}, "a")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 1 || vals[0] != "alpha/" {
+		t.Fatalf("got %q", vals)
+	}
+}
+
+func TestCompleteRepoPaths_RepoPrefix(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/namespaces/myorg/repos" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"repos": []any{
+				map[string]any{"slug": "zebra"},
+				map[string]any{"slug": "alpha"},
+			},
+		})
+	})
+	root := NewRootCmd()
+	clone := repoCloneFromRoot(t, root)
+	clone.SetContext(context.Background())
+	vals, d := completeRepoPaths(clone, []string{}, "myorg/a")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 1 || vals[0] != "myorg/alpha" {
+		t.Fatalf("got %q", vals)
 	}
 }
