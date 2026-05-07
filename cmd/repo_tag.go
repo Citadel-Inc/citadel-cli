@@ -204,10 +204,6 @@ func runRepoTagCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoTagDelete(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	ns, slug, name, err := parseRepoScopedNameArgs(cmd, args)
 	if err != nil {
 		return err
@@ -220,6 +216,10 @@ func runRepoTagDelete(cmd *cobra.Command, args []string) error {
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE %s (skipped; --dry-run)\n", path)
 		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	if err := c.Delete(cmd.Context(), path); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {

@@ -392,10 +392,6 @@ func renderIssueDetailTable(cmd *cobra.Command, payload issueDetailPayload) erro
 }
 
 func runIssueList(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -426,6 +422,10 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 	labels = normalizeStringSlice(labels)
 	assignees = normalizeStringSlice(assignees)
 
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	var yamlAccum []issueRow
 	csvHdr := false
 	first := true
@@ -605,10 +605,6 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 }
 
 func runIssueComment(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -627,6 +623,10 @@ func runIssueComment(cmd *cobra.Command, args []string) error {
 	}
 	if strings.TrimSpace(body) == "" {
 		return fmt.Errorf("comment body cannot be empty")
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	var created issueComment
 	if err := c.Post(cmd.Context(), issueBasePath(nsPath)+"/"+strconv.FormatInt(num, 10)+"/comments", map[string]string{
