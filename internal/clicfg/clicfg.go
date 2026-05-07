@@ -50,8 +50,8 @@ func configPath() (string, error) {
 //   - CITADEL_SERVER — already honored by ResolveServerURL at request
 //     time; not duplicated here.
 //
-// The refresh-token flow is NOT yet wired (see specs/HUMAN_BLOCKERS.md
-// CLI auth gaps): refresh_token is stored on `auth login` but never
+// The refresh-token flow is NOT yet wired: refresh_token is stored on
+// `auth login` but never
 // exchanged for a new access_token, so a CLI session past the 1-hour
 // JWT expiry currently requires `auth login` again or a fresh env-var
 // JWT.

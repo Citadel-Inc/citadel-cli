@@ -25,7 +25,7 @@ func liveOAuthJWT(t *testing.T) string {
 	t.Helper()
 	tok := strings.TrimSpace(os.Getenv("CITADEL_TEST_OAUTH_JWT"))
 	if tok == "" {
-		t.Skip("CITADEL_TEST_OAUTH_JWT unset — live OAuth client integration is opt-in (specs/HUMAN_BLOCKERS.md §71)")
+		t.Skip("CITADEL_TEST_OAUTH_JWT unset — live OAuth client integration is opt-in")
 	}
 	return tok
 }

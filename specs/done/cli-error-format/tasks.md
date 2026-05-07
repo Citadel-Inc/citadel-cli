@@ -1,6 +1,6 @@
 # Tasks — cli-error-format
 
-Status: DONE 051045ZMAY26 — Error envelope, exit-code map, errmap→CLIError migration, and main.go branching were already landed; Q-table ratified with Retry-After HTTP-date support aligned to apiclient. README/HUMANS document structured errors for json/yaml/ndjson. P2 covered by `main_test.go` (exhausted GET retries → 429 JSON envelope + Retry-After) and full `KindToExitCode` matrix in `cmd/errmap_test.go`.
+Status: DONE 071629ZMAY26 — Structured error output remains shipped: README/HUMANS document the json/yaml/ndjson envelope, and the remaining P2 live 429 integration plus operator exit-code review stay as out-of-band follow-up work rather than a HUMAN_BLOCKERS dependency.
 
 ## P0
 

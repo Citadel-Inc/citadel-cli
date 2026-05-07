@@ -85,7 +85,7 @@ Token model clarification (updated for `cli-oauth-login`): default Bearer = `cfg
 
 **Token-model deviation.** Original `mcp.go` deliberately rejected `cfg.AccessToken` (citing waitlist + OIDC concerns). Post-go-mcp-oauth A2 the MCP server's `verifyBearer` accepts JWTs first then opaque tokens; the docstring's premise no longer held. Spec ratification clarified this with a token-model note and the new code uses JWT-by-default with agent-token override.
 
-**HUMAN follow-up.** Positive production smoke (real authenticated session → `tools/list` → `tools/call get_namespace --arg path=damon`) requires interactive `citadel auth login` against the live service. Tracked in `specs/HUMAN_BLOCKERS.md` §19 (see also **§08** for go-mcp-oauth inspector / consent flows).
+**Follow-up.** Positive production smoke (real authenticated session → `tools/list` → `tools/call get_namespace --arg path=damon`) still requires an authenticated live run outside CI (see also **§08** for go-mcp-oauth inspector / consent flows).
 
 **Did NOT do.**
 - Token auto-refresh on 401 (Q3 ratified: out of scope).

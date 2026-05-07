@@ -1,6 +1,6 @@
 # Tasks — cli-oauth-clients
 
-Status: DONE 040041ZMAY26 — P1 B3: opt-in live integration test (oauth_clients_live_test.go) + §71 runbook. P2 C1 remains operator citadel-cli smoke — see specs/HUMAN_BLOCKERS.md §71.
+Status: DONE 071629ZMAY26 — OAuth client CLI support remains shipped: the opt-in live integration test and runbook landed, while any additional operator citadel-cli smoke stays as an out-of-band follow-up instead of a HUMAN_BLOCKERS entry.
 
 ## P0
 
