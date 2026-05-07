@@ -1,6 +1,6 @@
 # Tasks — cli-auth-providers
 
-Status: IN_PROGRESS 071813ZMAY26 — Copilot claims execution
+Status: DONE 071821ZMAY26 — Shipped `auth provider list|link|unlink` with public provider discovery, browser-default link initiation plus `--json`, provider-ID completion, tests, and docs. `make verify` passed. Live smoke reached the real daemon but production currently returns an empty `/auth/providers` set and `422 unknown_provider` on `link github`; backend follow-up filed as citadel#9, so P2 remains intentionally open.
 
 ## P0
 

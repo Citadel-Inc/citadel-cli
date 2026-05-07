@@ -6,7 +6,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-auth-providers | IN_PROGRESS | 071813ZMAY26 | Copilot |
+| _(none)_ | | | |
 
 ## Done
 
@@ -50,4 +50,3 @@
 |------|-----|------|
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
-

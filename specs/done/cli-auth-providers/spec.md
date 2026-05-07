@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 071813ZMAY26 — Copilot claims execution |
+| Status | DONE 071821ZMAY26 — Shipped `auth provider list|link|unlink` with public provider discovery, browser-default link initiation plus `--json`, provider-ID completion, tests, and docs. `make verify` passed. Live smoke reached the real daemon but production currently returns an empty `/auth/providers` set and `422 unknown_provider` on `link github`; backend follow-up filed as citadel#9, so P2 remains intentionally open. |
 | Authored | 072200ZMAY26 |
 | Owner | Copilot |
 | Carry-forward from | No active `citadel-cli` specs remained after `cli-milestones`, so the next grounded CLI follow-up was selected from the PoL dossier plus shipped daemon capability. `citadel` already serves provider discovery and identity link/unlink routes, but the CLI still only exposes `auth login`, `auth logout`, `auth status`, and `auth set-token`. |
