@@ -678,6 +678,68 @@ For comprehensive token lifecycle documentation, see [Rethunk-Tech/citadel docs/
 - **Scopes.** Tokens carry a list of permissions (scopes) enforced server-side. The MCP server checks token scopes before allowing tool access.
 - **Revocation.** Revoked tokens are rejected immediately; no cache delay.
 
+## Notification inbox
+
+`citadel-cli notification` manages your personal Citadel notification inbox — the same feed surfaced in the web UI. All subcommands require authentication (`citadel-cli auth login`).
+
+### List notifications
+
+```bash
+# All recent notifications (default limit 25)
+citadel-cli notification list
+
+# Unread only
+citadel-cli notification list --unread
+
+# Paginate
+citadel-cli notification list --limit 50 --cursor <cursor>
+
+# Machine-readable
+citadel-cli notification list --output json
+citadel-cli notification list --output csv
+```
+
+Columns: **ID**, **Kind**, **Summary**, **Namespace**, **Read at**, **Created at**.
+
+### Mark as read
+
+```bash
+# Mark a single notification read
+citadel-cli notification read <notification-id>
+
+# Mark all notifications read at once
+citadel-cli notification read-all
+```
+
+### Unread count
+
+```bash
+# Human-readable
+citadel-cli notification unread-count
+
+# JSON (for scripting / badges)
+citadel-cli notification unread-count --output json
+```
+
+### Notification preferences
+
+```bash
+# View current preferences
+citadel-cli notification prefs get
+citadel-cli notification prefs get --output json
+
+# Change email-digest cadence (never | daily | weekly)
+citadel-cli notification prefs set --email-digest weekly
+
+# Enable / disable individual notification kinds
+citadel-cli notification prefs set --enable issue.comment --disable repo.push
+
+# Combine in one call
+citadel-cli notification prefs set --email-digest daily --enable issue.comment
+```
+
+`--enable` and `--disable` accept the `kind` string from the prefs list (e.g. `issue.comment`, `repo.push`). Multiple flags may be supplied. The API applies the patch atomically — you only send what you want to change.
+
 ## Troubleshooting
 
 ### Environment health check
