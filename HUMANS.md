@@ -81,6 +81,8 @@ Operator-only fields such as client IP are omitted for non-operator callers; the
 - **Server URL:** `~/.config/citadel/config.toml` (key: `server_url`) or `CITADEL_SERVER` env var.
 - **Auth tokens:** `~/.config/citadel/config.toml` (mode 0600); `citadel-cli auth login` stores a Citadel-issued **agent token** (plus agent id/name). For headless hosts, `citadel-cli auth set-token` accepts a Supabase JWT; on the next CLI launch the client **eagerly upgrades** a JWT-only file to an agent token when the API is reachable.
 - **Override access token:** `CITADEL_ACCESS_TOKEN` env var (1-hour pinned expiry; for CI / scripting).
+- **Override MCP token:** `CITADEL_AGENT_TOKEN` env var for `citadel-cli mcp ...` commands when you want an explicit bearer token without mutating stored auth. REST/API verbs continue to use the stored session or `CITADEL_ACCESS_TOKEN`.
+- **Pager selection:** `CITADEL_PAGER` overrides `GIT_PAGER`, which overrides `PAGER`, which otherwise defaults to `less -FRX`. Set any tier to the empty string (for example `CITADEL_PAGER=''`) or pass `--no-pager` to disable paging.
 
 ### Repo context
 
