@@ -57,7 +57,7 @@ func TestHelperProcessGit(t *testing.T) {
 	os.Exit(0)
 }
 
-func TestRepoClone_InvokesGitCloneWithHTTPSRepo(t *testing.T) {
+func TestRepoClone_InvokesGitCloneWithSSHRemote(t *testing.T) {
 	logPath, cleanup := patchGitExec(t)
 	defer cleanup()
 
@@ -82,14 +82,14 @@ func TestRepoClone_InvokesGitCloneWithHTTPSRepo(t *testing.T) {
 		t.Fatalf("want 1 invocation, got %d", len(invocations))
 	}
 	gotArgs := strings.Join(invocations[0].Args, " ")
-	if gotArgs != "git clone https://src.land/myorg/r1.git" {
+	if gotArgs != "git clone git@src.land:myorg/r1.git" {
 		t.Fatalf("args=%q", gotArgs)
 	}
 	if invocations[0].Env["GIT_TERMINAL_PROMPT"] != "0" {
 		t.Fatalf("env=%v", invocations[0].Env)
 	}
-	if invocations[0].Env["GIT_ASKPASS"] == "" {
-		t.Fatalf("missing GIT_ASKPASS in env=%v", invocations[0].Env)
+	if invocations[0].Env["GIT_ASKPASS"] != "" {
+		t.Fatalf("unexpected GIT_ASKPASS in env=%v", invocations[0].Env)
 	}
 }
 
@@ -190,9 +190,10 @@ func TestRepoPush_ExplicitRepoSetsUpstreamBranch(t *testing.T) {
 		switch r.Method + " " + r.URL.Path {
 		case "GET /namespaces/myorg/r1":
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"parent_slug": "myorg",
-				"slug":        "r1",
-				"visibility":  "private",
+				"parent_slug":    "myorg",
+				"slug":           "r1",
+				"visibility":     "private",
+				"git_ssh_remote": "git@src.land:myorg/r1.git",
 			})
 		default:
 			http.NotFound(w, r)
@@ -213,7 +214,7 @@ func TestRepoPush_ExplicitRepoSetsUpstreamBranch(t *testing.T) {
 	if len(invocations) != 2 {
 		t.Fatalf("want 2 git invocations (branch,push), got %d", len(invocations))
 	}
-	want := "git push --set-upstream " + srv.URL + "/myorg/r1.git feature"
+	want := "git push --set-upstream git@src.land:myorg/r1.git feature"
 	if got := strings.Join(invocations[1].Args, " "); got != want {
 		t.Fatalf("push args=%q", got)
 	}
@@ -236,7 +237,7 @@ func TestRepoPull_ExplicitRepoUsesCurrentBranch(t *testing.T) {
 	if len(invocations) != 2 {
 		t.Fatalf("want 2 git invocations (branch,pull), got %d", len(invocations))
 	}
-	if got := strings.Join(invocations[1].Args, " "); got != "git pull https://src.land/myorg/r1.git feature" {
+	if got := strings.Join(invocations[1].Args, " "); got != "git pull git@src.land:myorg/r1.git feature" {
 		t.Fatalf("pull args=%q", got)
 	}
 }
