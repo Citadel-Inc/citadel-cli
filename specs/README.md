@@ -6,7 +6,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-repo-commits | IN_PROGRESS |  | Copilot |
+| _(none)_ | | | |
 
 ## Done
 
@@ -43,6 +43,7 @@
 | cli-mcp-tools | 010300ZMAY26 | shipped; HUMAN follow-up = positive prod smoke with a real authenticated session |
 | go-citadel-cli | 292032ZAPR26 | shipped (in-line with the B-track ratifications) |
 | cli-deploy-tokens | 043044ZMAY26 |  |
+| cli-repo-commits |  |  |
 
 ## Parked
 
