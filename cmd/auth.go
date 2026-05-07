@@ -533,7 +533,10 @@ func generatePKCE() (verifier, challenge string, err error) {
 }
 
 // openBrowser opens the URL in the default browser.
+// The URL is always printed first so users on headless / SSH systems can
+// copy-paste it even if the automatic open fails.
 func openBrowser(u string) {
+	fmt.Printf("If the browser does not open, visit:\n  %s\n", u)
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux":
@@ -543,7 +546,6 @@ func openBrowser(u string) {
 	case "windows":
 		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", u)
 	default:
-		fmt.Printf("Please open this URL in your browser: %s\n", u)
 		return
 	}
 	_ = cmd.Start()
