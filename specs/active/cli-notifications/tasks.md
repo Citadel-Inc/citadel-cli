@@ -1,6 +1,6 @@
 # Tasks — cli-notifications
 
-Status: DRAFT
+Status: IN_PROGRESS 072204ZMAY26 — Copilot claims execution
 
 ## P0
 

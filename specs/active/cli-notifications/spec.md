@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT |
+| Status | IN_PROGRESS 072204ZMAY26 — Copilot claims execution |
 | Authored | 072309ZMAY26 |
 | Owner | Copilot |
 | Carry-forward from | Dossier-backed logged-in surface follow-up: the daemon already ships `notifapi` for inbox and notification preferences, but `citadel-cli` has no notification commands. |
