@@ -171,6 +171,24 @@ func (n notifItem) CSVRecord() []string {
 	return []string{n.ID, n.Kind, n.Summary, n.NamespaceSlug, formatRFC3339PtrUTC(n.ReadAt), formatRFC3339UTC(n.CreatedAt)}
 }
 
+// ── commits ───────────────────────────────────────────────────────────────────
+
+func (commitItem) CSVHeader() []string {
+	return []string{"sha", "author", "author_email", "committer", "committer_email", "timestamp", "message"}
+}
+
+func (c commitItem) CSVRecord() []string {
+	return []string{
+		c.SHA,
+		c.Author,
+		c.AuthorEmail,
+		c.Committer,
+		c.CommitterEmail,
+		formatRFC3339UTC(c.Timestamp),
+		c.subject(),
+	}
+}
+
 // ── ssh keys ─────────────────────────────────────────────────────────────────
 
 func (sshKeyRow) CSVHeader() []string {
