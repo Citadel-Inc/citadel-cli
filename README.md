@@ -61,6 +61,7 @@ Time-like CSV fields use **RFC3339 UTC** (`…Z`). See [HUMANS.md § List pagina
 - [HUMANS.md](HUMANS.md) — maintainer primer
 - [AGENTS.md](AGENTS.md) — agent / LLM working conventions
 - [CONTRIBUTING.md](CONTRIBUTING.md) — commits, branches, pre-push checklist
+- [CHANGELOG.md](CHANGELOG.md) — release notes
 
 ## License
 

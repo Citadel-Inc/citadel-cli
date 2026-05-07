@@ -930,7 +930,7 @@ This will create a fresh config.
 
 ## Distribution
 
-The CLI binary is built by the GitHub Actions release workflow on every annotated tag matching `v*`, producing static binaries for `linux-amd64`, `linux-arm64`, and `darwin-arm64`. Channels:
+The CLI binary is built by the GitHub Actions release workflow on every tag matching `v*`, producing static binaries for `linux-amd64`, `linux-arm64`, and `darwin-arm64`. Update `CHANGELOG.md` and run `make verify && make build-all VERSION=<tag>` before pushing the tag. Channels:
 
 - **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Rethunk-Tech/citadel-cli/releases/tag/<tag>` with the three binaries + a `SHA256SUMS` file. Manual download:
 
