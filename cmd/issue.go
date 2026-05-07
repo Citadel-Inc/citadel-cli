@@ -578,12 +578,20 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	labels, _ := cmd.Flags().GetStringSlice("label")
+	milestoneID, _ := cmd.Flags().GetString("milestone")
 	payload := map[string]any{
 		"title":         title,
 		"body_markdown": body,
 	}
 	if labels = normalizeStringSlice(labels); len(labels) > 0 {
 		payload["labels"] = labels
+	}
+	if f := cmd.Flags().Lookup("milestone"); f != nil && f.Changed {
+		id, err := parseMilestoneID(milestoneID)
+		if err != nil {
+			return err
+		}
+		payload["milestone_id"] = id
 	}
 	var created issueRow
 	if err := c.Post(cmd.Context(), issueBasePath(nsPath), payload, &created); err != nil {
@@ -799,6 +807,8 @@ func init() {
 	issueCreateCmd.Flags().String("title", "", "Issue title")
 	issueCreateCmd.Flags().String("body", "", "Issue body markdown (defaults to stdin or $EDITOR)")
 	issueCreateCmd.Flags().StringSlice("label", nil, "Apply one or more labels at creation time")
+	issueCreateCmd.Flags().String("milestone", "", "Attach the issue to milestone UUID")
+	_ = issueCreateCmd.RegisterFlagCompletionFunc("milestone", completeIssueMilestoneIDs)
 	_ = issueCreateCmd.MarkFlagRequired("title")
 
 	issueCommentCmd.Flags().String("body", "", "Comment body markdown (defaults to stdin or $EDITOR)")
