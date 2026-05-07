@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DONE 051430ZMAY26 — CLI watch shipped end-to-end: Citadel exposes SSE list watches on repos, orgs, agents, OAuth clients, members, pending transfers, and agent tokens (polling snapshot diff + keepalive + Last-Event-ID); citadel-cli streams via `--watch`, ndjson/table modes, reconnect/backoff, and B6 scripted SSE tests. P2 C2 operator smoke stays human-owned. |
+| Status | DONE 071628ZMAY26 — Live repo watch smoke now passed on rethunk-ai after fixing SSE timeout inheritance in the CLI: repo list --watch stayed connected long enough to observe add/remove events from a temporary repository create/delete cycle. |
 | Authored | 050826ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | 2026-05-05 enhancement sweep: operators today poll `repo list` / `agent list` in a `watch -n` loop to monitor namespace activity. The CLI should ship native streaming. |

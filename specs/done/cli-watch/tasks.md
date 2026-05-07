@@ -1,8 +1,8 @@
 # Tasks — cli-watch
 
-Status: DONE 051430ZMAY26 — CLI + Citadel deliver cli-watch: polling SSE v1 on every list path (`internal/api/listwatch`: init/add/update/remove, `:keepalive`, Last-Event-ID ring replay), CLI `sseclient` + `--watch`, B6 httptest sequence, and cobra ctx reset for repeatable ExecuteContext. P2 C2 remains operator live smoke only.
+Status: DONE 071628ZMAY26 — Live repo watch smoke now passed on rethunk-ai after fixing SSE timeout inheritance in the CLI: repo list --watch stayed connected long enough to observe add/remove events from a temporary repository create/delete cycle.
 
-Automation covers SSE contract via Citadel handlers + CLI integration tests; operator smoke is still human-owned (C2).
+Automation covers the SSE contract via Citadel handlers + CLI integration tests, and the live operator smoke now passed on `rethunk-ai`.
 
 ## P0
 
@@ -23,5 +23,5 @@ Automation covers SSE contract via Citadel handlers + CLI integration tests; ope
 ## P2
 
 - [x] C1. README + HUMANS.md: document `-w`, the SSE event shape, and the `--output ndjson` recommendation for piping.
-- [ ] C2. [HUMAN] Operator smoke: live-watch a real namespace, mutate it from another terminal, observe events.
+- [x] C2. [HUMAN] Operator smoke: live-watch a real namespace, mutate it from another terminal, observe events.
 - [x] C3. Spec close.
