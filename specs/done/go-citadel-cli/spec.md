@@ -54,7 +54,7 @@ A5. `citadel mcp tools` against `https://mcp.src.land/` lists the three tools sh
 
 A6. The CLI never logs token clear-text. After `token issue` prints the token, the value is forgotten — re-running `token list` shows only the metadata, not the secret.
 
-A7. CI builds the CLI for linux-amd64, linux-arm64, darwin-arm64; release artefacts go to `bin/`.
+A7. CI builds the CLI for linux-amd64, linux-arm64, darwin-arm64, windows-amd64; release artefacts go to `bin/`.
 
 ## Constraints
 
@@ -91,7 +91,7 @@ R3. **Distribution mechanism.** GitHub Releases is the canonical channel; Homebr
 
 ### Outcome
 
-APPROVED spec fully implemented and closed. Phase A–C live: `auth login/status/logout`, `token list/issue/revoke`, and `mcp tools/call` all functional. Cross-compile CI produces three static binaries (linux-amd64, linux-arm64, darwin-arm64) via `make build-all`. Install docs at `docs/cli.md` cover development and release paths. All P0 and P1 acceptance criteria satisfied (A1–A6 verified; A7 CI wired). C5 (`mcp tools/call` client) deferred as P2 carry-forward; core token issuance unblocked.
+APPROVED spec fully implemented and closed. Phase A–C live: `auth login/status/logout`, `token list/issue/revoke`, and `mcp tools/call` all functional. Cross-compile CI produces four static binaries (linux-amd64, linux-arm64, darwin-arm64, windows-amd64) via `make build-all`. Install docs at `docs/cli.md` cover development and release paths. All P0 and P1 acceptance criteria satisfied (A1–A6 verified; A7 CI wired). C5 (`mcp tools/call` client) deferred as P2 carry-forward; core token issuance unblocked.
 
 ### Commits
 

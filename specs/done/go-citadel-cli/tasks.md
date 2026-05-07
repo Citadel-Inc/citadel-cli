@@ -6,7 +6,7 @@ Status: **DONE 292032ZAPR26** — shipped; all P0/P1/P2 closed.
 
 - [x] A1. Scaffold `cmd/citadel-cli/`; pick CLI framework (cobra default).
 - [x] A2. `internal/clicfg` package — TOML config at `~/.config/citadel/config.toml`, 0600 enforced on every write.
-- [x] A3. `make build-cli` target; CI matrix builds linux-amd64 / linux-arm64 / darwin-arm64.
+- [x] A3. `make build-cli` target; CI matrix builds linux-amd64 / linux-arm64 / darwin-arm64 / windows-amd64.
 
 ## P1
 

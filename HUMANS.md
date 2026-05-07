@@ -16,7 +16,7 @@ go install github.com/Rethunk-Tech/citadel-cli@latest
 
 This installs to `~/go/bin/citadel-cli`; ensure `~/go/bin` is on your `PATH`.
 
-Pre-built release binaries (linux-amd64, linux-arm64, darwin-arm64) are published to GitHub Releases on every `v*` tag — see <https://github.com/Rethunk-Tech/citadel-cli/releases>.
+Pre-built release binaries (linux-amd64, linux-arm64, darwin-arm64, windows-amd64) are published to GitHub Releases on every `v*` tag — see <https://github.com/Rethunk-Tech/citadel-cli/releases>.
 
 ### First run
 
@@ -62,7 +62,7 @@ Makefile                         build / build-all / test / vet / lint / verify
 | Need | Run |
 |------|-----|
 | Local build | `make build` (binary at `./citadel-cli`) |
-| Cross-compile release artefacts | `make build-all` (3 platforms into `dist/`) |
+| Cross-compile release artefacts | `make build-all` (4 platforms into `dist/`) |
 | Run tests | `make test` |
 | Lint | `make lint` (golangci-lint) |
 | Pre-push gate | `make verify` |

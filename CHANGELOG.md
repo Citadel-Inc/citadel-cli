@@ -18,7 +18,7 @@ Initial visible release of the Citadel command-line client.
 - Added MCP client commands for tools, calls, resources, and prompts, including typed MCP error handling and protocol-version mismatch reporting.
 - Added machine-readable output modes (`json`, `yaml`, `ndjson`, `csv`, and table where supported), cursor pagination, watch/SSE streaming for list verbs, frozen CSV projections, and structured error envelopes.
 - Added dynamic API-backed shell completion with on-disk caching, repo-context resolution from `-R`, `CITADEL_REPO`, and git remotes, and dry-run support on destructive verbs.
-- Added cross-platform release builds for linux-amd64, linux-arm64, and darwin-arm64, published by the GitHub Actions release workflow on `v*` tags.
+- Added cross-platform release builds for linux-amd64, linux-arm64, darwin-arm64, and windows-amd64, published by the GitHub Actions release workflow on `v*` tags.
 
 ### Changed
 

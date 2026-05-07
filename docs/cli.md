@@ -24,7 +24,7 @@ This installs to `~/go/bin/citadel-cli`; add `~/go/bin` to your `PATH` if it is 
 
 ### Binary releases
 
-Pre-built binaries for linux-amd64, linux-arm64, and darwin-arm64 are published to GitHub Releases on every `v*` tag. Check <https://github.com/Rethunk-Tech/citadel-cli/releases/> for the latest release.
+Pre-built binaries for linux-amd64, linux-arm64, darwin-arm64, and windows-amd64 are published to GitHub Releases on every `v*` tag. Check <https://github.com/Rethunk-Tech/citadel-cli/releases/> for the latest release.
 
 ## First-run flow
 
@@ -930,9 +930,9 @@ This will create a fresh config.
 
 ## Distribution
 
-The CLI binary is built by the GitHub Actions release workflow on every tag matching `v*`, producing static binaries for `linux-amd64`, `linux-arm64`, and `darwin-arm64`. Update `CHANGELOG.md` and run `make verify && make build-all VERSION=<tag>` before pushing the tag. Channels:
+The CLI binary is built by the GitHub Actions release workflow on every tag matching `v*`, producing static binaries for `linux-amd64`, `linux-arm64`, `darwin-arm64`, and `windows-amd64`. Update `CHANGELOG.md` and run `make verify && make build-all VERSION=<tag>` before pushing the tag. Channels:
 
-- **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Rethunk-Tech/citadel-cli/releases/tag/<tag>` with the three binaries + a `SHA256SUMS` file. Manual download:
+- **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Rethunk-Tech/citadel-cli/releases/tag/<tag>` with the four binaries + a `SHA256SUMS` file. Manual download:
 
   ```bash
   # Replace v0.1.0 with the latest tag.

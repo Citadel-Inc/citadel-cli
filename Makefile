@@ -11,11 +11,12 @@ help: ## Show this help.
 build: ## Build the citadel-cli binary into ./citadel-cli
 	go build -ldflags "$(LDFLAGS)" -o ./citadel-cli .
 
-build-all: ## Cross-compile for linux-amd64, linux-arm64, darwin-arm64 into dist/
+build-all: ## Cross-compile for linux-amd64, linux-arm64, darwin-arm64, windows-amd64 into dist/
 	mkdir -p dist
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS) -s -w" -o dist/citadel-cli-linux-amd64 .
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(LDFLAGS) -s -w" -o dist/citadel-cli-linux-arm64 .
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$(LDFLAGS) -s -w" -o dist/citadel-cli-darwin-arm64 .
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS) -s -w" -o dist/citadel-cli-windows-amd64.exe .
 
 test: ## Run go test with race detector across all packages
 	go test -race ./...
