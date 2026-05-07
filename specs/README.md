@@ -7,6 +7,9 @@
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
 | cli-account-avatar | DRAFT |  | Copilot |
+| cli-account-privacy | DRAFT |  | Copilot |
+| cli-namespace-profile | DRAFT |  | Copilot |
+| cli-notifications | DRAFT |  | Copilot |
 
 ## Done
 
