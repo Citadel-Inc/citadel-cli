@@ -124,6 +124,45 @@ CITADEL_TEST_PROJECTGRAPH_SLUG=org/repo \
 go test ./cmd -run TestLiveProjectGraph -count=1
 ```
 
+### Issues
+
+Issue workflows target any Citadel namespace path with **`-R <ns/path>`**. For
+repository namespaces, omission still reuses `CITADEL_REPO` and CWD-origin
+inference; for non-repo namespaces, pass `-R` explicitly.
+
+```bash
+citadel-cli issue list -R acme/demo
+citadel-cli issue list -R acme/demo --state all --label bug --assignee alice --output json
+citadel-cli issue view -R acme/demo 42
+citadel-cli issue view -R acme/demo 42 --web
+citadel-cli issue create -R acme/demo --title "Ship it" --body "Ready for rollout"
+citadel-cli issue comment -R acme/demo 42 --body "Looks good"
+citadel-cli issue close -R acme/demo 42
+citadel-cli issue reopen -R acme/demo 42
+citadel-cli issue label -R acme/demo 42 --add bug --remove triage
+citadel-cli issue close-refs -R acme/demo 42 --output json
+```
+
+`issue list` supports the standard cursor pagination flags (`--limit`,
+`--cursor`, `--all`) and `--output json|yaml|ndjson|csv|table`.
+
+`issue view` and `issue close-refs` accept `--output json|yaml|table`. `issue
+view --web` opens the canonical browser route for that namespace issue.
+
+When `issue create` or `issue comment` omit `--body`, the CLI reads piped stdin
+first; on a TTY it falls back to `$EDITOR`.
+
+### Live integration test
+
+Opt-in: **`CITADEL_TEST_ISSUES_LIVE=1`** with **`CITADEL_TEST_ISSUES_NS`** and
+**`CITADEL_ACCESS_TOKEN`**.
+
+```bash
+CITADEL_TEST_ISSUES_LIVE=1 \
+CITADEL_TEST_ISSUES_NS=acme/demo \
+go test ./cmd -run TestLiveIssues_roundTrip_optIn -count=1
+```
+
 ### List agent tokens
 
 ```bash

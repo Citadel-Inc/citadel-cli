@@ -10,7 +10,7 @@
 
 Operator and developer command-line interface for [Citadel](https://github.com/Rethunk-Tech/citadel).
 
-`citadel-cli` is the official client for managing repositories, namespaces, agents, OAuth clients, audit log queries, and the Citadel Knowledge Graph. It also embeds an MCP client for integrating Citadel into agentic workflows.
+`citadel-cli` is the official client for managing repositories, namespace issues, namespaces, agents, OAuth clients, audit log queries, and the Citadel Knowledge Graph. It also embeds an MCP client for integrating Citadel into agentic workflows.
 
 ## Getting started
 
@@ -36,6 +36,7 @@ Machine-readable list output uses `--output json|yaml|ndjson|csv|table` (default
 | List command | CSV columns (exact order) |
 |--------------|---------------------------|
 | `repo list` | slug, path, visibility, default_branch, description, namespace_id, parent_slug, created_at |
+| `issue list` | number, namespace_path, title, state, author_id, created_at, updated_at, closed_at |
 | `agent list` | id, owner_user_id, name, model_hint |
 | `token list` | id, agent_id, created_at, expires_at, revoked_at, scopes |
 | `oauth clients list` | id, client_id, name, allowed_scopes, is_public, owner_slug, created_at, updated_at, revoked_at |

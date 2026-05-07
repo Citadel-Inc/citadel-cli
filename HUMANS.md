@@ -4,7 +4,7 @@ If you are an engineer onboarding to `citadel-cli`, read this file first. For LL
 
 ## What it is
 
-`citadel-cli` is the official command-line client for [Citadel](https://github.com/Rethunk-Tech/citadel) — Rethunk's substrate for repos, namespaces, agents, OAuth clients, and the knowledge graph. It also embeds an MCP client for agentic-workflow integrations.
+`citadel-cli` is the official command-line client for [Citadel](https://github.com/Rethunk-Tech/citadel) — Rethunk's substrate for repos, namespace issues, namespaces, agents, OAuth clients, and the knowledge graph. It also embeds an MCP client for agentic-workflow integrations.
 
 ## Getting started
 
@@ -93,6 +93,8 @@ cd ~/code/myorg/myrepo          # citadel clone
 citadel-cli repo get            # inferred when origin is a Citadel remote
 citadel-cli repo get -R other/ns   # explicit repo
 ```
+
+Issue verbs (`citadel-cli issue ...`) reuse the same `-R` / `CITADEL_REPO` / CWD-origin rules, but interpret the target as a **namespace path**. For repository issues, omission can still infer `org/repo` from the current checkout; for org-level or deeper non-repo namespaces, pass `-R` explicitly.
 
 Full reference: [docs/cli.md](docs/cli.md).
 
