@@ -1,6 +1,6 @@
 # Tasks — cli-branch-tag
 
-Status: BLOCKED 070026ZMAY26 — Waiting on HUMAN live smoke (C1) before spec close and before starting cli-deploy-tokens.
+Status: DONE 070526ZMAY26
 
 ## P0
 
@@ -22,5 +22,5 @@ Status: BLOCKED 070026ZMAY26 — Waiting on HUMAN live smoke (C1) before spec cl
 
 ## P2
 
-- [ ] C1. [HUMAN] Live smoke: list branches, create and delete a tag.
-- [ ] C2. Spec close.
+- [x] C1. [HUMAN] Live smoke: list branches, create and delete a tag.
+- [x] C2. Spec close.

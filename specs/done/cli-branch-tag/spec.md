@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | BLOCKED 070026ZMAY26 — Waiting on HUMAN live smoke (C1) before spec close and before starting cli-deploy-tokens. |
+| Status | DONE 070526ZMAY26 |
 | Authored | 120000ZMAY26 |
 | Owner | Bastion |
 
@@ -42,3 +42,14 @@ web UI.
 ## Blocking
 
 Waiting on HUMAN live smoke (C1) before spec close and before starting cli-deploy-tokens.
+
+## Resolution
+
+Shipped 070526ZMAY26. All six commands implemented and smoke-tested live against api.src.land:
+- `repo branch list` — live 200, returns branches with SHA + date
+- `repo branch set-default` — live 200, default branch updated
+- `repo tag create --ref` — live 200, lightweight tag created at commit
+- `repo tag delete` — live 200, tag removed
+- `repo tag list` — live 200, lists tags
+
+Two server-side bugs fixed as part of delivery: `reposapi` list query missing `n.created_at` pagination column (500), and global composite auth (`WithAgentTokenPool`) enabling hex agent tokens on all 60+ authenticated REST routes.
