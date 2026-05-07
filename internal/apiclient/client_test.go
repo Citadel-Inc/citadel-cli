@@ -19,6 +19,26 @@ func TestNew_RequiresToken(t *testing.T) {
 	}
 }
 
+func TestNew_CoercesProductionRESTHost(t *testing.T) {
+	c, err := New(clicfg.Config{ServerURL: "https://mcp.src.land", AccessToken: "tok"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := c.Server(); got != "https://api.src.land" {
+		t.Fatalf("server = %q, want https://api.src.land", got)
+	}
+}
+
+func TestNew_LeavesCustomHostUntouched(t *testing.T) {
+	c, err := New(clicfg.Config{ServerURL: "http://127.0.0.1:7777", AccessToken: "tok"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := c.Server(); got != "http://127.0.0.1:7777" {
+		t.Fatalf("server = %q", got)
+	}
+}
+
 func TestClient_GetDecodes(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Bearer tok" {

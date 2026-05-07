@@ -15,6 +15,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -116,12 +117,28 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	}
 	rt := httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP})
 	return &Client{
-		server:     strings.TrimRight(cfg.ResolveServerURL(opts.Server), "/"),
+		server:     resolveRESTServerURL(cfg.ResolveServerURL(opts.Server)),
 		token:      cfg.AccessToken,
 		userAgent:  ua,
 		http:       &http.Client{Timeout: defaultTimeout, Transport: rt},
 		retryOn401: opts.RetryOn401,
 	}, nil
+}
+
+func resolveRESTServerURL(server string) string {
+	base := strings.TrimRight(strings.TrimSpace(server), "/")
+	u, err := url.Parse(base)
+	if err != nil {
+		return base
+	}
+	// Production splits OAuth/MCP (`mcp.src.land`) from JSON REST (`api.src.land`).
+	// Keep explicit custom hosts untouched, but coerce the known public MCP host
+	// so CLI REST verbs do not fall into the SPA.
+	if u.Host == "mcp.src.land" {
+		u.Host = "api.src.land"
+		return strings.TrimRight(u.String(), "/")
+	}
+	return base
 }
 
 // Server returns the resolved base URL with no trailing slash.
