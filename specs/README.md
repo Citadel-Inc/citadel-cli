@@ -6,7 +6,6 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-deploy-tokens | BLOCKED | 070137ZMAY26 | Bastion (J-3) |
 | cli-branch-tag | BLOCKED | 070026ZMAY26 | Bastion |
 | cli-oauth-login | IN_PROGRESS | 061800ZMAY26 | Bastion (J-3) |
 | cli-agent-create | DRAFT | 061500ZMAY26 | Bastion (J-3) |
@@ -19,6 +18,7 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-deploy-tokens | 043044ZMAY26 | Namespace and repo deploy-token list/create/revoke commands shipped. Server routes (deploytokensapi), deploy_tokens.name migration (20260507013500), binary deployed. Live smoke passed on production (rethunk namespace): create, list, revoke all verified. |
 | cli-issues | 070107ZMAY26 | Operator smoke completed via citadel-cli against live namespace rethunk: created issue #1, added a comment, closed it, and verified close-refs. REST routing fix landed in citadel-cli so the live API resolves through api.src.land while OAuth/MCP remain on mcp.src.land. |
 | cli-projectgraph | 060539ZMAY26 | Delivered top-level `citadel-cli project` with URL-encoded multi-segment namespace paths, read verbs (pin-chain, walk, neighbors, status rollup/drilldown), write verbs (edge add/delete/restore, reindex) with typed confirm/--yes, httptest matrix incl. multi-segment pin-chain + read/write 404 paths, docs/cli.md, optional live test behind CITADEL_TEST_PROJECTGRAPH_LIVE + CITADEL_TEST_PROJECTGRAPH_SLUG. Q4 recovery-scan intentionally unimplemented; P1 B2 remains open. |
 | cli-global-search | 060535ZMAY26 | Shipped top-level `citadel-cli search` with authenticated GET /api/search, default scope=namespaces, --public for scope=all, httptest coverage for query_too_short/invalid_scope/invalid_limit, optional CITADEL_TEST_SEARCH_LIVE=1, and docs/cli.md QoS framing. |

@@ -1,6 +1,6 @@
 # Tasks — cli-deploy-tokens
 
-Status: BLOCKED 070137ZMAY26 — Implementation is complete and verified locally, but C1 requires a live production smoke against routes and schema that are not deployed yet. Deploy citadel commit c20ddb1a (plus migration 20260507013500_deploy_tokens_name.sql), then run the human production smoke before unblocking.
+Status: DONE 043044ZMAY26
 
 ## P0
 
@@ -19,5 +19,5 @@ Status: BLOCKED 070137ZMAY26 — Implementation is complete and verified locally
 
 ## P2
 
-- [ ] C1. [HUMAN] Live smoke: create and revoke a deploy token with the nested
-- [ ] C2. Spec close.
+- [x] C1. [HUMAN] Live smoke: create and revoke a deploy token with the nested
+- [x] C2. Spec close.
