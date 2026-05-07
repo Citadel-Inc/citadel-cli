@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 070030ZMAY26 — Bastion (J-3) claims execution |
+| Status | BLOCKED 070043ZMAY26 — Waiting on HUMAN operator smoke (C3) before spec close and before starting cli-deploy-tokens. |
 | Authored | 062323ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 review against PoL + `citadel` tracker (2026-05-06): the remaining first-class CLI product gap is issues. Server-side issue substrate, close-refs, labels, assignees, templates, audit, and MCP tools are already live; `citadel-cli` still lacks dedicated issue verbs. |
@@ -94,3 +94,7 @@ daemon capabilities and the actual Phase 0 gap.
 - A9. Env-gated live integration test (`CITADEL_TEST_ISSUES_LIVE=1`) performs a
   create + comment + close + close-refs round-trip against a real Citadel
   instance.
+
+## Blocking
+
+Waiting on HUMAN operator smoke (C3) before spec close and before starting cli-deploy-tokens.
