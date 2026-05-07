@@ -69,6 +69,23 @@ citadel-cli auth logout
 
 Removes the authentication session from the config file, preserving the server URL setting for future logins.
 
+### OAuth provider discovery and linking
+
+The daemon exposes a public provider registry plus authenticated link/unlink flows for third-party identities.
+
+```bash
+citadel-cli auth provider list
+citadel-cli auth provider list --output json
+
+citadel-cli auth provider link github
+citadel-cli auth provider link github --json   # print redirect_url instead of opening a browser
+
+citadel-cli auth provider unlink github        # typed confirmation
+citadel-cli auth provider unlink github --yes --json
+```
+
+`auth provider list` does **not** require a saved session; `link` and `unlink` do. `link` opens the returned Supabase authorize URL in your browser by default and still prints the URL so headless users can copy-paste it elsewhere. `unlink` uses the daemon's guardrails directly, including `last_provider_blocked` when removing the last non-email provider would strand the account.
+
 ## Shell completion
 
 Generate scripts for your shell (bash, zsh, fish, or PowerShell):
@@ -77,13 +94,13 @@ Generate scripts for your shell (bash, zsh, fish, or PowerShell):
 citadel-cli completion bash   # often: source <(citadel-cli completion bash)
 ```
 
-Dynamic completion for resource arguments (repos, namespaces, agents, OAuth clients, tokens) uses your stored bearer session to query list endpoints. Cache layout, TTL, and the `CITADEL_NO_COMPLETION_CACHE` bypass are described under **Configuration** in the repo’s [HUMANS.md](../HUMANS.md#configuration) (not duplicated here).
+Dynamic completion for most resource arguments (repos, namespaces, agents, OAuth clients, tokens) uses your stored bearer session to query list endpoints. Auth-provider completion resolves from the public provider registry. Cache layout, TTL, and the `CITADEL_NO_COMPLETION_CACHE` bypass are described under **Configuration** in the repo’s [HUMANS.md](../HUMANS.md#configuration) (not duplicated here).
 
 ## Daily commands
 
 ### Global search (namespaces & repositories)
 
-Every CLI command expects a saved session (`citadel-cli auth login`). That policy applies to search too: Citadel can attach searches to an identity, enforce per-user rate limits, and protect shared quality of service.
+Most CLI commands expect a saved session (`citadel-cli auth login`). Search does too: Citadel can attach searches to an identity, enforce per-user rate limits, and protect shared quality of service.
 
 ```bash
 citadel-cli search "my query"

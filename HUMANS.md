@@ -23,6 +23,7 @@ Pre-built release binaries (linux-amd64, linux-arm64, darwin-arm64) are publishe
 ```bash
 citadel-cli auth login        # browser OAuth (PKCE) → long-lived agent token
 citadel-cli auth status       # confirm authentication
+citadel-cli auth provider list # inspect enabled OAuth providers
 citadel-cli repo list         # query the API
 ```
 
