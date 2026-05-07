@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 061800ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 070526ZMAY26 |
 | Authored | 075800ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | `citadel-cli@4996580` (2026-05-05) flagged `loginCmd` as EXPERIMENTAL pending a productised auth flow. Server-side counterpart: `citadel/specs/done/go-cli-oauth-provider/` (DONE 060608ZMAY26). |
@@ -53,3 +53,11 @@ End-to-end success: `citadel-cli auth login`, browser flow, return to terminal. 
 - A7. `auth set-token` continues to work for headless bootstraps; new doc string clarifies the choice.
 - A8. EXPERIMENTAL warning removed from `loginCmd --help`.
 - A9. Q-table ratified.
+
+## Resolution
+
+Shipped 070526ZMAY26. Full end-to-end OAuth PKCE flow works against production (mcp.src.land):
+- `auth login` opens consent at src.land/oauth/consent, user clicks Allow, callback is received on loopback, access token is exchanged, agent token is bootstrapped
+- Agent token persists across CLI restarts (`auth status` shows agent name/ID/expiry)
+- Subsequent verbs (`agent list`, `repo branch list`, etc.) all succeed
+- Headless improvement: `openBrowser` now prints the URL before attempting `xdg-open` so SSH/CI users always have a fallback copy-paste URL

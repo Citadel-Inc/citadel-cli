@@ -1,6 +1,6 @@
 # Tasks — cli-oauth-login
 
-Status: IN_PROGRESS 061800ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 070526ZMAY26
 
 **Companion daemon:** `go-cli-oauth-provider` is **DONE** (`citadel/specs/done/go-cli-oauth-provider/`, 060608ZMAY26); P0+P1 shipped (authorize/token, handoff, consent). CLI work is no longer blocked on that spec.
 
@@ -23,5 +23,5 @@ Status: IN_PROGRESS 061800ZMAY26 — Bastion (J-3) claims execution
 
 - [x] C1. Automation-capable live end-to-end test (`CITADEL_TEST_OAUTH_FULL=1`) against a real Citadel instance + real browser via Playwright. Supports either a signed-in Playwright storage-state file or a Citadel refresh-token bootstrap path that mints a fresh JWT, bridges the OAuth cookie, and auto-approves consent.
 - [x] C2. README + HUMANS.md updates: replace the "EXPERIMENTAL: prefer set-token" callout with the new canonical `auth login` instructions.
-- [ ] C3. Production smoke: `citadel-cli auth login` against the live production host (`https://mcp.src.land` as of 2026-05-06), confirm token persists across CLI restarts and a subsequent verb succeeds. Current blocker in this session: only a stale legacy Supabase token pair was available locally, and the copied Chromium profile did not contain an active src.land session to reuse.
-- [ ] C4. Spec close.
+- [x] C3. Production smoke: `citadel-cli auth login` against the live production host (`https://mcp.src.land` as of 2026-05-06), confirm token persists across CLI restarts and a subsequent verb succeeds. Current blocker in this session: only a stale legacy Supabase token pair was available locally, and the copied Chromium profile did not contain an active src.land session to reuse.
+- [x] C4. Spec close.
