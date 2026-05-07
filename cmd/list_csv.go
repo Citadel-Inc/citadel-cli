@@ -36,6 +36,14 @@ func (r repoRow) CSVRecord() []string {
 	}
 }
 
+func (repoRefRow) CSVHeader() []string {
+	return []string{"name", "sha", "date"}
+}
+
+func (r repoRefRow) CSVRecord() []string {
+	return []string{r.Name, r.SHA, formatRFC3339UTC(r.Date)}
+}
+
 // ── agent list ───────────────────────────────────────────────────────────────
 
 func (agentRow) CSVHeader() []string {

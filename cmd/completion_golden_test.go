@@ -40,6 +40,48 @@ func repoGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
 	return nil
 }
 
+func repoBranchDeleteFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	t.Helper()
+	for _, c := range root.Commands() {
+		if c.Name() != "repo" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() != "branch" {
+				continue
+			}
+			for _, leaf := range sc.Commands() {
+				if leaf.Name() == "delete" {
+					return leaf
+				}
+			}
+		}
+	}
+	t.Fatal("repo branch delete not found")
+	return nil
+}
+
+func repoTagDeleteFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	t.Helper()
+	for _, c := range root.Commands() {
+		if c.Name() != "repo" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() != "tag" {
+				continue
+			}
+			for _, leaf := range sc.Commands() {
+				if leaf.Name() == "delete" {
+					return leaf
+				}
+			}
+		}
+	}
+	t.Fatal("repo tag delete not found")
+	return nil
+}
+
 func TestCompleteOutputFormats_GoldenList(t *testing.T) {
 	got, d := completeOutputFormats(nil, nil, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
@@ -255,6 +297,58 @@ func TestResolveRepoNamespaceForCompletion_FromRFlag(t *testing.T) {
 	}
 	if ns != "acme" {
 		t.Fatalf("got %q", ns)
+	}
+}
+
+func TestCompleteRepoBranchNames_HappyPath(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/namespaces/acme/repos/demo/refs" || r.URL.Query().Get("kind") != "branch" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"refs": []any{
+			map[string]any{"name": "release"},
+			map[string]any{"name": "main"},
+		}})
+	})
+	root := NewRootCmd()
+	del := repoBranchDeleteFromRoot(t, root)
+	if err := del.Flags().Set("repo", "acme/demo"); err != nil {
+		t.Fatal(err)
+	}
+	del.SetContext(context.Background())
+	vals, d := completeRepoBranchNames(del, []string{}, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 2 || vals[0] != "main" || vals[1] != "release" {
+		t.Fatalf("got %q", vals)
+	}
+}
+
+func TestCompleteRepoTagNames_HappyPath(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/namespaces/acme/repos/demo/refs" || r.URL.Query().Get("kind") != "tag" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"refs": []any{
+			map[string]any{"name": "v2.0.0"},
+			map[string]any{"name": "v1.0.0"},
+		}})
+	})
+	root := NewRootCmd()
+	del := repoTagDeleteFromRoot(t, root)
+	if err := del.Flags().Set("repo", "acme/demo"); err != nil {
+		t.Fatal(err)
+	}
+	del.SetContext(context.Background())
+	vals, d := completeRepoTagNames(del, []string{}, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 2 || vals[0] != "v1.0.0" || vals[1] != "v2.0.0" {
+		t.Fatalf("got %q", vals)
 	}
 }
 

@@ -50,7 +50,7 @@ func TestRepoCmdHelp(t *testing.T) {
 }
 
 func TestRepoSubcommands(t *testing.T) {
-	for _, name := range []string{"create", "list", "get", "delete"} {
+	for _, name := range []string{"create", "list", "get", "delete", "branch", "tag"} {
 		if !hasSubcmd(cmd.RepoCmd, name) {
 			t.Errorf("citadel repo: missing subcommand %q", name)
 		}
@@ -89,6 +89,84 @@ func TestRepoDeleteDestructiveFlags(t *testing.T) {
 	for _, flag := range []string{"yes", "output", "repo", "no-cwd-repo"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel repo delete: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoBranchSubcommands(t *testing.T) {
+	branch := findSubcmd(t, cmd.RepoCmd, "branch")
+	for _, name := range []string{"list", "delete", "set-default"} {
+		if !hasSubcmd(branch, name) {
+			t.Errorf("citadel repo branch: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestRepoBranchListFlags(t *testing.T) {
+	branch := findSubcmd(t, cmd.RepoCmd, "branch")
+	c := findSubcmd(t, branch, "list")
+	for _, flag := range []string{"repo", "no-cwd-repo", "limit", "cursor", "all", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo branch list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoBranchDeleteFlags(t *testing.T) {
+	branch := findSubcmd(t, cmd.RepoCmd, "branch")
+	c := findSubcmd(t, branch, "delete")
+	for _, flag := range []string{"repo", "no-cwd-repo", "dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo branch delete: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoBranchSetDefaultFlags(t *testing.T) {
+	branch := findSubcmd(t, cmd.RepoCmd, "branch")
+	c := findSubcmd(t, branch, "set-default")
+	for _, flag := range []string{"repo", "no-cwd-repo", "dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo branch set-default: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoTagSubcommands(t *testing.T) {
+	tag := findSubcmd(t, cmd.RepoCmd, "tag")
+	for _, name := range []string{"list", "create", "delete"} {
+		if !hasSubcmd(tag, name) {
+			t.Errorf("citadel repo tag: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestRepoTagListFlags(t *testing.T) {
+	tag := findSubcmd(t, cmd.RepoCmd, "tag")
+	c := findSubcmd(t, tag, "list")
+	for _, flag := range []string{"repo", "no-cwd-repo", "limit", "cursor", "all", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo tag list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoTagCreateFlags(t *testing.T) {
+	tag := findSubcmd(t, cmd.RepoCmd, "tag")
+	c := findSubcmd(t, tag, "create")
+	for _, flag := range []string{"repo", "no-cwd-repo", "ref", "message", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo tag create: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoTagDeleteFlags(t *testing.T) {
+	tag := findSubcmd(t, cmd.RepoCmd, "tag")
+	c := findSubcmd(t, tag, "delete")
+	for _, flag := range []string{"repo", "no-cwd-repo", "dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo tag delete: missing flag --%s", flag)
 		}
 	}
 }

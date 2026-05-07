@@ -16,7 +16,9 @@ import (
 // Resource cache keys (logical); paired with resolved server URL for paths.
 const (
 	KeyOrgs         = "orgs"
-	KeyReposPrefix  = "repos:" // + namespace slug
+	KeyReposPrefix  = "repos:"         // + namespace slug
+	KeyRepoBranches = "repo_branches:" // + namespace/repo path
+	KeyRepoTags     = "repo_tags:"     // + namespace/repo path
 	KeyAgents       = "agents"
 	KeyOAuthClients = "oauth_clients"
 	KeyAgentTokens  = "agent_tokens"
@@ -25,6 +27,12 @@ const (
 
 // RepoKey returns the cache resource key for repo slugs in a namespace.
 func RepoKey(namespace string) string { return KeyReposPrefix + namespace }
+
+// RepoBranchKey returns the cache resource key for branch names in a repo.
+func RepoBranchKey(repoPath string) string { return KeyRepoBranches + repoPath }
+
+// RepoTagKey returns the cache resource key for tag names in a repo.
+func RepoTagKey(repoPath string) string { return KeyRepoTags + repoPath }
 
 // Lookup loads cached values or calls fetch with a quiet apiclient. Any error
 // from fetch (including missing auth) is returned to the caller for shell
@@ -141,6 +149,54 @@ func FetchRepoSlugs(ctx context.Context, c *apiclient.Client, parentNamespace st
 		if s := strings.TrimSpace(r.Slug); s != "" {
 			out = append(out, s)
 		}
+	}
+	return sortDedupe(out), nil
+}
+
+// FetchRepoBranchNames lists branch names for a repository from GET /refs.
+func FetchRepoBranchNames(ctx context.Context, c *apiclient.Client, parentNamespace, repoSlug string) ([]string, error) {
+	return fetchRepoRefNames(ctx, c, parentNamespace, repoSlug, "branch")
+}
+
+// FetchRepoTagNames lists tag names for a repository from GET /refs.
+func FetchRepoTagNames(ctx context.Context, c *apiclient.Client, parentNamespace, repoSlug string) ([]string, error) {
+	return fetchRepoRefNames(ctx, c, parentNamespace, repoSlug, "tag")
+}
+
+func fetchRepoRefNames(ctx context.Context, c *apiclient.Client, parentNamespace, repoSlug, kind string) ([]string, error) {
+	ns := strings.TrimSpace(parentNamespace)
+	repo := strings.TrimSpace(repoSlug)
+	if ns == "" || repo == "" {
+		return nil, errors.New("missing repository for ref completion")
+	}
+	var out []string
+	cursor := ""
+	for {
+		q := url.Values{}
+		q.Set("kind", kind)
+		q.Set("limit", strconv.Itoa(pagination.MaxLimit))
+		if cursor != "" {
+			q.Set("after", cursor)
+		}
+		path := "/namespaces/" + url.PathEscape(ns) + "/repos/" + url.PathEscape(repo) + "/refs?" + q.Encode()
+		var payload struct {
+			Refs []struct {
+				Name string `json:"name"`
+			} `json:"refs"`
+			NextCursor string `json:"next_cursor"`
+		}
+		if err := c.Get(ctx, path, &payload); err != nil {
+			return nil, err
+		}
+		for _, r := range payload.Refs {
+			if name := strings.TrimSpace(r.Name); name != "" {
+				out = append(out, name)
+			}
+		}
+		if strings.TrimSpace(payload.NextCursor) == "" {
+			break
+		}
+		cursor = strings.TrimSpace(payload.NextCursor)
 	}
 	return sortDedupe(out), nil
 }

@@ -24,6 +24,11 @@ func TestCSVHeaders_matchREADMEFrozenContract(t *testing.T) {
 			want: []string{"slug", "path", "visibility", "default_branch", "description", "namespace_id", "parent_slug", "created_at"},
 		},
 		{
+			name: "repo ref list",
+			got:  (repoRefRow{}).CSVHeader(),
+			want: []string{"name", "sha", "date"},
+		},
+		{
 			name: "agent list",
 			got:  (agentRow{}).CSVHeader(),
 			want: []string{"id", "owner_user_id", "name", "model_hint"},
@@ -109,6 +114,9 @@ func TestCSVRecord_columnCountMatchesHeader(t *testing.T) {
 
 	var rr repoRow
 	check(t, "repo", rr.CSVHeader(), rr.CSVRecord())
+
+	ref := repoRefRow{Name: "main", SHA: "abc", Date: now}
+	check(t, "repo ref", ref.CSVHeader(), ref.CSVRecord())
 
 	a := agentRow{ID: id1, OwnerID: "o", Name: "n"}
 	check(t, "agent", a.CSVHeader(), a.CSVRecord())
