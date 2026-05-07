@@ -35,6 +35,7 @@ Initial visible release of the Citadel command-line client.
 - Fixed repo push to use explicit branch refspecs and corrected repo wrapper behavior around SSH remotes.
 - Fixed watch/SSE streams so long-running streams are not closed by request timeouts.
 - Fixed local validation and `--dry-run` paths so they do not require authentication before returning validation output.
+- Fixed the release workflow so tag builds run lint through the pinned `golangci-lint` action available on GitHub-hosted runners.
 - Fixed completion ordering, MCP unauthorized detection, KG impact repo resolution, API host handling, and several lint/staticcheck issues.
 - Bumped dependencies and Go tooling, including the Go toolchain update needed for standard-library vulnerability coverage.
 
