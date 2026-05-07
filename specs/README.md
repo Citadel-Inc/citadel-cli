@@ -6,7 +6,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-git-wrappers | DRAFT |  | unassigned |
+| cli-git-wrappers | IN_PROGRESS | 071636ZMAY26 | Bastion (J-3) |
 | cli-webhooks | DRAFT |  | unassigned |
 
 ## Done

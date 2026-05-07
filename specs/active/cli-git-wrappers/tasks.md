@@ -1,20 +1,20 @@
 # Tasks — cli-git-wrappers
 
-Status: DRAFT
+Status: IN_PROGRESS 071636ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 
-- [ ] [HUMAN] NOMAD ratifies Q-table (Q1–Q4).
-- [ ] A1. Implement auth injection mechanism (GIT_ASKPASS or credential helper).
-- [ ] A2. Implement `citadel clone <repo-path> [<local-dir>]`.
-- [ ] A3. Implement `citadel push` (detect current repo remote or accept --remote).
-- [ ] A4. Implement `citadel pull` (detect current repo remote or accept --remote).
+- [x] [HUMAN] NOMAD ratifies Q-table (Q1–Q4).
+- [x] A1. Implement auth injection mechanism (short-lived `GIT_ASKPASS` helper).
+- [x] A2. Implement `citadel repo clone <repo-path> [<local-dir>]`.
+- [x] A3. Implement `citadel repo push` (detect current repo remote or accept --remote; prompt/create missing remote repo).
+- [x] A4. Implement `citadel repo pull` (detect current repo remote or accept --remote).
 
 ## P1
 
-- [ ] B1. Tests: mock exec calls to verify correct git invocation and env injection.
-- [ ] B2. Error handling: friendly message when `git` binary not found on PATH.
-- [ ] B3. Shell completion: repo path completion for `clone`.
+- [x] B1. Tests: mock exec calls to verify correct git invocation and env injection.
+- [x] B2. Error handling: friendly message when `git` binary not found on PATH.
+- [x] B3. Shell completion: repo path completion for `clone`.
 
 ## P2
 

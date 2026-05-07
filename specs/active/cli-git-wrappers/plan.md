@@ -1,21 +1,21 @@
 # Plan — cli-git-wrappers
 
-Blocked on Q-table ratification (Q1–Q4).
-No implementation work should begin until P0 human tasks are checked.
+Q-table ratified 071639ZMAY26:
+
+- auth injection = short-lived `GIT_ASKPASS`
+- wrapper shape = second-level `repo clone|push|pull`
+- behavior = system `git` passthrough
+- missing remote on push = prompt to create; `--create` bypasses the prompt
 
 ## Proposed file layout
 
 ```
-cmd/git_clone.go        — citadel clone
-cmd/git_push.go         — citadel push
-cmd/git_pull.go         — citadel pull
-cmd/git_auth.go         — shared auth injection (GIT_ASKPASS / credential helper)
-cmd/git_wrappers_test.go — tests with mocked exec
+cmd/repo_git.go         — repo clone/push/pull + shared auth injection
+cmd/repo_git_test.go    — mocked git exec tests
 ```
 
 ## Key constraint
 
-The wrappers must not shell out in a way that leaks credentials to process
-listings. Use `GIT_ASKPASS` pointing to a short-lived temp script, or pipe
-the token via stdin through `git credential-store`. Validate the approach
-before P0 claims.
+The wrappers must not shell out in a way that leaks credentials through the
+command line. Use a short-lived `GIT_ASKPASS` helper per invocation and keep
+the rest of the behavior delegated to the on-system `git` binary.

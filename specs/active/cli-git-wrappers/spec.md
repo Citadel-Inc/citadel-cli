@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| Status | DRAFT |
+| Status | IN_PROGRESS 071636ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 120000ZMAY26 |
-| Owner | unassigned |
+| Owner | Bastion (J-3) |
 
 ## Why
 
@@ -15,12 +15,13 @@ tool handle the full repository workflow.
 
 ## In scope
 
-- `citadel clone <repo-path> [<local-dir>]` — equivalent to
+- `citadel repo clone <repo-path> [<local-dir>]` — equivalent to
   `git clone <server>/<repo-path>` with credentials injected via
-  `GIT_ASKPASS` or credential helper; prints the local dir path on success
-- `citadel push [<repo-path>] [--remote <name>]` — equivalent to
-  `git push` in the current working repo with auth wiring
-- `citadel pull [<repo-path>] [--remote <name>]` — equivalent to
+  a short-lived `GIT_ASKPASS` helper; prints the local dir path on success
+- `citadel repo push [<repo-path>] [--remote <name>] [--create]` — equivalent to
+  `git push` in the current working repo with auth wiring; prompts to create the
+  remote repo first when Citadel does not know it yet
+- `citadel repo pull [<repo-path>] [--remote <name>]` — equivalent to
   `git pull` with auth wiring
 
 ## Out of scope
@@ -33,7 +34,7 @@ tool handle the full repository workflow.
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Auth injection: `GIT_ASKPASS` script vs. credential helper vs. HTTP header? | OPEN — `GIT_ASKPASS` is simplest; credential helper is more durable |
-| Q2 | Should wrappers fall through to system `git` or re-implement git semantics? | OPEN — strong preference for exec-based passthrough (`exec.Command("git", ...)`) |
-| Q3 | `citadel clone` vs. `citadel repo clone`? | OPEN — top-level mirrors `gh repo clone` pattern; avoids deep nesting |
-| Q4 | Handle repos not yet on the server (auto-create on push)? | OPEN — defer to explicit `repo create` first at v1 |
+| Q1 | Auth injection: `GIT_ASKPASS` script vs. credential helper vs. HTTP header? | **Ratified 071639ZMAY26** — short-lived `GIT_ASKPASS`; matches git's credential prompt flow without persisting host credentials. |
+| Q2 | Should wrappers fall through to system `git` or re-implement git semantics? | **Ratified 071639ZMAY26** — exec-based passthrough via `exec.Command("git", ...)`. |
+| Q3 | `citadel clone` vs. `citadel repo clone`? | **Ratified 071639ZMAY26** — second-level verbs under `repo` to match the existing CLI shape. |
+| Q4 | Handle repos not yet on the server (auto-create on push)? | **Ratified 071639ZMAY26** — prompt to create on `repo push`; `--create` bypasses the prompt for non-interactive use. |
