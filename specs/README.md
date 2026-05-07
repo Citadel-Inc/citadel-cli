@@ -6,8 +6,8 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
+| cli-issues | IN_PROGRESS | 070030ZMAY26 | Bastion (J-3) |
 | cli-branch-tag | BLOCKED | 070026ZMAY26 | Bastion |
-| cli-issues | DRAFT | 062323ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | IN_PROGRESS | 061800ZMAY26 | Bastion (J-3) |
 | cli-agent-create | DRAFT | 061500ZMAY26 | Bastion (J-3) |
 | cli-deploy-tokens | DRAFT |  | unassigned |
@@ -48,4 +48,5 @@
 |------|-----|------|
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
+
 

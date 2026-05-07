@@ -1,6 +1,6 @@
 # Tasks — cli-issues
 
-Status: DRAFT 062323ZMAY26
+Status: IN_PROGRESS 070030ZMAY26 — Bastion (J-3) claims execution
 
 ## P0
 

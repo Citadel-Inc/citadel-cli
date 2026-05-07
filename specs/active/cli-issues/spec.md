@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 062323ZMAY26 |
+| Status | IN_PROGRESS 070030ZMAY26 — Bastion (J-3) claims execution |
 | Authored | 062323ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 review against PoL + `citadel` tracker (2026-05-06): the remaining first-class CLI product gap is issues. Server-side issue substrate, close-refs, labels, assignees, templates, audit, and MCP tools are already live; `citadel-cli` still lacks dedicated issue verbs. |
