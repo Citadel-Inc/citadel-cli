@@ -136,6 +136,7 @@ citadel-cli issue list -R acme/demo --state all --label bug --assignee alice --o
 citadel-cli issue view -R acme/demo 42
 citadel-cli issue view -R acme/demo 42 --web
 citadel-cli issue create -R acme/demo --title "Ship it" --body "Ready for rollout"
+citadel-cli issue create -R acme/demo --title "Ship it" --milestone <milestone-uuid>
 citadel-cli issue comment -R acme/demo 42 --body "Looks good"
 citadel-cli issue close -R acme/demo 42
 citadel-cli issue reopen -R acme/demo 42
@@ -152,6 +153,28 @@ view --web` opens the canonical browser route for that namespace issue.
 When `issue create` or `issue comment` omit `--body`, the CLI reads piped stdin
 first; on a TTY it falls back to `$EDITOR`.
 
+### Issue milestones
+
+Milestones let you group issues within any Citadel namespace path.
+
+```bash
+citadel-cli issue milestone list -R acme/demo
+citadel-cli issue milestone list -R acme/demo --state all --output json
+citadel-cli issue milestone view -R acme/demo <milestone-uuid>
+citadel-cli issue milestone create -R acme/demo --title "v1.0" --description "first release" --due-on 2026-06-01
+citadel-cli issue milestone edit -R acme/demo <milestone-uuid> --state closed
+citadel-cli issue milestone delete -R acme/demo <milestone-uuid> --yes
+```
+
+- `list` filters client-side by `--state open|closed|all` because the current
+  server endpoint returns the full milestone set for the namespace.
+- `view`, `edit`, and `delete` complete milestone UUIDs dynamically from the
+  selected namespace path.
+- `create` and `edit` accept `--due-on YYYY-MM-DD`. Passing `--due-on=`
+  to `edit` clears the due date.
+- `delete` requires typed confirmation of the milestone title unless `--yes`
+  is set. `--dry-run` prints the DELETE route without executing it.
+
 ### Live integration test
 
 Opt-in: **`CITADEL_TEST_ISSUES_LIVE=1`** with **`CITADEL_TEST_ISSUES_NS`** and
@@ -166,8 +189,9 @@ go test ./cmd -run TestLiveIssues_roundTrip_optIn -count=1
 ### Repositories via system git
 
 `citadel-cli repo clone|push|pull` are thin wrappers around the on-system `git`
-binary. They inject Citadel auth for one invocation and keep normal git
-semantics instead of re-implementing clone/push/pull in the CLI.
+binary. They use the SSH remote returned by Citadel (or a canonical SSH
+fallback) and keep normal git semantics instead of re-implementing
+clone/push/pull in the CLI.
 
 ```bash
 citadel-cli repo clone myorg/myrepo
@@ -178,8 +202,8 @@ citadel-cli repo push --create
 citadel-cli repo pull
 ```
 
-- `repo clone <ns>/<repo> [local-dir]` clones the HTTPS remote derived from the
-  configured Citadel server and prints the local directory path on success.
+- `repo clone <ns>/<repo> [local-dir]` clones the SSH remote for that repo and
+  prints the local directory path on success.
 - `repo push` / `repo pull` run in the current checkout. With no explicit repo
   path, the target comes from `-R`, `CITADEL_REPO`, or `git remote get-url`.
 - `repo push` prompts to create the remote repository when Citadel does not know
