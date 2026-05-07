@@ -1,6 +1,6 @@
 # Tasks — cli-git-wrappers
 
-Status: BLOCKED 071706ZMAY26 — Live Citadel repo smoke is blocked on backend inconsistency: `repo create` returns success, but repeated `repo get` calls for the same slug still return not_found and the git HTTPS endpoint remains unusable for push/clone.
+Status: IN_PROGRESS 071745ZMAY26 — unblocked — citadel#7 resolved: `GET /api/namespaces/{slug}/{repo_slug}` routing fixed and `git_ssh_remote` field added to repo responses. SSH is the canonical transport; HTTPS git was never supported. Implementation updated to use SSH remote URLs.
 
 ## P0
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | BLOCKED 071706ZMAY26 — Live Citadel repo smoke is blocked on backend inconsistency: `repo create` returns success, but repeated `repo get` calls for the same slug still return not_found and the git HTTPS endpoint remains unusable for push/clone. |
+| Status | IN_PROGRESS 071745ZMAY26 — unblocked — citadel#7 resolved: `GET /api/namespaces/{slug}/{repo_slug}` routing fixed and `git_ssh_remote` field added to repo responses. SSH is the canonical transport; HTTPS git was never supported. Implementation updated to use SSH remote URLs. |
 | Authored | 120000ZMAY26 |
 | Owner | Bastion (J-3) |
 
@@ -39,6 +39,3 @@ tool handle the full repository workflow.
 | Q3 | `citadel clone` vs. `citadel repo clone`? | **Ratified 071639ZMAY26** — second-level verbs under `repo` to match the existing CLI shape. |
 | Q4 | Handle repos not yet on the server (auto-create on push)? | **Ratified 071639ZMAY26** — prompt to create on `repo push`; `--create` bypasses the prompt for non-interactive use. |
 
-## Blocking
-
-Live Citadel repo smoke is blocked on backend inconsistency: `repo create` returns success, but repeated `repo get` calls for the same slug still return not_found and the git HTTPS endpoint remains unusable for push/clone.
