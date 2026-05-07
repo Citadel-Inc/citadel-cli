@@ -5,13 +5,13 @@ Priority: Low
 
 ## P0
 
-- [ ] A1. Add `namespace profile get <namespace>` (read-only).
-- [ ] A2. Add handler and command-tree coverage for the profile read path.
+- [x] A1. Add `namespace profile get <namespace>` (read-only).
+- [x] A2. Add handler and command-tree coverage for the profile read path.
 
 ## P1
 
-- [ ] B1. Document namespace profile inspection (`docs/cli.md`).
-- [ ] B2. `make verify` green.
+- [x] B1. Document namespace profile inspection (`docs/cli.md`).
+- [x] B2. `make verify` green.
 
 ## P2
 
