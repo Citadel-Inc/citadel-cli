@@ -19,8 +19,23 @@ import (
 // AgentCmd is the top-level `citadel agent` command.
 var AgentCmd = &cobra.Command{
 	Use:   "agent",
-	Short: "Manage agents (list, get, delete, rotate-token)",
+	Short: "Manage agents (list, get, delete, rotate-token, create)",
 	Long:  `CRUD operations against the Citadel agent API.`,
+}
+
+var agentCreateCmd = &cobra.Command{
+	Use:   "create <name>",
+	Short: "Create a new agent and print its initial token",
+	Long: `Registers a new agent in the authenticated user's personal namespace,
+then issues an initial token. The token is printed to stdout once and is
+not stored; save it securely before closing your terminal.
+
+Examples:
+  citadel-cli agent create mybot
+  citadel-cli agent create mybot --output json
+  citadel-cli agent create ci-runner --output json`,
+	Args: cobra.ExactArgs(1),
+	RunE: runAgentCreate,
 }
 
 var agentListCmd = &cobra.Command{
@@ -78,6 +93,14 @@ type agentRow struct {
 	OwnerID   string    `json:"owner_user_id,omitempty"`
 	Name      string    `json:"name"`
 	ModelHint *string   `json:"model_hint,omitempty"`
+}
+
+// agentCreateResult is the machine-readable output for `agent create`.
+type agentCreateResult struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Token     string    `json:"token"`
+	CreatedAt string    `json:"created_at"`
 }
 
 // listAgentRows fetches every page of agents owned by the authenticated user.
@@ -314,6 +337,67 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runAgentCreate(cmd *cobra.Command, args []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	name := strings.TrimSpace(args[0])
+	if name == "" {
+		return fmt.Errorf("agent name must not be empty")
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
+
+	// Create the agent.
+	var created agentRow
+	if err := c.Post(cmd.Context(), "/agents", map[string]string{"name": name}, &created); err != nil {
+		return decorateAgentCreateError(err, name)
+	}
+
+	// Issue an initial token for the new agent.
+	var tok tokenWithCleartext
+	if err := c.Post(cmd.Context(), "/agent-tokens", map[string]any{"agent_id": created.ID}, &tok); err != nil {
+		return fmt.Errorf("created agent %s but failed to issue initial token: %w", created.ID, err)
+	}
+
+	if output == "json" {
+		return emitJSON(cmd, agentCreateResult{
+			ID:        created.ID,
+			Name:      created.Name,
+			Token:     tok.CleartextToken,
+			CreatedAt: tok.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+		})
+	}
+
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Agent created\n")
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  id:   %s\n", created.ID)
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  name: %s\n", created.Name)
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), tok.CleartextToken)
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "(agent token printed once above — store it securely)")
+	return nil
+}
+
+// decorateAgentCreateError maps well-known server errors to friendly messages.
+func decorateAgentCreateError(err error, name string) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "409") || strings.Contains(msg, "already exists"):
+		return fmt.Errorf("agent name already taken: %q", name)
+	case strings.Contains(msg, "403"):
+		return fmt.Errorf("insufficient permission to create agent %q", name)
+	case strings.Contains(msg, "422"):
+		return fmt.Errorf("validation error creating agent: %w", err)
+	default:
+		return fmt.Errorf("create agent: %w", err)
+	}
+}
+
 func completeAgentNames(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
@@ -326,12 +410,13 @@ func completeAgentNames(cmd *cobra.Command, args []string, _ string) ([]string, 
 }
 
 func init() {
+	AgentCmd.AddCommand(agentCreateCmd)
 	AgentCmd.AddCommand(agentListCmd)
 	AgentCmd.AddCommand(agentGetCmd)
 	AgentCmd.AddCommand(agentDeleteCmd)
 	AgentCmd.AddCommand(agentRotateTokenCmd)
 
-	addOutputFlag(agentListCmd, agentGetCmd, agentDeleteCmd, agentRotateTokenCmd)
+	addOutputFlag(agentCreateCmd, agentListCmd, agentGetCmd, agentDeleteCmd, agentRotateTokenCmd)
 	addPaginationFlags(agentListCmd)
 	addWatchFlag(agentListCmd)
 	addYesFlag(agentDeleteCmd, agentRotateTokenCmd)
@@ -346,5 +431,8 @@ func init() {
 	}
 	agentRotateTokenCmd.PostRun = func(cmd *cobra.Command, _ []string) {
 		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyAgents, completion.KeyAgentTokens)
+	}
+	agentCreateCmd.PostRun = func(cmd *cobra.Command, _ []string) {
+		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyAgents)
 	}
 }

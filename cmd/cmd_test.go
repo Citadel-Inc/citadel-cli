@@ -394,7 +394,7 @@ func TestAgentCmdHelp(t *testing.T) {
 }
 
 func TestAgentSubcommands(t *testing.T) {
-	for _, name := range []string{"list", "get", "delete", "rotate-token"} {
+	for _, name := range []string{"create", "list", "get", "delete", "rotate-token"} {
 		if !hasSubcmd(cmd.AgentCmd, name) {
 			t.Errorf("citadel agent: missing subcommand %q", name)
 		}
@@ -402,10 +402,19 @@ func TestAgentSubcommands(t *testing.T) {
 }
 
 func TestAgentOutputFlags(t *testing.T) {
-	for _, name := range []string{"list", "get", "rotate-token"} {
+	for _, name := range []string{"create", "list", "get", "rotate-token"} {
 		c := findSubcmd(t, cmd.AgentCmd, name)
 		if !hasFlag(c, "output") {
 			t.Errorf("citadel agent %s: missing --output flag", name)
+		}
+	}
+}
+
+func TestAgentCreateFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.AgentCmd, "create")
+	for _, flag := range []string{"output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel agent create: missing flag --%s", flag)
 		}
 	}
 }

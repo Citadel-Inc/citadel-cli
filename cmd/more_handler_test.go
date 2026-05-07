@@ -416,3 +416,73 @@ func TestTokenList_AgentNotFound(t *testing.T) {
 		t.Fatalf("want agent not-found, got %v", err)
 	}
 }
+
+// ── agent create ─────────────────────────────────────────────────────────────
+
+func TestAgentCreate_Happy(t *testing.T) {
+	agentID := "11111111-1111-1111-1111-111111111111"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 201, map[string]any{
+				"id": agentID, "name": "mybot", "owner_user_id": "u1",
+			})
+		},
+		"POST /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 201, map[string]any{
+				"id":              "33333333-3333-3333-3333-333333333333",
+				"agent_id":        agentID,
+				"cleartext_token": "secret-tok",
+				"created_at":      "2026-01-01T00:00:00Z",
+			})
+		},
+	}))
+	if err := rootFor(cmd.AgentCmd, "create", "mybot").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAgentCreate_JSON(t *testing.T) {
+	agentID := "22222222-2222-2222-2222-222222222222"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 201, map[string]any{
+				"id": agentID, "name": "ci-runner", "owner_user_id": "u1",
+			})
+		},
+		"POST /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 201, map[string]any{
+				"id":              "44444444-4444-4444-4444-444444444444",
+				"agent_id":        agentID,
+				"cleartext_token": "ci-secret",
+				"created_at":      "2026-01-01T00:00:00Z",
+			})
+		},
+	}))
+	if err := rootFor(cmd.AgentCmd, "create", "ci-runner", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAgentCreate_DuplicateName(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 409, map[string]any{"error": "agent with this name already exists"})
+		},
+	}))
+	err := rootFor(cmd.AgentCmd, "create", "existing").Execute()
+	if err == nil || !strings.Contains(err.Error(), "already taken") {
+		t.Fatalf("want 'already taken' error, got %v", err)
+	}
+}
+
+func TestAgentCreate_Forbidden(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 403, map[string]any{"error": "forbidden"})
+		},
+	}))
+	err := rootFor(cmd.AgentCmd, "create", "blocked").Execute()
+	if err == nil || !strings.Contains(err.Error(), "insufficient permission") {
+		t.Fatalf("want 'insufficient permission' error, got %v", err)
+	}
+}
