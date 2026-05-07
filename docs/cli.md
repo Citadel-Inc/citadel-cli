@@ -188,6 +188,38 @@ citadel-cli repo pull
 - `--remote <name>` applies when the repo path is inferred from the current
   checkout rather than passed explicitly.
 
+### Webhooks
+
+Webhook management follows Citadel's namespace-scoped API, so the CLI nests it
+under the existing parent resources:
+
+```bash
+citadel-cli repo webhook list -R acme/demo
+citadel-cli repo webhook create -R acme/demo --url https://hooks.example.test/in --events issue.opened,comment.created
+citadel-cli repo webhook get -R acme/demo <webhook-id>
+citadel-cli repo webhook delete -R acme/demo <webhook-id> --dry-run
+
+citadel-cli namespace webhook list acme
+citadel-cli namespace webhook create acme --url https://hooks.example.test/in --events issue.opened --include-descendants
+citadel-cli namespace webhook get acme <webhook-id>
+citadel-cli namespace webhook delete acme <webhook-id>
+```
+
+- Repo webhooks target the repo namespace selected by `-R`, `CITADEL_REPO`, or
+  current-checkout inference.
+- Namespace webhooks take the namespace path as a positional argument.
+- `create` requires `--url` and `--events`. Citadel generates the webhook secret
+  server-side and returns the cleartext secret once; save it immediately.
+- Supported event kinds currently match the server allow-list:
+  `comment.created`, `comment.edited`, `issue.assigned`, `issue.closed`,
+  `issue.labeled`, `issue.opened`, `issue.reopened`, `issue.unassigned`, and
+  `issue.unlabeled`.
+- `--include-descendants` applies to namespace webhooks only.
+- `get` is implemented client-side by listing hooks and filtering by ID because
+  the current API does not expose a dedicated GET-by-ID route.
+- There is not yet a `webhook test` command because Citadel does not expose a
+  server-side test/ping endpoint.
+
 ### Agents
 
 Manage the agents registered to your account. An agent is a named identity that

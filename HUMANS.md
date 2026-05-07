@@ -96,6 +96,7 @@ citadel-cli repo get            # inferred when origin is a Citadel remote
 citadel-cli repo get -R other/ns   # explicit repo
 citadel-cli repo clone myorg/myrepo
 citadel-cli repo push --create  # prompt/create the remote first when missing
+citadel-cli repo webhook list   # same repo-context rules
 ```
 
 Issue verbs (`citadel-cli issue ...`) reuse the same `-R` / `CITADEL_REPO` / CWD-origin rules, but interpret the target as a **namespace path**. For repository issues, omission can still infer `org/repo` from the current checkout; for org-level or deeper non-repo namespaces, pass `-R` explicitly.
@@ -104,7 +105,7 @@ Full reference: [docs/cli.md](docs/cli.md).
 
 ### List pagination
 
-Every list verb (`repo list`, `repo deploy-token list`, `namespace deploy-token list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`) accepts **`--limit`** (default 50, maximum 200), **`--cursor`** (opaque token from the prior response’s `next_cursor` field), and **`--all`** (walk pages serially until exhausted). In human/table mode, when more rows exist the CLI prints a trailing hint: `(use --cursor … for more, or --all to fetch everything)`.
+Every list verb (`repo list`, `repo deploy-token list`, `repo webhook list`, `namespace deploy-token list`, `namespace webhook list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`) accepts **`--limit`** (default 50, maximum 200), **`--cursor`** (opaque token from the prior response’s `next_cursor` field), and **`--all`** (walk pages serially until exhausted). In human/table mode, when more rows exist the CLI prints a trailing hint: `(use --cursor … for more, or --all to fetch everything)`.
 
 **`--output json`** returns a single JSON array for one server round-trip only; **`--output ndjson`** emits one JSON object per row and is the supported mode for **`--all`** when you want a machine-readable stream without buffering the entire result set. Passing **`--all` with `--output json`** is rejected with an error directing you to `ndjson`.
 
@@ -114,7 +115,7 @@ Malformed **`--cursor`** values (before any HTTP call) produce a clear `invalid 
 
 ### Shell completion
 
-Install scripts with `citadel-cli completion bash|zsh|fish|powershell` (see `citadel-cli completion --help`). Dynamic tab completion for resource arguments — repo slugs (scoped via `-R`, `CITADEL_REPO`, or CWD inference), org namespace slugs on `namespace get|members|delete|transfer initiate`, agent names on `agent get|delete|rotate-token|create`, OAuth client resource UUIDs on `oauth clients show|revoke`, token UUIDs on `token revoke`, deploy-token UUIDs on `repo deploy-token revoke` / `namespace deploy-token revoke`, SSH key UUIDs on `ssh-key delete` — issues authenticated list calls against the Citadel API. With no access token, completion yields no candidates and never prompts for credentials. JSON cache files live under `$XDG_CACHE_HOME/citadel-cli/completion/<server-host>/` with a 60-second TTL. Set **`CITADEL_NO_COMPLETION_CACHE=1`** to skip disk cache reads and writes (in-memory only; useful for debugging).
+Install scripts with `citadel-cli completion bash|zsh|fish|powershell` (see `citadel-cli completion --help`). Dynamic tab completion for resource arguments — repo slugs (scoped via `-R`, `CITADEL_REPO`, or CWD inference), org namespace slugs on `namespace get|members|delete|transfer initiate`, agent names on `agent get|delete|rotate-token|create`, OAuth client resource UUIDs on `oauth clients show|revoke`, token UUIDs on `token revoke`, deploy-token UUIDs on `repo deploy-token revoke` / `namespace deploy-token revoke`, webhook UUIDs on `repo webhook get|delete` / `namespace webhook get|delete`, SSH key UUIDs on `ssh-key delete` — issues authenticated list calls against the Citadel API. With no access token, completion yields no candidates and never prompts for credentials. JSON cache files live under `$XDG_CACHE_HOME/citadel-cli/completion/<server-host>/` with a 60-second TTL. Set **`CITADEL_NO_COMPLETION_CACHE=1`** to skip disk cache reads and writes (in-memory only; useful for debugging).
 
 ## Structured errors (`--output json` / `yaml` / `ndjson`)
 
