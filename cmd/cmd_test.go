@@ -60,6 +60,63 @@ func TestIssueCmdExists(t *testing.T) {
 	}
 }
 
+func TestAuthCmdExists(t *testing.T) {
+	if cmd.AuthCmd == nil {
+		t.Fatal("AuthCmd is nil")
+	}
+}
+
+func TestAuthCmdHelp(t *testing.T) {
+	helpRuns(t, cmd.AuthCmd)
+}
+
+func TestAuthSubcommands(t *testing.T) {
+	for _, name := range []string{"login", "status", "logout", "set-token", "provider"} {
+		if !hasSubcmd(cmd.AuthCmd, name) {
+			t.Errorf("citadel auth: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestAuthProviderSubcommands(t *testing.T) {
+	provider := findSubcmd(t, cmd.AuthCmd, "provider")
+	for _, name := range []string{"list", "link", "unlink"} {
+		if !hasSubcmd(provider, name) {
+			t.Errorf("citadel auth provider: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestAuthProviderListFlags(t *testing.T) {
+	provider := findSubcmd(t, cmd.AuthCmd, "provider")
+	c := findSubcmd(t, provider, "list")
+	for _, flag := range []string{"output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel auth provider list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestAuthProviderLinkFlags(t *testing.T) {
+	provider := findSubcmd(t, cmd.AuthCmd, "provider")
+	c := findSubcmd(t, provider, "link")
+	for _, flag := range []string{"json"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel auth provider link: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestAuthProviderUnlinkFlags(t *testing.T) {
+	provider := findSubcmd(t, cmd.AuthCmd, "provider")
+	c := findSubcmd(t, provider, "unlink")
+	for _, flag := range []string{"json", "yes"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel auth provider unlink: missing flag --%s", flag)
+		}
+	}
+}
+
 func TestIssueCmdHelp(t *testing.T) {
 	helpRuns(t, cmd.IssueCmd)
 }

@@ -119,6 +119,27 @@ func issueMilestoneViewFromRoot(t *testing.T, root *cobra.Command) *cobra.Comman
 	return nil
 }
 
+func authProviderLinkFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	t.Helper()
+	for _, c := range root.Commands() {
+		if c.Name() != "auth" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() != "provider" {
+				continue
+			}
+			for _, leaf := range sc.Commands() {
+				if leaf.Name() == "link" {
+					return leaf
+				}
+			}
+		}
+	}
+	t.Fatal("auth provider link not found")
+	return nil
+}
+
 func webhookPathMatches(r *http.Request, encoded, decoded string) bool {
 	return r.URL.EscapedPath() == encoded || r.URL.Path == decoded
 }
@@ -194,6 +215,35 @@ func TestCompleteAgentNames_HappyPath(t *testing.T) {
 		t.Fatalf("directive %v", d)
 	}
 	if len(vals) != 2 || vals[0] != "apollo" || vals[1] != "zeus" {
+		t.Fatalf("got %q", vals)
+	}
+}
+
+func TestCompleteAuthProviderIDs_PublicHappyPath(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/auth/providers" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"providers": []any{
+			map[string]any{"id": "google", "label": "Google"},
+			map[string]any{"id": "github", "label": "GitHub"},
+		}})
+	}))
+	defer srv.Close()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	root := NewRootCmd()
+	link := authProviderLinkFromRoot(t, root)
+	link.SetContext(context.Background())
+	vals, d := completeAuthProviderIDs(link, []string{}, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 2 || vals[0] != "github" || vals[1] != "google" {
 		t.Fatalf("got %q", vals)
 	}
 }
