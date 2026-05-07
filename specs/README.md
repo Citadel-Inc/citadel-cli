@@ -6,7 +6,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-milestones | IN_PROGRESS | 071750ZMAY26 | Bastion (J-3) |
+| _(none)_ | | | |
 
 ## Done
 
@@ -14,6 +14,7 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-milestones | 071809ZMAY26 | Shipped `issue milestone` list/view/create/edit/delete plus milestone UUID completion and `issue create --milestone` wiring. Added handler and completion coverage, documented the workflow in docs/cli.md, and completed live smoke on namespace `rethunk-ai` by creating milestone `93a00575-4530-4a7c-8a59-aeccbb47a5ef`, listing it, creating issue `#1` attached to that milestone, and deleting the milestone successfully. |
 | cli-git-wrappers | 071753ZMAY26 | Completed the deferred live smoke against src.land after the repo get stability fix landed in citadel. Verified `citadel-cli repo push --create`, `repo clone`, and `repo pull` end-to-end on disposable repository `rethunk-ai/copilot-smoke-105235`, then deleted the remote repo successfully. |
 | cli-webhooks | 071726ZMAY26 | Shipped nested `repo webhook` and `namespace webhook` list/create/get/delete commands against Citadel's namespace-scoped webhook API, including server-generated secret handling, webhook ID completion, handler coverage, docs, and a backend follow-up issue for missing test-ping support (`citadel#8`). |
 | cli-error-format | 071629ZMAY26 | Structured error output remains shipped: README/HUMANS document the json/yaml/ndjson envelope, and the remaining P2 live 429 integration plus operator exit-code review stay as out-of-band follow-up work rather than a HUMAN_BLOCKERS dependency. |
@@ -49,6 +50,7 @@
 |------|-----|------|
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
+
 
 
 

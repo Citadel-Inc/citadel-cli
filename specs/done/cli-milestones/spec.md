@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 071750ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 071809ZMAY26 — Shipped `issue milestone` list/view/create/edit/delete plus milestone UUID completion and `issue create --milestone` wiring. Added handler and completion coverage, documented the workflow in docs/cli.md, and completed live smoke on namespace `rethunk-ai` by creating milestone `93a00575-4530-4a7c-8a59-aeccbb47a5ef`, listing it, creating issue `#1` attached to that milestone, and deleting the milestone successfully. |
 | Authored | 071745ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 review against PoL + `citadel` tracker (2026-05-07): the milestones API (`/api/namespaces/{slug}/milestones`) shipped server-side (go-issues-milestones) but has no CLI coverage. Issue view already surfaces `milestone_title` in table output; operators cannot create or manage milestones from the terminal. |
@@ -19,7 +19,7 @@ Operators demoing the Phase 0 issue workflow need at least `list` + `create` to 
 - `citadel-cli issue milestone view -R <ns/path> <id>` — milestone detail + progress bar
 - `citadel-cli issue milestone create -R <ns/path> --title "..." [--description "..."] [--due-on YYYY-MM-DD]`
 - `citadel-cli issue milestone edit -R <ns/path> <id> [--title ...] [--description ...] [--due-on ...] [--state open|closed]`
-- `citadel-cli issue milestone delete -R <ns/path> <id>` — with typed-slug confirm
+- `citadel-cli issue milestone delete -R <ns/path> <id>` — with typed-title confirm
 
 All verbs nest under `citadel-cli issue milestone` (second-level noun under the existing `issue` command tree).
 
@@ -35,11 +35,11 @@ All verbs nest under `citadel-cli issue milestone` (second-level noun under the 
 
 ### Cross-cutting
 - `-R` repo/namespace selector (existing `repocontext` rules)
-- Output modes: `table` (default TTY), `json`, `yaml`
-- `delete` gates on `--yes` / typed-title confirm (matching `repo delete` pattern)
-- Shell completion: milestone IDs via cached list for `view`/`edit`/`delete`
+- Output modes: list verbs support `table` (default TTY), `json`, `yaml`, `ndjson`, `csv`; single-resource and mutation verbs keep human default + `json`
+- `delete` gates on `--yes` / typed-title confirm
+- Shell completion: milestone IDs via cached list for `view`/`edit`/`delete` and `issue create --milestone`
 - `milestone_id` wiring for `issue create` (new `--milestone <id>` flag on existing `issue create`)
-- List supports `--all` cursor walk (matching pagination contract)
+- List filters client-side by `--state`; the current server endpoint returns the full milestone set in one response (no cursor pagination today)
 
 ## Out of scope
 
@@ -51,9 +51,9 @@ All verbs nest under `citadel-cli issue milestone` (second-level noun under the 
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Nest as `issue milestone <verb>` to keep the command tree parallel to `issue label` pattern. | **Open** |
-| Q2 | `id` argument accepts either UUID or title prefix (fuzzy-match with disambiguation prompt). | **Open** |
-| Q3 | `due_on` is an optional date field; accept `YYYY-MM-DD` only (no relative dates). | **Open** |
+| Q1 | Nest as `issue milestone <verb>` to keep the command tree parallel to `issue label` pattern. | **Ratified 071807ZMAY26** — shipped as `issue milestone <verb>` under the existing issue tree. |
+| Q2 | `id` argument accepts either UUID or title prefix (fuzzy-match with disambiguation prompt). | **Ratified 071807ZMAY26** — UUID only; avoids ambiguous destructive targeting and matches the server path contract. |
+| Q3 | `due_on` is an optional date field; accept `YYYY-MM-DD` only (no relative dates). | **Ratified 071807ZMAY26** — `YYYY-MM-DD` only; matches the server's strict date parser. |
 
 ## Acceptance criteria
 
