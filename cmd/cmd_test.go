@@ -234,6 +234,45 @@ func TestRepoTagDeleteFlags(t *testing.T) {
 	}
 }
 
+func TestRepoDeployTokenSubcommands(t *testing.T) {
+	deploy := findSubcmd(t, cmd.RepoCmd, "deploy-token")
+	for _, name := range []string{"list", "create", "revoke"} {
+		if !hasSubcmd(deploy, name) {
+			t.Errorf("citadel repo deploy-token: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestRepoDeployTokenListFlags(t *testing.T) {
+	deploy := findSubcmd(t, cmd.RepoCmd, "deploy-token")
+	c := findSubcmd(t, deploy, "list")
+	for _, flag := range []string{"repo", "no-cwd-repo", "limit", "cursor", "all", "watch", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo deploy-token list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoDeployTokenCreateFlags(t *testing.T) {
+	deploy := findSubcmd(t, cmd.RepoCmd, "deploy-token")
+	c := findSubcmd(t, deploy, "create")
+	for _, flag := range []string{"repo", "no-cwd-repo", "name", "expires", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo deploy-token create: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoDeployTokenRevokeFlags(t *testing.T) {
+	deploy := findSubcmd(t, cmd.RepoCmd, "deploy-token")
+	c := findSubcmd(t, deploy, "revoke")
+	for _, flag := range []string{"repo", "no-cwd-repo", "dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo deploy-token revoke: missing flag --%s", flag)
+		}
+	}
+}
+
 // ── namespace ────────────────────────────────────────────────────────────────
 
 func TestNamespaceCmdExists(t *testing.T) {
@@ -247,9 +286,48 @@ func TestNamespaceCmdHelp(t *testing.T) {
 }
 
 func TestNamespaceSubcommands(t *testing.T) {
-	for _, name := range []string{"list", "get", "members", "transfer"} {
+	for _, name := range []string{"list", "get", "members", "transfer", "deploy-token"} {
 		if !hasSubcmd(cmd.NamespaceCmd, name) {
 			t.Errorf("citadel namespace: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestNamespaceDeployTokenSubcommands(t *testing.T) {
+	deploy := findSubcmd(t, cmd.NamespaceCmd, "deploy-token")
+	for _, name := range []string{"list", "create", "revoke"} {
+		if !hasSubcmd(deploy, name) {
+			t.Errorf("citadel namespace deploy-token: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestNamespaceDeployTokenListFlags(t *testing.T) {
+	deploy := findSubcmd(t, cmd.NamespaceCmd, "deploy-token")
+	c := findSubcmd(t, deploy, "list")
+	for _, flag := range []string{"limit", "cursor", "all", "watch", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel namespace deploy-token list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestNamespaceDeployTokenCreateFlags(t *testing.T) {
+	deploy := findSubcmd(t, cmd.NamespaceCmd, "deploy-token")
+	c := findSubcmd(t, deploy, "create")
+	for _, flag := range []string{"name", "expires", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel namespace deploy-token create: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestNamespaceDeployTokenRevokeFlags(t *testing.T) {
+	deploy := findSubcmd(t, cmd.NamespaceCmd, "deploy-token")
+	c := findSubcmd(t, deploy, "revoke")
+	for _, flag := range []string{"dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel namespace deploy-token revoke: missing flag --%s", flag)
 		}
 	}
 }

@@ -22,6 +22,7 @@ const (
 	KeyAgents       = "agents"
 	KeyOAuthClients = "oauth_clients"
 	KeyAgentTokens  = "agent_tokens"
+	KeyDeployTokens = "deploy_tokens:" // + namespace path
 	KeySSHKeys      = "ssh_keys"
 )
 
@@ -33,6 +34,9 @@ func RepoBranchKey(repoPath string) string { return KeyRepoBranches + repoPath }
 
 // RepoTagKey returns the cache resource key for tag names in a repo.
 func RepoTagKey(repoPath string) string { return KeyRepoTags + repoPath }
+
+// DeployTokenKey returns the cache resource key for deploy token IDs in a namespace path.
+func DeployTokenKey(namespacePath string) string { return KeyDeployTokens + namespacePath }
 
 // Lookup loads cached values or calls fetch with a quiet apiclient. Any error
 // from fetch (including missing auth) is returned to the caller for shell
@@ -233,6 +237,43 @@ func FetchAgentNames(ctx context.Context, c *apiclient.Client) ([]string, error)
 		if s := strings.TrimSpace(r.Name); s != "" {
 			out = append(out, s)
 		}
+	}
+	return sortDedupe(out), nil
+}
+
+// FetchNamespaceDeployTokenIDs lists deploy token IDs for a namespace path.
+func FetchNamespaceDeployTokenIDs(ctx context.Context, c *apiclient.Client, namespacePath string) ([]string, error) {
+	ns := strings.Trim(strings.TrimSpace(namespacePath), "/")
+	if ns == "" {
+		return nil, errors.New("missing namespace for deploy-token completion")
+	}
+	var out []string
+	cursor := ""
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(pagination.MaxLimit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		}
+		path := "/namespaces/" + url.PathEscape(ns) + "/deploy-tokens?" + q.Encode()
+		var payload struct {
+			Tokens []struct {
+				ID string `json:"id"`
+			} `json:"deploy_tokens"`
+			NextCursor string `json:"next_cursor"`
+		}
+		if err := c.Get(ctx, path, &payload); err != nil {
+			return nil, err
+		}
+		for _, t := range payload.Tokens {
+			if id := strings.TrimSpace(t.ID); id != "" {
+				out = append(out, id)
+			}
+		}
+		if strings.TrimSpace(payload.NextCursor) == "" {
+			break
+		}
+		cursor = strings.TrimSpace(payload.NextCursor)
 	}
 	return sortDedupe(out), nil
 }

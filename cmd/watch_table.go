@@ -25,6 +25,7 @@ const (
 	watchOrgMembers
 	watchTransfersPending
 	watchAgentTokens
+	watchDeployTokens
 )
 
 // watchTableCtx carries slug fields needed to interpret partial SSE payloads.
@@ -40,9 +41,9 @@ type tableWatchEmitter struct {
 	out    io.Writer
 	redraw bool
 
-	rows             map[string]json.RawMessage
-	paintedLines     int
-	lastDeltaLabel   string
+	rows           map[string]json.RawMessage
+	paintedLines   int
+	lastDeltaLabel string
 }
 
 func newTableWatchEmitter(cmd *cobra.Command, kind watchListKind, ctx watchTableCtx) *tableWatchEmitter {
@@ -198,6 +199,8 @@ func (e *tableWatchEmitter) writeHeader(w io.Writer) {
 		_, _ = fmt.Fprintln(w, "ID\tORG\tFROM\tEXPIRES")
 	case watchAgentTokens:
 		_, _ = fmt.Fprintln(w, "ID\tCREATED\tEXPIRES\tREVOKED")
+	case watchDeployTokens:
+		_, _ = fmt.Fprintln(w, "ID\tNAME\tCREATED\tEXPIRES\tREVOKED")
 	default:
 		_, _ = fmt.Fprintln(w, "KEY\tJSON")
 	}
@@ -287,6 +290,23 @@ func (e *tableWatchEmitter) writeRow(w io.Writer, key string, raw json.RawMessag
 			t.CreatedAt.Format("2006-01-02 15:04:05"),
 			expires,
 			revoked)
+	case watchDeployTokens:
+		var t deployTokenRow
+		if json.Unmarshal(raw, &t) != nil {
+			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
+			return
+		}
+		name := t.Name
+		if name == "" {
+			name = "—"
+		}
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+			t.ID,
+			name,
+			t.CreatedAt.Format("2006-01-02 15:04:05"),
+			formatTimePtr(t.ExpiresAt),
+			formatTimePtr(t.RevokedAt),
+		)
 	default:
 		_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
 	}
@@ -333,6 +353,14 @@ func (e *tableWatchEmitter) shortRowLabel(raw json.RawMessage) string {
 		var t token
 		if json.Unmarshal(raw, &t) == nil {
 			return t.ID.String()
+		}
+	case watchDeployTokens:
+		var t deployTokenRow
+		if json.Unmarshal(raw, &t) == nil && t.ID != "" {
+			if t.Name != "" {
+				return t.Name
+			}
+			return t.ID
 		}
 	}
 	var m map[string]any
@@ -416,6 +444,12 @@ func (e *tableWatchEmitter) rowKey(raw json.RawMessage) string {
 		if x.ID != uuid.Nil {
 			return x.ID.String()
 		}
+	case watchDeployTokens:
+		var x struct {
+			ID string `json:"id"`
+		}
+		_ = json.Unmarshal(raw, &x)
+		return strings.TrimSpace(x.ID)
 	}
 	return ""
 }
