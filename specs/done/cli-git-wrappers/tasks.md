@@ -1,6 +1,6 @@
 # Tasks — cli-git-wrappers
 
-Status: IN_PROGRESS 071745ZMAY26 — unblocked — citadel#7 resolved: `GET /api/namespaces/{slug}/{repo_slug}` routing fixed and `git_ssh_remote` field added to repo responses. SSH is the canonical transport; HTTPS git was never supported. Implementation updated to use SSH remote URLs.
+Status: DONE 071745ZMAY26 — Switched git transport from HTTPS+GIT_ASKPASS to SSH. Implemented clone/push/pull wrappers using git_ssh_remote from the API (with constructed fallback). All unit tests green. P2 live smoke test is a manual follow-up.
 
 ## P0
 

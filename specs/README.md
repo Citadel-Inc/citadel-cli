@@ -6,7 +6,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-git-wrappers | IN_PROGRESS | 071745ZMAY26 | Bastion (J-3) |
+| _(none)_ | | | |
 
 ## Done
 
@@ -14,6 +14,7 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-git-wrappers | 071745ZMAY26 | Switched git transport from HTTPS+GIT_ASKPASS to SSH. Implemented clone/push/pull wrappers using git_ssh_remote from the API (with constructed fallback). All unit tests green. P2 live smoke test is a manual follow-up. |
 | cli-webhooks | 071726ZMAY26 | Shipped nested `repo webhook` and `namespace webhook` list/create/get/delete commands against Citadel's namespace-scoped webhook API, including server-generated secret handling, webhook ID completion, handler coverage, docs, and a backend follow-up issue for missing test-ping support (`citadel#8`). |
 | cli-error-format | 071629ZMAY26 | Structured error output remains shipped: README/HUMANS document the json/yaml/ndjson envelope, and the remaining P2 live 429 integration plus operator exit-code review stay as out-of-band follow-up work rather than a HUMAN_BLOCKERS dependency. |
 | cli-oauth-clients | 071629ZMAY26 | OAuth client CLI support remains shipped: the opt-in live integration test and runbook landed, while any additional operator citadel-cli smoke stays as an out-of-band follow-up instead of a HUMAN_BLOCKERS entry. |
@@ -48,6 +49,7 @@
 |------|-----|------|
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
+
 
 
 
