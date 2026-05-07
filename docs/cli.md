@@ -163,6 +163,31 @@ CITADEL_TEST_ISSUES_NS=acme/demo \
 go test ./cmd -run TestLiveIssues_roundTrip_optIn -count=1
 ```
 
+### Repositories via system git
+
+`citadel-cli repo clone|push|pull` are thin wrappers around the on-system `git`
+binary. They inject Citadel auth for one invocation and keep normal git
+semantics instead of re-implementing clone/push/pull in the CLI.
+
+```bash
+citadel-cli repo clone myorg/myrepo
+citadel-cli repo clone myorg/myrepo ./local-dir
+citadel-cli repo push
+citadel-cli repo push --remote upstream
+citadel-cli repo push --create
+citadel-cli repo pull
+```
+
+- `repo clone <ns>/<repo> [local-dir]` clones the HTTPS remote derived from the
+  configured Citadel server and prints the local directory path on success.
+- `repo push` / `repo pull` run in the current checkout. With no explicit repo
+  path, the target comes from `-R`, `CITADEL_REPO`, or `git remote get-url`.
+- `repo push` prompts to create the remote repository when Citadel does not know
+  that repo yet; pass `--create` to skip the prompt in CI or other
+  non-interactive sessions.
+- `--remote <name>` applies when the repo path is inferred from the current
+  checkout rather than passed explicitly.
+
 ### Agents
 
 Manage the agents registered to your account. An agent is a named identity that

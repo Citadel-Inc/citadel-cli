@@ -94,6 +94,8 @@ Commands that target a single repository accept `-R <namespace>/<slug>` (same me
 cd ~/code/myorg/myrepo          # citadel clone
 citadel-cli repo get            # inferred when origin is a Citadel remote
 citadel-cli repo get -R other/ns   # explicit repo
+citadel-cli repo clone myorg/myrepo
+citadel-cli repo push --create  # prompt/create the remote first when missing
 ```
 
 Issue verbs (`citadel-cli issue ...`) reuse the same `-R` / `CITADEL_REPO` / CWD-origin rules, but interpret the target as a **namespace path**. For repository issues, omission can still infer `org/repo` from the current checkout; for org-level or deeper non-repo namespaces, pass `-R` explicitly.
