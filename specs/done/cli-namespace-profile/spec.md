@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 072212ZMAY26 — Copilot claims execution |
+| Status | DONE 072216ZMAY26 — namespace profile get shipped: reads GET /api/namespaces/{slug}/profile, renders identity fields as human table with JSON/YAML/table output modes; social links sorted+flattened; owner-only fields shown when applicable; 8 handler tests green; make verify passes (0 lint issues). C1 live smoke deferred to next integration pass. |
 | Priority | Low — read-only terminal utility; no `gh` analogue for mutation |
 | Authored | 072310ZMAY26 |
 | Owner | Copilot |
