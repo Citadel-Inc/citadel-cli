@@ -161,6 +161,16 @@ func (tr nsTransferRow) CSVRecord() []string {
 	}
 }
 
+// ── notifications ─────────────────────────────────────────────────────────────
+
+func (notifItem) CSVHeader() []string {
+	return []string{"id", "kind", "summary", "namespace_slug", "read_at", "created_at"}
+}
+
+func (n notifItem) CSVRecord() []string {
+	return []string{n.ID, n.Kind, n.Summary, n.NamespaceSlug, formatRFC3339PtrUTC(n.ReadAt), formatRFC3339UTC(n.CreatedAt)}
+}
+
 // ── ssh keys ─────────────────────────────────────────────────────────────────
 
 func (sshKeyRow) CSVHeader() []string {
