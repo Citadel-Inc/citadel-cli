@@ -6,7 +6,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-git-wrappers | IN_PROGRESS | 071636ZMAY26 | Bastion (J-3) |
+| cli-git-wrappers | BLOCKED | 071706ZMAY26 | Bastion (J-3) |
 | cli-webhooks | DRAFT |  | unassigned |
 
 ## Done
@@ -48,3 +48,4 @@
 |------|-----|------|
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
+

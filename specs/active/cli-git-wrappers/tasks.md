@@ -1,6 +1,6 @@
 # Tasks — cli-git-wrappers
 
-Status: IN_PROGRESS 071636ZMAY26 — Bastion (J-3) claims execution
+Status: BLOCKED 071706ZMAY26 — Live Citadel repo smoke is blocked on backend inconsistency: `repo create` returns success, but repeated `repo get` calls for the same slug still return not_found and the git HTTPS endpoint remains unusable for push/clone.
 
 ## P0
 
