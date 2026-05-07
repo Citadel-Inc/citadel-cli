@@ -361,6 +361,9 @@ func init() {
 	RepoCmd.AddCommand(repoBranchCmd)
 	RepoCmd.AddCommand(repoTagCmd)
 	RepoCmd.AddCommand(repoCommitCmd)
+	RepoCmd.AddCommand(repoBrowseCmd)
+	RepoCmd.AddCommand(repoTopicCmd)
+	RepoCmd.AddCommand(repoInsightsCmd)
 
 	addOutputFlag(repoCreateCmd, repoListCmd, repoGetCmd, repoDeleteCmd)
 	addPaginationFlags(repoListCmd)
