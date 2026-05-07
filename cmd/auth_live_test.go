@@ -19,8 +19,8 @@ import (
 // Required env:
 //   - CITADEL_TEST_OAUTH_FULL=1
 //   - one of:
-//   -   CITADEL_TEST_OAUTH_STORAGE_STATE=/abs/path/to/playwright-storage-state.json
-//   -   CITADEL_TEST_OAUTH_REFRESH_TOKEN=<citadel refresh token for client_id=citadel-cli>
+//   - CITADEL_TEST_OAUTH_STORAGE_STATE=/abs/path/to/playwright-storage-state.json
+//   - CITADEL_TEST_OAUTH_REFRESH_TOKEN=<citadel refresh token for client_id=citadel-cli>
 //
 // Optional env:
 //   - CITADEL_SERVER=https://mcp.src.land   (defaults to prod)
@@ -39,7 +39,7 @@ func TestLiveOAuthLogin_fullBrowser_optIn(t *testing.T) {
 	}
 	if storageState != "" {
 		if _, err := os.Stat(storageState); err != nil {
-		t.Skipf("storage-state file unavailable: %v", err)
+			t.Skipf("storage-state file unavailable: %v", err)
 		}
 	}
 

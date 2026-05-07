@@ -15,19 +15,19 @@ import (
 type CLIErrorKind string
 
 const (
-	KindAuthRequired       CLIErrorKind = "auth_required"
-	KindMFARequired        CLIErrorKind = "mfa_required"
-	KindForbidden          CLIErrorKind = "forbidden"
-	KindNotFound           CLIErrorKind = "not_found"
-	KindConflict           CLIErrorKind = "conflict"
-	KindRateLimited        CLIErrorKind = "rate_limited"
-	KindValidation         CLIErrorKind = "validation"
-	KindServerUnavailable  CLIErrorKind = "server_unavailable"
-	KindServerError        CLIErrorKind = "server_error"
-	KindTimeout            CLIErrorKind = "timeout"
-	KindNetwork            CLIErrorKind = "network"
-	KindDryRun             CLIErrorKind = "dry_run"
-	KindInternal           CLIErrorKind = "internal"
+	KindAuthRequired      CLIErrorKind = "auth_required"
+	KindMFARequired       CLIErrorKind = "mfa_required"
+	KindForbidden         CLIErrorKind = "forbidden"
+	KindNotFound          CLIErrorKind = "not_found"
+	KindConflict          CLIErrorKind = "conflict"
+	KindRateLimited       CLIErrorKind = "rate_limited"
+	KindValidation        CLIErrorKind = "validation"
+	KindServerUnavailable CLIErrorKind = "server_unavailable"
+	KindServerError       CLIErrorKind = "server_error"
+	KindTimeout           CLIErrorKind = "timeout"
+	KindNetwork           CLIErrorKind = "network"
+	KindDryRun            CLIErrorKind = "dry_run"
+	KindInternal          CLIErrorKind = "internal"
 )
 
 const statusSrcLandHint = "https://status.src.land"
@@ -35,12 +35,12 @@ const statusSrcLandHint = "https://status.src.land"
 // CLIError is the typed CLI failure surface. Only Kind and the exit-code mapping
 // are contractual; Message may evolve.
 type CLIError struct {
-	Kind        CLIErrorKind
-	Message     string
-	HTTPStatus  int
-	RetryAfter  int
-	Hint        string
-	Details     map[string]any
+	Kind       CLIErrorKind
+	Message    string
+	HTTPStatus int
+	RetryAfter int
+	Hint       string
+	Details    map[string]any
 }
 
 func (e *CLIError) Error() string {
@@ -105,12 +105,12 @@ func ResolveCLIExit(execErr, friendly error) (*CLIError, int) {
 }
 
 type cliErrorWire struct {
-	Kind                CLIErrorKind   `json:"kind"`
-	Message             string         `json:"message"`
-	HTTPStatus          int            `json:"http_status,omitempty"`
-	RetryAfterSeconds   int            `json:"retry_after_seconds,omitempty"`
-	Hint                string         `json:"hint,omitempty"`
-	Details             map[string]any `json:"details,omitempty"`
+	Kind              CLIErrorKind   `json:"kind"`
+	Message           string         `json:"message"`
+	HTTPStatus        int            `json:"http_status,omitempty"`
+	RetryAfterSeconds int            `json:"retry_after_seconds,omitempty"`
+	Hint              string         `json:"hint,omitempty"`
+	Details           map[string]any `json:"details,omitempty"`
 }
 
 type errorWireEnvelope struct {

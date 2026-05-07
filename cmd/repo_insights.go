@@ -30,13 +30,13 @@ type insightsRelease struct {
 }
 
 type insightsContributor struct {
-	Email          string `json:"email"`
-	Author         string `json:"author"`
-	Count          int    `json:"count"`
-	Slug           string `json:"slug"`
-	DisplayName    string `json:"display_name"`
-	GravatarHash   string `json:"gravatar_hash"`
-	GravatarDisabledBool bool `json:"gravatar_disabled"`
+	Email                string `json:"email"`
+	Author               string `json:"author"`
+	Count                int    `json:"count"`
+	Slug                 string `json:"slug"`
+	DisplayName          string `json:"display_name"`
+	GravatarHash         string `json:"gravatar_hash"`
+	GravatarDisabledBool bool   `json:"gravatar_disabled"`
 }
 
 type insightsLicense struct {

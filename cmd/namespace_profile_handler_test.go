@@ -14,16 +14,16 @@ import (
 
 func makeProfile(slug, kind, visibility string) map[string]any {
 	return map[string]any{
-		"namespace_id": "11111111-1111-1111-1111-111111111111",
-		"slug":         slug,
-		"kind":         kind,
-		"visibility":   visibility,
-		"display_name": "Test " + slug,
-		"bio":          "A test namespace",
-		"location":     "The Internet",
-		"website_url":  "https://example.com",
-		"social_links": map[string]any{"github": "testuser"},
-		"stats":        map[string]any{"repos": 5},
+		"namespace_id":    "11111111-1111-1111-1111-111111111111",
+		"slug":            slug,
+		"kind":            kind,
+		"visibility":      visibility,
+		"display_name":    "Test " + slug,
+		"bio":             "A test namespace",
+		"location":        "The Internet",
+		"website_url":     "https://example.com",
+		"social_links":    map[string]any{"github": "testuser"},
+		"stats":           map[string]any{"repos": 5},
 		"repos_preview":   []any{},
 		"members_preview": []any{},
 	}

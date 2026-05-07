@@ -82,11 +82,11 @@ type passkeyRow struct {
 }
 
 type deviceRow struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	UserAgent   string    `json:"user_agent,omitempty"`
-	LastSeenAt  time.Time `json:"last_seen_at,omitempty"`
-	CreatedAt   time.Time `json:"created_at,omitempty"`
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	UserAgent  string    `json:"user_agent,omitempty"`
+	LastSeenAt time.Time `json:"last_seen_at,omitempty"`
+	CreatedAt  time.Time `json:"created_at,omitempty"`
 }
 
 func loadPasskeyList(ctx context.Context, c *apiclient.Client) ([]passkeyRow, error) {

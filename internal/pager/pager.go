@@ -79,4 +79,3 @@ func Start(disabled bool) (cleanup func(), err error) {
 		os.Stdout = originalStdout
 	}, nil
 }
-

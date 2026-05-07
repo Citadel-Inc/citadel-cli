@@ -18,13 +18,13 @@ func TestIssueMilestoneList_JSON(t *testing.T) {
 		writeJSON(t, w, http.StatusOK, map[string]any{
 			"milestones": []map[string]any{
 				{
-					"id":          "11111111-1111-1111-1111-111111111111",
+					"id":           "11111111-1111-1111-1111-111111111111",
 					"namespace_id": "ns1",
-					"title":       "v1.0",
-					"description": "first release",
-					"state":       "open",
-					"due_on":      "2026-06-01T00:00:00Z",
-					"created_at":  "2026-05-07T00:00:00Z",
+					"title":        "v1.0",
+					"description":  "first release",
+					"state":        "open",
+					"due_on":       "2026-06-01T00:00:00Z",
+					"created_at":   "2026-05-07T00:00:00Z",
 					"progress": map[string]any{
 						"open_count":   2,
 						"closed_count": 1,
@@ -52,12 +52,12 @@ func TestIssueMilestoneView_Happy(t *testing.T) {
 			return
 		}
 		writeJSON(t, w, http.StatusOK, map[string]any{
-			"id":          "11111111-1111-1111-1111-111111111111",
+			"id":           "11111111-1111-1111-1111-111111111111",
 			"namespace_id": "ns1",
-			"title":       "v1.0",
-			"description": "first release",
-			"state":       "open",
-			"created_at":  "2026-05-07T00:00:00Z",
+			"title":        "v1.0",
+			"description":  "first release",
+			"state":        "open",
+			"created_at":   "2026-05-07T00:00:00Z",
 			"progress": map[string]any{
 				"open_count":   2,
 				"closed_count": 1,
@@ -95,13 +95,13 @@ func TestIssueMilestoneCreate_Happy(t *testing.T) {
 			t.Fatalf("unexpected body: %#v", body)
 		}
 		writeJSON(t, w, http.StatusCreated, map[string]any{
-			"id":          "11111111-1111-1111-1111-111111111111",
+			"id":           "11111111-1111-1111-1111-111111111111",
 			"namespace_id": "ns1",
-			"title":       "v1.0",
-			"description": "first release",
-			"state":       "open",
-			"due_on":      "2026-06-01T00:00:00Z",
-			"created_at":  "2026-05-07T00:00:00Z",
+			"title":        "v1.0",
+			"description":  "first release",
+			"state":        "open",
+			"due_on":       "2026-06-01T00:00:00Z",
+			"created_at":   "2026-05-07T00:00:00Z",
 			"progress": map[string]any{
 				"open_count":   0,
 				"closed_count": 0,
@@ -129,13 +129,13 @@ func TestIssueMilestoneEdit_Happy(t *testing.T) {
 			t.Fatalf("unexpected body: %#v", body)
 		}
 		writeJSON(t, w, http.StatusOK, map[string]any{
-			"id":          "11111111-1111-1111-1111-111111111111",
+			"id":           "11111111-1111-1111-1111-111111111111",
 			"namespace_id": "ns1",
-			"title":       "v1.0",
-			"description": "first release",
-			"state":       "closed",
-			"created_at":  "2026-05-07T00:00:00Z",
-			"closed_at":   "2026-05-08T00:00:00Z",
+			"title":        "v1.0",
+			"description":  "first release",
+			"state":        "closed",
+			"created_at":   "2026-05-07T00:00:00Z",
+			"closed_at":    "2026-05-08T00:00:00Z",
 			"progress": map[string]any{
 				"open_count":   0,
 				"closed_count": 2,

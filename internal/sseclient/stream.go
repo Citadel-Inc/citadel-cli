@@ -38,10 +38,10 @@ type Stream struct {
 	api  *apiclient.Client
 	path string
 
-	br       *bufio.Reader
-	body     io.Closer
-	lastID   string
-	fail streak // consecutive reconnect backoff steps
+	br     *bufio.Reader
+	body   io.Closer
+	lastID string
+	fail   streak // consecutive reconnect backoff steps
 }
 
 type streak struct {

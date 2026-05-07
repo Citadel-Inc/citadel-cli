@@ -14,7 +14,7 @@ import (
 
 func makeInsightsFull() map[string]any {
 	return map[string]any{
-		"topics":    []string{"go", "cli"},
+		"topics":     []string{"go", "cli"},
 		"star_count": 5,
 		"pin_count":  1,
 		"counts": map[string]any{
@@ -41,7 +41,7 @@ func makeInsightsFull() map[string]any {
 
 func makeInsightsEmpty() map[string]any {
 	return map[string]any{
-		"topics":    []string{},
+		"topics":     []string{},
 		"star_count": 0,
 		"pin_count":  0,
 		"counts": map[string]any{

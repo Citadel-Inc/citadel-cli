@@ -70,16 +70,16 @@ type milestoneProgress struct {
 }
 
 type milestoneRow struct {
-	ID          string             `json:"id"`
-	NamespaceID string             `json:"namespace_id"`
-	Title       string             `json:"title"`
-	Description string             `json:"description"`
-	DueOn       *time.Time         `json:"due_on,omitempty"`
-	State       string             `json:"state"`
-	ClosedAt    *time.Time         `json:"closed_at,omitempty"`
-	CreatedBy   *string            `json:"created_by,omitempty"`
-	CreatedAt   time.Time          `json:"created_at"`
-	Progress    milestoneProgress  `json:"progress"`
+	ID          string            `json:"id"`
+	NamespaceID string            `json:"namespace_id"`
+	Title       string            `json:"title"`
+	Description string            `json:"description"`
+	DueOn       *time.Time        `json:"due_on,omitempty"`
+	State       string            `json:"state"`
+	ClosedAt    *time.Time        `json:"closed_at,omitempty"`
+	CreatedBy   *string           `json:"created_by,omitempty"`
+	CreatedAt   time.Time         `json:"created_at"`
+	Progress    milestoneProgress `json:"progress"`
 }
 
 type milestoneListRow struct {

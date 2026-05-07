@@ -84,13 +84,13 @@ Never share invitation tokens; treat them like passwords.`,
 
 // orgInvitationRow mirrors the org invitation list payload from orgsmembersapi.
 type orgInvitationRow struct {
-	ID          string    `json:"id"`
-	OrgSlug     string    `json:"org_slug,omitempty"`
-	Email       string    `json:"email,omitempty"`
-	UserSlug    string    `json:"user_slug,omitempty"`
-	Status      string    `json:"status,omitempty"`
-	Permissions []string  `json:"permissions"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string     `json:"id"`
+	OrgSlug     string     `json:"org_slug,omitempty"`
+	Email       string     `json:"email,omitempty"`
+	UserSlug    string     `json:"user_slug,omitempty"`
+	Status      string     `json:"status,omitempty"`
+	Permissions []string   `json:"permissions"`
+	CreatedAt   time.Time  `json:"created_at"`
 	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
 }
 
