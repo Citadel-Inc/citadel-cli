@@ -1,6 +1,6 @@
 # Tasks — cli-git-wrappers
 
-Status: DONE 071745ZMAY26 — Switched git transport from HTTPS+GIT_ASKPASS to SSH. Implemented clone/push/pull wrappers using git_ssh_remote from the API (with constructed fallback). All unit tests green. P2 live smoke test is a manual follow-up.
+Status: DONE 071753ZMAY26 — Completed the deferred live smoke against src.land after the repo get stability fix landed in citadel. Verified `citadel-cli repo push --create`, `repo clone`, and `repo pull` end-to-end on disposable repository `rethunk-ai/copilot-smoke-105235`, then deleted the remote repo successfully.
 
 ## P0
 
@@ -18,5 +18,5 @@ Status: DONE 071745ZMAY26 — Switched git transport from HTTPS+GIT_ASKPASS to S
 
 ## P2
 
-- [ ] C1. [HUMAN] Live smoke: `citadel clone` and `citadel push` against a real repo.
-- [ ] C2. Spec close.
+- [x] C1. [HUMAN] Live smoke: `citadel clone` and `citadel push` against a real repo.
+- [x] C2. Spec close.

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DONE 071745ZMAY26 — Switched git transport from HTTPS+GIT_ASKPASS to SSH. Implemented clone/push/pull wrappers using git_ssh_remote from the API (with constructed fallback). All unit tests green. P2 live smoke test is a manual follow-up. |
+| Status | DONE 071753ZMAY26 — Completed the deferred live smoke against src.land after the repo get stability fix landed in citadel. Verified `citadel-cli repo push --create`, `repo clone`, and `repo pull` end-to-end on disposable repository `rethunk-ai/copilot-smoke-105235`, then deleted the remote repo successfully. |
 | Authored | 120000ZMAY26 |
 | Owner | Bastion (J-3) |
 
