@@ -258,8 +258,8 @@ citadel-cli namespace webhook delete acme <webhook-id>
 - `--include-descendants` applies to namespace webhooks only.
 - `get` is implemented client-side by listing hooks and filtering by ID because
   the current API does not expose a dedicated GET-by-ID route.
-- There is not yet a `webhook test` command because Citadel does not expose a
-  server-side test/ping endpoint.
+- Citadel now exposes a server-side webhook test/ping endpoint; `citadel-cli`
+  does not yet wrap it as a `webhook test` command.
 
 ### Agents
 

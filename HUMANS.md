@@ -4,7 +4,7 @@ If you are an engineer onboarding to `citadel-cli`, read this file first. For LL
 
 ## What it is
 
-`citadel-cli` is the official command-line client for [Citadel](https://github.com/Rethunk-Tech/citadel) — Rethunk's substrate for repos, deploy tokens, namespace issues, namespaces, agents, OAuth clients, and the knowledge graph. It also embeds an MCP client for agentic-workflow integrations.
+`citadel-cli` is the official command-line client for [Citadel](https://github.com/Rethunk-Tech/citadel) — Rethunk's substrate for repos, deploy tokens, namespace issues, milestones, namespaces, agents, OAuth clients and providers, notifications, project graph, audit, and the knowledge graph. It also embeds an MCP client for agentic-workflow integrations.
 
 ## Getting started
 
@@ -25,6 +25,7 @@ citadel-cli auth login        # browser OAuth (PKCE) → long-lived agent token
 citadel-cli auth status       # confirm authentication
 citadel-cli auth provider list # inspect enabled OAuth providers
 citadel-cli repo list         # query the API
+citadel-cli repo insights org/repo
 ```
 
 ### Local development
@@ -106,7 +107,7 @@ Full reference: [docs/cli.md](docs/cli.md).
 
 ### List pagination
 
-Every list verb (`repo list`, `repo deploy-token list`, `repo webhook list`, `namespace deploy-token list`, `namespace webhook list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`) accepts **`--limit`** (default 50, maximum 200), **`--cursor`** (opaque token from the prior response’s `next_cursor` field), and **`--all`** (walk pages serially until exhausted). In human/table mode, when more rows exist the CLI prints a trailing hint: `(use --cursor … for more, or --all to fetch everything)`.
+Cursor-backed list verbs (`repo list`, `repo deploy-token list`, `repo webhook list`, `repo commit list`, `namespace deploy-token list`, `namespace webhook list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`, `notification list`, `audit list`, `audit sessions list`) accept **`--limit`** (default 50, maximum 200), **`--cursor`** (opaque token from the prior response’s `next_cursor` field), and **`--all`** (walk pages serially until exhausted). In human/table mode, when more rows exist the CLI prints a trailing hint: `(use --cursor … for more, or --all to fetch everything)`.
 
 **`--output json`** returns a single JSON array for one server round-trip only; **`--output ndjson`** emits one JSON object per row and is the supported mode for **`--all`** when you want a machine-readable stream without buffering the entire result set. Passing **`--all` with `--output json`** is rejected with an error directing you to `ndjson`.
 
