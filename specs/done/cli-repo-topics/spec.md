@@ -2,7 +2,8 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS |
+| Status | DONE |
+| Closed | 072241ZMAY26 |
 | Authored | 270640ZMAY26 |
 | Owner | Copilot |
 | Carry-forward from | Daemon exposes `GET/PUT .../topics` and `GET /api/topics/popular` endpoints; CLI has no topic management surface. Discovered during K.5 gap analysis. |

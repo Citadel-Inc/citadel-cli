@@ -2,7 +2,8 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS |
+| Status | DONE |
+| Closed | 072241ZMAY26 |
 | Authored | 270640ZMAY26 |
 | Owner | Copilot |
 | Carry-forward from | Daemon exposes `GET .../tree` and `GET .../blob` browse endpoints; CLI has no file-browsing surface. Discovered during K.5/K.8 gap analysis. |

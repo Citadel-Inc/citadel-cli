@@ -2,7 +2,8 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS |
+| Status | DONE |
+| Closed | 072241ZMAY26 |
 | Authored | 270640ZMAY26 |
 | Owner | Copilot |
 | Carry-forward from | Daemon exposes `GET .../insights` aggregate endpoint; CLI has no summary/overview surface for repositories. Discovered during K.5 gap analysis. |
