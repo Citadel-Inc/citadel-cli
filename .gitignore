@@ -8,6 +8,7 @@
 *.out
 /citadel-cli
 /dist/
+.playwright-mcp/
 vendor/
 go.work.sum
 
