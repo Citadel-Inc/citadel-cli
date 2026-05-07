@@ -6,7 +6,9 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| _(none)_ | | | |
+| cli-repo-browse | IN_PROGRESS |  | Copilot |
+| cli-repo-insights | IN_PROGRESS |  | Copilot |
+| cli-repo-topics | IN_PROGRESS |  | Copilot |
 
 ## Done
 
