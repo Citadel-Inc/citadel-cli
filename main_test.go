@@ -41,6 +41,7 @@ func TestNewRootCmd_HasAllSubcommands(t *testing.T) {
 	want := []string{
 		"auth", "account", "token", "mcp", "kg", "repo", "namespace", "org",
 		"agent", "oauth", "ssh-key", "completion", "doctor", "man", "audit",
+		"issue",
 		"search", "project",
 	}
 	for _, name := range want {
