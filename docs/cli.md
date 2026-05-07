@@ -678,6 +678,32 @@ For comprehensive token lifecycle documentation, see [Rethunk-Tech/citadel docs/
 - **Scopes.** Tokens carry a list of permissions (scopes) enforced server-side. The MCP server checks token scopes before allowing tool access.
 - **Revocation.** Revoked tokens are rejected immediately; no cache delay.
 
+## Namespace profile
+
+`citadel-cli namespace profile` provides read-only access to namespace identity metadata — the same profile data shown in the Citadel web UI.
+
+### Get a namespace profile
+
+```bash
+# Human-readable summary
+citadel-cli namespace profile get myorg
+
+# Structured output
+citadel-cli namespace profile get myorg --output json
+citadel-cli namespace profile get myorg --output yaml
+```
+
+**Fields rendered:** Slug, Kind, Visibility, Display name, Legal entity name, Bio, Location, Website, Email, Pronouns, Company, Timezone, Sponsor URL, Social links, Repo/member stats, Billing email (owner-only), Verified domains (owner-only).
+
+**Visibility gate:** Private namespaces return a not-found error for non-owners — the server does not leak the existence of private namespaces. If you are the owner and receive a not-found, confirm the slug and try again after re-authenticating.
+
+```bash
+# Short alias
+citadel-cli ns profile get myorg
+```
+
+> **Note:** Profile editing is a settings-panel concern (no `gh profile edit` exists) and is out of scope for `citadel-cli`.
+
 ## Notification inbox
 
 `citadel-cli notification` manages your personal Citadel notification inbox — the same feed surfaced in the web UI. All subcommands require authentication (`citadel-cli auth login`).
