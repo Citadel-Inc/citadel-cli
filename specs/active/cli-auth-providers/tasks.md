@@ -4,16 +4,16 @@ Status: IN_PROGRESS 071813ZMAY26 — Copilot claims execution
 
 ## P0
 
-- [ ] A1. Implement `auth provider list` against `GET /api/auth/providers`.
-- [ ] A2. Add provider ID completion support for auth-provider verbs.
-- [ ] A3. Add tests covering command wiring and request/response handling.
+- [x] A1. Implement `auth provider list` against `GET /api/auth/providers`.
+- [x] A2. Add provider ID completion support for auth-provider verbs.
+- [x] A3. Add tests covering command wiring and request/response handling.
 
 ## P1
 
-- [ ] B1. Add `auth provider link <provider>` with browser-open default and structured output option.
-- [ ] B2. Add `auth provider unlink <provider>` with confirmation guard and direct daemon-error surfacing.
-- [ ] B3. Document auth-provider discovery, link, and unlink workflows.
-- [ ] B4. `make verify` green.
+- [x] B1. Add `auth provider link <provider>` with browser-open default and structured output option.
+- [x] B2. Add `auth provider unlink <provider>` with confirmation guard and direct daemon-error surfacing.
+- [x] B3. Document auth-provider discovery, link, and unlink workflows.
+- [x] B4. `make verify` green.
 
 ## P2
 
