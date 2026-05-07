@@ -91,6 +91,7 @@ type repoRow struct {
 	Description   string `json:"description,omitempty"`
 	Path          string `json:"path"`
 	CreatedAt     string `json:"created_at"`
+	GitSSHRemote  string `json:"git_ssh_remote,omitempty"`
 }
 
 // splitRepoArg parses the canonical "<namespace>/<repo>" cobra arg shape.

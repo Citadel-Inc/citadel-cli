@@ -28,8 +28,11 @@ var (
 
 var repoCloneCmd = &cobra.Command{
 	Use:   "clone <namespace>/<repo> [local-dir]",
-	Short: "Clone a repository with Citadel auth",
-	Long: `Runs the system git binary with Citadel auth injected for one HTTPS clone.
+	Short: "Clone a repository over SSH",
+	Long: `Runs the system git binary and clones the repository over SSH.
+
+Authentication is handled by SSH keys registered with Citadel
+(see: citadel-cli ssh-key add).
 
 Examples:
   citadel-cli repo clone myorg/myrepo
@@ -41,12 +44,15 @@ Examples:
 
 var repoPushCmd = &cobra.Command{
 	Use:   "push [<namespace>/<repo>]",
-	Short: "Push the current checkout with Citadel auth",
-	Long: `Runs the system git binary in the current checkout with Citadel auth.
+	Short: "Push the current checkout over SSH",
+	Long: `Runs the system git binary in the current checkout over SSH.
 
 When no repo path is passed, the CLI infers the target from -R/--repo, CITADEL_REPO,
 or the configured git remote URL. If the target repo does not exist on Citadel yet,
 the CLI prompts to create it first; pass --create to skip that prompt.
+
+Authentication is handled by SSH keys registered with Citadel
+(see: citadel-cli ssh-key add).
 
 Examples:
   citadel-cli repo push
@@ -59,11 +65,14 @@ Examples:
 
 var repoPullCmd = &cobra.Command{
 	Use:   "pull [<namespace>/<repo>]",
-	Short: "Pull into the current checkout with Citadel auth",
-	Long: `Runs the system git binary in the current checkout with Citadel auth.
+	Short: "Pull into the current checkout over SSH",
+	Long: `Runs the system git binary in the current checkout over SSH.
 
 When no repo path is passed, the CLI infers the target from -R/--repo, CITADEL_REPO,
 or the configured git remote URL.
+
+Authentication is handled by SSH keys registered with Citadel
+(see: citadel-cli ssh-key add).
 
 Examples:
   citadel-cli repo pull
@@ -77,7 +86,11 @@ func runRepoClone(cmd *cobra.Command, args []string) error {
 	if err := ensureGitOnPath(); err != nil {
 		return err
 	}
-	cfg, serverURL, err := loadGitConfig(cmd)
+	_, serverURL, err := loadGitConfig(cmd)
+	if err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -85,15 +98,15 @@ func runRepoClone(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	repoURL, err := gitRepoURL(serverURL, ns, slug)
+	sshRemote, err := resolveRepoSSHRemote(cmd.Context(), c, serverURL, ns, slug)
 	if err != nil {
 		return err
 	}
-	gitArgs := []string{"clone", repoURL}
+	gitArgs := []string{"clone", sshRemote}
 	if len(args) == 2 {
 		gitArgs = append(gitArgs, strings.TrimSpace(args[1]))
 	}
-	if err := runGit(cmd, "", cfg.AccessToken, gitArgs...); err != nil {
+	if err := runGit(cmd, "", gitArgs...); err != nil {
 		return err
 	}
 	localDir := strings.TrimSpace(filepath.Base(slug))
@@ -116,7 +129,7 @@ func runRepoSync(cmd *cobra.Command, args []string, method string) error {
 	if err := ensureGitOnPath(); err != nil {
 		return err
 	}
-	cfg, serverURL, err := loadGitConfig(cmd)
+	_, serverURL, err := loadGitConfig(cmd)
 	if err != nil {
 		return err
 	}
@@ -137,8 +150,26 @@ func runRepoSync(cmd *cobra.Command, args []string, method string) error {
 	if err != nil {
 		return err
 	}
+
+	var sshRemote string
 	if method == http.MethodPut {
-		if err := ensureRemoteRepoForPush(cmd, c, target.ns, target.slug); err != nil {
+		row, rerr := ensureRemoteRepoForPush(cmd, c, target.ns, target.slug)
+		if rerr != nil {
+			return rerr
+		}
+		if explicit {
+			if row != nil && row.GitSSHRemote != "" {
+				sshRemote = row.GitSSHRemote
+			} else {
+				sshRemote, err = gitSSHRemote(serverURL, target.ns, target.slug)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	} else if explicit {
+		sshRemote, err = resolveRepoSSHRemote(cmd.Context(), c, serverURL, target.ns, target.slug)
+		if err != nil {
 			return err
 		}
 	}
@@ -153,21 +184,17 @@ func runRepoSync(cmd *cobra.Command, args []string, method string) error {
 		return fmt.Errorf("unsupported git sync method %q", method)
 	}
 	if explicit {
-		repoURL, err := gitRepoURL(serverURL, target.ns, target.slug)
-		if err != nil {
-			return err
-		}
 		branch := currentBranchOrDefault(cmd.Context(), "HEAD")
 		switch method {
 		case http.MethodPut:
-			gitArgs = append(gitArgs, "--set-upstream", repoURL, branch)
+			gitArgs = append(gitArgs, "--set-upstream", sshRemote, branch)
 		case http.MethodGet:
-			gitArgs = append(gitArgs, repoURL, branch)
+			gitArgs = append(gitArgs, sshRemote, branch)
 		}
 	} else {
 		gitArgs = append(gitArgs, remote)
 	}
-	return runGit(cmd, "", cfg.AccessToken, gitArgs...)
+	return runGit(cmd, "", gitArgs...)
 }
 
 type gitTarget struct {
@@ -213,21 +240,21 @@ func resolveGitTarget(cmd *cobra.Command, args []string) (gitTarget, bool, error
 	return gitTarget{ns: ns, slug: slug}, false, nil
 }
 
-func ensureRemoteRepoForPush(cmd *cobra.Command, c *apiclient.Client, ns, slug string) error {
+func ensureRemoteRepoForPush(cmd *cobra.Command, c *apiclient.Client, ns, slug string) (*repoRow, error) {
 	var row repoRow
 	path := "/namespaces/" + url.PathEscape(ns) + "/" + url.PathEscape(slug)
 	err := c.Get(cmd.Context(), path, &row)
 	if err == nil {
-		return nil
+		return &row, nil
 	}
 	if !apiclient.IsStatus(err, http.StatusNotFound) {
-		return err
+		return nil, err
 	}
 
 	create, _ := cmd.Flags().GetBool("create")
 	repoPath := ns + "/" + slug
 	if err := confirmCreateRepo(create, repoPath); err != nil {
-		return err
+		return nil, err
 	}
 	defaultBranch := currentBranchOrDefault(cmd.Context(), "main")
 	reqBody := struct {
@@ -244,11 +271,11 @@ func ensureRemoteRepoForPush(cmd *cobra.Command, c *apiclient.Client, ns, slug s
 	}
 	var created repoRow
 	if err := c.Post(cmd.Context(), "/namespaces/"+url.PathEscape(ns)+"/repos", reqBody, &created); err != nil {
-		return err
+		return nil, err
 	}
 	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Created %s/%s (%s).\n", created.ParentSlug, created.Slug, created.Visibility)
 	scheduleCompletionInvalidate(serverFlag(cmd), completion.RepoKey(ns))
-	return nil
+	return &created, nil
 }
 
 func confirmCreateRepo(force bool, repoPath string) error {
@@ -324,18 +351,11 @@ func currentBranchOrDefault(ctx context.Context, fallback string) string {
 	return branch
 }
 
-func gitRepoURL(serverURL, ns, slug string) (string, error) {
-	base, err := gitHTTPBaseURL(serverURL)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimRight(base, "/") + "/" + url.PathEscape(ns) + "/" + url.PathEscape(slug) + ".git", nil
-}
-
-func gitHTTPBaseURL(serverURL string) (string, error) {
+// canonicalSSHHost maps known Citadel API hostnames to their canonical git SSH hostname.
+func canonicalSSHHost(serverURL string) (string, error) {
 	raw := strings.TrimSpace(serverURL)
 	if raw == "" {
-		raw = "https://mcp.src.land"
+		return "src.land", nil
 	}
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -344,25 +364,32 @@ func gitHTTPBaseURL(serverURL string) (string, error) {
 	host := strings.ToLower(strings.TrimSpace(u.Hostname()))
 	switch host {
 	case "api.src.land", "mcp.src.land", "git.src.land", "src.land":
-		u.Host = "src.land"
+		return "src.land", nil
 	}
-	u.Path = ""
-	u.RawPath = ""
-	u.RawQuery = ""
-	u.Fragment = ""
-	if u.Scheme == "" {
-		u.Scheme = "https"
-	}
-	return strings.TrimRight(u.String(), "/"), nil
+	return host, nil
 }
 
-func runGit(cmd *cobra.Command, dir string, token string, args ...string) error {
-	tempDir, askpassPath, err := writeGitAskpass(token)
+// gitSSHRemote constructs a git SSH remote URL (git@host:ns/slug.git) from
+// the configured server URL and a repo namespace/slug pair.
+func gitSSHRemote(serverURL, ns, slug string) (string, error) {
+	host, err := canonicalSSHHost(serverURL)
 	if err != nil {
-		return err
+		return "", err
 	}
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	return "git@" + host + ":" + url.PathEscape(ns) + "/" + url.PathEscape(slug) + ".git", nil
+}
 
+// resolveRepoSSHRemote fetches git_ssh_remote from the repo API, falling back
+// to a constructed SSH URL when the field is absent or the API is unreachable.
+func resolveRepoSSHRemote(ctx context.Context, c *apiclient.Client, serverURL, ns, slug string) (string, error) {
+	var row repoRow
+	if err := c.Get(ctx, "/namespaces/"+url.PathEscape(ns)+"/"+url.PathEscape(slug), &row); err == nil && row.GitSSHRemote != "" {
+		return row.GitSSHRemote, nil
+	}
+	return gitSSHRemote(serverURL, ns, slug)
+}
+
+func runGit(cmd *cobra.Command, dir string, args ...string) error {
 	gitCmd := execCommandContext(cmd.Context(), "git", args...)
 	if dir != "" {
 		gitCmd.Dir = dir
@@ -371,11 +398,7 @@ func runGit(cmd *cobra.Command, dir string, token string, args ...string) error 
 	if len(baseEnv) == 0 {
 		baseEnv = os.Environ()
 	}
-	gitCmd.Env = append(baseEnv,
-		"GIT_TERMINAL_PROMPT=0",
-		"GIT_ASKPASS="+askpassPath,
-		"SSH_ASKPASS="+askpassPath,
-	)
+	gitCmd.Env = append(baseEnv, "GIT_TERMINAL_PROMPT=0")
 	gitCmd.Stdout = cmd.OutOrStdout()
 	gitCmd.Stderr = cmd.ErrOrStderr()
 	gitCmd.Stdin = os.Stdin
@@ -383,25 +406,6 @@ func runGit(cmd *cobra.Command, dir string, token string, args ...string) error 
 		return err
 	}
 	return nil
-}
-
-func writeGitAskpass(token string) (string, string, error) {
-	dir, err := os.MkdirTemp("", "citadel-git-askpass-*")
-	if err != nil {
-		return "", "", err
-	}
-	path := filepath.Join(dir, "askpass.sh")
-	script := "#!/bin/sh\n" +
-		"case \"$1\" in\n" +
-		"  *Username*|*username*) printf 'oauth2\\n' ;;\n" +
-		"  *) cat <<'EOF'\n" + token + "\nEOF\n" +
-		"     ;;\n" +
-		"esac\n"
-	if err := os.WriteFile(path, []byte(script), 0o700); err != nil {
-		_ = os.RemoveAll(dir)
-		return "", "", err
-	}
-	return dir, path, nil
 }
 
 func completeRepoPaths(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
