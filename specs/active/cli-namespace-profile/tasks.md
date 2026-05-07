@@ -1,6 +1,6 @@
 # Tasks — cli-namespace-profile
 
-Status: DRAFT
+Status: APPROVED 072212ZMAY26
 Priority: Low
 
 ## P0

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT |
+| Status | APPROVED 072212ZMAY26 |
 | Priority | Low — read-only terminal utility; no `gh` analogue for mutation |
 | Authored | 072310ZMAY26 |
 | Owner | Copilot |
