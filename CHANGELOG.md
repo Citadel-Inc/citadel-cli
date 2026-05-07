@@ -26,6 +26,7 @@ Initial visible release of the Citadel command-line client.
 - Repository git wrappers now use Citadel-provided SSH remotes instead of HTTPS askpass flows, preserving normal system `git` behavior.
 - API access is centralized through shared HTTP clients, retry/trace transports, typed HTTP errors, Retry-After handling, per-client timeouts, and context propagation across command handlers.
 - Command output helpers, flag helpers, destructive-confirmation paths, and get/list emitters were consolidated for consistent behavior across the command tree.
+- The release toolchain now targets Go `1.25.10` and refreshed indirect module dependencies, including the `github.com/go-jose/go-jose/v3` update that supersedes the Dependabot bump.
 - Documentation was reorganized into README, HUMANS, AGENTS, CONTRIBUTING, and `docs/cli.md`, with the command reference expanded to cover the shipped surface.
 
 ### Fixed
@@ -33,6 +34,7 @@ Initial visible release of the Citadel command-line client.
 - Fixed auth login so the authorization URL is always printed before browser opening is attempted.
 - Fixed repo push to use explicit branch refspecs and corrected repo wrapper behavior around SSH remotes.
 - Fixed watch/SSE streams so long-running streams are not closed by request timeouts.
+- Fixed local validation and `--dry-run` paths so they do not require authentication before returning validation output.
 - Fixed completion ordering, MCP unauthorized detection, KG impact repo resolution, API host handling, and several lint/staticcheck issues.
 - Bumped dependencies and Go tooling, including the Go toolchain update needed for standard-library vulnerability coverage.
 
