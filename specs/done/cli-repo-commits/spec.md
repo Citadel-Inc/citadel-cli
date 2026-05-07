@@ -2,9 +2,10 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS |
+| Status | DONE |
 | Authored | 130512ZMAY26 |
 | Owner | Copilot |
+| Closed | 130825ZMAY26 |
 | Carry-forward from | Dossier appendix-K K.8 commit.* group: daemon already exposes commit list, detail, and per-file diff routes; citadel-cli has no commit query surface. |
 
 ## Why
