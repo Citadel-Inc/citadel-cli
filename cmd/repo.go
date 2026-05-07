@@ -18,8 +18,8 @@ import (
 // RepoCmd is the top-level `citadel repo` command.
 var RepoCmd = &cobra.Command{
 	Use:   "repo",
-	Short: "Manage repositories (create, list, get, delete)",
-	Long:  `CRUD operations against the Citadel repository API.`,
+	Short: "Manage repositories and repository git workflows",
+	Long:  `CRUD operations against the Citadel repository API, plus thin wrappers for clone/push/pull via the system git binary.`,
 }
 
 var repoCreateCmd = &cobra.Command{
