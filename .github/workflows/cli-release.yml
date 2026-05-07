@@ -21,8 +21,16 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Verify
-        run: make verify
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (race)
+        run: go test -race ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9
+        with:
+          version: v2.12.1
 
       - name: Build CLI (cross-compile)
         run: make build-all VERSION=${{ github.ref_name }}
