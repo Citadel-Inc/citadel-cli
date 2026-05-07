@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 072204ZMAY26 — Copilot claims execution |
+| Status | DONE 072212ZMAY26 — All 6 notification subcommands shipped (list/read/read-all/unread-count/prefs get/prefs set). 17 handler tests green. docs/cli.md updated. make verify passes (0 lint issues). C1 live smoke deferred to next integration pass (daemon CI environment required); spec closed with P2 tasks open per allow_open. |
 | Authored | 072309ZMAY26 |
 | Owner | Copilot |
 | Carry-forward from | Dossier-backed logged-in surface follow-up: the daemon already ships `notifapi` for inbox and notification preferences, but `citadel-cli` has no notification commands. |
