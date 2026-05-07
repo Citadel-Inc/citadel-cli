@@ -118,7 +118,7 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	}
 	rt := httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP})
 	return &Client{
-		server:     resolveRESTServerURL(cfg.ResolveServerURL(opts.Server)),
+		server:     ResolveRESTServerURL(cfg.ResolveServerURL(opts.Server)),
 		token:      cfg.AccessToken,
 		userAgent:  ua,
 		http:       &http.Client{Timeout: defaultTimeout, Transport: rt},
@@ -127,7 +127,7 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	}, nil
 }
 
-func resolveRESTServerURL(server string) string {
+func ResolveRESTServerURL(server string) string {
 	base := strings.TrimRight(strings.TrimSpace(server), "/")
 	u, err := url.Parse(base)
 	if err != nil {

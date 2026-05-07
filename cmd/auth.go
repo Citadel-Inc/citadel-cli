@@ -79,7 +79,7 @@ func maybeEagerMigrateLegacyJWT(cmd *cobra.Command) {
 
 var AuthCmd = &cobra.Command{
 	Use:   "auth",
-	Short: "Manage authentication (login, logout, status)",
+	Short: "Manage authentication and linked auth providers",
 	Long:  `Commands for managing authentication with the Citadel server.`,
 }
 
@@ -560,5 +560,6 @@ func init() {
 	AuthCmd.AddCommand(statusCmd)
 	AuthCmd.AddCommand(logoutCmd)
 	AuthCmd.AddCommand(setTokenCmd)
+	AuthCmd.AddCommand(authProviderCmd)
 	setTokenCmd.Flags().String("token", "", "JWT to persist (overrides CITADEL_ACCESS_TOKEN and stdin)")
 }
