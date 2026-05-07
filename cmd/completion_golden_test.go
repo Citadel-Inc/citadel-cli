@@ -98,6 +98,27 @@ func namespaceWebhookGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Comma
 	return nil
 }
 
+func issueMilestoneViewFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	t.Helper()
+	for _, c := range root.Commands() {
+		if c.Name() != "issue" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() != "milestone" {
+				continue
+			}
+			for _, leaf := range sc.Commands() {
+				if leaf.Name() == "view" {
+					return leaf
+				}
+			}
+		}
+	}
+	t.Fatal("issue milestone view not found")
+	return nil
+}
+
 func webhookPathMatches(r *http.Request, encoded, decoded string) bool {
 	return r.URL.EscapedPath() == encoded || r.URL.Path == decoded
 }
@@ -553,6 +574,34 @@ func TestCompleteNamespaceWebhookIDs_UsesNamespaceArg(t *testing.T) {
 		t.Fatalf("directive %v", d)
 	}
 	if len(vals) != 1 || vals[0] != "cccccccc-cccc-cccc-cccc-cccccccccccc" {
+		t.Fatalf("got %q", vals)
+	}
+}
+
+func TestCompleteIssueMilestoneIDs_UsesRepoFlag(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.EscapedPath() != "/namespaces/acme%2Fdemo/milestones" && r.URL.Path != "/namespaces/acme/demo/milestones" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"milestones": []any{
+				map[string]any{"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"},
+				map[string]any{"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"},
+			},
+		})
+	})
+	root := NewRootCmd()
+	view := issueMilestoneViewFromRoot(t, root)
+	view.SetContext(context.Background())
+	if err := view.Flags().Set("repo", "acme/demo"); err != nil {
+		t.Fatal(err)
+	}
+	vals, d := completeIssueMilestoneIDs(view, []string{}, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 2 || vals[0] != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" || vals[1] != "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" {
 		t.Fatalf("got %q", vals)
 	}
 }
