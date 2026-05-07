@@ -182,6 +182,65 @@ func TestRepoPush_MissingRepoWithoutCreateFailsNonInteractive(t *testing.T) {
 	}
 }
 
+func TestRepoPush_ExplicitRepoSetsUpstreamBranch(t *testing.T) {
+	logPath, cleanup := patchGitExec(t)
+	defer cleanup()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method + " " + r.URL.Path {
+		case "GET /namespaces/myorg/r1":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"parent_slug": "myorg",
+				"slug":        "r1",
+				"visibility":  "private",
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	root := repoTestRoot(t)
+	root.SetArgs([]string{"repo", "push", "myorg/r1"})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	invocations := readGitLog(t, logPath)
+	if len(invocations) != 2 {
+		t.Fatalf("want 2 git invocations (branch,push), got %d", len(invocations))
+	}
+	want := "git push --set-upstream " + srv.URL + "/myorg/r1.git feature"
+	if got := strings.Join(invocations[1].Args, " "); got != want {
+		t.Fatalf("push args=%q", got)
+	}
+}
+
+func TestRepoPull_ExplicitRepoUsesCurrentBranch(t *testing.T) {
+	logPath, cleanup := patchGitExec(t)
+	defer cleanup()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "https://mcp.src.land")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	root := repoTestRoot(t)
+	root.SetArgs([]string{"repo", "pull", "myorg/r1"})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	invocations := readGitLog(t, logPath)
+	if len(invocations) != 2 {
+		t.Fatalf("want 2 git invocations (branch,pull), got %d", len(invocations))
+	}
+	if got := strings.Join(invocations[1].Args, " "); got != "git pull https://src.land/myorg/r1.git feature" {
+		t.Fatalf("pull args=%q", got)
+	}
+}
+
 func TestRepoClone_GitMissingFriendlyError(t *testing.T) {
 	oldLookPath := execLookPath
 	execLookPath = func(string) (string, error) { return "", exec.ErrNotFound }

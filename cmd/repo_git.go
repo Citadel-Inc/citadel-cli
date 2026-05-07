@@ -157,7 +157,13 @@ func runRepoSync(cmd *cobra.Command, args []string, method string) error {
 		if err != nil {
 			return err
 		}
-		gitArgs = append(gitArgs, repoURL)
+		branch := currentBranchOrDefault(cmd.Context(), "HEAD")
+		switch method {
+		case http.MethodPut:
+			gitArgs = append(gitArgs, "--set-upstream", repoURL, branch)
+		case http.MethodGet:
+			gitArgs = append(gitArgs, repoURL, branch)
+		}
 	} else {
 		gitArgs = append(gitArgs, remote)
 	}
