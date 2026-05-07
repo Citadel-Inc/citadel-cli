@@ -6,8 +6,6 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-account-avatar | DRAFT |  | Copilot |
-| cli-account-privacy | DRAFT |  | Copilot |
 | cli-namespace-profile | DRAFT |  | Copilot |
 | cli-notifications | DRAFT |  | Copilot |
 
@@ -51,5 +49,9 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-account-avatar | 072200ZMAY26 | Settings-panel concern, not a dev-loop workflow. No GitHub CLI analogue. Avatar management belongs in a browser/UI; a terminal user would never reach for this during a coding session. Superseded by the CLI-as-workflow-tool principle. |
+| cli-account-privacy | 072200ZMAY26 | Settings-panel concern, not a dev-loop workflow. No GitHub CLI analogue. Privacy preference toggles belong in a browser/UI settings surface; they are not actions a developer would need mid-session. Superseded by the CLI-as-workflow-tool principle. |
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
+
+
