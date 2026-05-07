@@ -6,7 +6,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| _(none)_ | | | |
+| cli-account-avatar | DRAFT |  | Copilot |
 
 ## Done
 
