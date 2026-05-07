@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT |
+| Status | PARKED 072200ZMAY26 — Settings-panel concern, not a dev-loop workflow. No GitHub CLI analogue. Privacy preference toggles belong in a browser/UI settings surface; they are not actions a developer would need mid-session. Superseded by the CLI-as-workflow-tool principle. |
 | Authored | 072308ZMAY26 |
 | Owner | Copilot |
 | Carry-forward from | Dossier-backed account settings follow-up: the daemon already ships `GET/PATCH /api/account/privacy`, while `citadel-cli` still exposes no way to inspect or change privacy preferences from the terminal. |

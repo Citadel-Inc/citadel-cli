@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT |
+| Status | PARKED 072200ZMAY26 — Settings-panel concern, not a dev-loop workflow. No GitHub CLI analogue. Avatar management belongs in a browser/UI; a terminal user would never reach for this during a coding session. Superseded by the CLI-as-workflow-tool principle. |
 | Authored | 072300ZMAY26 |
 | Owner | Copilot |
 | Carry-forward from | PoL dossier follow-up after `cli-auth-providers`: the daemon already ships `fe-profile-avatar-import` (`POST /api/account/avatar/import`) and `fe-profile-avatar-sync` (`PUT /api/account/avatar/sync`), but `citadel-cli` still exposes no account-avatar workflow beyond passkeys and devices. |

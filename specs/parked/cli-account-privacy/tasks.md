@@ -1,6 +1,6 @@
 # Tasks — cli-account-privacy
 
-Status: DRAFT
+Status: PARKED 072200ZMAY26 — Settings-panel concern, not a dev-loop workflow. No GitHub CLI analogue. Privacy preference toggles belong in a browser/UI settings surface; they are not actions a developer would need mid-session. Superseded by the CLI-as-workflow-tool principle.
 
 ## P0
 

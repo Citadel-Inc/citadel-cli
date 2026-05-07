@@ -1,6 +1,6 @@
 # Tasks — cli-account-avatar
 
-Status: DRAFT
+Status: PARKED 072200ZMAY26 — Settings-panel concern, not a dev-loop workflow. No GitHub CLI analogue. Avatar management belongs in a browser/UI; a terminal user would never reach for this during a coding session. Superseded by the CLI-as-workflow-tool principle.
 
 ## P0
 
