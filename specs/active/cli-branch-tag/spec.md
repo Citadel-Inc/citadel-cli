@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 070012ZMAY26 — Bastion claims execution |
+| Status | BLOCKED 070026ZMAY26 — Waiting on HUMAN live smoke (C1) before spec close and before starting cli-deploy-tokens. |
 | Authored | 120000ZMAY26 |
 | Owner | Bastion |
 
@@ -38,3 +38,7 @@ web UI.
 | Q1 | Use nested `repo branch` / `repo tag` commands. | RATIFIED — repository-scoped verbs keep the surface aligned with the existing `repo` tree. |
 | Q2 | Default `repo tag create` to a lightweight tag; use `--message` to create an annotated tag. | RATIFIED — matches `git tag` defaults so users are not surprised. |
 | Q3 | Reuse the existing read-only refs route for list operations and add the missing repo-scoped branch/tag mutation routes in `citadel`. | RATIFIED — local server-source survey confirmed `GET /api/namespaces/{parent}/repos/{repo}/refs` exists today, while branch delete, tag create/delete, and default-branch mutation routes still need implementation. |
+
+## Blocking
+
+Waiting on HUMAN live smoke (C1) before spec close and before starting cli-deploy-tokens.
