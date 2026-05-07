@@ -6,7 +6,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| _(none)_ | | | |
+| cli-milestones | DRAFT | 071745ZMAY26 | Bastion (J-3) |
 
 ## Done
 
@@ -49,10 +49,3 @@
 |------|-----|------|
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
-
-
-
-
-
-
-
