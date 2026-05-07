@@ -766,6 +766,50 @@ citadel-cli notification prefs set --email-digest daily --enable issue.comment
 
 `--enable` and `--disable` accept the `kind` string from the prefs list (e.g. `issue.comment`, `repo.push`). Multiple flags may be supplied. The API applies the patch atomically — you only send what you want to change.
 
+## Repository commits
+
+Browse the commit log of any repository you have access to.
+
+### List commits
+
+```bash
+# List recent commits on the default branch
+citadel-cli repo commit list acme/demo
+
+# List commits touching a specific file
+citadel-cli repo commit list acme/demo --path src/main.go
+
+# List commits on a branch or tag
+citadel-cli repo commit list acme/demo --ref feature/my-branch
+
+# Fetch all pages at once
+citadel-cli repo commit list acme/demo --all
+
+# Machine-readable output
+citadel-cli repo commit list acme/demo --output json
+citadel-cli repo commit list acme/demo --output ndjson
+citadel-cli repo commit list acme/demo --output csv
+citadel-cli repo commit list acme/demo --output yaml
+```
+
+### Get a single commit
+
+```bash
+# Show commit metadata (SHA, author, message, parent(s), file stats)
+citadel-cli repo commit get acme/demo abc1234
+
+# Show raw unified diff for a specific file in that commit
+citadel-cli repo commit get acme/demo abc1234 --path src/main.go
+
+# Same diff, wrapped in JSON
+citadel-cli repo commit get acme/demo abc1234 --path src/main.go --output json
+
+# Full commit detail as JSON (metadata + file stats)
+citadel-cli repo commit get acme/demo abc1234 --output json
+```
+
+SHA values may be full 40-character SHAs, partial SHAs (≥4 characters), branch names, or tag names.
+
 ## Troubleshooting
 
 ### Environment health check
