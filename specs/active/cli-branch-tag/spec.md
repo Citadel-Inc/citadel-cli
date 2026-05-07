@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| Status | DRAFT |
+| Status | IN_PROGRESS 070012ZMAY26 — Bastion claims execution |
 | Authored | 120000ZMAY26 |
-| Owner | unassigned |
+| Owner | Bastion |
 
 ## Why
 
@@ -16,12 +16,12 @@ web UI.
 
 ## In scope
 
-- `branch list <repo>` — list branches with HEAD commit SHA + date
-- `branch delete <repo> <name>` — delete a branch; `--dry-run` support
-- `branch set-default <repo> <name>` — update default branch
-- `tag list <repo>` — list tags with SHA + date
-- `tag create <repo> <name> --ref <commit|branch>` — create a lightweight or annotated tag
-- `tag delete <repo> <name>` — delete a tag; `--dry-run` support
+- `repo branch list <repo>` — list branches with HEAD commit SHA + date
+- `repo branch delete <repo> <name>` — delete a branch; `--dry-run` support
+- `repo branch set-default <repo> <name>` — update default branch
+- `repo tag list <repo>` — list tags with SHA + date
+- `repo tag create <repo> <name> --ref <commit|branch>` — create a lightweight or annotated tag
+- `repo tag delete <repo> <name>` — delete a tag; `--dry-run` support
 - JSON / YAML / table `--output` for list commands
 - Shell completion for repo paths, branch names, tag names
 
@@ -35,6 +35,6 @@ web UI.
 
 | Q | Proposal | Status |
 |---|----------|--------|
-| Q1 | Top-level `branch`/`tag` vs. nested `repo branch`/`repo tag`? | OPEN — top-level preferred for discoverability; nesting mirrors GitHub CLI |
-| Q2 | Annotated vs. lightweight tags at `tag create`? | OPEN — recommend `--message` flag gates annotated; absence = lightweight |
-| Q3 | API endpoints — needs server-side survey | OPEN |
+| Q1 | Use nested `repo branch` / `repo tag` commands. | RATIFIED — repository-scoped verbs keep the surface aligned with the existing `repo` tree. |
+| Q2 | Default `repo tag create` to a lightweight tag; use `--message` to create an annotated tag. | RATIFIED — matches `git tag` defaults so users are not surprised. |
+| Q3 | Reuse the existing read-only refs route for list operations and add the missing repo-scoped branch/tag mutation routes in `citadel`. | RATIFIED — local server-source survey confirmed `GET /api/namespaces/{parent}/repos/{repo}/refs` exists today, while branch delete, tag create/delete, and default-branch mutation routes still need implementation. |

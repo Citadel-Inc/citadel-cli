@@ -6,10 +6,10 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
+| cli-branch-tag | IN_PROGRESS | 070012ZMAY26 | Bastion |
 | cli-issues | DRAFT | 062323ZMAY26 | Bastion (J-3) |
 | cli-oauth-login | IN_PROGRESS | 061800ZMAY26 | Bastion (J-3) |
 | cli-agent-create | DRAFT | 061500ZMAY26 | Bastion (J-3) |
-| cli-branch-tag | DRAFT |  | unassigned |
 | cli-deploy-tokens | DRAFT |  | unassigned |
 | cli-git-wrappers | DRAFT |  | unassigned |
 | cli-webhooks | DRAFT |  | unassigned |
