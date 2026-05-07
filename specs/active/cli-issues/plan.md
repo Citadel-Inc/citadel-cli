@@ -9,15 +9,23 @@ was not a trustworthy execution plan.
 
 ## Exact daemon surfaces to target
 
-- `GET /api/issues/{slug}?state=&label=&assignee=&cursor=&limit=`
-- `POST /api/issues/{slug}`
-- `GET /api/issues/{slug}/{number}`
-- `PATCH /api/issues/{slug}/{number}`
-- `POST /api/issues/{slug}/{number}/comments`
-- `POST /api/issues/{slug}/{number}/labels`
-- `GET /api/issues/{slug}/{number}/close-refs`
-- `GET|POST|PATCH|DELETE /api/labels/{slug}...` (write surface is deferred from
-  the first CLI cut; label assignment only is in scope)
+- `GET /api/namespaces/{slug}/issues?state=&label=&assignee=&cursor=&limit=` →
+  `{ issues: []Issue, next_cursor }`
+- `POST /api/namespaces/{slug}/issues` with
+  `{ title, body_markdown, labels?, milestone_id? }` → `Issue`
+- `GET /api/namespaces/{slug}/issues/{number}` →
+  `{ issue: Issue, comments: []Comment, labels: []Label }`
+- `PATCH /api/namespaces/{slug}/issues/{number}` with `{ state? }` for
+  close/reopen → `{ status: "ok", ... }`
+- `POST /api/namespaces/{slug}/issues/{number}/comments` with
+  `{ body_markdown }` → `Comment`
+- `POST /api/namespaces/{slug}/issues/{number}/labels` with
+  `{ add: [], remove: [] }` → `204 No Content`
+- `GET /api/namespaces/{slug}/issues/{number}/close-refs` →
+  `{ close_refs: []IssueCloseRef }`
+- `GET|POST|PATCH|DELETE /api/namespaces/{slug}/labels...` exists, but namespace
+  label CRUD itself is deferred from the first CLI cut; only issue label
+  assignment is in scope here.
 
 ## CLI shape
 

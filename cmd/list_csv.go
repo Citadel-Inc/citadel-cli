@@ -44,6 +44,23 @@ func (r repoRefRow) CSVRecord() []string {
 	return []string{r.Name, r.SHA, formatRFC3339UTC(r.Date)}
 }
 
+func (issueListRow) CSVHeader() []string {
+	return []string{"number", "namespace_path", "title", "state", "author_id", "created_at", "updated_at", "closed_at"}
+}
+
+func (r issueListRow) CSVRecord() []string {
+	return []string{
+		strconv.FormatInt(r.Number, 10),
+		r.NamespacePath,
+		r.Title,
+		r.State,
+		r.AuthorID,
+		formatRFC3339UTC(r.CreatedAt),
+		formatRFC3339UTC(r.UpdatedAt),
+		formatRFC3339PtrUTC(r.ClosedAt),
+	}
+}
+
 // ── agent list ───────────────────────────────────────────────────────────────
 
 func (agentRow) CSVHeader() []string {

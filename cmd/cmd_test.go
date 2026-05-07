@@ -49,6 +49,69 @@ func TestRepoCmdHelp(t *testing.T) {
 	helpRuns(t, cmd.RepoCmd)
 }
 
+func TestIssueCmdExists(t *testing.T) {
+	if cmd.IssueCmd == nil {
+		t.Fatal("IssueCmd is nil")
+	}
+}
+
+func TestIssueCmdHelp(t *testing.T) {
+	helpRuns(t, cmd.IssueCmd)
+}
+
+func TestIssueSubcommands(t *testing.T) {
+	for _, name := range []string{"list", "view", "create", "comment", "close", "reopen", "label", "close-refs"} {
+		if !hasSubcmd(cmd.IssueCmd, name) {
+			t.Errorf("citadel issue: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestIssueListFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.IssueCmd, "list")
+	for _, flag := range []string{"repo", "state", "label", "assignee", "limit", "cursor", "all", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel issue list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestIssueViewFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.IssueCmd, "view")
+	for _, flag := range []string{"repo", "web", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel issue view: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestIssueCreateFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.IssueCmd, "create")
+	for _, flag := range []string{"repo", "title", "body", "label", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel issue create: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestIssueCommentFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.IssueCmd, "comment")
+	for _, flag := range []string{"repo", "body", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel issue comment: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestIssueLabelFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.IssueCmd, "label")
+	for _, flag := range []string{"repo", "add", "remove", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel issue label: missing flag --%s", flag)
+		}
+	}
+}
+
 func TestRepoSubcommands(t *testing.T) {
 	for _, name := range []string{"create", "list", "get", "delete", "branch", "tag"} {
 		if !hasSubcmd(cmd.RepoCmd, name) {

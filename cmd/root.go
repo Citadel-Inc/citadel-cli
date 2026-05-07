@@ -44,6 +44,7 @@ Server URL defaults to https://mcp.src.land; override with CITADEL_SERVER or --s
 	root.AddCommand(McpCmd)
 	root.AddCommand(KgCmd)
 	root.AddCommand(RepoCmd)
+	root.AddCommand(IssueCmd)
 	root.AddCommand(NamespaceCmd)
 	root.AddCommand(OrgCmd)
 	root.AddCommand(AgentCmd)
