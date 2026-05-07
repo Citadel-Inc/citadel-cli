@@ -1,6 +1,6 @@
 # Tasks — cli-namespace-profile
 
-Status: APPROVED 072212ZMAY26
+Status: IN_PROGRESS 072212ZMAY26 — Copilot claims execution
 Priority: Low
 
 ## P0

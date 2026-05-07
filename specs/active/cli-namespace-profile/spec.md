@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | APPROVED 072212ZMAY26 |
+| Status | IN_PROGRESS 072212ZMAY26 — Copilot claims execution |
 | Priority | Low — read-only terminal utility; no `gh` analogue for mutation |
 | Authored | 072310ZMAY26 |
 | Owner | Copilot |
