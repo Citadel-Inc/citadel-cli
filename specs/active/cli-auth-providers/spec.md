@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT |
+| Status | IN_PROGRESS 071813ZMAY26 — Copilot claims execution |
 | Authored | 072200ZMAY26 |
 | Owner | Copilot |
 | Carry-forward from | No active `citadel-cli` specs remained after `cli-milestones`, so the next grounded CLI follow-up was selected from the PoL dossier plus shipped daemon capability. `citadel` already serves provider discovery and identity link/unlink routes, but the CLI still only exposes `auth login`, `auth logout`, `auth status`, and `auth set-token`. |

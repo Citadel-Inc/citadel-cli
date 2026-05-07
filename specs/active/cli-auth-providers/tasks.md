@@ -1,6 +1,6 @@
 # Tasks — cli-auth-providers
 
-Status: DRAFT
+Status: IN_PROGRESS 071813ZMAY26 — Copilot claims execution
 
 ## P0
 
