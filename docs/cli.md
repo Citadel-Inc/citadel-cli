@@ -213,6 +213,28 @@ Example:
 citadel-cli token revoke 550e8400-e29b-41d4-a716-446655440000
 ```
 
+### Deploy tokens
+
+Deploy tokens are namespace-scoped credentials for CI/CD and automation. Repo
+tokens and org-namespace tokens share the same backend route family; the CLI
+exposes them under the matching parent resources.
+
+```bash
+citadel-cli repo deploy-token list -R acme/demo
+citadel-cli repo deploy-token create -R acme/demo --name ci --expires 24h
+citadel-cli repo deploy-token revoke -R acme/demo <token-id>
+
+citadel-cli namespace deploy-token list acme
+citadel-cli namespace deploy-token create acme --name release-bot --expires 24h
+citadel-cli namespace deploy-token revoke acme <token-id>
+```
+
+List verbs support the standard `--limit`, `--cursor`, `--all`, `--watch`, and
+`--output json|yaml|ndjson|csv|table` flags.
+
+Create prints the one-time cleartext token to stdout in human mode and includes
+it in `--output json`. Revoke supports `--dry-run`.
+
 ## Org invitations
 
 Org invitations use the daemon **`orgsmembersapi`** routes behind your normal CLI session (`citadel-cli auth login`). You need **`members:read`** to list invitations for an org and **`members:write`** to create or revoke them; **`accept`** uses your session JWT plus the invitation token.
