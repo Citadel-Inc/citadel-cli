@@ -810,6 +810,90 @@ citadel-cli repo commit get acme/demo abc1234 --output json
 
 SHA values may be full 40-character SHAs, partial SHAs (≥4 characters), branch names, or tag names.
 
+## Repository browsing
+
+Browse a repository's file tree and read file contents at any ref (branch, tag, or commit SHA).
+
+### List directory entries
+
+```bash
+# List the root of the default branch
+citadel-cli repo browse tree acme/demo
+
+# List a subdirectory at a specific branch
+citadel-cli repo browse tree acme/demo --ref main --path cmd
+
+# Machine-readable output
+citadel-cli repo browse tree acme/demo --output json
+```
+
+The tree output shows an icon (`📄` file, `📁` directory), the entry name, size, and abbreviated SHA.
+
+### Read file content
+
+```bash
+# Print a file to stdout (suitable for piping)
+citadel-cli repo browse blob acme/demo --path README.md
+
+# Read a file at a specific ref
+citadel-cli repo browse blob acme/demo --path src/main.go --ref feature/x
+
+# Binary files print an informational line instead of raw bytes
+citadel-cli repo browse blob acme/demo --path assets/logo.png
+
+# Full metadata as JSON (sha, size, binary, encoding, content)
+citadel-cli repo browse blob acme/demo --path go.mod --output json
+```
+
+## Repository topics
+
+View and manage the topics attached to a repository. Topics are free-form labels used for discovery.
+
+### List topics
+
+```bash
+citadel-cli repo topic list acme/demo
+citadel-cli repo topic list acme/demo --output json
+```
+
+### Set topics
+
+The `set` subcommand is a **full replace** — it overwrites all existing topics. Pass no topic arguments to clear all topics.
+
+```bash
+# Replace all topics
+citadel-cli repo topic set acme/demo go cli devtools
+
+# Clear all topics
+citadel-cli repo topic set acme/demo
+
+# Output result as JSON
+citadel-cli repo topic set acme/demo go cli --output json
+```
+
+### Popular topics
+
+List the most popular topics across all repositories on the platform.
+
+```bash
+citadel-cli repo topic popular
+citadel-cli repo topic popular --limit 20
+citadel-cli repo topic popular --output json
+```
+
+## Repository insights
+
+View aggregate statistics for a repository: topics, open issue/milestone counts, branches, tags, languages, recent contributors, latest release, and a 52-week activity sparkline.
+
+```bash
+citadel-cli repo insights acme/demo
+citadel-cli repo insights acme/demo --output json
+```
+
+Human output sections: **Topics**, **Stars/Pins**, **Counts** (table), **License**, **Languages** (top 5 by bytes), **Latest release**, **Recent contributors (30d)**, and **Activity sparkline** (52-week rolling window, oldest→newest).
+
+Empty repositories (no commits yet) only show topics, star/pin counts, and the counts table.
+
 ## Troubleshooting
 
 ### Environment health check
