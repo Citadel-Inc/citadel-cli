@@ -28,7 +28,7 @@ Before you ask for review or push a change you care about:
 
 ## Code style (mechanical)
 
-- **Go:** `gofmt` / `go vet`; the `Makefile` exposes `make fmt`, `make lint`, `make test`, `make verify`.
+- **Go:** use `gofmt -s` for simplified formatting and `go vet`; the `Makefile` exposes `make fmt`, `make lint`, `make test`, `make verify`.
 
 Do not replace these tools with informal style rules in prose — extend `.golangci.yml` if a new rule is needed.
 

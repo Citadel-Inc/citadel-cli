@@ -935,11 +935,11 @@ The CLI binary is built by the GitHub Actions release workflow on every tag matc
 - **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Rethunk-Tech/citadel-cli/releases/tag/<tag>` with the three binaries + a `SHA256SUMS` file. Manual download:
 
   ```bash
-  # Replace v0.x.y with the latest tag.
+  # Replace v0.1.0 with the latest tag.
   curl -L -o citadel-cli-linux-amd64 \
-    https://github.com/Rethunk-Tech/citadel-cli/releases/download/v0.x.y/citadel-cli-linux-amd64
+    https://github.com/Rethunk-Tech/citadel-cli/releases/download/v0.1.0/citadel-cli-linux-amd64
   curl -L -o SHA256SUMS \
-    https://github.com/Rethunk-Tech/citadel-cli/releases/download/v0.x.y/SHA256SUMS
+    https://github.com/Rethunk-Tech/citadel-cli/releases/download/v0.1.0/SHA256SUMS
   sha256sum -c SHA256SUMS --ignore-missing
   chmod +x citadel-cli-linux-amd64
   sudo mv citadel-cli-linux-amd64 /usr/local/bin/citadel-cli
@@ -958,7 +958,7 @@ Until v1.0 the **citadel-cli** release tags track the **citadel** server binary 
 ```bash
 # After downloading binary + SHA256SUMS for the same tag.
 sha256sum -c SHA256SUMS --ignore-missing
-# Expect: citadel-linux-amd64: OK
+# Expect: citadel-cli-linux-amd64: OK
 ```
 
 If verification fails, do not run the binary. Re-download from a fresh session and re-verify.

@@ -30,7 +30,7 @@ citadel-cli repo insights org/repo
 
 ### Local development
 
-Prerequisites: Go 1.25+, `golangci-lint` (for `make verify`).
+Prerequisites: Go 1.25.10+, `golangci-lint` (for `make verify`).
 
 ```sh
 go build -o ./citadel-cli .          # local build

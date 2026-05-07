@@ -6,7 +6,7 @@ Implementation plan paired with `spec.md` (APPROVED 292032ZAPR26). Sequenced so 
 
 A1. New binary at `cmd/citadel-cli/`. Picks a CLI framework — Bastion default proposal: `spf13/cobra` (same shape as `gh`, kubectl, etc.). Hand-rolled flag parsing if cobra is too heavy.
 A2. Config layer in a new `internal/clicfg` package: load/save TOML at `~/.config/citadel/config.toml` (XDG-respecting fallbacks); enforce 0600 on write; expose `Get/Set/Save` API.
-A3. `make build-cli` target produces the binary. CI matrix builds linux-amd64, linux-arm64, darwin-arm64.
+A3. `make build` produces the local binary. `make build-all` cross-compiles linux-amd64, linux-arm64, darwin-arm64.
 
 ## Phase B — auth flow (server + client)
 
@@ -25,7 +25,7 @@ C5. `citadel mcp tools` and `citadel mcp call` — thin Streamable-HTTP MCP clie
 
 ## Phase D — release + close
 
-D1. Document install path in `docs/cli.md` (new file). Initial install method: `make build-cli && cp bin/citadel-cli /usr/local/bin/`. Distribution-path-as-spec is deferred.
+D1. Document install path in `docs/cli.md` (new file). Initial install method: `make build && cp ./citadel-cli /usr/local/bin/citadel-cli`. Distribution-path-as-spec is deferred.
 D2. Local end-to-end smoke: login → issue → list → MCP call → revoke → status → logout.
 D3. Production smoke against `api.src.land` + `mcp.src.land`.
 D4. Move spec to `specs/done/go-citadel-cli/` with retrospective + carry-overs (repo subcommand, agent management, distribution).

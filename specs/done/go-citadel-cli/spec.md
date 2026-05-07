@@ -74,7 +74,7 @@ R1. **Server-side OAuth surface is the load-bearing dep.** This spec assumes Sup
 
 R2. **The CLI duplicates state with the server (cached agent list, cached MCP tool list).** Default posture: zero client-side caching; every command hits the server. A future "fast mode" with cache lands its own spec.
 
-R3. **Distribution mechanism.** GitHub Releases vs Homebrew tap vs static download from src.land. Not in scope to pick today; the binary builds, `make build-cli` produces it, distribution lands as a follow-on.
+R3. **Distribution mechanism.** GitHub Releases is the canonical channel; Homebrew tap and static download from src.land remain deferred until demand justifies them. The binary builds with `make build`, and release artifacts build with `make build-all`.
 
 ## Resolved questions (decision log)
 
@@ -91,11 +91,11 @@ R3. **Distribution mechanism.** GitHub Releases vs Homebrew tap vs static downlo
 
 ### Outcome
 
-APPROVED spec fully implemented and closed. Phase A–C live: `auth login/status/logout`, `token list/issue/revoke`, and `mcp tools/call` all functional. Cross-compile CI matrix produces three static binaries (linux-amd64, linux-arm64, darwin-arm64) via `make build-cli-all`. Install docs at `docs/cli.md` cover development and release paths. All P0 and P1 acceptance criteria satisfied (A1–A6 verified; A7 CI wired). C5 (`mcp tools/call` client) deferred as P2 carry-forward; core token issuance unblocked.
+APPROVED spec fully implemented and closed. Phase A–C live: `auth login/status/logout`, `token list/issue/revoke`, and `mcp tools/call` all functional. Cross-compile CI produces three static binaries (linux-amd64, linux-arm64, darwin-arm64) via `make build-all`. Install docs at `docs/cli.md` cover development and release paths. All P0 and P1 acceptance criteria satisfied (A1–A6 verified; A7 CI wired). C5 (`mcp tools/call` client) deferred as P2 carry-forward; core token issuance unblocked.
 
 ### Commits
 
-Phase A–C implementation across prior sessions; Phase D: documentation, cross-compile targets, spec close. Commits: (1) `docs/cli.md` install + usage guide; (2) Makefile `build-cli-all` target + `.github/workflows/cli-release.yml` GitHub Actions; (3) tasks/spec retrospective + move to done.
+Phase A–C implementation across prior sessions; Phase D: documentation, cross-compile targets, spec close. Commits: (1) `docs/cli.md` install + usage guide; (2) Makefile `build-all` target + `.github/workflows/cli-release.yml` GitHub Actions; (3) tasks/spec retrospective + move to done.
 
 ### What worked
 
@@ -105,7 +105,7 @@ Phase A–C implementation across prior sessions; Phase D: documentation, cross-
 
 3. **Server-side API surface pre-readied.** `/api/agents/*` + `/api/agent-tokens/*` routes and JWT-verify middleware were staged by prior specs (`go-auth-rbac`, `go-mcp-server`); Phase C integration was smooth.
 
-4. **Cross-compile targets from day one.** Adding `build-cli-all` to Makefile was trivial (GOOS/GOARCH env vars + static linking). CI release workflow lands ready for tag-push automation.
+4. **Cross-compile targets from day one.** Adding `build-all` to Makefile was trivial (GOOS/GOARCH env vars + static linking). CI release workflow lands ready for tag-push automation.
 
 ### What didn't work
 
