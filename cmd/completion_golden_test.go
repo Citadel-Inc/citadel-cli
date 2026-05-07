@@ -56,6 +56,52 @@ func repoCloneFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
 	return nil
 }
 
+func repoWebhookGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	t.Helper()
+	for _, c := range root.Commands() {
+		if c.Name() != "repo" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() != "webhook" {
+				continue
+			}
+			for _, leaf := range sc.Commands() {
+				if leaf.Name() == "get" {
+					return leaf
+				}
+			}
+		}
+	}
+	t.Fatal("repo webhook get not found")
+	return nil
+}
+
+func namespaceWebhookGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	t.Helper()
+	for _, c := range root.Commands() {
+		if c.Name() != "namespace" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() != "webhook" {
+				continue
+			}
+			for _, leaf := range sc.Commands() {
+				if leaf.Name() == "get" {
+					return leaf
+				}
+			}
+		}
+	}
+	t.Fatal("namespace webhook get not found")
+	return nil
+}
+
+func webhookPathMatches(r *http.Request, encoded, decoded string) bool {
+	return r.URL.EscapedPath() == encoded || r.URL.Path == decoded
+}
+
 func repoBranchDeleteFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
 	t.Helper()
 	for _, c := range root.Commands() {
@@ -455,6 +501,58 @@ func TestCompleteRepoPaths_RepoPrefix(t *testing.T) {
 		t.Fatalf("directive %v", d)
 	}
 	if len(vals) != 1 || vals[0] != "myorg/alpha" {
+		t.Fatalf("got %q", vals)
+	}
+}
+
+func TestCompleteRepoWebhookIDs_UsesRepoContext(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if !webhookPathMatches(r, "/api/namespaces/acme%2Fdemo/webhooks", "/api/namespaces/acme/demo/webhooks") {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"webhooks": []any{
+				map[string]any{"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"},
+				map[string]any{"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"},
+			},
+		})
+	})
+	root := NewRootCmd()
+	get := repoWebhookGetFromRoot(t, root)
+	get.SetContext(context.Background())
+	if err := get.Flags().Set("repo", "acme/demo"); err != nil {
+		t.Fatal(err)
+	}
+	vals, d := completeRepoWebhookIDs(get, []string{}, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 2 || vals[0] != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" || vals[1] != "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" {
+		t.Fatalf("got %q", vals)
+	}
+}
+
+func TestCompleteNamespaceWebhookIDs_UsesNamespaceArg(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/namespaces/acme/webhooks" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"webhooks": []any{
+				map[string]any{"id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+			},
+		})
+	})
+	root := NewRootCmd()
+	get := namespaceWebhookGetFromRoot(t, root)
+	get.SetContext(context.Background())
+	vals, d := completeNamespaceWebhookIDs(get, []string{"acme"}, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 1 || vals[0] != "cccccccc-cccc-cccc-cccc-cccccccccccc" {
 		t.Fatalf("got %q", vals)
 	}
 }

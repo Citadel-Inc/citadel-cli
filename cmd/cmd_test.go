@@ -118,7 +118,7 @@ func TestIssueLabelFlags(t *testing.T) {
 }
 
 func TestRepoSubcommands(t *testing.T) {
-	for _, name := range []string{"create", "list", "get", "delete", "clone", "push", "pull", "branch", "tag"} {
+	for _, name := range []string{"create", "list", "get", "delete", "clone", "push", "pull", "branch", "tag", "webhook"} {
 		if !hasSubcmd(cmd.RepoCmd, name) {
 			t.Errorf("citadel repo: missing subcommand %q", name)
 		}
@@ -303,6 +303,55 @@ func TestRepoDeployTokenRevokeFlags(t *testing.T) {
 	}
 }
 
+func TestRepoWebhookSubcommands(t *testing.T) {
+	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
+	for _, name := range []string{"list", "create", "get", "delete"} {
+		if !hasSubcmd(webhook, name) {
+			t.Errorf("citadel repo webhook: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestRepoWebhookListFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
+	c := findSubcmd(t, webhook, "list")
+	for _, flag := range []string{"repo", "no-cwd-repo", "limit", "cursor", "all", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo webhook list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoWebhookCreateFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
+	c := findSubcmd(t, webhook, "create")
+	for _, flag := range []string{"repo", "no-cwd-repo", "name", "url", "events", "active", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo webhook create: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoWebhookGetFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
+	c := findSubcmd(t, webhook, "get")
+	for _, flag := range []string{"repo", "no-cwd-repo", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo webhook get: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoWebhookDeleteFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
+	c := findSubcmd(t, webhook, "delete")
+	for _, flag := range []string{"repo", "no-cwd-repo", "dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo webhook delete: missing flag --%s", flag)
+		}
+	}
+}
+
 // ── namespace ────────────────────────────────────────────────────────────────
 
 func TestNamespaceCmdExists(t *testing.T) {
@@ -316,7 +365,7 @@ func TestNamespaceCmdHelp(t *testing.T) {
 }
 
 func TestNamespaceSubcommands(t *testing.T) {
-	for _, name := range []string{"list", "get", "members", "transfer", "deploy-token"} {
+	for _, name := range []string{"list", "get", "members", "transfer", "deploy-token", "webhook"} {
 		if !hasSubcmd(cmd.NamespaceCmd, name) {
 			t.Errorf("citadel namespace: missing subcommand %q", name)
 		}
@@ -328,6 +377,53 @@ func TestNamespaceDeployTokenSubcommands(t *testing.T) {
 	for _, name := range []string{"list", "create", "revoke"} {
 		if !hasSubcmd(deploy, name) {
 			t.Errorf("citadel namespace deploy-token: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestNamespaceWebhookSubcommands(t *testing.T) {
+	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
+	for _, name := range []string{"list", "create", "get", "delete"} {
+		if !hasSubcmd(webhook, name) {
+			t.Errorf("citadel namespace webhook: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestNamespaceWebhookListFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
+	c := findSubcmd(t, webhook, "list")
+	for _, flag := range []string{"limit", "cursor", "all", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel namespace webhook list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestNamespaceWebhookCreateFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
+	c := findSubcmd(t, webhook, "create")
+	for _, flag := range []string{"name", "url", "events", "active", "include-descendants", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel namespace webhook create: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestNamespaceWebhookGetFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
+	c := findSubcmd(t, webhook, "get")
+	if !hasFlag(c, "output") {
+		t.Errorf("citadel namespace webhook get: missing flag --output")
+	}
+}
+
+func TestNamespaceWebhookDeleteFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
+	c := findSubcmd(t, webhook, "delete")
+	for _, flag := range []string{"dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel namespace webhook delete: missing flag --%s", flag)
 		}
 	}
 }
