@@ -6,7 +6,6 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-issues | BLOCKED | 070043ZMAY26 | Bastion (J-3) |
 | cli-branch-tag | BLOCKED | 070026ZMAY26 | Bastion |
 | cli-oauth-login | IN_PROGRESS | 061800ZMAY26 | Bastion (J-3) |
 | cli-agent-create | DRAFT | 061500ZMAY26 | Bastion (J-3) |
@@ -20,6 +19,7 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-issues | 070107ZMAY26 | Operator smoke completed via citadel-cli against live namespace rethunk: created issue #1, added a comment, closed it, and verified close-refs. REST routing fix landed in citadel-cli so the live API resolves through api.src.land while OAuth/MCP remain on mcp.src.land. |
 | cli-projectgraph | 060539ZMAY26 | Delivered top-level `citadel-cli project` with URL-encoded multi-segment namespace paths, read verbs (pin-chain, walk, neighbors, status rollup/drilldown), write verbs (edge add/delete/restore, reindex) with typed confirm/--yes, httptest matrix incl. multi-segment pin-chain + read/write 404 paths, docs/cli.md, optional live test behind CITADEL_TEST_PROJECTGRAPH_LIVE + CITADEL_TEST_PROJECTGRAPH_SLUG. Q4 recovery-scan intentionally unimplemented; P1 B2 remains open. |
 | cli-global-search | 060535ZMAY26 | Shipped top-level `citadel-cli search` with authenticated GET /api/search, default scope=namespaces, --public for scope=all, httptest coverage for query_too_short/invalid_scope/invalid_limit, optional CITADEL_TEST_SEARCH_LIVE=1, and docs/cli.md QoS framing. |
 | cli-kg-extended | 060504ZMAY26 | Shipped extended KG HTTP verbs (search, symbols, files, walk, fulltext, diff); migrated kg impact + symbol resolution to /api/namespaces/{slug}/kg/*; added httptest (401/404/429), docs/cli.md section, plan appendix, and opt-in live test. P1 pagination/table polish remains open. |
@@ -48,6 +48,8 @@
 |------|-----|------|
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
+
+
 
 
 

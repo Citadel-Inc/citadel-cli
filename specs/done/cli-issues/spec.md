@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | BLOCKED 070043ZMAY26 — Waiting on HUMAN operator smoke (C3) before spec close and before starting cli-deploy-tokens. |
+| Status | DONE 070107ZMAY26 — Operator smoke completed via citadel-cli against live namespace rethunk: created issue #1, added a comment, closed it, and verified close-refs. REST routing fix landed in citadel-cli so the live API resolves through api.src.land while OAuth/MCP remain on mcp.src.land. |
 | Authored | 062323ZMAY26 |
 | Owner | Bastion (J-3) |
 | Carry-forward from | Phase 0 review against PoL + `citadel` tracker (2026-05-06): the remaining first-class CLI product gap is issues. Server-side issue substrate, close-refs, labels, assignees, templates, audit, and MCP tools are already live; `citadel-cli` still lacks dedicated issue verbs. |
@@ -95,6 +95,3 @@ daemon capabilities and the actual Phase 0 gap.
   create + comment + close + close-refs round-trip against a real Citadel
   instance.
 
-## Blocking
-
-Waiting on HUMAN operator smoke (C3) before spec close and before starting cli-deploy-tokens.

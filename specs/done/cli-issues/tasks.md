@@ -1,6 +1,6 @@
 # Tasks — cli-issues
 
-Status: BLOCKED 070043ZMAY26 — Waiting on HUMAN operator smoke (C3) before spec close and before starting cli-deploy-tokens.
+Status: DONE 070107ZMAY26 — Operator smoke completed via citadel-cli against live namespace rethunk: created issue #1, added a comment, closed it, and verified close-refs. REST routing fix landed in citadel-cli so the live API resolves through api.src.land while OAuth/MCP remain on mcp.src.land.
 
 ## P0
 
@@ -23,5 +23,5 @@ Status: BLOCKED 070043ZMAY26 — Waiting on HUMAN operator smoke (C3) before spe
 
 - [x] C1. Env-gated live integration test (`CITADEL_TEST_ISSUES_LIVE=1`) covering create + comment + close + close-refs.
 - [x] C2. README / HUMANS / docs/cli.md updates for the new issue surface.
-- [ ] C3. [HUMAN] Operator smoke: file and manage a real namespace issue from the terminal.
-- [ ] C4. Spec close.
+- [x] C3. [HUMAN] Operator smoke: file and manage a real namespace issue from the terminal.
+- [x] C4. Spec close.
