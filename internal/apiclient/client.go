@@ -83,6 +83,7 @@ type Client struct {
 	token      string
 	userAgent  string
 	http       *http.Client
+	streamHTTP *http.Client
 	retryOn401 func(context.Context) (newAccessToken string, err error)
 }
 
@@ -121,6 +122,7 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 		token:      cfg.AccessToken,
 		userAgent:  ua,
 		http:       &http.Client{Timeout: defaultTimeout, Transport: rt},
+		streamHTTP: &http.Client{Transport: rt},
 		retryOn401: opts.RetryOn401,
 	}, nil
 }
@@ -189,7 +191,7 @@ func (c *Client) GetEventStream(ctx context.Context, path string, lastEventID st
 		if lastEventID != "" {
 			req.Header.Set("Last-Event-ID", lastEventID)
 		}
-		resp, err := c.http.Do(req)
+		resp, err := c.streamHTTP.Do(req)
 		if err != nil {
 			return nil, fmt.Errorf("request failed: %w", err)
 		}

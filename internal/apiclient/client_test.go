@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
@@ -392,6 +393,41 @@ func TestClient_GetEventStream_success(t *testing.T) {
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "data: ok") {
+		t.Fatalf("body = %q", string(b))
+	}
+}
+
+func TestClient_GetEventStream_IgnoresRequestTimeoutWhileBodyStreams(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fl, ok := w.(http.Flusher)
+		if !ok {
+			t.Fatal("responseWriter does not support Flush")
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		fl.Flush()
+		time.Sleep(60 * time.Millisecond)
+		_, _ = w.Write([]byte("data: ok\n\n"))
+		fl.Flush()
+	}))
+	defer srv.Close()
+
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.http.Timeout = 25 * time.Millisecond
+
+	resp, err := c.GetEventStream(context.Background(), "/stream", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("stream body read failed: %v", err)
 	}
 	if !strings.Contains(string(b), "data: ok") {
 		t.Fatalf("body = %q", string(b))
