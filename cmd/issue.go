@@ -291,22 +291,22 @@ func labelSummary(xs []issueLabel) string {
 	return strings.Join(out, ",")
 }
 
-func optionalString(v *string) string {
-	if v == nil {
-		return "—"
-	}
-	s := strings.TrimSpace(*v)
-	if s == "" {
-		return "—"
-	}
-	return s
-}
-
 func optionalTime(v *time.Time) string {
 	if v == nil {
 		return "—"
 	}
 	return formatRFC3339PtrUTC(v)
+}
+
+func issueActionLabel(verb string) string {
+	switch verb {
+	case "close":
+		return "Closed"
+	case "reopen":
+		return "Reopened"
+	default:
+		return verb
+	}
 }
 
 func readIssueBody(cmd *cobra.Command, flagName string) (string, error) {
@@ -665,7 +665,7 @@ func runIssueStateMutation(cmd *cobra.Command, args []string, state string, verb
 	if strings.EqualFold(strings.TrimSpace(output), "json") {
 		return emitJSON(cmd, resp)
 	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s issue %s#%d.\n", strings.Title(verb), nsPath, num)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s issue %s#%d.\n", issueActionLabel(verb), nsPath, num)
 	return nil
 }
 
