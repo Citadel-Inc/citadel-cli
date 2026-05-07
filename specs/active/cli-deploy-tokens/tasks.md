@@ -1,6 +1,6 @@
 # Tasks — cli-deploy-tokens
 
-Status: IN_PROGRESS 070123ZMAY26 — Bastion (J-3) claims execution
+Status: BLOCKED 070137ZMAY26 — Implementation is complete and verified locally, but C1 requires a live production smoke against routes and schema that are not deployed yet. Deploy citadel commit c20ddb1a (plus migration 20260507013500_deploy_tokens_name.sql), then run the human production smoke before unblocking.
 
 ## P0
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 070123ZMAY26 — Bastion (J-3) claims execution |
+| Status | BLOCKED 070137ZMAY26 — Implementation is complete and verified locally, but C1 requires a live production smoke against routes and schema that are not deployed yet. Deploy citadel commit c20ddb1a (plus migration 20260507013500_deploy_tokens_name.sql), then run the human production smoke before unblocking. |
 | Authored | 120000ZMAY26 |
 | Owner | Bastion (J-3) |
 
@@ -41,3 +41,7 @@ CLI resource hierarchy.
 | Q1 | Top-level `deploy-token` vs. nested under `repo`/`namespace`? | Ratified 070128ZMAY26 — nested under `repo deploy-token` and `namespace deploy-token` to match existing CLI hierarchy; the user already directed a nested shape |
 | Q2 | Cleartext token printed to stdout or stderr? | Ratified 070128ZMAY26 — print the one-time cleartext token in the machine-readable response / stdout path and emit any human warning separately, matching existing token-style commands |
 | Q3 | API endpoints — confirm server routes exist before claiming P0 | Ratified 070128ZMAY26 — current `citadel` sources do not expose deploy-token CRUD routes; implement namespace-scoped REST routes in the primary server sources and consume them from the CLI |
+
+## Blocking
+
+Implementation is complete and verified locally, but C1 requires a live production smoke against routes and schema that are not deployed yet. Deploy citadel commit c20ddb1a (plus migration 20260507013500_deploy_tokens_name.sql), then run the human production smoke before unblocking.
