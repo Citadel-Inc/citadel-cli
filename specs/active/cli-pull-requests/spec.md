@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 080821ZMAY26 |
+| Status | IN_PROGRESS 080823ZMAY26 — Bastion (J-3) claims execution |
 | Priority | High — core developer workflow; `gh pr` analogue; no CLI PR surface exists |
 | Authored | 080821ZMAY26 |
 | Owner | Bastion (J-3) |
