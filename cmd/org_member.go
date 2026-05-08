@@ -95,7 +95,7 @@ func isUUIDShaped(s string) bool {
 			return false
 		}
 		for _, c := range p {
-			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 				return false
 			}
 		}
@@ -224,7 +224,7 @@ func runOrgMemberList(cmd *cobra.Command, args []string) error {
 			case "yaml":
 				return emitYAML(cmd, []nsMemberRow{})
 			default:
-				fmt.Fprintf(cmd.OutOrStdout(), "No members found for org '%s'.\n", orgSlug)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No members found for org '%s'.\n", orgSlug)
 				return nil
 			}
 		}
@@ -272,7 +272,7 @@ func runOrgMemberList(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			if !all && next != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "(use --cursor %s for more, or --all to fetch everything)\n", next)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "(use --cursor %s for more, or --all to fetch everything)\n", next)
 			}
 		}
 
