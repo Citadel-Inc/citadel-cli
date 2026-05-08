@@ -801,6 +801,135 @@ citadel-cli notification prefs set --email-digest daily --enable issue.comment
 
 `--enable` and `--disable` accept the `kind` string from the prefs list (e.g. `issue.comment`, `repo.push`). Multiple flags may be supplied. The API applies the patch atomically — you only send what you want to change.
 
+## Pull requests
+
+`citadel-cli pr` manages pull requests against the Citadel forge. All subcommands require authentication and accept `-R org/repo` (or `-R org/project/repo`) to identify the repository namespace.
+
+### List pull requests
+
+```bash
+# Open PRs (default)
+citadel-cli pr list -R acme/demo
+
+# Closed PRs
+citadel-cli pr list -R acme/demo --state closed
+
+# All PRs, machine-readable
+citadel-cli pr list -R acme/demo --state all --output json
+
+# Paginate
+citadel-cli pr list -R acme/demo --limit 50 --cursor <cursor>
+```
+
+Columns: **#**, **Title**, **State**, **Source → Target**, **Author**, **Created**.
+
+### View a pull request
+
+```bash
+# Human-readable summary with reviewer list
+citadel-cli pr view -R acme/demo 42
+
+# JSON
+citadel-cli pr view -R acme/demo 42 --output json
+```
+
+### Create a pull request
+
+```bash
+# Minimal (title, source, and target are required)
+citadel-cli pr create -R acme/demo --title "Add login page" \
+    --source feature/login --target main
+
+# With body inline
+citadel-cli pr create -R acme/demo --title "Add login page" \
+    --source feature/login --target main \
+    --body "Closes #12. Adds OAuth2 login flow."
+
+# Body via $EDITOR (when --body is omitted on a TTY)
+citadel-cli pr create -R acme/demo --title "Add login page" \
+    --source feature/login --target main
+```
+
+### Close a pull request
+
+```bash
+# Prompt for confirmation
+citadel-cli pr close -R acme/demo 42
+
+# Skip confirmation
+citadel-cli pr close -R acme/demo 42 --yes
+```
+
+### Merge a pull request
+
+```bash
+citadel-cli pr merge -R acme/demo 42
+```
+
+Explicit error messages surface `merge_conflict`, `approval_required`, `already_merged`, and `invalid_state`.
+
+### Diff a pull request
+
+```bash
+# File-stat table (additions/deletions per file)
+citadel-cli pr diff -R acme/demo 42
+
+# Raw unified diff for a single file
+citadel-cli pr diff -R acme/demo 42 --file src/main.go
+```
+
+`--file` output is pipeable directly to `patch` or language-aware diff viewers.
+
+### Check mergeability
+
+```bash
+# Human-readable
+citadel-cli pr check -R acme/demo 42
+
+# JSON (for scripting)
+citadel-cli pr check -R acme/demo 42 --output json
+```
+
+Reports `MERGEABLE` or `NOT MERGEABLE` with a reason: `fast_forward`, `clean`, `conflict`, `no_merge_base`, or `resolve_error`.
+
+### Comments
+
+```bash
+# List general comments
+citadel-cli pr comment list -R acme/demo 42
+
+# Add a comment
+citadel-cli pr comment add -R acme/demo 42 --body "LGTM"
+```
+
+### Reviewers
+
+```bash
+# List reviewers and their status
+citadel-cli pr reviewer list -R acme/demo 42
+
+# Add a reviewer (UUID required)
+citadel-cli pr reviewer add -R acme/demo 42 --reviewer <user-uuid>
+```
+
+### Submit a review
+
+```bash
+# Approve
+citadel-cli pr review -R acme/demo 42 --approve
+
+# Request changes
+citadel-cli pr review -R acme/demo 42 --request-changes
+
+# General comment (does not change approval state)
+citadel-cli pr review -R acme/demo 42 --comment "See inline note above."
+
+# Comment and approve in one call
+citadel-cli pr review -R acme/demo 42 --approve --comment "Looks good, minor nit above."
+```
+
+`--approve` and `--request-changes` are mutually exclusive. At least one of `--approve`, `--request-changes`, or `--comment` is required.
+
 ## Repository commits
 
 Browse the commit log of any repository you have access to.
