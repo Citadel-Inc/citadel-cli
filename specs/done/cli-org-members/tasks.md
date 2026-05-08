@@ -1,6 +1,6 @@
 # Tasks — cli-org-members
 
-Status: IN_PROGRESS 080751ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 080809ZMAY26 — Shipped org member list, set-permissions, and remove. 14/14 handler tests green, make verify clean. docs/cli.md updated. C1 (live smoke) and C2 left as P2 open rows per allow_open.
 Priority: Medium
 
 ## P0
