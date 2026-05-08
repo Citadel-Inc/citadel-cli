@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 080823ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 080834ZMAY26 — Implemented full PR command surface (13 verbs) against prsapi: list, view, create, close, merge, diff (stat table + single-file unified), check, comment list/add, reviewer list/add, review (approve/request-changes/comment). 33 handler tests pass. make verify clean. docs/cli.md updated. |
 | Priority | High — core developer workflow; `gh pr` analogue; no CLI PR surface exists |
 | Authored | 080821ZMAY26 |
 | Owner | Bastion (J-3) |
