@@ -372,6 +372,41 @@ List verbs support the standard `--limit`, `--cursor`, `--all`, `--watch`, and
 Create prints the one-time cleartext token to stdout in human mode and includes
 it in `--output json`. Revoke supports `--dry-run`.
 
+## Org members
+
+Manage members of an org namespace. Requires **`members:read`** to list and **`members:write`** to modify or remove. The org owner cannot have their permissions changed or be removed.
+
+### List members
+
+```bash
+citadel-cli org member list <org-slug>
+citadel-cli org member list myorg --output json
+citadel-cli org member list myorg --all --output ndjson
+```
+
+Columns: `USER_ID` (first 8 chars), `SLUG`, `DISPLAY_NAME`, `ROLE` (`owner` or `member`), `PERMISSIONS`, `JOINED`.
+
+### Replace a member's permission set
+
+`<member>` accepts a user UUID or a user slug (resolved via the member list).
+
+```bash
+citadel-cli org member set-permissions myorg alice --permission members:read,code:read
+citadel-cli org member set-permissions myorg alice --permission code:read --permission code:write
+citadel-cli org member set-permissions myorg alice   # clears all grants
+```
+
+### Remove a member
+
+Prompts for confirmation on a TTY; suppress with `--yes`.
+
+```bash
+citadel-cli org member remove myorg alice
+citadel-cli org member remove myorg alice --yes
+```
+
+Returns an error (`self_removal_lockout`) if you are the last `members:write` holder, preventing lockout.
+
 ## Org invitations
 
 Org invitations use the daemon **`orgsmembersapi`** routes behind your normal CLI session (`citadel-cli auth login`). You need **`members:read`** to list invitations for an org and **`members:write`** to create or revoke them; **`accept`** uses your session JWT plus the invitation token.
