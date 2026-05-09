@@ -366,9 +366,6 @@ func runPRCommentAdd(cmd *cobra.Command, args []string) error {
 
 	var created prComment
 	if err := c.Post(cmd.Context(), path, reqBody, &created); err != nil {
-		if apiclient.IsStatus(err, http.StatusNotFound) {
-			return fmt.Errorf("PR %s#%d not found", nsPath, num)
-		}
 		var he *apiclient.HTTPError
 		if errors.As(err, &he) {
 			var errBody struct {
@@ -384,6 +381,9 @@ func runPRCommentAdd(cmd *cobra.Command, args []string) error {
 					return fmt.Errorf("--diff-side must be \"left\" or \"right\"")
 				}
 			}
+		}
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("PR %s#%d not found", nsPath, num)
 		}
 		return err
 	}

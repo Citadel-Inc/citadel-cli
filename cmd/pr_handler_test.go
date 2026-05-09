@@ -620,3 +620,300 @@ func TestPRReview_MutuallyExclusive(t *testing.T) {
 		t.Fatalf("want mutually-exclusive error, got %v", err)
 	}
 }
+
+// ── pr comment add — inline flags ─────────────────────────────────────────────
+
+func TestPRCommentAdd_Inline(t *testing.T) {
+	var gotBody map[string]any
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST " + prPath("7", "comments"): func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&gotBody)
+			writeJSON(t, w, 201, map[string]any{
+				"id":            "cc222222-0000-0000-0000-000000000000",
+				"pr_id":         testPRUUID,
+				"author_id":     "ffffffff-ffff-ffff-ffff-ffffffffffff",
+				"body_markdown": "nit",
+				"diff_file":     "foo.go",
+				"diff_line":     42,
+				"diff_side":     "right",
+				"created_at":    time.Now().UTC().Format(time.RFC3339),
+				"updated_at":    time.Now().UTC().Format(time.RFC3339),
+			})
+		},
+	}))
+	if err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "nit",
+		"--diff-file", "foo.go",
+		"--diff-line", "42").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if gotBody["diff_file"] != "foo.go" {
+		t.Fatalf("want diff_file=foo.go, got %v", gotBody["diff_file"])
+	}
+	if gotBody["diff_line"].(float64) != 42 {
+		t.Fatalf("want diff_line=42, got %v", gotBody["diff_line"])
+	}
+	if gotBody["diff_side"] != "right" {
+		t.Fatalf("want diff_side=right (default), got %v", gotBody["diff_side"])
+	}
+	if _, ok := gotBody["thread_id"]; ok {
+		t.Fatal("want no thread_id in body for new inline comment")
+	}
+}
+
+func TestPRCommentAdd_InlineLeftSide(t *testing.T) {
+	var gotBody map[string]any
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST " + prPath("7", "comments"): func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&gotBody)
+			writeJSON(t, w, 201, map[string]any{
+				"id":         "cc333333-0000-0000-0000-000000000000",
+				"created_at": time.Now().UTC().Format(time.RFC3339),
+				"updated_at": time.Now().UTC().Format(time.RFC3339),
+			})
+		},
+	}))
+	if err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "nit",
+		"--diff-file", "bar.go",
+		"--diff-line", "10",
+		"--diff-side", "left").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if gotBody["diff_side"] != "left" {
+		t.Fatalf("want diff_side=left, got %v", gotBody["diff_side"])
+	}
+}
+
+func TestPRCommentAdd_ThreadReply(t *testing.T) {
+	const tid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	var gotBody map[string]any
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST " + prPath("7", "comments"): func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&gotBody)
+			writeJSON(t, w, 201, map[string]any{
+				"id":         "cc444444-0000-0000-0000-000000000000",
+				"thread_id":  tid,
+				"created_at": time.Now().UTC().Format(time.RFC3339),
+				"updated_at": time.Now().UTC().Format(time.RFC3339),
+			})
+		},
+	}))
+	if err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "LGTM",
+		"--diff-file", "foo.go",
+		"--diff-line", "42",
+		"--thread-id", tid).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if gotBody["thread_id"] != tid {
+		t.Fatalf("want thread_id=%s, got %v", tid, gotBody["thread_id"])
+	}
+}
+
+func TestPRCommentAdd_NoThreadIDOnGeneralComment(t *testing.T) {
+	var gotBody map[string]any
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST " + prPath("7", "comments"): func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&gotBody)
+			writeJSON(t, w, 201, map[string]any{
+				"id":         "cc555555-0000-0000-0000-000000000000",
+				"created_at": time.Now().UTC().Format(time.RFC3339),
+				"updated_at": time.Now().UTC().Format(time.RFC3339),
+			})
+		},
+	}))
+	if err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "LGTM").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := gotBody["diff_file"]; ok {
+		t.Fatal("general comment must not include diff_file")
+	}
+	if _, ok := gotBody["diff_side"]; ok {
+		t.Fatal("general comment must not include diff_side")
+	}
+}
+
+func TestPRCommentAdd_MissingDiffLine(t *testing.T) {
+	err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "nit", "--diff-file", "foo.go").Execute()
+	if err == nil || !strings.Contains(err.Error(), "together") {
+		t.Fatalf("want paired error, got %v", err)
+	}
+}
+
+func TestPRCommentAdd_MissingDiffFile(t *testing.T) {
+	err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "nit", "--diff-line", "42").Execute()
+	if err == nil || !strings.Contains(err.Error(), "together") {
+		t.Fatalf("want paired error, got %v", err)
+	}
+}
+
+func TestPRCommentAdd_InvalidDiffSide(t *testing.T) {
+	err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "nit",
+		"--diff-file", "foo.go",
+		"--diff-line", "42",
+		"--diff-side", "both").Execute()
+	if err == nil || !strings.Contains(err.Error(), "left") {
+		t.Fatalf("want diff-side error, got %v", err)
+	}
+}
+
+func TestPRCommentAdd_DiffSideWithoutDiffFile(t *testing.T) {
+	err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "nit", "--diff-side", "left").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--diff-file") {
+		t.Fatalf("want diff-side-requires-diff-file error, got %v", err)
+	}
+}
+
+func TestPRCommentAdd_ServerInvalidAnchor(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST " + prPath("7", "comments"): func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(400)
+			_, _ = w.Write([]byte(`{"error":"invalid_inline_anchor"}`))
+		},
+	}))
+	err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "nit",
+		"--diff-file", "foo.go",
+		"--diff-line", "42").Execute()
+	if err == nil || !strings.Contains(err.Error(), "together") {
+		t.Fatalf("want invalid_inline_anchor message, got %v", err)
+	}
+}
+
+func TestPRCommentAdd_ServerThreadNotFound(t *testing.T) {
+	const tid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST " + prPath("7", "comments"): func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(404)
+			_, _ = w.Write([]byte(`{"error":"thread_not_found"}`))
+		},
+	}))
+	err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "reply",
+		"--diff-file", "foo.go",
+		"--diff-line", "42",
+		"--thread-id", tid).Execute()
+	if err == nil || !strings.Contains(err.Error(), "thread") {
+		t.Fatalf("want thread_not_found message, got %v", err)
+	}
+}
+
+// ── pr comment list — filters and thread grouping ─────────────────────────────
+
+func makeComment(id, authorID, body string, diffFile *string, threadID *string) map[string]any {
+	m := map[string]any{
+		"id":            id,
+		"pr_id":         testPRUUID,
+		"author_id":     authorID,
+		"body_markdown": body,
+		"created_at":    time.Now().UTC().Format(time.RFC3339),
+		"updated_at":    time.Now().UTC().Format(time.RFC3339),
+	}
+	if diffFile != nil {
+		m["diff_file"] = *diffFile
+		m["diff_line"] = 10
+		m["diff_side"] = "right"
+	}
+	if threadID != nil {
+		m["thread_id"] = *threadID
+	}
+	return m
+}
+
+func strPtr(s string) *string { return &s }
+
+func TestPRCommentList_InlineFilter(t *testing.T) {
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET " + prPath("7", "comments"): func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"comments": []map[string]any{
+					makeComment("c1", "user-aaa", "general comment", nil, nil),
+					makeComment("c2", "user-bbb", "inline nit", strPtr("foo.go"), nil),
+				},
+			})
+		},
+	}))
+	if err := rootForOut(cmd.PrCmd, &buf, "comment", "list", "-R", testNSPath, "7", "--inline").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if strings.Contains(out, "general comment") {
+		t.Fatal("--inline should exclude general comments")
+	}
+	if !strings.Contains(out, "inline nit") {
+		t.Fatal("--inline should include inline comments")
+	}
+}
+
+func TestPRCommentList_GeneralFilter(t *testing.T) {
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET " + prPath("7", "comments"): func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"comments": []map[string]any{
+					makeComment("c1", "user-aaa", "general comment", nil, nil),
+					makeComment("c2", "user-bbb", "inline nit", strPtr("foo.go"), nil),
+				},
+			})
+		},
+	}))
+	if err := rootForOut(cmd.PrCmd, &buf, "comment", "list", "-R", testNSPath, "7", "--general").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "general comment") {
+		t.Fatal("--general should include general comments")
+	}
+	if strings.Contains(out, "inline nit") {
+		t.Fatal("--general should exclude inline comments")
+	}
+}
+
+func TestPRCommentList_InlineGeneralMutex(t *testing.T) {
+	err := rootFor(cmd.PrCmd, "comment", "list", "-R", testNSPath, "7",
+		"--inline", "--general").Execute()
+	if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Fatalf("want mutex error, got %v", err)
+	}
+}
+
+func TestPRCommentList_ThreadGrouping(t *testing.T) {
+	const tid = "11111111-2222-3333-4444-555555555555"
+	var buf strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET " + prPath("7", "comments"): func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"comments": []map[string]any{
+					makeComment("c1", "user-aaa", "general top", nil, nil),
+					makeComment("c2", "user-bbb", "first in thread", strPtr("foo.go"), strPtr(tid)),
+					makeComment("c3", "user-ccc", "reply in thread", nil, strPtr(tid)),
+				},
+			})
+		},
+	}))
+	if err := rootForOut(cmd.PrCmd, &buf, "comment", "list", "-R", testNSPath, "7").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "general top") {
+		t.Fatalf("expected general comment in output, got: %s", out)
+	}
+	if !strings.Contains(out, "▸ Thread") {
+		t.Fatalf("expected thread header in output, got: %s", out)
+	}
+	if !strings.Contains(out, "first in thread") {
+		t.Fatalf("expected first thread comment in output, got: %s", out)
+	}
+	if !strings.Contains(out, "reply in thread") {
+		t.Fatalf("expected thread reply in output, got: %s", out)
+	}
+}
