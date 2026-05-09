@@ -6,6 +6,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
+| cli-pr-inline-comments | IN_PROGRESS | 091320ZMAY26 | Bastion (J-3) |
 | cli-issue-labels | IN_PROGRESS | 091315ZMAY26 | Bastion (J-3) |
 
 ## Done
