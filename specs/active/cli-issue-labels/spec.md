@@ -17,7 +17,7 @@ Namespace-level label management (list, create, edit, delete) is missing from th
 - `citadel-cli label list -R org/repo` — list all labels in namespace; `--output`
 - `citadel-cli label create -R org/repo --name <name> --color <hex> [--description <text>]` — create label
 - `citadel-cli label edit -R org/repo <slug>` — update name, color, or description; `--name`, `--color`, `--description`
-- `citadel-cli label delete -R org/repo <slug>` — delete label; `--yes` bypass; surface `labelDeleteGuard` error as actionable message
+- `citadel-cli label delete -R org/repo <slug>` — delete label; `--yes` bypass; surface `label_delete_blocked` error as actionable message
 
 ### API mapping
 
@@ -30,7 +30,7 @@ Namespace-level label management (list, create, edit, delete) is missing from th
 
 ### Response shapes (abbreviated)
 
-`Label` → `{id, namespace_id, slug, name, color, description?, created_at, updated_at}`
+`Label` → `{id, namespace_id, slug, display_name, color, description, is_default, semantic_role}`
 `list` → `{labels: [...]}`
 
 ### Error codes to surface explicitly
@@ -39,7 +39,7 @@ Namespace-level label management (list, create, edit, delete) is missing from th
 |------|--------|-----------------|
 | `label_not_found` | 404 | Label `<slug>` not found |
 | `label_already_exists` | 409 | Label `<slug>` already exists |
-| `label_delete_guard` | 422 | Cannot delete last default label for semantic role |
+| `label_delete_blocked` | 409 | Cannot delete last default label for semantic role |
 
 ## Out of scope
 
@@ -58,13 +58,14 @@ Namespace-level label management (list, create, edit, delete) is missing from th
 | Q3 | `edit` verb or `update`? | `edit` — shorter, consistent with `gh label edit` | Pending |
 | Q4 | `--yes` flag for delete? | Yes — destructive operation, guard by default | Pending |
 | Q5 | `--color` format: bare hex vs `#`-prefixed? | Accept both; normalise to `#rrggbb` before POST | Pending |
+| Q6 | Slug for create: explicit `--slug` or auto-derived from `--name`? | Auto-slugify from `--name` (lowercase, spaces→hyphens, strip non-alnum); `--slug` overrides when explicit | Pending |
 
 ## Acceptance criteria
 
 - A1. `label list -R org/repo` renders table with slug, name, color, description; supports `--output`.
-- A2. `label create -R org/repo --name foo --color #a2eeef --description "bug track"` creates label; prints slug on success.
+- A2. `label create -R org/repo --name "Good First Issue" --color #a2eeef` creates label with auto-slug `good-first-issue`; `--slug` overrides; prints slug on success.
 - A3. `label edit -R org/repo <slug>` patches only supplied fields; errors if none supplied.
-- A4. `label delete -R org/repo <slug>` deletes label; `--yes` skips confirmation; `labelDeleteGuard` 422 surfaced as actionable error.
+- A4. `label delete -R org/repo <slug>` deletes label; `--yes` skips confirmation; `label_delete_blocked` 409 surfaced as actionable error.
 - A5. Shell completion for label slugs on `edit` and `delete`.
 - A6. Handler tests for all verbs including error paths (404, 409, 422).
 - A7. `docs/cli.md` updated.
