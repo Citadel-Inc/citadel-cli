@@ -1,6 +1,6 @@
 # Tasks — cli-pr-inline-comments
 
-Status: IN_PROGRESS 091320ZMAY26 — Bastion (J-3) claims execution
+Status: DONE 091518ZMAY26 — Shipped inline PR comment flags (--diff-file, --diff-line, --diff-side, --diff-sha, --thread-id) on `pr comment add`; client-side validation for paired flags and side values; --inline/--general filters and thread-grouped human output on `pr comment list`; --diff-file tab completion via diff endpoint; handler tests covering all paths; docs/cli.md updated. make verify passes. C1 (live smoke) deferred — gates on CITADEL_TEST_PR_INLINE_LIVE=1.
 Priority: Medium
 
 ## P0
