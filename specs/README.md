@@ -7,7 +7,6 @@
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
 | cli-pr-inline-comments | IN_PROGRESS | 091320ZMAY26 | Bastion (J-3) |
-| cli-issue-labels | IN_PROGRESS | 091315ZMAY26 | Bastion (J-3) |
 
 ## Done
 
@@ -15,6 +14,7 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-issue-labels | 091337ZMAY26 | Shipped top-level `citadel-cli label` command group (list/create/edit/delete). Auto-slugify from --name with --slug override. GET-then-PATCH edit to preserve fields. label_delete_blocked 409 surfaced. Shell completion, 15 handler tests, docs/cli.md section, make verify GREEN. |
 | cli-pull-requests | 080834ZMAY26 | Implemented full PR command surface (13 verbs) against prsapi: list, view, create, close, merge, diff (stat table + single-file unified), check, comment list/add, reviewer list/add, review (approve/request-changes/comment). 33 handler tests pass. make verify clean. docs/cli.md updated. |
 | cli-org-members | 080809ZMAY26 | Shipped org member list, set-permissions, and remove. 14/14 handler tests green, make verify clean. docs/cli.md updated. C1 (live smoke) and C2 left as P2 open rows per allow_open. |
 | cli-namespace-profile | 072216ZMAY26 | namespace profile get shipped: reads GET /api/namespaces/{slug}/profile, renders identity fields as human table with JSON/YAML/table output modes; social links sorted+flattened; owner-only fields shown when applicable; 8 handler tests green; make verify passes (0 lint issues). C1 live smoke deferred to next integration pass. |
@@ -64,3 +64,4 @@
 | cli-account-privacy | 072200ZMAY26 | Settings-panel concern, not a dev-loop workflow. No GitHub CLI analogue. Privacy preference toggles belong in a browser/UI settings surface; they are not actions a developer would need mid-session. Superseded by the CLI-as-workflow-tool principle. |
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
+

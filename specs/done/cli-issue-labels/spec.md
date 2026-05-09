@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | IN_PROGRESS 091315ZMAY26 — Bastion (J-3) claims execution |
+| Status | DONE 091337ZMAY26 — Shipped top-level `citadel-cli label` command group (list/create/edit/delete). Auto-slugify from --name with --slug override. GET-then-PATCH edit to preserve fields. label_delete_blocked 409 surfaced. Shell completion, 15 handler tests, docs/cli.md section, make verify GREEN. |
 | Priority | Medium — completes label management surface; assign/remove already ship |
 | Authored | 091311ZMAY26 |
 | Owner | Bastion (J-3) |
