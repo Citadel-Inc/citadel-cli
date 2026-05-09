@@ -96,6 +96,21 @@ Examples:
 	RunE: runNsDelete,
 }
 
+// ── rename ───────────────────────────────────────────────────────────────────
+
+var nsRenameCmd = &cobra.Command{
+	Use:   "rename <slug>",
+	Short: "Rename (re-slug) a namespace",
+	Long: `Rename a namespace to a new slug. The old slug becomes a redirect alias.
+Requires typed-slug confirmation unless --yes is set.
+
+Examples:
+  citadel-cli namespace rename myorg --new-slug new-org-name
+  citadel-cli namespace rename myorg --new-slug new-org-name --yes`,
+	Args: cobra.ExactArgs(1),
+	RunE: runNsRename,
+}
+
 // ── transfer ─────────────────────────────────────────────────────────────────
 
 var nsTransferCmd = &cobra.Command{
@@ -742,6 +757,44 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runNsRename(cmd *cobra.Command, args []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	slug := strings.TrimSpace(args[0])
+	newSlug, _ := cmd.Flags().GetString("new-slug")
+	newSlug = strings.TrimSpace(newSlug)
+	if newSlug == "" {
+		return fmt.Errorf("--new-slug is required")
+	}
+	if dryRunFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would rename %s → %s (skipped; --dry-run)\n", slug, newSlug)
+		return nil
+	}
+	if err := confirmSlug(yesFlag(cmd), "rename namespace", slug); err != nil {
+		return err
+	}
+	output := outputFlag(cmd)
+	var result map[string]any
+	if err := c.Post(cmd.Context(), "/namespaces/"+url.PathEscape(slug)+"/rename", map[string]string{
+		"new_slug": newSlug,
+	}, &result); err != nil {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("namespace '%s' not found", slug)
+		}
+		if apiclient.IsStatus(err, http.StatusConflict) {
+			return fmt.Errorf("slug '%s' is already taken", newSlug)
+		}
+		return err
+	}
+	if strings.EqualFold(strings.TrimSpace(output), "json") {
+		return emitJSON(cmd, result)
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Renamed namespace %s → %s.\n", slug, newSlug)
+	return nil
+}
+
 func completeOrgNamespaceSlugs(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
@@ -758,6 +811,7 @@ func init() {
 	NamespaceCmd.AddCommand(nsGetCmd)
 	NamespaceCmd.AddCommand(nsMembersCmd)
 	NamespaceCmd.AddCommand(nsDeleteCmd)
+	NamespaceCmd.AddCommand(nsRenameCmd)
 	NamespaceCmd.AddCommand(nsTransferCmd)
 
 	nsTransferCmd.AddCommand(nsTransferInitiateCmd)
@@ -766,13 +820,16 @@ func init() {
 	nsTransferCmd.AddCommand(nsTransferDeclineCmd)
 	nsTransferCmd.AddCommand(nsTransferRevokeCmd)
 
-	addOutputFlag(nsListCmd, nsGetCmd, nsMembersCmd, nsDeleteCmd,
+	addOutputFlag(nsListCmd, nsGetCmd, nsMembersCmd, nsDeleteCmd, nsRenameCmd,
 		nsTransferInitiateCmd, nsTransferListPendingCmd,
 		nsTransferAcceptCmd, nsTransferDeclineCmd, nsTransferRevokeCmd)
 	addPaginationFlags(nsListCmd, nsMembersCmd, nsTransferListPendingCmd)
 	addWatchFlag(nsListCmd, nsMembersCmd, nsTransferListPendingCmd)
-	addYesFlag(nsDeleteCmd, nsTransferInitiateCmd, nsTransferRevokeCmd)
-	addDryRunFlag(nsDeleteCmd, nsTransferRevokeCmd)
+	addYesFlag(nsDeleteCmd, nsRenameCmd, nsTransferInitiateCmd, nsTransferRevokeCmd)
+	addDryRunFlag(nsDeleteCmd, nsRenameCmd, nsTransferRevokeCmd)
+
+	nsRenameCmd.Flags().String("new-slug", "", "New slug for the namespace (required)")
+	nsRenameCmd.ValidArgsFunction = completeOrgNamespaceSlugs
 	nsTransferInitiateCmd.Flags().String("to", "", "Recipient username (required)")
 	_ = nsTransferInitiateCmd.MarkFlagRequired("to")
 

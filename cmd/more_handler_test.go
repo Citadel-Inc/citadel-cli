@@ -486,3 +486,57 @@ func TestAgentCreate_Forbidden(t *testing.T) {
 		t.Fatalf("want 'insufficient permission' error, got %v", err)
 	}
 }
+
+// ── namespace rename ──────────────────────────────────────────────────────────
+
+func TestNsRename_Happy(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /namespaces/myorg/rename": func(w http.ResponseWriter, r *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"slug": "new-org"})
+		},
+	}))
+	if err := rootFor(cmd.NamespaceCmd, "rename", "myorg", "--new-slug", "new-org", "--yes").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNsRename_Conflict(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /namespaces/myorg/rename": func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, `{"error":"conflict"}`, http.StatusConflict)
+		},
+	}))
+	err := rootFor(cmd.NamespaceCmd, "rename", "myorg", "--new-slug", "taken", "--yes").Execute()
+	if err == nil || !strings.Contains(err.Error(), "already taken") {
+		t.Fatalf("want 'already taken' error, got %v", err)
+	}
+}
+
+func TestNsRename_NotFound(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /namespaces/gone/rename": func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, `{"error":"not_found"}`, http.StatusNotFound)
+		},
+	}))
+	err := rootFor(cmd.NamespaceCmd, "rename", "gone", "--new-slug", "other", "--yes").Execute()
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("want not-found error, got %v", err)
+	}
+}
+
+func TestNsRename_MissingNewSlug(t *testing.T) {
+	err := rootFor(cmd.NamespaceCmd, "rename", "myorg", "--yes").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--new-slug") {
+		t.Fatalf("want --new-slug error, got %v", err)
+	}
+}
+
+func TestNsRename_DryRun(t *testing.T) {
+	var out strings.Builder
+	if err := rootForOut(cmd.NamespaceCmd, &out, "rename", "myorg", "--new-slug", "new-org", "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "Would rename") {
+		t.Fatalf("expected 'Would rename' in output, got: %s", out.String())
+	}
+}
