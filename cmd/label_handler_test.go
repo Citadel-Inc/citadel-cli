@@ -251,3 +251,87 @@ func TestLabelDelete_DryRun(t *testing.T) {
 		t.Fatalf("unexpected output: %s", out.String())
 	}
 }
+
+// ── clone ─────────────────────────────────────────────────────────────────────
+
+func TestLabelClone_Happy(t *testing.T) {
+	calls := 0
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			writeJSON(t, w, 200, labelsPayload(labelJSON("bug", "Bug", "#d73a4a", false)))
+			return
+		}
+		if r.Method == http.MethodPost {
+			calls++
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			if got := body["slug"]; got != "bug" {
+				t.Fatalf("slug=%v", got)
+			}
+			writeJSON(t, w, http.StatusCreated, labelJSON("bug", "Bug", "#d73a4a", false))
+			return
+		}
+		http.NotFound(w, r)
+	})
+	if err := rootFor(cmd.LabelCmd, "clone", "--from", "acme/src", "--to", "acme/dst").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("want 1 POST call, got %d", calls)
+	}
+}
+
+func TestLabelClone_SkipsConflict(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			writeJSON(t, w, 200, labelsPayload(labelJSON("bug", "Bug", "#d73a4a", false)))
+			return
+		}
+		if r.Method == http.MethodPost {
+			http.Error(w, `{"error":"conflict"}`, http.StatusConflict)
+			return
+		}
+		http.NotFound(w, r)
+	})
+	var out strings.Builder
+	if err := rootForOut(cmd.LabelCmd, &out, "clone", "--from", "acme/src", "--to", "acme/dst").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "skipped") {
+		t.Fatalf("expected 'skipped' in output, got: %s", out.String())
+	}
+}
+
+func TestLabelClone_DryRun(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			writeJSON(t, w, 200, labelsPayload(labelJSON("bug", "Bug", "#d73a4a", false)))
+			return
+		}
+		t.Error("should not POST in dry-run mode")
+		http.NotFound(w, r)
+	})
+	var out strings.Builder
+	if err := rootForOut(cmd.LabelCmd, &out, "clone", "--from", "acme/src", "--to", "acme/dst", "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "Would create") {
+		t.Fatalf("expected 'Would create' in output, got: %s", out.String())
+	}
+}
+
+func TestLabelClone_MissingFrom(t *testing.T) {
+	err := rootFor(cmd.LabelCmd, "clone", "--to", "acme/dst").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--from") {
+		t.Fatalf("want --from required error, got %v", err)
+	}
+}
+
+func TestLabelClone_SameSrcDst(t *testing.T) {
+	err := rootFor(cmd.LabelCmd, "clone", "--from", "acme/demo", "--to", "acme/demo").Execute()
+	if err == nil || !strings.Contains(err.Error(), "differ") {
+		t.Fatalf("want src!=dst error, got %v", err)
+	}
+}

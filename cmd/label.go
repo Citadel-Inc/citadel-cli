@@ -53,6 +53,19 @@ var labelDeleteCmd = &cobra.Command{
 	RunE:              runLabelDelete,
 }
 
+var labelCloneCmd = &cobra.Command{
+	Use:   "clone",
+	Short: "Copy labels from one namespace to another",
+	Long: `Copies all labels from the source namespace to the destination namespace.
+Labels that already exist in the destination (by slug) are skipped.
+Use --dry-run to preview without making changes.
+
+Examples:
+  citadel-cli label clone --from acme/template --to acme/new-repo
+  citadel-cli label clone --from acme/template --to acme/new-repo --dry-run`,
+	RunE: runLabelClone,
+}
+
 func labelBasePath(nsPath string) string {
 	return "/namespaces/" + url.PathEscape(nsPath) + "/labels"
 }
@@ -358,13 +371,77 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runLabelClone(cmd *cobra.Command, _ []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	src, _ := cmd.Flags().GetString("from")
+	dst, _ := cmd.Flags().GetString("to")
+	src = strings.TrimSpace(src)
+	dst = strings.TrimSpace(dst)
+	if src == "" {
+		return fmt.Errorf("--from is required")
+	}
+	if dst == "" {
+		return fmt.Errorf("--to is required")
+	}
+	if src == dst {
+		return fmt.Errorf("--from and --to must differ")
+	}
+	labels, err := fetchLabels(cmd.Context(), c, src)
+	if err != nil {
+		return fmt.Errorf("fetch labels from %s: %w", src, err)
+	}
+	if len(labels) == 0 {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No labels in %s to clone.\n", src)
+		return nil
+	}
+	dryRun := dryRunFlag(cmd)
+	skip := 0
+	created := 0
+	for _, l := range labels {
+		if dryRun {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would create label '%s' in %s\n", l.Slug, dst)
+			continue
+		}
+		payload := map[string]any{
+			"slug":         l.Slug,
+			"display_name": l.DisplayName,
+			"color":        l.Color,
+			"description":  l.Description,
+		}
+		var out issueLabel
+		if err := c.Post(cmd.Context(), labelBasePath(dst), payload, &out); err != nil {
+			if apiclient.IsStatus(err, http.StatusConflict) {
+				skip++
+				continue
+			}
+			return fmt.Errorf("create label '%s' in %s: %w", l.Slug, dst, err)
+		}
+		created++
+	}
+	if dryRun {
+		return nil
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Cloned %d label(s) to %s", created, dst)
+	if skip > 0 {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), " (%d skipped, already exist)", skip)
+	}
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), ".")
+	return nil
+}
+
 func init() {
-	LabelCmd.AddCommand(labelListCmd, labelCreateCmd, labelEditCmd, labelDeleteCmd)
+	LabelCmd.AddCommand(labelListCmd, labelCreateCmd, labelEditCmd, labelDeleteCmd, labelCloneCmd)
 
 	addIssuePathFlag(labelListCmd, labelCreateCmd, labelEditCmd, labelDeleteCmd)
 	addOutputFlag(labelListCmd, labelCreateCmd, labelEditCmd, labelDeleteCmd)
 	addYesFlag(labelDeleteCmd)
-	addDryRunFlag(labelDeleteCmd)
+	addDryRunFlag(labelDeleteCmd, labelCloneCmd)
+
+	labelCloneCmd.Flags().String("from", "", "Source namespace path (required)")
+	labelCloneCmd.Flags().String("to", "", "Destination namespace path (required)")
 
 	labelCreateCmd.Flags().String("name", "", "Label display name")
 	labelCreateCmd.Flags().String("color", "", "Label color as 6-character hex (e.g. a2eeef or #a2eeef)")
