@@ -215,11 +215,12 @@ func TestIssueMilestoneDeleteFlags(t *testing.T) {
 	}
 }
 
-func TestIssueCommentFlags(t *testing.T) {
-	c := findSubcmd(t, cmd.IssueCmd, "comment")
+func TestIssueCommentAddFlags(t *testing.T) {
+	commentCmd := findSubcmd(t, cmd.IssueCmd, "comment")
+	c := findSubcmd(t, commentCmd, "add")
 	for _, flag := range []string{"repo", "body", "output"} {
 		if !hasFlag(c, flag) {
-			t.Errorf("citadel issue comment: missing flag --%s", flag)
+			t.Errorf("citadel issue comment add: missing flag --%s", flag)
 		}
 	}
 }

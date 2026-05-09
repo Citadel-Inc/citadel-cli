@@ -47,11 +47,44 @@ var issueCreateCmd = &cobra.Command{
 	RunE:  runIssueCreate,
 }
 
+var issueEditCmd = &cobra.Command{
+	Use:   "edit <number>",
+	Short: "Edit an issue",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runIssueEdit,
+}
+
+var issueAssignCmd = &cobra.Command{
+	Use:   "assign <number>",
+	Short: "Set assignees on an issue",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runIssueAssign,
+}
+
 var issueCommentCmd = &cobra.Command{
-	Use:   "comment <number>",
+	Use:   "comment",
+	Short: "Add, list, or edit issue comments",
+}
+
+var issueCommentAddCmd = &cobra.Command{
+	Use:   "add <number>",
 	Short: "Add a comment to an issue",
 	Args:  cobra.ExactArgs(1),
-	RunE:  runIssueComment,
+	RunE:  runIssueCommentAdd,
+}
+
+var issueCommentListCmd = &cobra.Command{
+	Use:   "list <number>",
+	Short: "List comments on an issue",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runIssueCommentList,
+}
+
+var issueCommentEditCmd = &cobra.Command{
+	Use:   "edit <comment-id>",
+	Short: "Edit an issue comment",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runIssueCommentEdit,
 }
 
 var issueCloseCmd = &cobra.Command{
@@ -604,7 +637,110 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func runIssueComment(cmd *cobra.Command, args []string) error {
+func runIssueEdit(cmd *cobra.Command, args []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
+	num, err := parseIssueNumber(args[0])
+	if err != nil {
+		return err
+	}
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "edit"); err != nil {
+		return err
+	}
+	payload := map[string]any{}
+	if f := cmd.Flags().Lookup("title"); f != nil && f.Changed {
+		v, _ := cmd.Flags().GetString("title")
+		payload["title"] = strings.TrimSpace(v)
+	}
+	if f := cmd.Flags().Lookup("body"); f != nil && f.Changed {
+		v, _ := cmd.Flags().GetString("body")
+		payload["body_markdown"] = v
+	}
+	if f := cmd.Flags().Lookup("state"); f != nil && f.Changed {
+		v, _ := cmd.Flags().GetString("state")
+		v = strings.TrimSpace(strings.ToLower(v))
+		switch v {
+		case "open", "closed":
+		default:
+			return fmt.Errorf("--state must be open or closed")
+		}
+		payload["state"] = v
+	}
+	if f := cmd.Flags().Lookup("milestone"); f != nil && f.Changed {
+		raw, _ := cmd.Flags().GetString("milestone")
+		id, err := parseMilestoneID(raw)
+		if err != nil {
+			return err
+		}
+		payload["milestone_id"] = id
+	}
+	if len(payload) == 0 {
+		return fmt.Errorf("set at least one of --title, --body, --state, --milestone")
+	}
+	var updated issueRow
+	if err := c.Patch(cmd.Context(), issueBasePath(nsPath)+"/"+strconv.FormatInt(num, 10), payload, &updated); err != nil {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("issue %s#%d not found", nsPath, num)
+		}
+		return err
+	}
+	if strings.EqualFold(strings.TrimSpace(output), "json") {
+		return emitJSON(cmd, updated)
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Updated issue %s#%d.\n", nsPath, num)
+	return nil
+}
+
+func runIssueAssign(cmd *cobra.Command, args []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
+	num, err := parseIssueNumber(args[0])
+	if err != nil {
+		return err
+	}
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "assign"); err != nil {
+		return err
+	}
+	set, _ := cmd.Flags().GetStringSlice("set")
+	set = normalizeStringSlice(set)
+	if set == nil {
+		set = []string{}
+	}
+	if err := c.Put(cmd.Context(), issueBasePath(nsPath)+"/"+strconv.FormatInt(num, 10)+"/assignees", map[string]any{
+		"assignees": set,
+	}, nil); err != nil {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("issue %s#%d not found", nsPath, num)
+		}
+		return err
+	}
+	if strings.EqualFold(strings.TrimSpace(output), "json") {
+		return emitJSON(cmd, map[string]any{
+			"status":         "ok",
+			"namespace_path": nsPath,
+			"number":         num,
+			"assignees":      set,
+		})
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Updated assignees on issue %s#%d.\n", nsPath, num)
+	return nil
+}
+
+func runIssueCommentAdd(cmd *cobra.Command, args []string) error {
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -641,6 +777,107 @@ func runIssueComment(cmd *cobra.Command, args []string) error {
 		return emitJSON(cmd, created)
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Added comment %s to %s#%d.\n", created.ID, nsPath, num)
+	return nil
+}
+
+func runIssueCommentList(cmd *cobra.Command, args []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
+	num, err := parseIssueNumber(args[0])
+	if err != nil {
+		return err
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	var payload struct {
+		Comments []issueComment `json:"comments"`
+	}
+	if err := c.Get(cmd.Context(), issueBasePath(nsPath)+"/"+strconv.FormatInt(num, 10)+"/comments", &payload); err != nil {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("issue %s#%d not found", nsPath, num)
+		}
+		return err
+	}
+	comments := payload.Comments
+	if comments == nil {
+		comments = []issueComment{}
+	}
+	if len(comments) == 0 {
+		switch output {
+		case "json":
+			return emitJSON(cmd, []issueComment{})
+		case "yaml":
+			return emitYAML(cmd, []issueComment{})
+		case "ndjson":
+			return nil
+		default:
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No comments on issue %s#%d.\n", nsPath, num)
+			return nil
+		}
+	}
+	switch output {
+	case "json":
+		return emitJSON(cmd, comments)
+	case "yaml":
+		return emitYAML(cmd, comments)
+	case "ndjson":
+		return emitNDJSONLines(cmd, comments)
+	default:
+		w := newTabWriter(cmd)
+		_, _ = fmt.Fprintln(w, "ID\tAUTHOR\tEDITS\tCREATED")
+		for _, co := range comments {
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\n", co.ID, co.AuthorID, co.EditCount, formatRFC3339UTC(co.CreatedAt))
+		}
+		return w.Flush()
+	}
+}
+
+func runIssueCommentEdit(cmd *cobra.Command, args []string) error {
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
+	commentID := strings.TrimSpace(args[0])
+	if commentID == "" {
+		return fmt.Errorf("comment ID required")
+	}
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "edit"); err != nil {
+		return err
+	}
+	body, err := readIssueBody(cmd, "body")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(body) == "" {
+		return fmt.Errorf("comment body cannot be empty")
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	path := "/namespaces/" + url.PathEscape(nsPath) + "/issues/comments/" + url.PathEscape(commentID)
+	var updated issueComment
+	if err := c.Patch(cmd.Context(), path, map[string]string{
+		"body_markdown": body,
+	}, &updated); err != nil {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("comment %s not found", commentID)
+		}
+		return err
+	}
+	if strings.EqualFold(strings.TrimSpace(output), "json") {
+		return emitJSON(cmd, updated)
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Updated comment %s.\n", updated.ID)
 	return nil
 }
 
@@ -788,14 +1025,28 @@ func init() {
 	IssueCmd.AddCommand(issueListCmd)
 	IssueCmd.AddCommand(issueViewCmd)
 	IssueCmd.AddCommand(issueCreateCmd)
+	IssueCmd.AddCommand(issueEditCmd)
+	IssueCmd.AddCommand(issueAssignCmd)
 	IssueCmd.AddCommand(issueCommentCmd)
 	IssueCmd.AddCommand(issueCloseCmd)
 	IssueCmd.AddCommand(issueReopenCmd)
 	IssueCmd.AddCommand(issueLabelCmd)
 	IssueCmd.AddCommand(issueCloseRefsCmd)
 
-	addIssuePathFlag(issueListCmd, issueViewCmd, issueCreateCmd, issueCommentCmd, issueCloseCmd, issueReopenCmd, issueLabelCmd, issueCloseRefsCmd)
-	addOutputFlag(issueListCmd, issueViewCmd, issueCreateCmd, issueCommentCmd, issueCloseCmd, issueReopenCmd, issueLabelCmd, issueCloseRefsCmd)
+	issueCommentCmd.AddCommand(issueCommentAddCmd)
+	issueCommentCmd.AddCommand(issueCommentListCmd)
+	issueCommentCmd.AddCommand(issueCommentEditCmd)
+
+	addIssuePathFlag(
+		issueListCmd, issueViewCmd, issueCreateCmd, issueEditCmd, issueAssignCmd,
+		issueCommentAddCmd, issueCommentListCmd, issueCommentEditCmd,
+		issueCloseCmd, issueReopenCmd, issueLabelCmd, issueCloseRefsCmd,
+	)
+	addOutputFlag(
+		issueListCmd, issueViewCmd, issueCreateCmd, issueEditCmd, issueAssignCmd,
+		issueCommentAddCmd, issueCommentListCmd, issueCommentEditCmd,
+		issueCloseCmd, issueReopenCmd, issueLabelCmd, issueCloseRefsCmd,
+	)
 	addPaginationFlags(issueListCmd)
 
 	issueListCmd.Flags().String("state", "open", "Issue state filter: open, closed, or all")
@@ -811,7 +1062,16 @@ func init() {
 	_ = issueCreateCmd.RegisterFlagCompletionFunc("milestone", completeIssueMilestoneIDs)
 	_ = issueCreateCmd.MarkFlagRequired("title")
 
-	issueCommentCmd.Flags().String("body", "", "Comment body markdown (defaults to stdin or $EDITOR)")
+	issueEditCmd.Flags().String("title", "", "New title")
+	issueEditCmd.Flags().String("body", "", "New body markdown")
+	issueEditCmd.Flags().String("state", "", "New state: open or closed")
+	issueEditCmd.Flags().String("milestone", "", "Milestone UUID (empty string clears)")
+	_ = issueEditCmd.RegisterFlagCompletionFunc("milestone", completeIssueMilestoneIDs)
+
+	issueAssignCmd.Flags().StringSlice("set", nil, "Assignee slugs or UUIDs (replaces all; pass empty to clear)")
+
+	issueCommentAddCmd.Flags().String("body", "", "Comment body markdown (defaults to stdin or $EDITOR)")
+	issueCommentEditCmd.Flags().String("body", "", "New comment body markdown (defaults to stdin or $EDITOR)")
 
 	issueLabelCmd.Flags().StringSlice("add", nil, "Add one or more label slugs")
 	issueLabelCmd.Flags().StringSlice("remove", nil, "Remove one or more label slugs")
