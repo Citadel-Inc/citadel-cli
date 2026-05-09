@@ -125,13 +125,17 @@ type prReviewer struct {
 }
 
 type prComment struct {
-	ID           string     `json:"id"`
-	PRID         string     `json:"pr_id"`
-	AuthorID     string     `json:"author_id"`
-	BodyMarkdown string     `json:"body_markdown"`
-	ThreadID     *string    `json:"thread_id,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	ID            string    `json:"id"`
+	PRID          string    `json:"pr_id"`
+	AuthorID      string    `json:"author_id"`
+	BodyMarkdown  string    `json:"body_markdown"`
+	ThreadID      *string   `json:"thread_id,omitempty"`
+	DiffCommitSHA *string   `json:"diff_commit_sha,omitempty"`
+	DiffFile      *string   `json:"diff_file,omitempty"`
+	DiffLine      *int      `json:"diff_line,omitempty"`
+	DiffSide      *string   `json:"diff_side,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type prListRow struct {
@@ -225,6 +229,12 @@ func prFriendlyError(err error) error {
 		return fmt.Errorf("title, --source, and --target are required")
 	case "invalid_refs":
 		return fmt.Errorf("one or both refs could not be resolved in the repository")
+	case "invalid_inline_anchor":
+		return fmt.Errorf("--diff-file and --diff-line must be supplied together")
+	case "thread_not_found":
+		return fmt.Errorf("thread not found on this PR")
+	case "invalid_diff_side":
+		return fmt.Errorf("--diff-side must be \"left\" or \"right\"")
 	}
 	return err
 }

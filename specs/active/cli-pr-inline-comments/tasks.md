@@ -19,3 +19,4 @@ Priority: Medium
 
 - [ ] C1. Live smoke test behind `CITADEL_TEST_PR_INLINE_LIVE=1`.
 - [ ] C2. Spec close.
+- [ ] D1. `--diff-file` flag completion: fetch changed-file list from `pr diff` endpoint and register via `RegisterFlagCompletionFunc`.

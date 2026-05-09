@@ -223,29 +223,84 @@ func runPRCommentList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
+	client, err := newAPIClient(cmd)
 	if err != nil {
 		return err
+	}
+	onlyInline, _ := cmd.Flags().GetBool("inline")
+	onlyGeneral, _ := cmd.Flags().GetBool("general")
+	if onlyInline && onlyGeneral {
+		return fmt.Errorf("--inline and --general are mutually exclusive")
 	}
 
 	path := prBasePath(nsPath) + "/" + strconv.FormatInt(num, 10) + "/comments"
 	var payload struct {
 		Comments []prComment `json:"comments"`
 	}
-	if err := c.Get(cmd.Context(), path, &payload); err != nil {
+	if err := client.Get(cmd.Context(), path, &payload); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {
 			return fmt.Errorf("PR %s#%d not found", nsPath, num)
 		}
 		return err
 	}
-	if len(payload.Comments) == 0 {
+
+	comments := payload.Comments
+	if onlyInline || onlyGeneral {
+		var filtered []prComment
+		for _, c := range comments {
+			isInline := c.DiffFile != nil
+			if (onlyInline && isInline) || (onlyGeneral && !isInline) {
+				filtered = append(filtered, c)
+			}
+		}
+		comments = filtered
+	}
+
+	if len(comments) == 0 {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No comments on PR %s#%d.\n", nsPath, num)
 		return nil
 	}
-	for _, c := range payload.Comments {
+
+	// Separate standalone comments from threaded comments.
+	var standalone []prComment
+	threads := make(map[string][]prComment)
+	var threadOrder []string
+	for _, c := range comments {
+		if c.ThreadID != nil {
+			tid := *c.ThreadID
+			if _, exists := threads[tid]; !exists {
+				threadOrder = append(threadOrder, tid)
+			}
+			threads[tid] = append(threads[tid], c)
+		} else {
+			standalone = append(standalone, c)
+		}
+	}
+
+	for _, c := range standalone {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "— %s (%s)\n", c.AuthorID, formatRFC3339UTC(c.CreatedAt))
 		if body := strings.TrimSpace(c.BodyMarkdown); body != "" {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), body)
+		}
+		_, _ = fmt.Fprintln(cmd.OutOrStdout())
+	}
+
+	for _, tid := range threadOrder {
+		tComments := threads[tid]
+		first := tComments[0]
+		header := "▸ Thread " + tid[:min(8, len(tid))]
+		if first.DiffFile != nil {
+			header += " — " + *first.DiffFile
+			if first.DiffLine != nil {
+				header += ":" + strconv.Itoa(*first.DiffLine)
+			}
+		}
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), header)
+		for _, c := range tComments {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  — %s (%s)\n", c.AuthorID, formatRFC3339UTC(c.CreatedAt))
+			if body := strings.TrimSpace(c.BodyMarkdown); body != "" {
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  "+body)
+			}
 		}
 		_, _ = fmt.Fprintln(cmd.OutOrStdout())
 	}
@@ -269,15 +324,66 @@ func runPRCommentAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("comment body required: pass --body, pipe markdown on stdin, or set $EDITOR")
 	}
 
+	diffFile, _ := cmd.Flags().GetString("diff-file")
+	diffLine, _ := cmd.Flags().GetInt("diff-line")
+	diffSide, _ := cmd.Flags().GetString("diff-side")
+	diffSHA, _ := cmd.Flags().GetString("diff-sha")
+	threadID, _ := cmd.Flags().GetString("thread-id")
+
+	diffFile = strings.TrimSpace(diffFile)
+	diffSHA = strings.TrimSpace(diffSHA)
+	threadID = strings.TrimSpace(threadID)
+
+	if (diffFile == "") != (diffLine == 0) {
+		return fmt.Errorf("--diff-file and --diff-line must be supplied together")
+	}
+	if diffFile != "" {
+		if diffSide != "left" && diffSide != "right" {
+			return fmt.Errorf("--diff-side must be \"left\" or \"right\"")
+		}
+	} else if cmd.Flags().Changed("diff-side") {
+		return fmt.Errorf("--diff-side requires --diff-file")
+	}
+
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
 	path := prBasePath(nsPath) + "/" + strconv.FormatInt(num, 10) + "/comments"
+
+	reqBody := map[string]any{"body_markdown": body}
+	if diffFile != "" {
+		reqBody["diff_file"] = diffFile
+		reqBody["diff_line"] = diffLine
+		reqBody["diff_side"] = diffSide
+	}
+	if diffSHA != "" {
+		reqBody["diff_commit_sha"] = diffSHA
+	}
+	if threadID != "" {
+		reqBody["thread_id"] = threadID
+	}
+
 	var created prComment
-	if err := c.Post(cmd.Context(), path, map[string]string{"body_markdown": body}, &created); err != nil {
+	if err := c.Post(cmd.Context(), path, reqBody, &created); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {
 			return fmt.Errorf("PR %s#%d not found", nsPath, num)
+		}
+		var he *apiclient.HTTPError
+		if errors.As(err, &he) {
+			var errBody struct {
+				Error string `json:"error"`
+			}
+			if decErr := json.Unmarshal([]byte(he.Body), &errBody); decErr == nil {
+				switch errBody.Error {
+				case "invalid_inline_anchor":
+					return fmt.Errorf("--diff-file and --diff-line must be supplied together")
+				case "thread_not_found":
+					return fmt.Errorf("thread %q not found on this PR", threadID)
+				case "invalid_diff_side":
+					return fmt.Errorf("--diff-side must be \"left\" or \"right\"")
+				}
+			}
 		}
 		return err
 	}
@@ -422,6 +528,36 @@ func runPRReview(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// ── completion ────────────────────────────────────────────────────────────────
+
+func completePRDiffFiles(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) == 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	num, err := parsePRNumber(args[0])
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	path := prBasePath(nsPath) + "/" + strconv.FormatInt(num, 10) + "/diff"
+	var result prDiffResult
+	if err := c.Get(cmd.Context(), path, &result); err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	paths := make([]string, 0, len(result.Files))
+	for _, f := range result.Files {
+		paths = append(paths, f.Path)
+	}
+	return paths, cobra.ShellCompDirectiveNoFileComp
+}
+
 // ── init ──────────────────────────────────────────────────────────────────────
 
 func init() {
@@ -446,6 +582,15 @@ func init() {
 	prDiffCmd.Flags().String("file", "", "Narrow diff to a single file path (emits raw unified text)")
 
 	prCommentAddCmd.Flags().String("body", "", "Comment body markdown (reads stdin or $EDITOR when omitted)")
+	prCommentAddCmd.Flags().String("diff-file", "", "File path for inline comment (requires --diff-line)")
+	prCommentAddCmd.Flags().Int("diff-line", 0, "Hunk line number for inline comment (requires --diff-file)")
+	prCommentAddCmd.Flags().String("diff-side", "right", "Diff side for inline comment: left or right (default right)")
+	prCommentAddCmd.Flags().String("diff-sha", "", "Commit SHA to anchor inline comment")
+	prCommentAddCmd.Flags().String("thread-id", "", "Thread UUID to reply to an existing thread")
+	_ = prCommentAddCmd.RegisterFlagCompletionFunc("diff-file", completePRDiffFiles)
+
+	prCommentListCmd.Flags().Bool("inline", false, "Show only inline/thread comments")
+	prCommentListCmd.Flags().Bool("general", false, "Show only general (non-diff) comments")
 
 	prReviewerAddCmd.Flags().String("reviewer", "", "User UUID to add as reviewer (required)")
 	_ = prReviewerAddCmd.MarkFlagRequired("reviewer")
