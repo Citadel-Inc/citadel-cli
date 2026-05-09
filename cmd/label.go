@@ -89,7 +89,7 @@ func normalizeColor(s string) (string, error) {
 		return "", fmt.Errorf("--color must be a 6-character hex string (e.g. a2eeef or #a2eeef)")
 	}
 	for _, r := range s {
-		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') && (r < 'A' || r > 'F') {
 			return "", fmt.Errorf("--color must be a valid hex color string")
 		}
 	}

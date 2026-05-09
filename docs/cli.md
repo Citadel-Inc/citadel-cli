@@ -1058,6 +1058,67 @@ Human output sections: **Topics**, **Stars/Pins**, **Counts** (table), **License
 
 Empty repositories (no commits yet) only show topics, star/pin counts, and the counts table.
 
+## Labels
+
+`citadel-cli label` manages namespace-level labels (create, list, edit, delete). All subcommands require authentication and accept `-R org/namespace` to identify the namespace.
+
+### List labels
+
+```bash
+citadel-cli label list -R acme/demo
+citadel-cli label list -R acme/demo --output json
+```
+
+Columns: **SLUG**, **NAME**, **COLOR**, **DEFAULT**, **DESCRIPTION**.
+
+### Create a label
+
+```bash
+# Slug is auto-derived from --name (lowercase, spaces → hyphens)
+citadel-cli label create -R acme/demo --name "Good First Issue" --color a2eeef
+
+# Override the auto-slug
+citadel-cli label create -R acme/demo --name "Good First Issue" --color a2eeef --slug gfi
+
+# With description
+citadel-cli label create -R acme/demo --name "Bug" --color d73a4a --description "Something is broken"
+
+# JSON output
+citadel-cli label create -R acme/demo --name "Enhancement" --color a2eeef --output json
+```
+
+`--color` accepts a 6-character hex string with or without a leading `#`.
+
+### Edit a label
+
+```bash
+# Change color only (display_name and description preserved)
+citadel-cli label edit -R acme/demo bug --color ff0000
+
+# Rename
+citadel-cli label edit -R acme/demo bug --name "Defect"
+
+# Clear description
+citadel-cli label edit -R acme/demo bug --description ""
+```
+
+At least one of `--name`, `--color`, or `--description` must be supplied. Shell completion suggests label slugs.
+
+### Delete a label
+
+```bash
+# Interactive confirmation (type the slug to confirm)
+citadel-cli label delete -R acme/demo old-label
+
+# Skip confirmation
+citadel-cli label delete -R acme/demo old-label --yes
+
+# Dry run
+citadel-cli label delete -R acme/demo old-label --dry-run
+```
+
+Attempting to delete the last default label for a semantic role returns a `label_delete_blocked` error.
+
 ## Troubleshooting
 
 ### Environment health check
