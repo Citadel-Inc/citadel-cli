@@ -895,12 +895,39 @@ Reports `MERGEABLE` or `NOT MERGEABLE` with a reason: `fast_forward`, `clean`, `
 ### Comments
 
 ```bash
-# List general comments
+# List all comments (general + inline, threads grouped)
 citadel-cli pr comment list -R acme/demo 42
 
-# Add a comment
+# Show only general (non-diff) comments
+citadel-cli pr comment list -R acme/demo 42 --general
+
+# Show only inline / thread comments
+citadel-cli pr comment list -R acme/demo 42 --inline
+
+# Add a general comment
 citadel-cli pr comment add -R acme/demo 42 --body "LGTM"
+
+# Add an inline comment on a specific file and line (--diff-side defaults to right)
+citadel-cli pr comment add -R acme/demo 42 --body "nit: rename" \
+  --diff-file cmd/pr_collab.go --diff-line 42
+
+# Inline comment on the left (base) side
+citadel-cli pr comment add -R acme/demo 42 --body "was correct here" \
+  --diff-file cmd/pr_collab.go --diff-line 10 --diff-side left
+
+# Anchor to a specific commit SHA
+citadel-cli pr comment add -R acme/demo 42 --body "broken here" \
+  --diff-file cmd/pr_collab.go --diff-line 7 --diff-sha abc1234
+
+# Reply to an existing thread (supply the thread UUID from comment list)
+citadel-cli pr comment add -R acme/demo 42 --body "agreed, fixed" \
+  --diff-file cmd/pr_collab.go --diff-line 42 \
+  --thread-id 11111111-2222-3333-4444-555555555555
 ```
+
+`--diff-file` and `--diff-line` must be supplied together (error if only one is given). `--diff-side` accepts `left` or `right` (default `right`); it requires `--diff-file`. `--thread-id` is optional — omit to start a new thread, supply to reply to an existing one.
+
+Human output for `pr comment list` groups threaded inline comments under a `▸ Thread <id> — file:line` header. Use `--inline` or `--general` to filter when reviewing a large PR.
 
 ### Reviewers
 
