@@ -10,9 +10,9 @@ See [HUMANS.md § Repository layout](HUMANS.md#repository-layout) for the canoni
 
 ## Working conventions
 
-- **Conventional commits.** `type(scope): subject`; body explains motivation (WHY), not a file list. See [CONTRIBUTING.md](CONTRIBUTING.md).
-- **Continuous commit + push** authorised for the duration of `citadel-cli` work, using MCP Git tools when available.
-- **MCP-first Git/GitHub.** Prefer `mcp__rethunk-git__*` and `mcp__rethunk-github__*` over Bash `git` / `gh`. Bash is fallback only when an MCP tool genuinely lacks the operation.
+Generic commit / Git-MCP rules: **`~/.claude/CLAUDE.md`**. Project-specific:
+
+- **Continuous commit + push** authorised for the duration of `citadel-cli` work.
 - **Specs** MUST pass `mcp__citadel-sdd__spec_lint` before commit. Canonical bullet shape `- [ ]` / `- [x]`. Priority headings (`## P0` / `## P1` / `## P2`) live in `tasks.md` only.
 
 ## Spec lifecycle — use the MCP
