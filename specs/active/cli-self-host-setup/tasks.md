@@ -1,6 +1,6 @@
 # Tasks — cli-self-host-setup
 
-Status: DRAFT 101905ZMAY26
+Status: APPROVED 102004ZMAY26
 
 ## P0
 

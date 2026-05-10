@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DRAFT 101905ZMAY26 |
+| Status | APPROVED 102004ZMAY26 |
 | Priority | P1 |
 | Authored | 101905ZMAY26 |
 | Owner | Bastion (J-3) |
@@ -31,14 +31,14 @@ Phase 2 strategy (XVI.1, R3 off-ramp) transitions Citadel from Supabase Cloud to
 
 ## Decision log
 
-| Q | Proposal | Rationale |
+| Q | Decision | Rationale |
 |---|----------|-----------|
-| Q1 | Config file location: `~/.citadel/self-host.yaml` or env-var-first? | Env-var-first (`CITADEL_SELF_HOST_CONFIG` path override); default to `~/.citadel/self-host.yaml`. Operators can CI-inject via env. |
-| Q2 | Bootstrap token scope: always `admin` or configurable roles? | Always `admin` for Phase 2; Phase 3 may add role scoping. Q2 ratifies `admin` only. |
-| Q3 | Migration source: packaged bundle (vendored in binary) or remote fetch? | Packaged bundle first (shipped with binary from citadel repo); remote fetch (Git over HTTPS) as Phase 2 optional enhance. Reduces external deps at deploy time. |
-| Q4 | Health check RED condition: Citadel API down vs DB down vs both? | Separate signals: RED if API or DB unreachable; AMBER if migration pending (deployable but not production-ready). |
-| Q5 | Telemetry opt-out per command or global? | Global in config; commands respect `telemetry: false` flag. No telemetry sent unless explicitly enabled. |
-| Q6 | Bootstrap token output: stdout only or also write to a default file? | Stdout only; operators handle piping / logging. Clear security boundary (no automatic file write). |
+| Q1 | Ratified 101905ZMAY26 — `~/.citadel/self-host.yaml` default; `CITADEL_SELF_HOST_CONFIG` env-var override. | Env-var-first (`CITADEL_SELF_HOST_CONFIG` path override); default to `~/.citadel/self-host.yaml`. Operators can CI-inject via env. |
+| Q2 | Ratified 101905ZMAY26 — Bootstrap token always admin scope Phase 2; Phase 3 may add role scoping. | Always `admin` for Phase 2 simplicity; role scoping deferred until Phase 3 multi-tenant requirements clarified. |
+| Q3 | Ratified 101905ZMAY26 — Packaged migration bundle Phase 2 primary; remote fetch Phase 2 optional enhance. | Packaged bundle shipped with binary from citadel repo; remote fetch (Git over HTTPS) as Phase 2 optional enhance. Reduces external deps at deploy time. |
+| Q4 | Ratified 101905ZMAY26 — Health check RED if API or DB unreachable; AMBER if migrations pending. | Separate signals per health component: RED = deployment non-functional; AMBER = deployable but not production-ready (pending migrations). |
+| Q5 | Ratified 101905ZMAY26 — Telemetry global opt-out in config; commands respect `telemetry: false` flag. | Global opt-out in config file; no per-command override needed; telemetry disabled by default unless explicitly enabled. |
+| Q6 | Ratified 101905ZMAY26 — Bootstrap token to stdout only; no auto file write. | Stdout only; operators handle piping / logging. Clear security boundary: no automatic file write avoids accidental token persistence. |
 
 ## Acceptance criteria
 
