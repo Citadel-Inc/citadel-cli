@@ -203,32 +203,6 @@ func (r sshKeyRow) CSVRecord() []string {
 	return []string{r.ID, r.Fingerprint, r.PublicKey, lbl, formatRFC3339UTC(r.CreatedAt)}
 }
 
-// ── account passkeys / devices ────────────────────────────────────────────────
-
-func (passkeyRow) CSVHeader() []string {
-	return []string{"id", "name", "created_at"}
-}
-
-func (r passkeyRow) CSVRecord() []string {
-	return []string{r.ID, r.Name, formatRFC3339UTC(r.CreatedAt)}
-}
-
-func (deviceRow) CSVHeader() []string {
-	return []string{"id", "name", "user_agent", "last_seen_at", "created_at"}
-}
-
-func (r deviceRow) CSVRecord() []string {
-	last := ""
-	if !r.LastSeenAt.IsZero() {
-		last = formatRFC3339UTC(r.LastSeenAt)
-	}
-	cre := ""
-	if !r.CreatedAt.IsZero() {
-		cre = formatRFC3339UTC(r.CreatedAt)
-	}
-	return []string{r.ID, r.Name, r.UserAgent, last, cre}
-}
-
 // ── org invitations ───────────────────────────────────────────────────────────
 
 func (orgInvitationRow) CSVHeader() []string {

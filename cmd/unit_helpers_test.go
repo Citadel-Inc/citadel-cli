@@ -15,59 +15,6 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/internal/sseclient"
 )
 
-// ── decodePasskeyRows ─────────────────────────────────────────────────────────
-
-func TestDecodePasskeyRows_wrapped(t *testing.T) {
-	raw := []byte(`{"passkeys":[{"id":"pk1","name":"YubiKey","created_at":"2026-01-01T00:00:00Z"}]}`)
-	rows, ok := decodePasskeyRows(raw)
-	if !ok {
-		t.Fatal("expected ok=true for wrapped passkeys JSON")
-	}
-	if len(rows) != 1 || rows[0].ID != "pk1" {
-		t.Fatalf("got %+v", rows)
-	}
-}
-
-func TestDecodePasskeyRows_directArray(t *testing.T) {
-	raw := []byte(`[{"id":"pk1","name":"Key","created_at":"2026-01-01T00:00:00Z"},{"id":"pk2","name":"Key2","created_at":"2026-01-02T00:00:00Z"}]`)
-	rows, ok := decodePasskeyRows(raw)
-	if !ok {
-		t.Fatal("expected ok=true for direct array")
-	}
-	if len(rows) != 2 {
-		t.Fatalf("expected 2 rows, got %d", len(rows))
-	}
-}
-
-func TestDecodePasskeyRows_emptyWrapped(t *testing.T) {
-	raw := []byte(`{"passkeys":[]}`)
-	rows, ok := decodePasskeyRows(raw)
-	if !ok {
-		t.Fatal("expected ok=true for empty wrapped passkeys")
-	}
-	if len(rows) != 0 {
-		t.Fatalf("expected 0 rows, got %d", len(rows))
-	}
-}
-
-func TestDecodePasskeyRows_emptyArray(t *testing.T) {
-	raw := []byte(`[]`)
-	rows, ok := decodePasskeyRows(raw)
-	if !ok {
-		t.Fatal("expected ok=true for empty array")
-	}
-	if len(rows) != 0 {
-		t.Fatalf("expected 0 rows, got %d", len(rows))
-	}
-}
-
-func TestDecodePasskeyRows_invalid(t *testing.T) {
-	_, ok := decodePasskeyRows([]byte(`not json`))
-	if ok {
-		t.Fatal("expected ok=false for invalid JSON")
-	}
-}
-
 // ── deltaLabel ────────────────────────────────────────────────────────────────
 
 // deltaLabel is called by printDelta when lastDeltaLabel is empty/whitespace.

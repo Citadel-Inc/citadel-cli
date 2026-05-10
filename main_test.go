@@ -39,7 +39,7 @@ func TestRun_UnknownCommand_ExitsOne(t *testing.T) {
 func TestNewRootCmd_HasAllSubcommands(t *testing.T) {
 	root := newRootCmd()
 	want := []string{
-		"auth", "account", "token", "mcp", "kg", "repo", "namespace", "org",
+		"auth", "token", "mcp", "kg", "repo", "namespace", "org",
 		"agent", "oauth", "ssh-key", "completion", "doctor", "man", "audit",
 		"issue",
 		"search", "project",
@@ -59,28 +59,6 @@ func TestNewRootCmd_HasAllSubcommands(t *testing.T) {
 	// The persistent --server flag must be present so subcommands inherit it.
 	if root.PersistentFlags().Lookup("server") == nil {
 		t.Error("expected persistent --server flag")
-	}
-}
-
-func TestAccountSubcommands(t *testing.T) {
-	if cmd.AccountCmd == nil {
-		t.Fatal("AccountCmd is nil")
-	}
-	if len(cmd.AccountCmd.Commands()) == 0 {
-		t.Error("AccountCmd has no subcommands")
-	}
-	expectedAccount := []string{"passkey", "device"}
-	for _, expected := range expectedAccount {
-		found := false
-		for _, subcmd := range cmd.AccountCmd.Commands() {
-			if subcmd.Name() == expected {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("Expected account subcommand %q not found", expected)
-		}
 	}
 }
 
