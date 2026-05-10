@@ -1274,6 +1274,11 @@ Exit code 0 = GREEN; 1 = AMBER or RED.
 
 Apply pending database migrations using the `supabase` CLI (must be on `PATH`):
 
+> **Prerequisite:** `supabase db push --linked` requires the project to be linked.
+> For Supabase Cloud, run `supabase link --project-ref <ref>` once.
+> For self-hosted instances, set `SUPABASE_DB_URL=postgresql://postgres:<password>@<host>:5432/postgres`
+> in the environment instead — the `--linked` flag will use that value.
+
 ```bash
 citadel self-host migrate
 ```
