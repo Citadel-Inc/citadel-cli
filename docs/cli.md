@@ -1325,3 +1325,64 @@ In batch mode the command fails immediately if a required value is missing.
 ```bash
 citadel self-host --batch health
 ```
+
+### Debug output
+
+Pass `--debug` to any `self-host` subcommand to write structured diagnostics to
+stderr. Secrets (admin keys, JWT signing secrets, tokens) are always redacted.
+User-facing output remains on stdout.
+
+```bash
+citadel self-host --debug health
+citadel self-host --debug bootstrap-token 2>debug.log
+```
+
+### Troubleshooting
+
+#### Auth failures
+
+If `citadel self-host health` shows `supabase — unreachable` or HTTP 401/403,
+verify the `admin_key` in `~/.citadel/self-host.yaml`:
+
+```bash
+citadel self-host --debug health 2>&1 | grep "admin_key"
+```
+
+Re-run `citadel self-host init` to update the key.
+
+#### Migration mismatch
+
+If `health` reports AMBER (migrations pending), apply the pending migrations:
+
+```bash
+citadel self-host migrate
+```
+
+If `supabase CLI not found on PATH` is shown, install the Supabase CLI:
+<https://supabase.com/docs/guides/cli>. For Supabase Cloud projects, link the
+project first: `supabase link --project-ref <ref>`. For self-hosted Supabase,
+set `SUPABASE_DB_URL=postgresql://postgres:<password>@<host>:5432/postgres`.
+
+#### JWT expiry
+
+Bootstrap tokens expire based on `--duration` (default 7 days). If a token is
+rejected with `401 Unauthorized` or `JWT expired`, generate a fresh one:
+
+```bash
+TOKEN=$(citadel self-host bootstrap-token --duration 24h)
+```
+
+Short-lived tokens are safer for automated setup; long-lived tokens are
+convenient for dev but should be treated as secrets.
+
+#### Live integration test
+
+Opt-in: **`CITADEL_TEST_SELF_HOST_LIVE=1`** — runs against httptest stubs by
+default, or against a real instance when `CITADEL_SELF_HOST_API`,
+`CITADEL_SELF_HOST_SUPABASE_URL`, `CITADEL_SELF_HOST_ADMIN_KEY`, and
+`CITADEL_SELF_HOST_JWT_SECRET` are set.
+
+```bash
+CITADEL_TEST_SELF_HOST_LIVE=1 \
+go test ./internal/selfhost -run TestLiveSelfHost -v -count=1
+```
