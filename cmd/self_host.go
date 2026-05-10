@@ -116,8 +116,8 @@ var selfHostTelemetryCmd = &cobra.Command{
 
 Telemetry is disabled by default.  When enabled, anonymous usage data is
 sent to Rethunk-Tech endpoints.  No secrets or personal data are included.`,
-	Args: cobra.ExactArgs(1),
-	RunE: runSelfHostTelemetry,
+	Args:      cobra.ExactArgs(1),
+	RunE:      runSelfHostTelemetry,
 	ValidArgs: []string{"enable", "disable"},
 }
 

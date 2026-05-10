@@ -21,19 +21,19 @@ const (
 
 func openPR() map[string]any {
 	return map[string]any{
-		"id":           testPRUUID,
-		"namespace_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-		"number":       testPRNum,
-		"title":        "My feature",
+		"id":            testPRUUID,
+		"namespace_id":  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"number":        testPRNum,
+		"title":         "My feature",
 		"body_markdown": "## Description\n\nAdds a new thing.",
-		"state":        "open",
-		"source_ref":   "feature/my-thing",
-		"target_ref":   "main",
-		"head_sha":     "abcdef1234567890",
-		"base_sha":     "fedcba9876543210",
-		"author_id":    "ffffffff-ffff-ffff-ffff-ffffffffffff",
-		"created_at":   time.Now().UTC().Format(time.RFC3339),
-		"updated_at":   time.Now().UTC().Format(time.RFC3339),
+		"state":         "open",
+		"source_ref":    "feature/my-thing",
+		"target_ref":    "main",
+		"head_sha":      "abcdef1234567890",
+		"base_sha":      "fedcba9876543210",
+		"author_id":     "ffffffff-ffff-ffff-ffff-ffffffffffff",
+		"created_at":    time.Now().UTC().Format(time.RFC3339),
+		"updated_at":    time.Now().UTC().Format(time.RFC3339),
 	}
 }
 
