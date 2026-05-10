@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | DONE 102016ZMAY26 — P0 + P1 shipped on feat/cli-self-host-setup: internal/selfhost package (config YAML r/w, GREEN/AMBER/RED health probes, supabase-CLI migrate, HS256 bootstrap-token); cmd/self_host.go group (init, health, migrate, bootstrap-token, telemetry); --batch persistent flag; 15 race-clean unit tests; docs/cli.md Self-host section. P2 live integration tests deferred (require CITADEL_TEST_SELF_HOST_LIVE env). |
+| Status | DONE 102020ZMAY26 — P0 + P1 (minus --debug split) shipped on feat/cli-self-host-setup: internal/selfhost package (config YAML r/w, GREEN/AMBER/RED health probes, supabase-CLI migrate, HS256 bootstrap-token); cmd/self_host.go group (init, health, migrate, bootstrap-token, telemetry); --batch persistent flag; 15 race-clean unit tests; docs/cli.md Self-host section with migrate prerequisite note. P1 row 3 (--debug output split) and P2 live integration tests deferred. |
 | Priority | P1 |
 | Authored | 101905ZMAY26 |
 | Owner | Bastion (J-3) |
