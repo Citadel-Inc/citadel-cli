@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | APPROVED 102004ZMAY26 |
+| Status | IN_PROGRESS 102007ZMAY26 — Bastion (J-3) claims execution |
 | Priority | P1 |
 | Authored | 101905ZMAY26 |
 | Owner | Bastion (J-3) |
