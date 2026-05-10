@@ -1214,3 +1214,114 @@ sha256sum -c SHA256SUMS --ignore-missing
 ```
 
 If verification fails, do not run the binary. Re-download from a fresh session and re-verify.
+
+## Self-host setup
+
+The `citadel self-host` command group manages a self-hosted Citadel + Supabase deployment.
+Configuration is stored at `~/.citadel/self-host.yaml` (override with `CITADEL_SELF_HOST_CONFIG`).
+
+### Initialize configuration
+
+Run the interactive wizard to collect your deployment details:
+
+```bash
+citadel self-host init
+```
+
+You will be prompted for:
+- **API endpoint** — base URL of your Citadel API server (e.g. `https://citadel.example.com`)
+- **Supabase URL** — your Supabase project URL (e.g. `https://abc.supabase.co`)
+- **Admin key** — Supabase service-role key (kept in config file at 0600)
+- **JWT secret** — Supabase JWT signing secret (used to mint bootstrap tokens)
+
+For non-interactive (CI/automation) environments, pass all values as flags:
+
+```bash
+citadel self-host init --batch \
+  --api-endpoint https://citadel.example.com \
+  --supabase-url https://abc.supabase.co \
+  --admin-key "$SUPABASE_SERVICE_ROLE_KEY" \
+  --jwt-secret "$SUPABASE_JWT_SECRET"
+```
+
+### Health check
+
+Probe the API, Supabase connectivity, and migration state:
+
+```bash
+citadel self-host health
+```
+
+Example output:
+
+```
+[GREEN] api — reachable (HTTP 200)
+[GREEN] supabase — reachable (HTTP 200)
+[GREEN] migrations — schema_migrations accessible
+
+Overall: GREEN
+```
+
+Exit code 0 = GREEN; 1 = AMBER or RED.
+
+| Status | Meaning |
+|--------|---------|
+| GREEN | All components reachable; migrations current |
+| AMBER | Components up but migrations pending |
+| RED | API or Supabase unreachable |
+
+### Apply migrations
+
+Apply pending database migrations using the `supabase` CLI (must be on `PATH`):
+
+> **Prerequisite:** `supabase db push --linked` requires the project to be linked.
+> For Supabase Cloud, run `supabase link --project-ref <ref>` once.
+> For self-hosted instances, set `SUPABASE_DB_URL=postgresql://postgres:<password>@<host>:5432/postgres`
+> in the environment instead — the `--linked` flag will use that value.
+
+```bash
+citadel self-host migrate
+```
+
+Migrations are tracked in the `schema_migrations` table; already-applied migrations are
+skipped automatically (idempotent).
+
+### Generate a bootstrap token
+
+Mint a Supabase `service_role` JWT for initial operator setup:
+
+```bash
+citadel self-host bootstrap-token
+```
+
+The token is printed to stdout once and is never written to disk. Pipe it directly:
+
+```bash
+TOKEN=$(citadel self-host bootstrap-token)
+```
+
+Override the default 7-day expiry with `--duration`:
+
+```bash
+citadel self-host bootstrap-token --duration 24h
+```
+
+### Telemetry
+
+Enable or disable anonymous usage telemetry (disabled by default):
+
+```bash
+citadel self-host telemetry enable
+citadel self-host telemetry disable
+```
+
+The flag is stored in `~/.citadel/self-host.yaml` and respected by all `self-host` commands.
+
+### Batch mode
+
+All `self-host` subcommands accept `--batch` to suppress interactive prompts.
+In batch mode the command fails immediately if a required value is missing.
+
+```bash
+citadel self-host --batch health
+```
