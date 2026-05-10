@@ -6,7 +6,7 @@
 
 | Slug | State | DTG | Owner |
 |------|-------|-----|-------|
-| cli-self-host-setup | IN_PROGRESS | 102007ZMAY26 | Bastion (J-3) |
+| _(none)_ | | | |
 
 ## Done
 
@@ -14,6 +14,7 @@
 
 | Slug | DTG | Note |
 |------|-----|------|
+| cli-self-host-setup | 102016ZMAY26 | P0 + P1 shipped on feat/cli-self-host-setup: internal/selfhost package (config YAML r/w, GREEN/AMBER/RED health probes, supabase-CLI migrate, HS256 bootstrap-token); cmd/self_host.go group (init, health, migrate, bootstrap-token, telemetry); --batch persistent flag; 15 race-clean unit tests; docs/cli.md Self-host section. P2 live integration tests deferred (require CITADEL_TEST_SELF_HOST_LIVE env). |
 | cli-pr-inline-comments | 091518ZMAY26 | Shipped inline PR comment flags (--diff-file, --diff-line, --diff-side, --diff-sha, --thread-id) on `pr comment add`; client-side validation for paired flags and side values; --inline/--general filters and thread-grouped human output on `pr comment list`; --diff-file tab completion via diff endpoint; handler tests covering all paths; docs/cli.md updated. make verify passes. C1 (live smoke) deferred — gates on CITADEL_TEST_PR_INLINE_LIVE=1. |
 | cli-issue-labels | 091337ZMAY26 | Shipped top-level `citadel-cli label` command group (list/create/edit/delete). Auto-slugify from --name with --slug override. GET-then-PATCH edit to preserve fields. label_delete_blocked 409 surfaced. Shell completion, 15 handler tests, docs/cli.md section, make verify GREEN. |
 | cli-pull-requests | 080834ZMAY26 | Implemented full PR command surface (13 verbs) against prsapi: list, view, create, close, merge, diff (stat table + single-file unified), check, comment list/add, reviewer list/add, review (approve/request-changes/comment). 33 handler tests pass. make verify clean. docs/cli.md updated. |
@@ -65,6 +66,7 @@
 | cli-account-privacy | 072200ZMAY26 | Settings-panel concern, not a dev-loop workflow. No GitHub CLI analogue. Privacy preference toggles belong in a browser/UI settings surface; they are not actions a developer would need mid-session. Superseded by the CLI-as-workflow-tool principle. |
 | cli-mcp-stdio | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
 | cli-mcp-stream | 050505ZMAY26 | superseded by HTTPS MCP canonical policy ([`../README.md`](../README.md)). |
+
 
 
 
