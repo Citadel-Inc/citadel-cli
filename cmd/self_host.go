@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -12,6 +13,42 @@ import (
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/selfhost"
 )
+
+// selfHostDebugFlag returns true when --debug is set on the self-host command group.
+// When enabled, detailed diagnostic information is written to stderr via slog;
+// user-facing output continues to go to stdout.
+func selfHostDebugFlag(cmd *cobra.Command) bool {
+	// InheritedFlags includes persistent flags from all ancestors.
+	v, _ := cmd.InheritedFlags().GetBool("debug")
+	if v {
+		return true
+	}
+	// Also check local flags for the case where cmd IS the self-host group.
+	lv, _ := cmd.Flags().GetBool("debug")
+	return lv
+}
+
+// selfHostLogger returns a slog.Logger that writes to stderr when --debug is
+// set, or to io.Discard otherwise.  Structured JSON format for machine
+// parseability; no secrets are ever passed to this logger.
+func selfHostLogger(cmd *cobra.Command) *slog.Logger {
+	if selfHostDebugFlag(cmd) {
+		return slog.New(slog.NewTextHandler(cmd.ErrOrStderr(), &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}))
+	}
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError + 10, // effectively discard
+	}))
+}
+
+// selfHostDebugf writes a formatted debug line to stderr when --debug is set.
+// Use for one-liner diagnostics that do not need structured key-value pairs.
+func selfHostDebugf(cmd *cobra.Command, format string, args ...any) {
+	if selfHostDebugFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "[debug] "+format+"\n", args...)
+	}
+}
 
 // SelfHostCmd is the top-level `citadel self-host` command group.
 var SelfHostCmd = &cobra.Command{
@@ -88,9 +125,15 @@ sent to Rethunk-Tech endpoints.  No secrets or personal data are included.`,
 
 func runSelfHostInit(cmd *cobra.Command, _ []string) error {
 	batch, _ := cmd.Flags().GetBool("batch")
+	log := selfHostLogger(cmd)
 
 	// Load existing config as defaults so re-runs are non-destructive.
-	cfg, _ := selfhost.Load()
+	cfg, loadErr := selfhost.Load()
+	if loadErr != nil {
+		log.Debug("failed to load existing config; starting fresh", "error", loadErr)
+	} else {
+		log.Debug("loaded existing config", "summary", cfg.DebugSummary())
+	}
 
 	apiEndpoint, _ := cmd.Flags().GetString("api-endpoint")
 	supabaseURL, _ := cmd.Flags().GetString("supabase-url")
@@ -120,13 +163,17 @@ func runSelfHostInit(cmd *cobra.Command, _ []string) error {
 	}
 
 	if err := cfg.Validate(); err != nil {
+		log.Debug("config validation failed", "error", err)
 		return fmt.Errorf("config validation: %w", err)
 	}
+	log.Debug("config validated; saving", "summary", cfg.DebugSummary())
 	if err := cfg.Save(); err != nil {
+		log.Debug("save failed", "error", err)
 		return fmt.Errorf("save self-host config: %w", err)
 	}
 
 	path, _ := selfhost.ConfigPath()
+	log.Debug("config saved", "path", path)
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Self-host config written to %s\n", path)
 	return nil
 }
@@ -174,23 +221,30 @@ func maskSecret(s string) string {
 // ─── health ──────────────────────────────────────────────────────────────────
 
 func runSelfHostHealth(cmd *cobra.Command, _ []string) error {
+	log := selfHostLogger(cmd)
 	cfg, err := selfhost.Load()
 	if err != nil {
+		log.Debug("load self-host config failed", "error", err)
 		return fmt.Errorf("load self-host config: %w", err)
 	}
+	log.Debug("loaded self-host config", "summary", cfg.DebugSummary())
 	if err := cfg.Validate(); err != nil {
+		log.Debug("config validation failed", "error", err)
 		return fmt.Errorf("self-host config incomplete: %w\nRun `citadel self-host init` to configure", err)
 	}
 
+	selfHostDebugf(cmd, "probing api=%s supabase=%s", cfg.APIEndpoint, cfg.SupabaseURL)
 	report := selfhost.CheckHealth(cmd.Context(), cfg)
 	w := cmd.OutOrStdout()
 	for _, p := range report.Probes {
+		log.Debug("probe result", "name", p.Name, "status", p.Status.String(), "detail", p.Detail)
 		_, _ = fmt.Fprintln(w, p.String())
 	}
 	overall := report.Overall()
 	_, _ = fmt.Fprintf(w, "\nOverall: %s\n", overall)
 
 	if overall != selfhost.HealthGreen {
+		// Opaque message to stdout already written; detailed probe info was logged via --debug.
 		return errors.New("health check did not pass (see above)")
 	}
 	return nil
@@ -199,19 +253,26 @@ func runSelfHostHealth(cmd *cobra.Command, _ []string) error {
 // ─── migrate ─────────────────────────────────────────────────────────────────
 
 func runSelfHostMigrate(cmd *cobra.Command, _ []string) error {
+	log := selfHostLogger(cmd)
 	cfg, err := selfhost.Load()
 	if err != nil {
+		log.Debug("load self-host config failed", "error", err)
 		return fmt.Errorf("load self-host config: %w", err)
 	}
+	log.Debug("loaded self-host config", "summary", cfg.DebugSummary())
 	if err := cfg.Validate(); err != nil {
+		log.Debug("config validation failed", "error", err)
 		return fmt.Errorf("self-host config incomplete: %w\nRun `citadel self-host init` to configure", err)
 	}
 
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Applying migrations…")
+	selfHostDebugf(cmd, "invoking supabase CLI for db push")
 	result, err := selfhost.ApplyMigrations(cmd.Context(), cfg)
 	if err != nil {
+		log.Debug("migration apply failed", "error", err)
 		return fmt.Errorf("migrate: %w", err)
 	}
+	log.Debug("migration apply complete", "applied", result.Applied)
 	if result.Message != "" {
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), result.Message)
 	}
@@ -226,20 +287,25 @@ func runSelfHostMigrate(cmd *cobra.Command, _ []string) error {
 // ─── bootstrap-token ─────────────────────────────────────────────────────────
 
 func runSelfHostBootstrapToken(cmd *cobra.Command, _ []string) error {
+	log := selfHostLogger(cmd)
 	cfg, err := selfhost.Load()
 	if err != nil {
+		log.Debug("load self-host config failed", "error", err)
 		return fmt.Errorf("load self-host config: %w", err)
 	}
 	// JWT secret is required; other fields optional for this verb.
 	if cfg.JWTSecret == "" {
 		return errors.New("jwt_secret not configured; run `citadel self-host init` to set it")
 	}
+	// Log that we have a secret but NEVER log its value.
+	log.Debug("jwt_secret present", "jwt_secret", "[REDACTED]")
 
 	durationStr, _ := cmd.Flags().GetString("duration")
 	var duration time.Duration
 	if durationStr != "" {
 		d, err := time.ParseDuration(durationStr)
 		if err != nil {
+			log.Debug("invalid --duration flag", "value", durationStr, "error", err)
 			return fmt.Errorf("invalid --duration %q: %w", durationStr, err)
 		}
 		if d <= 0 {
@@ -247,13 +313,16 @@ func runSelfHostBootstrapToken(cmd *cobra.Command, _ []string) error {
 		}
 		duration = d
 	}
+	log.Debug("generating bootstrap token", "duration", duration)
 
 	token, err := selfhost.GenerateBootstrapToken(cfg, duration)
 	if err != nil {
+		log.Debug("token generation failed", "error", err)
 		return err
 	}
+	log.Debug("bootstrap token generated", "token", "[REDACTED]")
 
-	// Q6: token to stdout only.
+	// Q6: token to stdout only. Never log the token value.
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), token)
 	return nil
 }
@@ -261,6 +330,7 @@ func runSelfHostBootstrapToken(cmd *cobra.Command, _ []string) error {
 // ─── telemetry ───────────────────────────────────────────────────────────────
 
 func runSelfHostTelemetry(cmd *cobra.Command, args []string) error {
+	log := selfHostLogger(cmd)
 	subcmd := strings.ToLower(strings.TrimSpace(args[0]))
 	switch subcmd {
 	case "enable", "disable":
@@ -268,16 +338,20 @@ func runSelfHostTelemetry(cmd *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("unknown telemetry action %q; expected 'enable' or 'disable'", subcmd)
 	}
+	log.Debug("telemetry action", "action", subcmd)
 
 	cfg, err := selfhost.Load()
 	if err != nil {
+		log.Debug("load self-host config failed", "error", err)
 		return fmt.Errorf("load self-host config: %w", err)
 	}
 
 	cfg.Telemetry = subcmd == "enable"
 	if err := cfg.Save(); err != nil {
+		log.Debug("save self-host config failed", "error", err)
 		return fmt.Errorf("save self-host config: %w", err)
 	}
+	log.Debug("telemetry updated", "enabled", cfg.Telemetry)
 	if cfg.Telemetry {
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Telemetry enabled.")
 	} else {
@@ -297,6 +371,10 @@ func init() {
 
 	// Persistent --batch flag: suppresses all interactive prompts across subcommands.
 	SelfHostCmd.PersistentFlags().Bool("batch", false, "Non-interactive mode; fail if required params are missing")
+
+	// Persistent --debug flag: writes detailed diagnostics to stderr.
+	// User-facing output remains on stdout; secrets are always redacted.
+	SelfHostCmd.PersistentFlags().Bool("debug", false, "Write detailed diagnostic output to stderr (secrets redacted)")
 
 	// init flags
 	selfHostInitCmd.Flags().String("api-endpoint", "", "Citadel API endpoint URL")
