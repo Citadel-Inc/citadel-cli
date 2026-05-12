@@ -758,10 +758,6 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 }
 
 func runNsRename(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	slug := strings.TrimSpace(args[0])
 	newSlug, _ := cmd.Flags().GetString("new-slug")
 	newSlug = strings.TrimSpace(newSlug)
@@ -771,6 +767,10 @@ func runNsRename(cmd *cobra.Command, args []string) error {
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would rename %s → %s (skipped; --dry-run)\n", slug, newSlug)
 		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	if err := confirmSlug(yesFlag(cmd), "rename namespace", slug); err != nil {
 		return err

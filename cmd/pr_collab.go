@@ -223,14 +223,14 @@ func runPRCommentList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	client, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	onlyInline, _ := cmd.Flags().GetBool("inline")
 	onlyGeneral, _ := cmd.Flags().GetBool("general")
 	if onlyInline && onlyGeneral {
 		return fmt.Errorf("--inline and --general are mutually exclusive")
+	}
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 
 	path := prBasePath(nsPath) + "/" + strconv.FormatInt(num, 10) + "/comments"

@@ -200,10 +200,6 @@ func runLabelList(cmd *cobra.Command, _ []string) error {
 }
 
 func runLabelCreate(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -233,6 +229,10 @@ func runLabelCreate(cmd *cobra.Command, _ []string) error {
 		"color":        color,
 		"description":  desc,
 	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	var created issueLabel
 	if err := c.Post(cmd.Context(), labelBasePath(nsPath), payload, &created); err != nil {
 		if apiclient.IsStatus(err, http.StatusConflict) {
@@ -249,10 +249,6 @@ func runLabelCreate(cmd *cobra.Command, _ []string) error {
 }
 
 func runLabelEdit(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -267,6 +263,10 @@ func runLabelEdit(cmd *cobra.Command, args []string) error {
 	descChanged := cmd.Flags().Lookup("description") != nil && cmd.Flags().Lookup("description").Changed
 	if !nameChanged && !colorChanged && !descChanged {
 		return fmt.Errorf("set at least one of --name, --color, --description")
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 
 	// PATCH does a full SQL UPDATE; GET the current label first to preserve
@@ -328,10 +328,6 @@ func runLabelEdit(cmd *cobra.Command, args []string) error {
 }
 
 func runLabelDelete(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -344,6 +340,10 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE label '%s' from %s (skipped; --dry-run)\n", targetSlug, nsPath)
 		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	if !yesFlag(cmd) {
 		if err := confirmTypedValue(false, "delete label", targetSlug); err != nil {
@@ -372,10 +372,6 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 }
 
 func runLabelClone(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	src, _ := cmd.Flags().GetString("from")
 	dst, _ := cmd.Flags().GetString("to")
 	src = strings.TrimSpace(src)
@@ -388,6 +384,10 @@ func runLabelClone(cmd *cobra.Command, _ []string) error {
 	}
 	if src == dst {
 		return fmt.Errorf("--from and --to must differ")
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	labels, err := fetchLabels(cmd.Context(), c, src)
 	if err != nil {

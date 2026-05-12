@@ -638,10 +638,6 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 }
 
 func runIssueEdit(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -683,6 +679,10 @@ func runIssueEdit(cmd *cobra.Command, args []string) error {
 	}
 	if len(payload) == 0 {
 		return fmt.Errorf("set at least one of --title, --body, --state, --milestone")
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	var updated issueRow
 	if err := c.Patch(cmd.Context(), issueBasePath(nsPath)+"/"+strconv.FormatInt(num, 10), payload, &updated); err != nil {
