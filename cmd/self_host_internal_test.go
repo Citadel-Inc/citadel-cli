@@ -2,10 +2,32 @@ package cmd
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 )
+
+// TestResolveField covers the three non-stdin branches of resolveField:
+//   - flagVal provided → returned (trimmed), no prompt
+//   - existing + batch=true → existing returned, no prompt
+//   - batch=true, no value anywhere → error
+func TestResolveField_NonStdinBranches(t *testing.T) {
+	got, err := resolveField("api_endpoint", "  https://citadel.example.com  ", "old", false, false)
+	if err != nil || got != "https://citadel.example.com" {
+		t.Fatalf("flagVal branch: got %q, %v", got, err)
+	}
+
+	got, err = resolveField("api_endpoint", "", "existing-val", true, false)
+	if err != nil || got != "existing-val" {
+		t.Fatalf("existing+batch branch: got %q, %v", got, err)
+	}
+
+	_, err = resolveField("api_endpoint", "", "", true, false)
+	if err == nil || !strings.Contains(err.Error(), "--batch") {
+		t.Fatalf("batch+no-value branch: expected --batch error, got %v", err)
+	}
+}
 
 func TestMaskSecret_Short(t *testing.T) {
 	if got := maskSecret("short"); got != "***" {
