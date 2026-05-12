@@ -40,6 +40,12 @@ func runAPI(cmd *cobra.Command, args []string) error {
 		path = "/" + path
 	}
 
+	switch method {
+	case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+	default:
+		return fmt.Errorf("unsupported method %q; use GET, POST, PUT, PATCH, or DELETE", method)
+	}
+
 	fields, _ := cmd.Flags().GetStringArray("field")
 	var body map[string]any
 	if len(fields) > 0 {
@@ -73,8 +79,6 @@ func runAPI(cmd *cobra.Command, args []string) error {
 		if err == nil {
 			return nil
 		}
-	default:
-		return fmt.Errorf("unsupported method %q; use GET, POST, PUT, PATCH, or DELETE", method)
 	}
 	if err != nil {
 		return err
