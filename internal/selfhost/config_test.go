@@ -9,6 +9,69 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/internal/selfhost"
 )
 
+func TestLoad_InvalidYAML(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "self-host.yaml")
+	t.Setenv("CITADEL_SELF_HOST_CONFIG", cfgPath)
+	if err := os.WriteFile(cfgPath, []byte("{bad: yaml: :::"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := selfhost.Load(); err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
+func TestLoad_ReadPermissionError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root; permission test not meaningful")
+	}
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "self-host.yaml")
+	t.Setenv("CITADEL_SELF_HOST_CONFIG", cfgPath)
+	if err := os.WriteFile(cfgPath, []byte("api_endpoint: x\n"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(cfgPath, 0o600) })
+	if _, err := selfhost.Load(); err == nil {
+		t.Fatal("expected error when config file is unreadable")
+	}
+}
+
+func TestSave_MkdirFails_Selfhost(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root; mkdir restrictions not enforced")
+	}
+	dir := t.TempDir()
+	// blocker is a regular file — os.MkdirAll(blocker/sub) must fail.
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte(""), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CITADEL_SELF_HOST_CONFIG", filepath.Join(blocker, "self-host.yaml"))
+	if err := (selfhost.Config{APIEndpoint: "x"}).Save(); err == nil {
+		t.Fatal("expected mkdir error, got nil")
+	}
+}
+
+func TestSave_WriteFileFails_Selfhost(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root; permission test not meaningful")
+	}
+	dir := t.TempDir()
+	cfgDir := filepath.Join(dir, "citadel")
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(cfgDir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(cfgDir, 0o700) })
+	t.Setenv("CITADEL_SELF_HOST_CONFIG", filepath.Join(cfgDir, "self-host.yaml"))
+	if err := (selfhost.Config{APIEndpoint: "x"}).Save(); err == nil {
+		t.Fatal("expected write error when dir is not writable, got nil")
+	}
+}
+
 func TestConfigSaveLoad(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "self-host.yaml")

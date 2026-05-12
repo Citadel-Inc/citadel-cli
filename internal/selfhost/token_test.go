@@ -60,6 +60,13 @@ func TestValidateBootstrapTokenWrongSecret(t *testing.T) {
 	}
 }
 
+func TestValidateBootstrapToken_EmptySecret(t *testing.T) {
+	_, err := selfhost.ValidateBootstrapToken("any.token.string", "")
+	if err == nil {
+		t.Fatal("expected error for empty jwtSecret")
+	}
+}
+
 func TestGenerateBootstrapTokenDefaultDuration(t *testing.T) {
 	cfg := selfhost.Config{JWTSecret: "test-secret"}
 

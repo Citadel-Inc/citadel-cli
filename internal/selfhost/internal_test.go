@@ -1,6 +1,11 @@
 package selfhost
 
-import "testing"
+import (
+	"context"
+	"os"
+	"strings"
+	"testing"
+)
 
 func TestTruncate_Short(t *testing.T) {
 	if got := truncate("hello", 10); got != "hello" {
@@ -37,6 +42,35 @@ func TestCountApplied(t *testing.T) {
 	}
 	if n := countApplied("nothing here"); n != 0 {
 		t.Fatalf("countApplied empty: got %d want 0", n)
+	}
+}
+
+func TestApplyMigrations_EmptyURL(t *testing.T) {
+	_, err := ApplyMigrations(context.Background(), Config{})
+	if err == nil || !strings.Contains(err.Error(), "supabase_url") {
+		t.Fatalf("expected supabase_url error, got %v", err)
+	}
+}
+
+func TestApplyMigrations_NoBinary(t *testing.T) {
+	t.Setenv("PATH", t.TempDir()) // empty PATH — supabase not found
+	_, err := ApplyMigrations(context.Background(), Config{SupabaseURL: "https://abc.supabase.co"})
+	if err == nil || !strings.Contains(err.Error(), "supabase CLI not found") {
+		t.Fatalf("expected not-found error, got %v", err)
+	}
+}
+
+func TestApplyMigrations_BinaryFails(t *testing.T) {
+	// Stub `supabase` that exits non-zero so the cmd.CombinedOutput error path is exercised.
+	dir := t.TempDir()
+	stub := dir + "/supabase"
+	if err := os.WriteFile(stub, []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	_, err := ApplyMigrations(context.Background(), Config{SupabaseURL: "https://abc.supabase.co"})
+	if err == nil {
+		t.Fatal("expected error when supabase exits non-zero")
 	}
 }
 

@@ -252,6 +252,36 @@ func TestSave_OpenFileFails(t *testing.T) {
 	}
 }
 
+// TestLoad_StatError_NonTraversableParent covers the `case statErr != nil`
+// branch in Load: os.Stat returns an error that is not os.ErrNotExist when the
+// parent directory is not executable (mode 0600, no execute bit).
+func TestLoad_StatError_NonTraversableParent(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root; permission test not meaningful")
+	}
+	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+
+	dir := filepath.Join(tmp, "citadel")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// Write a valid file so it exists on disk.
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("server_url = \"x\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Remove execute permission from the directory — stat of files inside now fails.
+	if err := os.Chmod(dir, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected stat error, got nil")
+	}
+}
+
 // When the temp file path is a write-sink (Linux /dev/full), TOML encoding
 // returns an error; Save must clean up and surface it.
 func TestSave_EncodeError_DevFull(t *testing.T) {

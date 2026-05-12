@@ -115,3 +115,23 @@ func TestReadCache_WrongServerInEnvelope(t *testing.T) {
 func TestRemoveAsync_NoKeysIsNoop(t *testing.T) {
 	RemoveAsync("https://api.example.com")
 }
+
+func TestRemove_NoDiskCache(t *testing.T) {
+	origNow := now
+	t.Cleanup(func() { now = origNow })
+	t.Setenv("CITADEL_NO_COMPLETION_CACHE", "1")
+	now = func() time.Time { return time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC) }
+
+	const resolved = "https://api.example.com"
+	const key = "remove-no-disk"
+	writeCache(resolved, key, []string{"x"})
+	// Verify it is still in memory despite disk being disabled.
+	if _, ok := readCache(resolved, key); !ok {
+		t.Fatal("expected memory cache hit")
+	}
+	// Remove should clear memory and skip disk (early return branch).
+	Remove(resolved, key)
+	if _, ok := readCache(resolved, key); ok {
+		t.Fatal("expected cache miss after Remove with no-disk-cache")
+	}
+}
