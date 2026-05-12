@@ -161,3 +161,83 @@ func TestFetchSSHKeyIDs_DecodesKeyList(t *testing.T) {
 		t.Fatalf("got %q want sorted ids", got)
 	}
 }
+
+// TestFetchNamespaceDeployTokenIDs exercises the paginated deploy-token
+// fetch for a namespace path, including the pagination cursor loop and
+// the early-return for an empty namespace.
+func TestFetchNamespaceDeployTokenIDs_DecodesList(t *testing.T) {
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.NotFound(w, r)
+			return
+		}
+		calls++
+		switch calls {
+		case 1:
+			// First page: return one token plus a next_cursor.
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"deploy_tokens": []any{
+					map[string]any{"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"},
+				},
+				"next_cursor": "page2",
+			})
+		default:
+			// Second page (cursor=page2): return second token, no cursor.
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"deploy_tokens": []any{
+					map[string]any{"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"},
+				},
+				"next_cursor": "",
+			})
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := apiclient.New(clicfg.Config{AccessToken: "t"}, apiclient.Options{Server: srv.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := FetchNamespaceDeployTokenIDs(context.Background(), c, "acme/ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// sortDedupe returns sorted list: aaaa before bbbb.
+	if len(got) != 2 || got[0] != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" || got[1] != "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" {
+		t.Fatalf("got %q", got)
+	}
+	if calls != 2 {
+		t.Fatalf("expected 2 API calls for pagination, got %d", calls)
+	}
+}
+
+func TestFetchNamespaceDeployTokenIDs_EmptyNamespace(t *testing.T) {
+	c, err := apiclient.New(clicfg.Config{AccessToken: "t"}, apiclient.Options{Server: "http://unused"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := FetchNamespaceDeployTokenIDs(context.Background(), c, "  "); err == nil {
+		t.Fatal("expected error for empty namespace, got nil")
+	}
+}
+
+// TestCacheKeyConstructors validates the key-string constructors used by
+// completion to partition cache entries by resource type. The prefix must be
+// consistent so that Lookup and Remove hit the same cache slot.
+func TestCacheKeyConstructors(t *testing.T) {
+	cases := []struct {
+		name string
+		got  string
+		want string
+	}{
+		{"RepoBranchKey", RepoBranchKey("acme/demo"), KeyRepoBranches + "acme/demo"},
+		{"RepoTagKey", RepoTagKey("acme/demo"), KeyRepoTags + "acme/demo"},
+		{"DeployTokenKey", DeployTokenKey("acme"), KeyDeployTokens + "acme"},
+		{"RepoKey", RepoKey("acme"), KeyReposPrefix + "acme"},
+	}
+	for _, tc := range cases {
+		if tc.got != tc.want {
+			t.Errorf("%s: got %q want %q", tc.name, tc.got, tc.want)
+		}
+	}
+}

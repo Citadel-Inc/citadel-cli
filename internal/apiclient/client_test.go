@@ -470,3 +470,64 @@ func TestClient_GetEventStream_retryAfterOnError(t *testing.T) {
 		t.Fatalf("HTTPError = %#v", he)
 	}
 }
+
+// TestGetEventStream_401_RetryOn401_Succeeds verifies that a 401 response
+// triggers the retryOn401 hook, the new token is sent on the retry, and the
+// successful 200 response is returned to the caller.
+func TestGetEventStream_401_RetryOn401_Succeeds(t *testing.T) {
+	var n int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n++
+		if n == 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte("expired"))
+			return
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer new-tok" {
+			t.Errorf("retry request: Authorization = %q, want Bearer new-tok", got)
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("data: ok\n\n"))
+	}))
+	defer srv.Close()
+
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "old-tok"}, Options{
+		RetryOn401: func(_ context.Context) (string, error) { return "new-tok", nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.GetEventStream(context.Background(), "/stream", "")
+	if err != nil {
+		t.Fatalf("GetEventStream: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("got status %d, want 200", resp.StatusCode)
+	}
+	if n != 2 {
+		t.Fatalf("expected 2 server hits, got %d", n)
+	}
+}
+
+// TestGetEventStream_401_RetryOn401_HookError verifies that if the retryOn401
+// hook itself returns an error the error is propagated directly to the caller.
+func TestGetEventStream_401_RetryOn401_HookError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte("nope"))
+	}))
+	defer srv.Close()
+
+	hookErr := errors.New("hook-failed")
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "old-tok"}, Options{
+		RetryOn401: func(_ context.Context) (string, error) { return "", hookErr },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, got := c.GetEventStream(context.Background(), "/stream", "")
+	if !errors.Is(got, hookErr) {
+		t.Fatalf("want hookErr, got %v", got)
+	}
+}
