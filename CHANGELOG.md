@@ -22,7 +22,7 @@ Initial visible release of the Citadel command-line client.
 
 ### Changed
 
-- Default server routing now uses `https://mcp.src.land`, with production REST calls coerced to the correct API host while OAuth and MCP continue through the MCP host.
+- Default server routing now uses the configured Citadel server URL, with production REST calls coerced to the correct API host while OAuth and MCP continue through the MCP host.
 - Repository git wrappers now use Citadel-provided SSH remotes instead of HTTPS askpass flows, preserving normal system `git` behavior.
 - API access is centralized through shared HTTP clients, retry/trace transports, typed HTTP errors, Retry-After handling, per-client timeouts, and context propagation across command handlers.
 - Command output helpers, flag helpers, destructive-confirmation paths, and get/list emitters were consolidated for consistent behavior across the command tree.

@@ -36,7 +36,7 @@ citadel-cli auth login
 
 This opens your default browser to Citadel's OAuth authorization endpoint (`/api/oauth/authorize`). After you authenticate, the browser redirects to a local loopback server running on your machine; the CLI exchanges the authorization code against `/api/oauth/token`, then immediately mints and stores a long-lived Citadel **agent token** for `citadel-cli@<hostname>`. The short-lived OAuth JWT is discarded after bootstrap.
 
-The CLI defaults to server URL `https://mcp.src.land`; if your server is at a different URL, set the `CITADEL_SERVER` environment variable or edit the config file directly (key: `server_url`).
+The CLI defaults to the server URL in `CITADEL_SERVER`; if unset, the built-in default is used. Set `CITADEL_SERVER` or edit the config file directly (key: `server_url`) to point at your deployment.
 
 ### Headless / CI bootstrap
 
@@ -576,7 +576,7 @@ Opt-in: **`CITADEL_TEST_AUDIT_SESSIONS_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`**
 
 ## Server URL configuration
 
-The CLI defaults to `https://mcp.src.land`. Override it via:
+The CLI uses `CITADEL_SERVER` as the server URL (or the built-in default if unset). Override it via:
 
 1. **`--server` flag** (highest precedence; persistent on the root command).
 2. **Environment variable**: `CITADEL_SERVER`.
@@ -592,7 +592,7 @@ citadel-cli token list --agent my-app
 
 ## MCP tool calls
 
-The `citadel-cli mcp` group speaks the [Streamable HTTP MCP protocol](https://modelcontextprotocol.io/specification/2025-11-25/server) against the Citadel MCP server. The server URL defaults to `https://mcp.src.land/mcp` (resolved from `--server` / `CITADEL_SERVER`; `api.src.land` is auto-swapped to `mcp.src.land`).
+The `citadel-cli mcp` group speaks the [Streamable HTTP MCP protocol](https://modelcontextprotocol.io/specification/2025-11-25/server) against the Citadel MCP server. The server URL resolves from `--server` / `CITADEL_SERVER`; the CLI appends `/mcp` and coerces the host to the MCP endpoint when needed.
 
 Authentication uses your saved Citadel CLI session by default (typically an opaque **agent token** minted by `citadel-cli auth login`). Override with `--token` or `CITADEL_AGENT_TOKEN` for explicit agent / CI workflows; the server accepts both OAuth JWTs and opaque agent tokens where the route supports them.
 
@@ -660,7 +660,7 @@ Edge cases that fall through to string: `.5`, `5.`, `1.2.3`, anything with non-d
 
 ### Phase 0 operator cookbook (HTTPS MCP)
 
-Agents should configure the IDE or runtime to talk to **`https://mcp.src.land/mcp`** (or your deployment’s MCP URL) directly. For **operators** — debugging, runbooks, CI smoke — `citadel-cli mcp call` hits the **same** Streamable HTTP MCP surface as agents; there is no separate stdio MCP in this client ([parked specs](../specs/parked/README.md)).
+Agents should configure the IDE or runtime to talk to **your deployment’s MCP URL** (`$CITADEL_SERVER/mcp`) directly. For **operators** — debugging, runbooks, CI smoke — `citadel-cli mcp call` hits the **same** Streamable HTTP MCP surface as agents; there is no separate stdio MCP in this client ([parked specs](../specs/parked/README.md)).
 
 **Discover names on your server** (tool lists drift with Citadel releases):
 
@@ -692,7 +692,7 @@ citadel-cli mcp call get_namespace --arg path=Rethunk-Tech --json
 citadel-cli mcp --token "$CITADEL_AGENT_TOKEN" tools
 ```
 
-**REST parity:** Today the live production CLI/API surface is exposed from `mcp.src.land` as well as `/mcp`; older `api.src.land` examples are stale for OAuth, agent, search, audit, and OAuth-client routes. Prefer MCP for agent-shaped workflows; prefer **`citadel-cli <verb>`** when we ship first-class commands (repos, namespaces, audit events) — fewer typed arguments to assemble by hand.
+**REST parity:** The Citadel API surface is accessible via both the MCP endpoint (`/mcp`) and the REST API; older REST-direct examples may be stale for OAuth, agent, search, audit, and OAuth-client routes. Prefer MCP for agent-shaped workflows; prefer **`citadel-cli <verb>`** when we ship first-class commands (repos, namespaces, audit events) — fewer typed arguments to assemble by hand.
 
 ### Auth failures
 
@@ -1199,7 +1199,7 @@ The CLI binary is built by the GitHub Actions release workflow on every tag matc
 
 - **Homebrew tap (deferred).** Suggested formula path `rethunk-tech/tap/citadel-cli`. Land when a second non-operator user adopts the CLI; until then, GH Releases is sufficient.
 
-- **Static mirror at `cli.src.land` (deferred).** Operator-managed mirror behind Caddy. Only worth standing up if GH Releases is unavailable to a target audience (corporate networks blocking github.com download paths). Not currently planned.
+- **Static mirror (deferred).** Operator-managed mirror behind Caddy. Only worth standing up if GH Releases is unavailable to a target audience (corporate networks blocking github.com download paths). Not currently planned.
 
 ### Versioning
 

@@ -88,7 +88,7 @@ Operator-only fields such as client IP are omitted for non-operator callers; the
 
 ### Repo context
 
-Commands that target a single repository accept `-R <namespace>/<slug>` (same meaning as `gh -R`). If you omit it, the CLI uses the `CITADEL_REPO` environment variable, then (unless `--no-cwd-repo` is set) infers the repo from `git remote get-url origin` when that remote uses a [Citadel git host](https://src.land) (for example `src.land` or `git.src.land`). Comma-separated `CITADEL_GIT_HOSTS` extends the default host list for self‑hosted deployments.
+Commands that target a single repository accept `-R <namespace>/<slug>` (same meaning as `gh -R`). If you omit it, the CLI uses the `CITADEL_REPO` environment variable, then (unless `--no-cwd-repo` is set) infers the repo from `git remote get-url origin` when that remote uses a Citadel git host. Comma-separated `CITADEL_GIT_HOSTS` extends the default host list for self‑hosted deployments.
 
 `--no-cwd-repo` disables CWD inference so scripts never pick up a surprise repo from the current directory; combine it with `-R` or `CITADEL_REPO` when you need an explicit path.
 
@@ -132,7 +132,7 @@ On failure, machine-readable output modes use a single top-level object with an 
     "message": "rate limit exceeded — slow down or wait a few minutes before retrying",
     "http_status": 429,
     "retry_after_seconds": 60,
-    "hint": "https://status.src.land",
+    "hint": "https://status.<your-citadel-host>",
     "details": {}
   }
 }

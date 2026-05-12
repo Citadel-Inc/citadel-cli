@@ -30,7 +30,7 @@ const (
 	KindInternal          CLIErrorKind = "internal"
 )
 
-const statusSrcLandHint = "https://status.src.land"
+const serverStatusHint = ""
 
 // CLIError is the typed CLI failure surface. Only Kind and the exit-code mapping
 // are contractual; Message may evolve.

@@ -18,7 +18,7 @@ func NewRootCmd() *cobra.Command {
 		Long: `citadel-cli is the command-line client for managing authentication, agent tokens,
 and MCP tool interactions against the Citadel server (the server binary is "citadel", cmd/citadel).
 
-Server URL defaults to https://mcp.src.land; override with CITADEL_SERVER or --server.`,
+Server URL configured via CITADEL_SERVER env var or --server flag.`,
 		Version: Version,
 		// Did-you-mean: cobra emits "Did you mean ...?" hints on unknown
 		// subcommand. Distance 2 catches typos like `rpo` → `repo` while

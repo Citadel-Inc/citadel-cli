@@ -27,7 +27,7 @@ func FriendlyError(err error) error {
 		return &CLIError{
 			Kind:    KindAuthRequired,
 			Message: errSessionExpired.Error(),
-			Hint:    statusSrcLandHint,
+			Hint:    serverStatusHint,
 		}
 	}
 
@@ -44,7 +44,7 @@ func FriendlyError(err error) error {
 		return &CLIError{
 			Kind:    KindAuthRequired,
 			Message: "not authenticated; run 'citadel-cli auth login' first",
-			Hint:    statusSrcLandHint,
+			Hint:    serverStatusHint,
 		}
 	}
 
@@ -53,7 +53,7 @@ func FriendlyError(err error) error {
 		return &CLIError{
 			Kind:    KindNetwork,
 			Message: "cannot reach Citadel server: hostname lookup failed — check your internet connection or override the server with --server <url> (or the CITADEL_SERVER env var)",
-			Hint:    statusSrcLandHint,
+			Hint:    serverStatusHint,
 		}
 	}
 	var netErr *net.OpError
@@ -61,14 +61,14 @@ func FriendlyError(err error) error {
 		return &CLIError{
 			Kind:    KindNetwork,
 			Message: "cannot reach Citadel server: connection failed — is the server URL reachable from this host? Override with --server / CITADEL_SERVER",
-			Hint:    statusSrcLandHint,
+			Hint:    serverStatusHint,
 		}
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return &CLIError{
 			Kind:    KindTimeout,
-			Message: "request timed out — server took too long to respond; retry, or check https://status.src.land",
-			Hint:    statusSrcLandHint,
+			Message: "request timed out — server took too long to respond; retry",
+			Hint:    serverStatusHint,
 		}
 	}
 
@@ -83,8 +83,8 @@ func FriendlyError(err error) error {
 	if strings.Contains(err.Error(), "EOF") && !strings.Contains(err.Error(), "decode") {
 		return &CLIError{
 			Kind:    KindServerUnavailable,
-			Message: "connection cut by the server; retry, and if the problem persists check https://status.src.land",
-			Hint:    statusSrcLandHint,
+			Message: "connection cut by the server; retry if the problem persists",
+			Hint:    serverStatusHint,
 		}
 	}
 
@@ -132,7 +132,7 @@ func curatedValidationDetails(body string) map[string]any {
 }
 
 func httpErrorToCLI(he *apiclient.HTTPError) *CLIError {
-	hint := statusSrcLandHint
+	hint := serverStatusHint
 	retry := he.RetryAfter
 
 	switch he.StatusCode {
@@ -192,7 +192,7 @@ func httpErrorToCLI(he *apiclient.HTTPError) *CLIError {
 	case http.StatusServiceUnavailable:
 		return &CLIError{
 			Kind:       KindServerUnavailable,
-			Message:    "citadel server is temporarily unavailable; retry in a few seconds, or check https://status.src.land",
+			Message:    "citadel server is temporarily unavailable; retry in a few seconds",
 			HTTPStatus: he.StatusCode,
 			RetryAfter: retry,
 			Hint:       hint,
@@ -200,7 +200,7 @@ func httpErrorToCLI(he *apiclient.HTTPError) *CLIError {
 	case http.StatusBadGateway, http.StatusGatewayTimeout:
 		return &CLIError{
 			Kind:       KindServerUnavailable,
-			Message:    "upstream server unreachable; retry in a few seconds, or check https://status.src.land",
+			Message:    "upstream server unreachable; retry in a few seconds",
 			HTTPStatus: he.StatusCode,
 			RetryAfter: retry,
 			Hint:       hint,
@@ -209,7 +209,7 @@ func httpErrorToCLI(he *apiclient.HTTPError) *CLIError {
 		if he.StatusCode >= 500 {
 			return &CLIError{
 				Kind:       KindServerError,
-				Message:    fmt.Sprintf("citadel server error (HTTP %d); retry, and if the problem persists check https://status.src.land", he.StatusCode),
+				Message:    fmt.Sprintf("citadel server error (HTTP %d); retry if the problem persists", he.StatusCode),
 				HTTPStatus: he.StatusCode,
 				RetryAfter: retry,
 				Hint:       hint,
