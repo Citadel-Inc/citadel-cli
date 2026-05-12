@@ -103,3 +103,89 @@ func TestNamespaceDeployTokenRevokeNotFound(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestNamespaceDeployTokenListJSON(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /namespaces/myorg/deploy-tokens": func(w http.ResponseWriter, r *http.Request) {
+			writeJSON(t, w, http.StatusOK, map[string]any{
+				"deploy_tokens": []map[string]any{
+					{
+						"id":             "ns-tok-1",
+						"namespace_path": "myorg",
+						"name":           "org-wide",
+						"created_at":     "2026-05-07T01:00:00Z",
+						"scopes":         []string{"read:repos"},
+					},
+				},
+			})
+		},
+	}))
+
+	var out strings.Builder
+	if err := rootForOut(cmd.NamespaceCmd, &out, "deploy-token", "list", "myorg", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"id": "ns-tok-1"`) || !strings.Contains(out.String(), `"namespace_path": "myorg"`) {
+		t.Fatalf("expected namespace token json, got %s", out.String())
+	}
+}
+
+func TestNamespaceDeployTokenCreateJSON(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /namespaces/myorg/deploy-tokens": func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Name string `json:"name"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatalf("decode body: %v", err)
+			}
+			writeJSON(t, w, http.StatusCreated, map[string]any{
+				"id":              "ns-tok-2",
+				"namespace_path":  "myorg",
+				"name":            body.Name,
+				"created_at":      "2026-05-07T01:00:00Z",
+				"scopes":          []string{},
+				"cleartext_token": "ns-secret-token",
+			})
+		},
+	}))
+
+	var out strings.Builder
+	root := rootForOut(cmd.NamespaceCmd, &out, "deploy-token", "create", "myorg", "--name", "ci-ns", "--output", "json")
+	root.SetErr(io.Discard)
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"cleartext_token": "ns-secret-token"`) {
+		t.Fatalf("expected cleartext token, got %s", out.String())
+	}
+}
+
+func TestNamespaceDeployTokenListCSV(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /namespaces/myorg/deploy-tokens": func(w http.ResponseWriter, r *http.Request) {
+			writeJSON(t, w, http.StatusOK, map[string]any{
+				"deploy_tokens": []map[string]any{
+					{
+						"id":             "csv-tok",
+						"namespace_path": "myorg",
+						"name":           "csv-test",
+						"created_at":     "2026-05-07T01:00:00Z",
+						"scopes":         []string{},
+					},
+				},
+			})
+		},
+	}))
+
+	var out strings.Builder
+	if err := rootForOut(cmd.NamespaceCmd, &out, "deploy-token", "list", "myorg", "--output", "csv").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "id,name,namespace_path") {
+		t.Fatalf("expected CSV header, got %s", out.String())
+	}
+	if !strings.Contains(out.String(), "csv-tok") {
+		t.Fatalf("expected token ID in CSV, got %s", out.String())
+	}
+}

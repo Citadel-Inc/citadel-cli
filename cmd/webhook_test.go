@@ -10,6 +10,24 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
 )
 
+const testWebhookID = "11111111-1111-1111-1111-111111111111"
+
+func webhookPayload() map[string]any {
+	return map[string]any{
+		"id":                  testWebhookID,
+		"namespace_id":        "ns1",
+		"namespace_path":      "acme/demo",
+		"name":                "ci-hook",
+		"target_url":          "https://example.test/hook",
+		"event_kinds":         []string{"issue.opened"},
+		"include_descendants": false,
+		"active":              true,
+		"created_at":          "2026-05-07T00:00:00Z",
+		"updated_at":          "2026-05-07T00:00:00Z",
+		"secret_hint":         "abcd1234",
+	}
+}
+
 func TestRepoWebhookList_JSON(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || !issuePathMatches(r, "/api/namespaces/acme%2Fdemo/webhooks", "/api/namespaces/acme/demo/webhooks") {
@@ -199,5 +217,164 @@ func TestNamespaceWebhookCreate_IncludeDescendants(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "namespace-secret") {
 		t.Fatalf("unexpected output: %s", out.String())
+	}
+}
+
+// ── namespace webhook list ────────────────────────────────────────────────────
+
+func TestNamespaceWebhookList_Human(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || !issuePathMatches(r,
+			"/api/namespaces/acme%2Fdemo/webhooks",
+			"/api/namespaces/acme/demo/webhooks") {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(t, w, http.StatusOK, map[string]any{
+			"webhooks":    []map[string]any{webhookPayload()},
+			"next_cursor": "",
+		})
+	})
+	var out strings.Builder
+	if err := rootForOut(cmd.NamespaceCmd, &out, "webhook", "list", "acme/demo").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), testWebhookID) {
+		t.Fatalf("expected webhook ID in output, got: %s", out.String())
+	}
+}
+
+func TestRepoWebhookList_CSV(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || !issuePathMatches(r,
+			"/api/namespaces/acme%2Fdemo/webhooks",
+			"/api/namespaces/acme/demo/webhooks") {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(t, w, http.StatusOK, map[string]any{
+			"webhooks":    []map[string]any{webhookPayload()},
+			"next_cursor": "",
+		})
+	})
+	var out strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &out, "webhook", "list", "-R", "acme/demo", "--output", "csv").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	// CSV header + data row should be present.
+	if !strings.Contains(out.String(), "id,name,namespace_path") {
+		t.Fatalf("expected CSV header in output, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), testWebhookID) {
+		t.Fatalf("expected webhook ID in CSV, got: %s", out.String())
+	}
+}
+
+// ── webhook get (human output / emitWebhookHuman) ────────────────────────────
+
+func TestRepoWebhookGet_Human(t *testing.T) {
+	// fetchWebhookByID fetches the list then finds by ID.
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(t, w, http.StatusOK, map[string]any{
+			"webhooks":    []map[string]any{webhookPayload()},
+			"next_cursor": "",
+		})
+	})
+	var out strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &out, "webhook", "get",
+		"acme/demo", testWebhookID).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), testWebhookID) {
+		t.Fatalf("expected webhook ID in human output, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "Target") {
+		t.Fatalf("expected 'Target' label in human output, got: %s", out.String())
+	}
+}
+
+func TestNamespaceWebhookGet_JSON(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(t, w, http.StatusOK, map[string]any{
+			"webhooks":    []map[string]any{webhookPayload()},
+			"next_cursor": "",
+		})
+	})
+	var out strings.Builder
+	if err := rootForOut(cmd.NamespaceCmd, &out, "webhook", "get",
+		"acme/demo", testWebhookID, "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), testWebhookID) {
+		t.Fatalf("expected webhook ID in JSON output, got: %s", out.String())
+	}
+}
+
+// ── webhook delete ────────────────────────────────────────────────────────────
+
+func TestRepoWebhookDelete_DryRun(t *testing.T) {
+	var out strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &out, "webhook", "delete",
+		"acme/demo", testWebhookID, "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "Would DELETE") {
+		t.Fatalf("expected 'Would DELETE' in dry-run output, got: %s", out.String())
+	}
+}
+
+func TestRepoWebhookDelete_Forbidden(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = io.WriteString(w, `{"error":"forbidden"}`)
+	})
+	err := rootFor(cmd.RepoCmd, "webhook", "delete",
+		"acme/demo", testWebhookID).Execute()
+	if err == nil || !strings.Contains(err.Error(), "forbidden") {
+		t.Fatalf("want forbidden error, got %v", err)
+	}
+}
+
+func TestRepoWebhookDelete_NotFound(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = io.WriteString(w, `{"error":"not found"}`)
+	})
+	err := rootFor(cmd.RepoCmd, "webhook", "delete",
+		"acme/demo", testWebhookID).Execute()
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("want not-found error, got %v", err)
+	}
+}
+
+func TestRepoWebhookDelete_Conflict(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+		_, _ = io.WriteString(w, `{"error":"limit reached"}`)
+	})
+	err := rootFor(cmd.RepoCmd, "webhook", "delete",
+		"acme/demo", testWebhookID).Execute()
+	if err == nil || !strings.Contains(err.Error(), "limit") {
+		t.Fatalf("want limit error, got %v", err)
+	}
+}
+
+func TestRepoWebhookDelete_BadRequest(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, `{"error":"bad request"}`)
+	})
+	err := rootFor(cmd.RepoCmd, "webhook", "delete",
+		"acme/demo", testWebhookID).Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid") {
+		t.Fatalf("want invalid error, got %v", err)
 	}
 }

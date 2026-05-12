@@ -3,6 +3,7 @@ package selfhost_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/selfhost"
@@ -150,5 +151,78 @@ func TestConfigEnvOverride(t *testing.T) {
 	}
 	if path != customPath {
 		t.Errorf("ConfigPath with env = %q; want %q", path, customPath)
+	}
+}
+
+func TestConfigPath_Default(t *testing.T) {
+	t.Setenv("CITADEL_SELF_HOST_CONFIG", "")
+	path, err := selfhost.ConfigPath()
+	if err != nil {
+		t.Fatalf("ConfigPath default: %v", err)
+	}
+	if !strings.HasSuffix(path, filepath.Join(".citadel", "self-host.yaml")) {
+		t.Errorf("ConfigPath default = %q; want suffix .citadel/self-host.yaml", path)
+	}
+}
+
+func TestConfigDebugSummary(t *testing.T) {
+	cfg := selfhost.Config{
+		APIEndpoint: "https://citadel.example.com",
+		SupabaseURL: "https://abc.supabase.co",
+		AdminKey:    "abcdefghijkl1234",
+		JWTSecret:   "secret",
+		Telemetry:   true,
+	}
+	s := cfg.DebugSummary()
+	if strings.Contains(s, cfg.AdminKey) {
+		t.Error("DebugSummary must not contain raw AdminKey")
+	}
+	if !strings.Contains(s, cfg.APIEndpoint) {
+		t.Errorf("DebugSummary missing APIEndpoint: %s", s)
+	}
+}
+
+func TestConfigDebugSummary_ShortKey(t *testing.T) {
+	cfg := selfhost.Config{AdminKey: "short"}
+	s := cfg.DebugSummary()
+	if !strings.Contains(s, "***") {
+		t.Errorf("DebugSummary short key: expected *** in %s", s)
+	}
+}
+
+func TestConfigDebugSummary_NoJWT(t *testing.T) {
+	cfg := selfhost.Config{AdminKey: "abcdefghijkl1234"}
+	s := cfg.DebugSummary()
+	if !strings.Contains(s, "(not set)") {
+		t.Errorf("DebugSummary no JWT: expected (not set) in %s", s)
+	}
+}
+
+func TestProbeResultString(t *testing.T) {
+	r := selfhost.ProbeResult{
+		Name:   "api",
+		Status: selfhost.HealthGreen,
+		Detail: "ok",
+	}
+	s := r.String()
+	if !strings.Contains(s, "GREEN") || !strings.Contains(s, "api") || !strings.Contains(s, "ok") {
+		t.Errorf("ProbeResult.String() = %q; want GREEN, api, ok", s)
+	}
+}
+
+func TestHealthStatusString(t *testing.T) {
+	cases := []struct {
+		s    selfhost.HealthStatus
+		want string
+	}{
+		{selfhost.HealthGreen, "GREEN"},
+		{selfhost.HealthAmber, "AMBER"},
+		{selfhost.HealthRed, "RED"},
+		{selfhost.HealthStatus(99), "UNKNOWN"},
+	}
+	for _, tc := range cases {
+		if got := tc.s.String(); got != tc.want {
+			t.Errorf("HealthStatus(%d).String() = %q; want %q", tc.s, got, tc.want)
+		}
 	}
 }

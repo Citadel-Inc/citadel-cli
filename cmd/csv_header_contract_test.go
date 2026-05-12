@@ -83,6 +83,36 @@ func TestCSVHeaders_matchREADMEFrozenContract(t *testing.T) {
 			got:  (auditSessionSummary{}).CSVHeader(),
 			want: []string{"session_id", "id", "actor_slug", "actor_id", "actor_type", "namespace_slug", "namespace_id", "started_at", "last_event_at", "event_count"},
 		},
+		{
+			name: "commit list",
+			got:  (commitItem{}).CSVHeader(),
+			want: []string{"sha", "author", "author_email", "committer", "committer_email", "timestamp", "message"},
+		},
+		{
+			name: "auth provider list",
+			got:  (authProviderRow{}).CSVHeader(),
+			want: []string{"id", "label"},
+		},
+		{
+			name: "deploy token list",
+			got:  (deployTokenRow{}).CSVHeader(),
+			want: []string{"id", "name", "namespace_path", "created_at", "expires_at", "revoked_at"},
+		},
+		{
+			name: "webhook list",
+			got:  (webhookRow{}).CSVHeader(),
+			want: []string{"id", "name", "namespace_path", "target_url", "event_kinds", "include_descendants", "active", "created_at", "updated_at", "last_delivery_at", "last_delivery_state", "secret_hint"},
+		},
+		{
+			name: "milestone list",
+			got:  (milestoneListRow{}).CSVHeader(),
+			want: []string{"id", "title", "state", "due_on", "progress", "created_at"},
+		},
+		{
+			name: "pr list",
+			got:  (prListRow{}).CSVHeader(),
+			want: []string{"number", "title", "state", "source_ref", "target_ref", "author_id", "created_at", "updated_at"},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -145,4 +175,26 @@ func TestCSVRecord_columnCountMatchesHeader(t *testing.T) {
 
 	ev := auditEventPayload{ID: "e", TS: "t", Kind: "k", ActorType: "user"}
 	check(t, "audit event", ev.CSVHeader(), ev.CSVRecord())
+
+	ci := commitItem{SHA: "abc123", Message: "init\nbody", Author: "A", AuthorEmail: "a@x", Committer: "C", CommitterEmail: "c@x", Timestamp: now}
+	check(t, "commit", ci.CSVHeader(), ci.CSVRecord())
+
+	ap := authProviderRow{ID: "github", Label: "GitHub"}
+	check(t, "auth provider", ap.CSVHeader(), ap.CSVRecord())
+
+	dt := deployTokenRow{ID: "d", Name: "ci", NamespacePath: "acme/demo", CreatedAt: now}
+	check(t, "deploy token nil expiry", dt.CSVHeader(), dt.CSVRecord())
+
+	expiresAt := now.Add(24 * 3600 * 1e9)
+	dt2 := deployTokenRow{ID: "d2", Name: "ci2", NamespacePath: "acme/demo", CreatedAt: now, ExpiresAt: &expiresAt}
+	check(t, "deploy token with expiry", dt2.CSVHeader(), dt2.CSVRecord())
+
+	wh := webhookRow{ID: "w1", NamespacePath: "acme/demo", TargetURL: "https://x.test/h", EventKinds: []string{"issue.opened"}, CreatedAt: now, UpdatedAt: now}
+	check(t, "webhook", wh.CSVHeader(), wh.CSVRecord())
+
+	ml := milestoneListRow{ID: "m1", Title: "v1", State: "open", CreatedAt: now}
+	check(t, "milestone", ml.CSVHeader(), ml.CSVRecord())
+
+	pr := prListRow{Number: 3, Title: "fix", State: "open", SourceRef: "feat", TargetRef: "main", AuthorID: "u1", CreatedAt: now, UpdatedAt: now}
+	check(t, "pr list", pr.CSVHeader(), pr.CSVRecord())
 }
