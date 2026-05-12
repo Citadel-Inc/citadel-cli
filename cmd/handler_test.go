@@ -1022,7 +1022,6 @@ func TestKgSymbols_NotFound(t *testing.T) {
 func TestKgSearch_RateLimited(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/kg/search": func(w http.ResponseWriter, _ *http.Request) {
-			w.Header().Set("Retry-After", "10")
 			w.WriteHeader(http.StatusTooManyRequests)
 			_, _ = w.Write([]byte(`{"error":"slow down"}`))
 		},
@@ -1309,7 +1308,7 @@ func TestNsTransferAccept_JSON(t *testing.T) {
 func TestRepoList_ServerError(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /namespaces/myorg/repos": func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusNotImplemented)
 		},
 	}))
 	if err := rootFor(cmd.RepoCmd, "list", "--namespace", "myorg").Execute(); err == nil {
@@ -1361,7 +1360,7 @@ func TestTokenIssue_ExistingAgent(t *testing.T) {
 func TestTokenIssue_AgentsListFails(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusNotImplemented)
 		},
 	}))
 	if err := rootFor(cmd.TokenCmd, "issue", "--agent", "alpha").Execute(); err == nil {
@@ -1413,7 +1412,7 @@ func TestOAuthRotateSecret_WithClipboard(t *testing.T) {
 func TestRepoDelete_DeleteFails(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /namespaces/myorg/r": func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusNotImplemented)
 		},
 	}))
 	if err := rootFor(cmd.RepoCmd, "delete", "myorg/r", "--yes").Execute(); err == nil {
@@ -1772,7 +1771,7 @@ func TestAuditList_noAuth(t *testing.T) {
 func TestAuditList_HTTPError(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusNotImplemented)
 		},
 	}))
 	err := rootFor(cmd.AuditCmd, "list").Execute()
