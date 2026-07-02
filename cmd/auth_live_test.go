@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/playwright-community/playwright-go"
+	"github.com/mxschmitt/playwright-go"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 )
@@ -45,7 +45,7 @@ func TestLiveOAuthLogin_fullBrowser_optIn(t *testing.T) {
 
 	pw, err := playwright.Run()
 	if err != nil {
-		t.Skipf("Playwright unavailable: %v (install browsers with `go run github.com/playwright-community/playwright-go/cmd/playwright install chromium`)", err)
+		t.Skipf("Playwright unavailable: %v (install browsers with `go run github.com/mxschmitt/playwright-go/cmd/playwright install chromium`)", err)
 	}
 	t.Cleanup(func() { _ = pw.Stop() })
 
