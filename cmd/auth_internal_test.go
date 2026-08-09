@@ -286,6 +286,23 @@ func TestExchangePKCECode_OAuthError(t *testing.T) {
 	}
 }
 
+func TestExchangePKCECode_TruncatesLongFallback(t *testing.T) {
+	body := strings.Repeat("sensitive upstream detail ", 100)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+
+	_, err := exchangePKCECode(srv.URL, "http://127.0.0.1:1/callback", "x", "y")
+	if err == nil || !strings.Contains(err.Error(), "status=502") {
+		t.Fatalf("got %v", err)
+	}
+	if strings.Contains(err.Error(), body) {
+		t.Fatal("error contains the complete response body")
+	}
+}
+
 func TestExchangeRefreshToken_Happy(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/oauth/token" {

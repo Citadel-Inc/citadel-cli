@@ -106,12 +106,18 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 		}
 		agentIDStr := strings.TrimSpace(cfg.AgentID)
 		if agentIDStr == "" {
+			if strings.TrimSpace(cfg.RefreshToken) == "" {
+				// JWT-only / legacy config — cannot rotate; let the client surface the original 401.
+				return "", nil
+			}
 			var refreshedToken string
 			var refreshErr error
 			if err := clicfg.Update(func(cfg *clicfg.Config) error {
+				if strings.TrimSpace(cfg.AgentID) != "" {
+					return nil
+				}
 				refreshToken := strings.TrimSpace(cfg.RefreshToken)
 				if refreshToken == "" {
-					// JWT-only / legacy config — cannot rotate; let the client surface the original 401.
 					return nil
 				}
 				tokenResp, err := exchangeRefreshToken(cfg.ResolveServerURL(serverFlag(cmd)), refreshToken)
