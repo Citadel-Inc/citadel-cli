@@ -60,6 +60,14 @@ var repoWebhookGetCmd = &cobra.Command{
 	ValidArgsFunction: completeRepoWebhookIDs,
 }
 
+var repoWebhookEditCmd = &cobra.Command{
+	Use:               "edit [<namespace>/<repo>] <id>",
+	Short:             "Edit a repository webhook",
+	Args:              cobra.RangeArgs(1, 2),
+	RunE:              runRepoWebhookEdit,
+	ValidArgsFunction: completeRepoWebhookIDs,
+}
+
 var repoWebhookDeleteCmd = &cobra.Command{
 	Use:               "delete [<namespace>/<repo>] <id>",
 	Short:             "Delete a repository webhook",
@@ -95,6 +103,14 @@ var namespaceWebhookGetCmd = &cobra.Command{
 	Short:             "Get a namespace webhook",
 	Args:              cobra.ExactArgs(2),
 	RunE:              runNamespaceWebhookGet,
+	ValidArgsFunction: completeNamespaceWebhookIDs,
+}
+
+var namespaceWebhookEditCmd = &cobra.Command{
+	Use:               "edit <slug> <id>",
+	Short:             "Edit a namespace webhook",
+	Args:              cobra.ExactArgs(2),
+	RunE:              runNamespaceWebhookEdit,
 	ValidArgsFunction: completeNamespaceWebhookIDs,
 }
 
@@ -158,6 +174,15 @@ type webhookCreateRequest struct {
 	EventKinds         []string `json:"event_kinds"`
 	IncludeDescendants bool     `json:"include_descendants"`
 	Active             bool     `json:"active"`
+}
+
+type webhookPatchRequest struct {
+	Name               *string  `json:"name,omitempty"`
+	TargetURL          *string  `json:"target_url,omitempty"`
+	EventKinds         []string `json:"event_kinds,omitempty"`
+	IncludeDescendants *bool    `json:"include_descendants,omitempty"`
+	Active             *bool    `json:"active,omitempty"`
+	RotateSecret       bool     `json:"rotate_secret,omitempty"`
 }
 
 func webhookAPIPath(namespacePath string) string {
@@ -366,6 +391,59 @@ func runNamespaceWebhookGet(cmd *cobra.Command, args []string) error {
 	return runWebhookGet(cmd, args[0], args[1])
 }
 
+func runRepoWebhookEdit(cmd *cobra.Command, args []string) error {
+	namespacePath, id, err := parseRepoWebhookIDArgs(cmd, args)
+	if err != nil {
+		return err
+	}
+	return runWebhookEdit(cmd, namespacePath, id, false)
+}
+
+func runNamespaceWebhookEdit(cmd *cobra.Command, args []string) error {
+	return runWebhookEdit(cmd, args[0], args[1], true)
+}
+
+func runWebhookEdit(cmd *cobra.Command, namespacePath, rawID string, allowDescendants bool) error {
+	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
+	id, err := uuid.Parse(strings.TrimSpace(rawID))
+	if err != nil {
+		return fmt.Errorf("invalid webhook id: %w", err)
+	}
+	body, err := readWebhookPatchRequest(cmd, allowDescendants)
+	if err != nil {
+		return err
+	}
+	path := webhookAPIPath(namespacePath) + "/" + url.PathEscape(id.String())
+	if dryRunFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would PATCH %s (skipped; --dry-run)\n", path)
+		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	var updated webhookRow
+	if err := c.Patch(cmd.Context(), path, body, &updated); err != nil {
+		return decorateWebhookError(err, namespacePath, "edit")
+	}
+	if updated.NamespacePath == "" {
+		updated.NamespacePath = namespacePath
+	}
+
+	switch out := strings.TrimSpace(strings.ToLower(outputFlag(cmd))); out {
+	case "json":
+		return emitJSON(cmd, updated)
+	case "yaml":
+		return emitYAML(cmd, updated)
+	default:
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Updated webhook %s for %s.\n", updated.ID, updated.NamespacePath)
+		if updated.CleartextSecret != "" {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Secret (save now; shown once): %s\n", updated.CleartextSecret)
+		}
+		return nil
+	}
+}
+
 func runWebhookGet(cmd *cobra.Command, namespacePath, rawID string) error {
 	if err := validateGetOutput(outputFlag(cmd)); err != nil {
 		return err
@@ -450,6 +528,48 @@ func readWebhookCreateRequest(cmd *cobra.Command, allowDescendants bool) (webhoo
 		IncludeDescendants: includeDescendants,
 		Active:             active,
 	}, nil
+}
+
+func readWebhookPatchRequest(cmd *cobra.Command, allowDescendants bool) (webhookPatchRequest, error) {
+	var body webhookPatchRequest
+	if cmd.Flags().Changed("name") {
+		name, _ := cmd.Flags().GetString("name")
+		name = strings.TrimSpace(name)
+		body.Name = &name
+	}
+	if cmd.Flags().Changed("url") {
+		targetURL, _ := cmd.Flags().GetString("url")
+		targetURL = strings.TrimSpace(targetURL)
+		if targetURL == "" {
+			return webhookPatchRequest{}, fmt.Errorf("--url cannot be empty")
+		}
+		body.TargetURL = &targetURL
+	}
+	if cmd.Flags().Changed("events") {
+		events, _ := cmd.Flags().GetStringSlice("events")
+		events = normaliseCLIEventKinds(events)
+		if len(events) == 0 {
+			return webhookPatchRequest{}, fmt.Errorf("--events must include at least one event kind")
+		}
+		body.EventKinds = events
+	}
+	if allowDescendants && cmd.Flags().Changed("include-descendants") {
+		includeDescendants, _ := cmd.Flags().GetBool("include-descendants")
+		body.IncludeDescendants = &includeDescendants
+	}
+	if cmd.Flags().Changed("active") {
+		active, _ := cmd.Flags().GetBool("active")
+		body.Active = &active
+	}
+	if cmd.Flags().Changed("rotate-secret") {
+		rotateSecret, _ := cmd.Flags().GetBool("rotate-secret")
+		body.RotateSecret = rotateSecret
+	}
+	if body.Name == nil && body.TargetURL == nil && len(body.EventKinds) == 0 &&
+		body.IncludeDescendants == nil && body.Active == nil && !body.RotateSecret {
+		return webhookPatchRequest{}, fmt.Errorf("at least one changing flag is required")
+	}
+	return body, nil
 }
 
 func normaliseCLIEventKinds(raw []string) []string {
@@ -637,22 +757,25 @@ func init() {
 	repoWebhookCmd.AddCommand(repoWebhookListCmd)
 	repoWebhookCmd.AddCommand(repoWebhookCreateCmd)
 	repoWebhookCmd.AddCommand(repoWebhookGetCmd)
+	repoWebhookCmd.AddCommand(repoWebhookEditCmd)
 	repoWebhookCmd.AddCommand(repoWebhookDeleteCmd)
 	RepoCmd.AddCommand(repoWebhookCmd)
 
 	namespaceWebhookCmd.AddCommand(namespaceWebhookListCmd)
 	namespaceWebhookCmd.AddCommand(namespaceWebhookCreateCmd)
 	namespaceWebhookCmd.AddCommand(namespaceWebhookGetCmd)
+	namespaceWebhookCmd.AddCommand(namespaceWebhookEditCmd)
 	namespaceWebhookCmd.AddCommand(namespaceWebhookDeleteCmd)
 	NamespaceCmd.AddCommand(namespaceWebhookCmd)
 
 	addOutputFlag(
-		repoWebhookListCmd, repoWebhookCreateCmd, repoWebhookGetCmd, repoWebhookDeleteCmd,
-		namespaceWebhookListCmd, namespaceWebhookCreateCmd, namespaceWebhookGetCmd, namespaceWebhookDeleteCmd,
+		repoWebhookListCmd, repoWebhookCreateCmd, repoWebhookGetCmd, repoWebhookEditCmd, repoWebhookDeleteCmd,
+		namespaceWebhookListCmd, namespaceWebhookCreateCmd, namespaceWebhookGetCmd, namespaceWebhookEditCmd, namespaceWebhookDeleteCmd,
 	)
 	addPaginationFlags(repoWebhookListCmd, namespaceWebhookListCmd)
-	addRepoFlag(repoWebhookListCmd, repoWebhookCreateCmd, repoWebhookGetCmd, repoWebhookDeleteCmd)
+	addRepoFlag(repoWebhookListCmd, repoWebhookCreateCmd, repoWebhookGetCmd, repoWebhookEditCmd, repoWebhookDeleteCmd)
 	addDryRunFlag(repoWebhookDeleteCmd, namespaceWebhookDeleteCmd)
+	addDryRunFlag(repoWebhookEditCmd, namespaceWebhookEditCmd)
 
 	for _, c := range []*cobra.Command{repoWebhookCreateCmd, namespaceWebhookCreateCmd} {
 		c.Flags().String("name", "", "Optional webhook name")
@@ -664,6 +787,16 @@ func init() {
 		_ = c.RegisterFlagCompletionFunc("events", completeWebhookEvents)
 	}
 	namespaceWebhookCreateCmd.Flags().Bool("include-descendants", false, "Deliver matching events from descendant namespaces as well")
+
+	for _, c := range []*cobra.Command{repoWebhookEditCmd, namespaceWebhookEditCmd} {
+		c.Flags().String("name", "", "Webhook name (empty clears the name)")
+		c.Flags().String("url", "", "Target URL for webhook delivery")
+		c.Flags().StringSlice("events", nil, "Comma-separated or repeated event kinds to deliver")
+		c.Flags().Bool("active", true, "Set whether the webhook is active")
+		c.Flags().Bool("rotate-secret", false, "Rotate the webhook secret")
+		_ = c.RegisterFlagCompletionFunc("events", completeWebhookEvents)
+	}
+	namespaceWebhookEditCmd.Flags().Bool("include-descendants", false, "Set whether descendant namespace events are included")
 
 	repoWebhookCreateCmd.PostRun = func(cmd *cobra.Command, args []string) {
 		pos := ""
@@ -687,6 +820,17 @@ func init() {
 		}
 	}
 	namespaceWebhookDeleteCmd.PostRun = func(cmd *cobra.Command, args []string) {
+		if len(args) == 2 {
+			scheduleCompletionInvalidate(serverFlag(cmd), webhookCompletionKey(args[0]))
+		}
+	}
+	repoWebhookEditCmd.PostRun = func(cmd *cobra.Command, args []string) {
+		namespacePath, _, err := parseRepoWebhookIDArgs(cmd, args)
+		if err == nil {
+			scheduleCompletionInvalidate(serverFlag(cmd), webhookCompletionKey(namespacePath))
+		}
+	}
+	namespaceWebhookEditCmd.PostRun = func(cmd *cobra.Command, args []string) {
 		if len(args) == 2 {
 			scheduleCompletionInvalidate(serverFlag(cmd), webhookCompletionKey(args[0]))
 		}
