@@ -269,7 +269,29 @@ func runDeviceLogin(cmd *cobra.Command, cfg *clicfg.Config, serverURL, flagServe
 		return err
 	}
 	printDeviceAuthorization(cmd, device)
-	return errors.New("device authorization polling is not yet available")
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Waiting for authorization...")
+	tokenResp, err := pollDeviceToken(cmd.Context(), serverURL, device)
+	if err != nil {
+		return err
+	}
+
+	claims, err := claimsFromJWT(tokenResp.AccessToken)
+	if err != nil {
+		return fmt.Errorf("parse access token: %w", err)
+	}
+	userUUID := userUUIDFromClaims(claims)
+	if err := bootstrapAgentToken(cmd.Context(), cmd, cfg, serverURL, flagServer, tokenResp.AccessToken); err != nil {
+		return err
+	}
+
+	cfg.ServerURL = serverURL
+	cfg.UserUUID = userUUID
+	if err := cfg.Save(); err != nil {
+		return fmt.Errorf("save config: %w", err)
+	}
+
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Authentication successful! User: %s, agent: %s (%s)\n", userUUID, cfg.AgentName, cfg.AgentID)
+	return nil
 }
 
 func printDeviceAuthorization(cmd *cobra.Command, device deviceAuthorizationResponse) {
@@ -522,6 +544,87 @@ func requestDeviceAuthorization(ctx context.Context, citadelBaseURL string) (dev
 	return out, nil
 }
 
+func pollDeviceToken(ctx context.Context, citadelBaseURL string, device deviceAuthorizationResponse) (pkceTokenResponse, error) {
+	interval := time.Duration(device.Interval) * time.Second
+	if interval <= 0 {
+		interval = 5 * time.Second
+	}
+
+	for {
+		timer := time.NewTimer(interval)
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			return pkceTokenResponse{}, fmt.Errorf("device token poll: %w", ctx.Err())
+		case <-timer.C:
+		}
+
+		tokenResp, code, description, err := pollDeviceTokenOnce(ctx, citadelBaseURL, device.DeviceCode)
+		if err != nil {
+			return pkceTokenResponse{}, err
+		}
+		switch code {
+		case "":
+			return tokenResp, nil
+		case "authorization_pending":
+			continue
+		case "slow_down":
+			interval += 5 * time.Second
+			continue
+		default:
+			if description != "" {
+				return pkceTokenResponse{}, fmt.Errorf("device token poll failed: %s: %s", code, description)
+			}
+			return pkceTokenResponse{}, fmt.Errorf("device token poll failed: %s", code)
+		}
+	}
+}
+
+func pollDeviceTokenOnce(ctx context.Context, citadelBaseURL, deviceCode string) (pkceTokenResponse, string, string, error) {
+	base := strings.TrimRight(citadelBaseURL, "/")
+	form := url.Values{
+		"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
+		"device_code": {deviceCode},
+		"client_id":   {oauthClientID},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/oauth/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return pkceTokenResponse{}, "", "", fmt.Errorf("device token poll: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return pkceTokenResponse{}, "", "", fmt.Errorf("device token poll: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		var oauthErr struct {
+			Error       string `json:"error"`
+			Description string `json:"error_description"`
+		}
+		if err := json.Unmarshal(body, &oauthErr); err == nil && oauthErr.Error != "" {
+			return pkceTokenResponse{}, oauthErr.Error, oauthErr.Description, nil
+		}
+		return pkceTokenResponse{}, "", "", fmt.Errorf("device token poll failed: %s", strings.TrimSpace(string(body)))
+	}
+
+	var out pkceTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return pkceTokenResponse{}, "", "", fmt.Errorf("decode device token response: %w", err)
+	}
+	if out.AccessToken == "" {
+		return pkceTokenResponse{}, "", "", errors.New("device token response missing access_token")
+	}
+	return out, "", "", nil
+}
+
 // exchangePKCECode swaps an authorization code + verifier for tokens at
 // Citadel's /api/oauth/token. Split out so tests can drive the request with an httptest server.
 func exchangePKCECode(citadelBaseURL, redirectURI, code, verifier string) (pkceTokenResponse, error) {
@@ -625,4 +728,5 @@ func init() {
 	AuthCmd.AddCommand(setTokenCmd)
 	AuthCmd.AddCommand(authProviderCmd)
 	setTokenCmd.Flags().String("token", "", "JWT to persist (overrides CITADEL_ACCESS_TOKEN and stdin)")
+	loginCmd.Flags().Bool("device", false, "use RFC 8628 device authorization instead of opening a browser")
 }
