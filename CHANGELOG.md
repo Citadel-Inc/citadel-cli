@@ -6,6 +6,8 @@ All notable changes to `citadel-cli` are documented here.
 
 ### Added
 
+- Added webhook delivery management: `repo`/`namespace webhook deliveries`
+  `list`/`get`/`redeliver` with filters, pagination, dry-run, and docs.
 - Added `make install` for the binary and section-1 man pages, raw JSON request
   bodies via `api --input`, and operator project-graph recovery scans via
   `project admin recovery-scan`.

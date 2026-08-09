@@ -6,6 +6,17 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 091652ZAUG26 (fenced wave 6)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 30 | Cobra group test harness | `addTestRootGroups` on completion/man/watch SSE roots |
+| 31 | Webhook edit cmd_test | Tree + flag contracts for repo/namespace `edit` |
+| 32 | Audit list/show RBAC tests | Happy, namespace filter, 404, 403 (`cli-audit` B6) |
+| 33 | Webhook deliveries | `list`/`get`/`redeliver`; envelope unwrap; delivery-specific errors |
+
+---
+
 ## Shipped 091637ZAUG26 (fenced wave 5)
 
 | # | Item | Notes |
@@ -140,11 +151,35 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ## Round 7 — wave-5 audit carry-forwards (091637ZAUG26)
 
-### 30. Completion test attaches AuthCmd without auth group
+_(#30 shipped in wave 6.)_
 
-**Bug.** `go test ./...` can panic in `cmd/completion_test.go` when attaching `AuthCmd` without the `auth` Cobra group defined on the test root (`cmd/root.go` registers groups). Predates wave 5; not wave-owned.
+---
+
+## Round 8 — wave-6 audit carry-forwards (091652ZAUG26)
+
+### 34. Delivery ID shell completion
+
+**Feature.** Webhook CRUD verbs complete webhook IDs; deliveries `get`/`redeliver` have no `ValidArgsFunction` yet (no cheap delivery-list completer without inventing one).
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/completion_test.go`, possibly shared test root helpers |
-| **Acceptance** | `go test ./cmd -run Completion` (and package suite) does not panic on group registration |
+| **Packages / files** | `cmd/webhook.go` |
+| **Acceptance** | Delivery UUID args complete from recent deliveries for the resolved namespace when a safe cache/list path exists |
+
+### 35. Deliveries list `--offset`
+
+**Feature.** Server `ListDeliveries` accepts `offset` alongside cursor; CLI list currently mirrors webhook list (`limit`/`cursor`/`all` only).
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/webhook.go`, docs |
+| **Acceptance** | `--offset` forwarded when set; documented; httptest asserts query |
+
+### 36. Audit show 403 httptest
+
+**Test.** Wave 6 covered list 403; show-path forbidden remains optional coverage.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/audit_rbac_handler_test.go` |
+| **Acceptance** | `audit show` against 403 asserts the same error surface as list |
