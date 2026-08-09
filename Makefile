@@ -27,6 +27,14 @@ install: build ## Install the binary and man pages
 	man_dir="$$(mktemp -d)"; \
 	trap 'rm -rf "$$man_dir"' EXIT; \
 	./citadel-cli man "$$man_dir"; \
+	found=0; \
+	for man_page in "$$man_dir"/*.1; do \
+		if [ -f "$$man_page" ]; then found=1; break; fi; \
+	done; \
+	if [ "$$found" -eq 0 ]; then \
+		echo "error: citadel-cli man produced no .1 files in $$man_dir" >&2; \
+		exit 1; \
+	fi; \
 	install -m 644 "$$man_dir"/*.1 "$(DESTDIR)$(PREFIX)/share/man/man1/"
 
 test: ## Run go test with race detector across all packages
