@@ -106,40 +106,46 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 		}
 		agentIDStr := strings.TrimSpace(cfg.AgentID)
 		if agentIDStr == "" {
-			refreshToken := strings.TrimSpace(cfg.RefreshToken)
-			if refreshToken == "" {
-				// JWT-only / legacy config — cannot rotate; let the client surface the original 401.
-				return "", nil
-			}
-			tokenResp, err := exchangeRefreshToken(cfg.ResolveServerURL(serverFlag(cmd)), refreshToken)
-			if err != nil || strings.TrimSpace(tokenResp.AccessToken) == "" {
-				if err == nil {
-					err = errors.New("refresh token response missing access_token")
+			var refreshedToken string
+			var refreshErr error
+			if err := clicfg.Update(func(cfg *clicfg.Config) error {
+				refreshToken := strings.TrimSpace(cfg.RefreshToken)
+				if refreshToken == "" {
+					// JWT-only / legacy config — cannot rotate; let the client surface the original 401.
+					return nil
 				}
-				cfg.AccessToken = ""
-				cfg.RefreshToken = ""
-				cfg.ExpiresAt = time.Time{}
-				if saveErr := cfg.Save(); saveErr != nil {
-					return "", fmt.Errorf("%w: refresh failed (%v); clear credentials: %w", errSessionExpired, err, saveErr)
+				tokenResp, err := exchangeRefreshToken(cfg.ResolveServerURL(serverFlag(cmd)), refreshToken)
+				if err != nil || strings.TrimSpace(tokenResp.AccessToken) == "" {
+					if err == nil {
+						err = errors.New("refresh token response missing access_token")
+					}
+					cfg.AccessToken = ""
+					cfg.RefreshToken = ""
+					cfg.ExpiresAt = time.Time{}
+					refreshErr = err
+					return nil
 				}
-				return "", fmt.Errorf("%w: %v", errSessionExpired, err)
-			}
-			cfg.AccessToken = tokenResp.AccessToken
-			if strings.TrimSpace(tokenResp.RefreshToken) != "" {
-				cfg.RefreshToken = tokenResp.RefreshToken
-			}
-			if claims, claimsErr := claimsFromJWT(tokenResp.AccessToken); claimsErr == nil {
-				cfg.ExpiresAt = expiryFromClaims(claims, cfg.ExpiresAt)
-				if cfg.UserUUID == "" {
-					cfg.UserUUID = userUUIDFromClaims(claims)
+				cfg.AccessToken = tokenResp.AccessToken
+				if strings.TrimSpace(tokenResp.RefreshToken) != "" {
+					cfg.RefreshToken = tokenResp.RefreshToken
 				}
-			} else if tokenResp.ExpiresIn > 0 {
-				cfg.ExpiresAt = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+				if claims, claimsErr := claimsFromJWT(tokenResp.AccessToken); claimsErr == nil {
+					cfg.ExpiresAt = expiryFromClaims(claims, cfg.ExpiresAt)
+					if cfg.UserUUID == "" {
+						cfg.UserUUID = userUUIDFromClaims(claims)
+					}
+				} else if tokenResp.ExpiresIn > 0 {
+					cfg.ExpiresAt = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+				}
+				refreshedToken = tokenResp.AccessToken
+				return nil
+			}); err != nil {
+				return "", fmt.Errorf("update config after token refresh: %w", err)
 			}
-			if err := cfg.Save(); err != nil {
-				return "", fmt.Errorf("save config after token refresh: %w", err)
+			if refreshErr != nil {
+				return "", fmt.Errorf("%w: %v", errSessionExpired, refreshErr)
 			}
-			return tokenResp.AccessToken, nil
+			return refreshedToken, nil
 		}
 		uid, err := uuid.Parse(agentIDStr)
 		if err != nil {
@@ -156,19 +162,34 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 		}
 		var newTok tokenWithCleartext
 		if err := c.Post(ctx, "/agents/"+uid.String()+"/rotate-token", nil, &newTok); err != nil {
-			if apiclient.IsStatus(err, http.StatusUnauthorized) {
-				return "", errSessionExpired
+			if clearErr := clicfg.Update(func(cfg *clicfg.Config) error {
+				cfg.AccessToken = ""
+				cfg.RefreshToken = ""
+				cfg.ExpiresAt = time.Time{}
+				return nil
+			}); clearErr != nil {
+				return "", fmt.Errorf("%w: clear credentials: %v", errSessionExpired, clearErr)
 			}
-			return "", fmt.Errorf("rotate agent token: %w", err)
+			return "", fmt.Errorf("%w: %v", errSessionExpired, err)
 		}
 		if newTok.CleartextToken == "" {
-			return "", errors.New("rotate token: empty cleartext_token in response")
+			if err := clicfg.Update(func(cfg *clicfg.Config) error {
+				cfg.AccessToken = ""
+				cfg.RefreshToken = ""
+				cfg.ExpiresAt = time.Time{}
+				return nil
+			}); err != nil {
+				return "", fmt.Errorf("%w: clear credentials: %v", errSessionExpired, err)
+			}
+			return "", fmt.Errorf("%w: rotate token: empty cleartext_token in response", errSessionExpired)
 		}
-		cfg.AccessToken = newTok.CleartextToken
-		if newTok.ExpiresAt != nil {
-			cfg.ExpiresAt = *newTok.ExpiresAt
-		}
-		if err := cfg.Save(); err != nil {
+		if err := clicfg.Update(func(cfg *clicfg.Config) error {
+			cfg.AccessToken = newTok.CleartextToken
+			if newTok.ExpiresAt != nil {
+				cfg.ExpiresAt = *newTok.ExpiresAt
+			}
+			return nil
+		}); err != nil {
 			return "", fmt.Errorf("save config after token rotation: %w", err)
 		}
 		return newTok.CleartextToken, nil

@@ -651,8 +651,15 @@ func TestRotateAccessTokenOn401Hook_RotateSuccess(t *testing.T) {
 	if err := os.MkdirAll(cfgDir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	toml := "access_token = \"old-token\"\nagent_id = \"" + agentID + "\"\n"
-	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+	cfg := clicfg.Config{
+		ServerURL:    srv.URL,
+		AccessToken:  "old-token",
+		RefreshToken: "old-refresh",
+		ExpiresAt:    time.Now().Add(time.Hour),
+		AgentID:      agentID,
+		AgentName:    "citadel-cli@test",
+	}
+	if err := cfg.Save(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -681,8 +688,15 @@ func TestRotateAccessTokenOn401Hook_Rotate401(t *testing.T) {
 	if err := os.MkdirAll(cfgDir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	toml := "access_token = \"old-token\"\nagent_id = \"" + agentID + "\"\n"
-	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+	cfg := clicfg.Config{
+		ServerURL:    srv.URL,
+		AccessToken:  "old-token",
+		RefreshToken: "old-refresh",
+		ExpiresAt:    time.Now().Add(time.Hour),
+		AgentID:      agentID,
+		AgentName:    "citadel-cli@test",
+	}
+	if err := cfg.Save(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -693,6 +707,16 @@ func TestRotateAccessTokenOn401Hook_Rotate401(t *testing.T) {
 	}
 	if err == nil || !strings.Contains(err.Error(), "session expired") {
 		t.Fatalf("expected session expired error, got %v", err)
+	}
+	loaded, err := clicfg.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.AccessToken != "" || loaded.RefreshToken != "" || !loaded.ExpiresAt.IsZero() {
+		t.Fatalf("stale credentials remain: %+v", loaded)
+	}
+	if loaded.AgentID != agentID || loaded.AgentName != "citadel-cli@test" {
+		t.Fatalf("agent metadata changed: %+v", loaded)
 	}
 }
 

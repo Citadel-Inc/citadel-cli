@@ -221,6 +221,57 @@ func TestSave_OverwritesExistingFile(t *testing.T) {
 	}
 }
 
+func TestUpdateSerializesMutations(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	if err := (Config{AccessToken: "initial"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	firstEntered := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	firstDone := make(chan error, 1)
+	go func() {
+		firstDone <- Update(func(cfg *Config) error {
+			close(firstEntered)
+			<-releaseFirst
+			cfg.AccessToken = "first"
+			return nil
+		})
+	}()
+	<-firstEntered
+
+	secondEntered := make(chan struct{})
+	secondDone := make(chan error, 1)
+	go func() {
+		secondDone <- Update(func(cfg *Config) error {
+			close(secondEntered)
+			cfg.AccessToken = "second"
+			return nil
+		})
+	}()
+
+	select {
+	case <-secondEntered:
+		t.Fatal("second Update entered before first released its lock")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(releaseFirst)
+
+	if err := <-firstDone; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-secondDone; err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.AccessToken != "second" {
+		t.Fatalf("AccessToken = %q", loaded.AccessToken)
+	}
+}
+
 func TestLoad_InvalidTOML(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)

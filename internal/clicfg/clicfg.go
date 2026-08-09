@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"golang.org/x/sys/unix"
 )
 
 // Config holds the CLI configuration state: server URL, auth tokens, and user info.
@@ -123,6 +124,35 @@ func (c Config) Save() error {
 
 	// Ensure final file has correct permissions (paranoia check)
 	return os.Chmod(path, 0600)
+}
+
+// Update serializes a load-mutate-save cycle across CLI processes.
+func Update(fn func(*Config) error) error {
+	path, err := configPath()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return err
+	}
+	lock, err := os.OpenFile(path+".lock", os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = lock.Close() }()
+	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX); err != nil {
+		return err
+	}
+	defer func() { _ = unix.Flock(int(lock.Fd()), unix.LOCK_UN) }()
+
+	cfg, err := Load()
+	if err != nil {
+		return err
+	}
+	if err := fn(&cfg); err != nil {
+		return err
+	}
+	return cfg.Save()
 }
 
 // ResolveServerURL picks the effective server URL with this precedence:
