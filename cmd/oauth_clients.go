@@ -173,6 +173,7 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		if err := c.Get(cmd.Context(), "/oauth/clients?"+q.Encode(), &payload); err != nil {
 			return err
 		}
+		pageEmpty := len(payload.Clients) == 0
 		clients := payload.Clients
 		if dcr {
 			filtered := clients[:0]
@@ -185,10 +186,10 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		}
 		next := strings.TrimSpace(payload.NextCursor)
 
-		if len(clients) == 0 && cursor != "" && next == "" {
+		if pageEmpty && cursor != "" && next == "" {
 			return nil
 		}
-		if first && len(clients) == 0 && cursor == "" {
+		if first && pageEmpty && cursor == "" {
 			switch output {
 			case "json":
 				return emitJSON(cmd, []oauthClient{})
