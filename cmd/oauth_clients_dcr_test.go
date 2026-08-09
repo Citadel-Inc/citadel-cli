@@ -73,6 +73,52 @@ func TestOAuthClientsDcrFilter(t *testing.T) {
 	}
 }
 
+func TestOAuthClientsDcrFilterFindsLaterPage(t *testing.T) {
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if r.Method != http.MethodGet || r.URL.Path != "/oauth/clients" {
+			t.Errorf("request = %s %s, want GET /oauth/clients", r.Method, r.URL.Path)
+		}
+		if _, ok := r.URL.Query()["dcr"]; ok {
+			t.Error("request unexpectedly included a dcr query parameter")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch requests {
+		case 1:
+			_, _ = fmt.Fprint(w, `{"clients":[{"id":"c1","client_id":"static-1","name":"Static","dcr":false}],"next_cursor":"page-2"}`)
+		case 2:
+			_, _ = fmt.Fprint(w, `{"clients":[{"id":"c2","client_id":"dcr-1","name":"DCR one","dcr":true}],"next_cursor":""}`)
+		default:
+			t.Errorf("unexpected request %d", requests)
+			http.Error(w, "too many requests", http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+	var out bytes.Buffer
+	if err := oauthClientsDcrListCommand(&out, "--dcr", "--all", "--output", "ndjson").Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("output lines = %d, want 1: %q", len(lines), out.String())
+	}
+	var got oauthClient
+	if err := json.Unmarshal([]byte(lines[0]), &got); err != nil {
+		t.Fatalf("decode output line %q: %v", lines[0], err)
+	}
+	if got.ClientID != "dcr-1" || !got.Dcr {
+		t.Errorf("client = %#v, want DCR client dcr-1", got)
+	}
+	if requests != 2 {
+		t.Errorf("requests = %d, want 2", requests)
+	}
+}
+
 func TestOAuthClientsDcrRejectsWatch(t *testing.T) {
 	err := oauthClientsDcrListCommand(&bytes.Buffer{}, "--dcr", "--watch").Execute()
 	if err == nil {
