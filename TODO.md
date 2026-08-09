@@ -6,6 +6,16 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 091705ZAUG26 (fenced wave 7)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 34 | Delivery ID shell completion | `get`/`redeliver` ValidArgsFunction; bounded `limit=50` fetch; golden tests |
+| 35 | Deliveries list `--offset` | First-page query only; flag contracts; docs; negative + `--all` page-2 coverage |
+| 36 | Audit show 403 httptest | `TestAuditRBAC_ShowForbidden` mirrors list surface |
+
+---
+
 ## Shipped 091652ZAUG26 (fenced wave 6)
 
 | # | Item | Notes |
@@ -157,29 +167,44 @@ _(#30 shipped in wave 6.)_
 
 ## Round 8 — wave-6 audit carry-forwards (091652ZAUG26)
 
-### 34. Delivery ID shell completion
+_(#34–#36 shipped in wave 7.)_
 
-**Feature.** Webhook CRUD verbs complete webhook IDs; deliveries `get`/`redeliver` have no `ValidArgsFunction` yet (no cheap delivery-list completer without inventing one).
+---
+
+## Round 9 — wave-7 audit carry-forwards (091705ZAUG26)
+
+### 37. Delivery completion uses `pagination.DefaultLimit`
+
+**Hygiene.** `fetchWebhookDeliveryIDs` hardcodes `limit=50`; `pagination.DefaultLimit` is currently also 50.
 
 | | |
 | --- | --- |
 | **Packages / files** | `cmd/webhook.go` |
-| **Acceptance** | Delivery UUID args complete from recent deliveries for the resolved namespace when a safe cache/list path exists |
+| **Acceptance** | Completion fetch uses `pagination.DefaultLimit` (or shared constant) so limit drift cannot desync |
 
-### 35. Deliveries list `--offset`
+### 38. Positional-repo delivery completion golden
 
-**Feature.** Server `ListDeliveries` accepts `offset` alongside cursor; CLI list currently mirrors webhook list (`limit`/`cursor`/`all` only).
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/webhook.go`, docs |
-| **Acceptance** | `--offset` forwarded when set; documented; httptest asserts query |
-
-### 36. Audit show 403 httptest
-
-**Test.** Wave 6 covered list 403; show-path forbidden remains optional coverage.
+**Test.** Repo delivery completion golden covers `-R` only; `args[0]=ns/repo` path untested (same gap as webhook-ID completion).
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/audit_rbac_handler_test.go` |
-| **Acceptance** | `audit show` against 403 asserts the same error surface as list |
+| **Packages / files** | `cmd/completion_golden_test.go` |
+| **Acceptance** | Golden asserts delivery IDs when completing with positional repo arg |
+
+### 39. Namespace deliveries `--offset` docs example
+
+**Docs.** `docs/cli.md` documents repo `--offset` example; namespace block has none (shared bullet already lists the flag).
+
+| | |
+| --- | --- |
+| **Packages / files** | `docs/cli.md` (optional `HUMANS.md` pagination note) |
+| **Acceptance** | One namespace deliveries list example includes `--offset` |
+
+### 40. Align negative-offset error copy
+
+**Polish.** Webhook deliveries say `--offset cannot be negative`; audit sessions say `must be non-negative`.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/webhook.go`, `cmd/audit_sessions.go` (and any sibling offset validators) |
+| **Acceptance** | Shared wording for negative `--offset` across list verbs |

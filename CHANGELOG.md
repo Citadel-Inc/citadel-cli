@@ -6,6 +6,8 @@ All notable changes to `citadel-cli` are documented here.
 
 ### Added
 
+- Added webhook delivery ID shell completion for `get`/`redeliver`, and
+  `--offset` on deliveries list (first page only) with docs.
 - Added webhook delivery management: `repo`/`namespace webhook deliveries`
   `list`/`get`/`redeliver` with filters, pagination, dry-run, and docs.
 - Added `make install` for the binary and section-1 man pages, raw JSON request
