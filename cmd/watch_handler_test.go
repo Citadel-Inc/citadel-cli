@@ -1,7 +1,8 @@
 package cmd_test
 
 // SSE integration tests for the watch-list variants not covered by
-// watch_sse_integration_test.go (agent, oauth-clients, namespace, token).
+// watch_sse_integration_test.go (agent, oauth-clients, namespace, token,
+// deploy-token).
 // Each test spins up an httptest server that emits one init event, then
 // immediately cancels the test context so consumeSSEWatch returns nil.
 
@@ -183,4 +184,24 @@ func TestTokenListWatch_smokeNdjson(t *testing.T) {
 	defer srv.Close()
 
 	runWatchCmd(t, ctx, srv.URL, cmd.TokenCmd, "list", "--agent", "mybot", "--watch", "--output", "ndjson")
+}
+
+// ── repo deploy-token list --watch ───────────────────────────────────────────
+
+func TestRepoDeployTokenListWatch_smokeNdjson(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const data = `{"id":"repo-token-1","name":"ci","created_at":"2026-01-01T00:00:00Z","expires_at":"2026-02-01T00:00:00Z","revoked_at":null}`
+	srv := sseOnce(t, "/namespaces/myorg/myrepo/deploy-tokens", data, cancel)
+	runWatchCmd(t, ctx, srv.URL, cmd.RepoCmd, "deploy-token", "list", "-R", "myorg/myrepo", "--watch", "--output", "ndjson")
+}
+
+// ── namespace deploy-token list --watch ──────────────────────────────────────
+
+func TestNamespaceDeployTokenListWatch_smokeNdjson(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const data = `{"id":"namespace-token-1","name":"org-ci","created_at":"2026-01-01T00:00:00Z","expires_at":"2026-02-01T00:00:00Z","revoked_at":null}`
+	srv := sseOnce(t, "/namespaces/myorg/deploy-tokens", data, cancel)
+	runWatchCmd(t, ctx, srv.URL, cmd.NamespaceCmd, "deploy-token", "list", "myorg", "--watch", "--output", "ndjson")
 }
