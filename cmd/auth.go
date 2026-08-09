@@ -86,14 +86,14 @@ var AuthCmd = &cobra.Command{
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Authenticate via OAuth/PKCE browser flow",
+	Short: "Authenticate via OAuth/PKCE or device flow",
 	Long: `Starts an OAuth 2.1 PKCE flow against the Citadel API (/api/oauth/authorize
 and /api/oauth/token), opens a browser, exchanges the code for a short-lived
 identity token, then swaps it for a long-lived agent token stored in
 ~/.config/citadel/config.toml (mode 0600).
 
 For headless hosts, containers, or automation where a browser is unavailable,
-use 'citadel-cli auth set-token' instead.`,
+pass --device to use the RFC 8628 device authorization flow.`,
 	RunE: runLogin,
 }
 
@@ -145,6 +145,10 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	flagServer, _ := cmd.Flags().GetString("server")
 	serverURL := cfg.ResolveServerURL(flagServer)
 	citadelBaseURL := strings.TrimRight(serverURL, "/")
+	useDevice, _ := cmd.Flags().GetBool("device")
+	if useDevice {
+		return runDeviceLogin(cmd, &cfg, serverURL, flagServer)
+	}
 
 	oauthState, err := randomOAuthState()
 	if err != nil {
@@ -257,6 +261,25 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Authentication successful! User: %s, agent: %s (%s)\n", userUUID, cfg.AgentName, cfg.AgentID)
 	return nil
+}
+
+func runDeviceLogin(cmd *cobra.Command, cfg *clicfg.Config, serverURL, flagServer string) error {
+	device, err := requestDeviceAuthorization(cmd.Context(), serverURL)
+	if err != nil {
+		return err
+	}
+	printDeviceAuthorization(cmd, device)
+	return errors.New("device authorization polling is not yet available")
+}
+
+func printDeviceAuthorization(cmd *cobra.Command, device deviceAuthorizationResponse) {
+	out := cmd.OutOrStdout()
+	_, _ = fmt.Fprintln(out, "Authorize citadel-cli on another device:")
+	_, _ = fmt.Fprintf(out, "  User code: %s\n", device.UserCode)
+	_, _ = fmt.Fprintf(out, "  Visit: %s\n", device.VerificationURI)
+	if device.VerificationURIComplete != "" {
+		_, _ = fmt.Fprintf(out, "  Complete URL: %s\n", device.VerificationURIComplete)
+	}
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
@@ -458,6 +481,45 @@ type pkceTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresIn    int    `json:"expires_in"`
+}
+
+type deviceAuthorizationResponse struct {
+	DeviceCode              string `json:"device_code"`
+	UserCode                string `json:"user_code"`
+	VerificationURI         string `json:"verification_uri"`
+	VerificationURIComplete string `json:"verification_uri_complete"`
+	ExpiresIn               int    `json:"expires_in"`
+	Interval                int    `json:"interval"`
+}
+
+func requestDeviceAuthorization(ctx context.Context, citadelBaseURL string) (deviceAuthorizationResponse, error) {
+	base := strings.TrimRight(citadelBaseURL, "/")
+	form := url.Values{
+		"client_id": {oauthClientID},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/oauth/device", strings.NewReader(form.Encode()))
+	if err != nil {
+		return deviceAuthorizationResponse{}, fmt.Errorf("device authorization request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return deviceAuthorizationResponse{}, fmt.Errorf("device authorization request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return deviceAuthorizationResponse{}, fmt.Errorf("device authorization failed: %s", strings.TrimSpace(string(body)))
+	}
+	var out deviceAuthorizationResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return deviceAuthorizationResponse{}, fmt.Errorf("decode device authorization response: %w", err)
+	}
+	if out.DeviceCode == "" || out.UserCode == "" || out.VerificationURI == "" {
+		return deviceAuthorizationResponse{}, errors.New("device authorization response missing required fields")
+	}
+	return out, nil
 }
 
 // exchangePKCECode swaps an authorization code + verifier for tokens at
