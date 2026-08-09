@@ -212,6 +212,12 @@ type webhookDeliveryRow struct {
 	Payload              any            `json:"payload,omitempty"`
 }
 
+type webhookDeliveryResponse struct {
+	Delivery webhookDeliveryRow `json:"delivery"`
+	Sent     bool               `json:"sent,omitempty"`
+	State    string             `json:"state,omitempty"`
+}
+
 func (r webhookDeliveryRow) CSVHeader() []string {
 	return []string{"id", "event_kind", "state", "attempt_count", "http_status", "created_at"}
 }
@@ -634,7 +640,7 @@ func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
 			Next       string               `json:"next_cursor"`
 		}
 		if err := c.Get(cmd.Context(), webhookAPIPath(namespacePath)+"/deliveries?"+q.Encode(), &payload); err != nil {
-			return decorateWebhookError(err, namespacePath, "list deliveries")
+			return decorateWebhookDeliveryError(err, namespacePath, "list")
 		}
 		rows := payload.Deliveries
 		next := strings.TrimSpace(payload.Next)
@@ -736,17 +742,17 @@ func runWebhookDeliveryGet(cmd *cobra.Command, namespacePath, rawID string) erro
 	if err != nil {
 		return err
 	}
-	var delivery webhookDeliveryRow
-	if err := c.Get(cmd.Context(), path, &delivery); err != nil {
-		return decorateWebhookError(err, namespacePath, "get delivery")
+	var response webhookDeliveryResponse
+	if err := c.Get(cmd.Context(), path, &response); err != nil {
+		return decorateWebhookDeliveryError(err, namespacePath, "get")
 	}
 	switch out := strings.TrimSpace(strings.ToLower(outputFlag(cmd))); out {
 	case "json":
-		return emitJSON(cmd, delivery)
+		return emitJSON(cmd, response.Delivery)
 	case "yaml":
-		return emitYAML(cmd, delivery)
+		return emitYAML(cmd, response.Delivery)
 	default:
-		return emitWebhookDeliveryHuman(cmd, delivery)
+		return emitWebhookDeliveryHuman(cmd, response.Delivery)
 	}
 }
 
@@ -776,17 +782,20 @@ func runWebhookDeliveryRedeliver(cmd *cobra.Command, namespacePath, rawID string
 	if err != nil {
 		return err
 	}
-	var delivery webhookDeliveryRow
-	if err := c.Post(cmd.Context(), path, nil, &delivery); err != nil {
-		return decorateWebhookError(err, namespacePath, "redeliver delivery")
+	var response webhookDeliveryResponse
+	if err := c.Post(cmd.Context(), path, nil, &response); err != nil {
+		return decorateWebhookDeliveryError(err, namespacePath, "redeliver")
 	}
 	switch out := strings.TrimSpace(strings.ToLower(outputFlag(cmd))); out {
 	case "json":
-		return emitJSON(cmd, delivery)
+		return emitJSON(cmd, response.Delivery)
 	case "yaml":
-		return emitYAML(cmd, delivery)
+		return emitYAML(cmd, response.Delivery)
 	default:
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Redelivered delivery %s for %s.\n", delivery.ID, strings.Trim(strings.TrimSpace(namespacePath), "/"))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Redelivered delivery %s for %s.\n", response.Delivery.ID, strings.Trim(strings.TrimSpace(namespacePath), "/"))
+		if response.Delivery.EventKind != "" {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Event kind: %s\n", response.Delivery.EventKind)
+		}
 		return nil
 	}
 }
@@ -1116,6 +1125,25 @@ func decorateWebhookError(err error, namespacePath, action string) error {
 		return fmt.Errorf("namespace webhook limit reached for %s", namespacePath)
 	case http.StatusBadRequest:
 		return fmt.Errorf("invalid webhook request for %s", namespacePath)
+	}
+	return err
+}
+
+func decorateWebhookDeliveryError(err error, namespacePath, action string) error {
+	if err == nil {
+		return nil
+	}
+	var he *apiclient.HTTPError
+	if !errors.As(err, &he) {
+		return err
+	}
+	switch he.StatusCode {
+	case http.StatusForbidden:
+		return fmt.Errorf("forbidden: missing permission to %s webhook deliveries in %s", action, namespacePath)
+	case http.StatusNotFound:
+		return fmt.Errorf("webhook delivery not found in %s", namespacePath)
+	case http.StatusBadRequest:
+		return fmt.Errorf("invalid webhook delivery request for %s", namespacePath)
 	}
 	return err
 }

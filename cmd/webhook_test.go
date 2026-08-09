@@ -541,7 +541,7 @@ func TestNamespaceWebhookDeliveriesGet_JSON(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		writeJSON(t, w, http.StatusOK, webhookDeliveryPayload())
+		writeJSON(t, w, http.StatusOK, map[string]any{"delivery": webhookDeliveryPayload()})
 	})
 
 	var out strings.Builder
@@ -551,6 +551,32 @@ func TestNamespaceWebhookDeliveriesGet_JSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), `"id": "55555555-5555-5555-5555-555555555555"`) {
+		t.Fatalf("unexpected delivery output: %s", out.String())
+	}
+	if !strings.Contains(out.String(), `"event_kind": "issue.opened"`) {
+		t.Fatalf("missing event kind in delivery output: %s", out.String())
+	}
+}
+
+func TestRepoWebhookDeliveriesGet_JSON(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || !issuePathMatches(r,
+			"/api/namespaces/acme%2Fdemo/webhooks/deliveries/"+testDeliveryID,
+			"/api/namespaces/acme/demo/webhooks/deliveries/"+testDeliveryID) {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(t, w, http.StatusOK, map[string]any{"delivery": webhookDeliveryPayload()})
+	})
+
+	var out strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &out,
+		"webhook", "deliveries", "get", "-R", "acme/demo", testDeliveryID, "--output", "json",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"id": "55555555-5555-5555-5555-555555555555"`) ||
+		!strings.Contains(out.String(), `"event_kind": "issue.opened"`) {
 		t.Fatalf("unexpected delivery output: %s", out.String())
 	}
 }
@@ -563,7 +589,11 @@ func TestRepoWebhookDeliveriesRedeliver(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		writeJSON(t, w, http.StatusOK, webhookDeliveryPayload())
+		writeJSON(t, w, http.StatusOK, map[string]any{
+			"delivery": webhookDeliveryPayload(),
+			"sent":     true,
+			"state":    "queued",
+		})
 	})
 
 	var out strings.Builder
@@ -574,6 +604,9 @@ func TestRepoWebhookDeliveriesRedeliver(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "Redelivered delivery "+testDeliveryID+" for acme/demo.") {
 		t.Fatalf("unexpected redeliver output: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "Event kind: issue.opened") {
+		t.Fatalf("missing event kind in redeliver output: %s", out.String())
 	}
 }
 
@@ -597,7 +630,14 @@ func TestNamespaceWebhookDeliveriesGet_NotFound(t *testing.T) {
 	})
 
 	err := rootFor(cmd.NamespaceCmd, "webhook", "deliveries", "get", "acme", testDeliveryID).Execute()
-	if err == nil || !strings.Contains(err.Error(), "not found") {
+	if err == nil || !strings.Contains(err.Error(), "webhook delivery not found") {
 		t.Fatalf("want not-found error, got %v", err)
+	}
+}
+
+func TestNamespaceWebhookDeliveriesGet_InvalidID(t *testing.T) {
+	err := rootFor(cmd.NamespaceCmd, "webhook", "deliveries", "get", "acme", "not-a-uuid").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid delivery id") {
+		t.Fatalf("want invalid delivery ID error, got %v", err)
 	}
 }
