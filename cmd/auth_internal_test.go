@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -496,6 +497,105 @@ func TestRotateAccessTokenOn401Hook_EmptyAgentID(t *testing.T) {
 	}
 	if tok != "" {
 		t.Fatalf("expected empty token, got %q", tok)
+	}
+}
+
+func TestRotateAccessTokenOn401Hook_RefreshSuccess(t *testing.T) {
+	newAccess := makeUnsignedJWT(t, jwt.MapClaims{
+		"sub": "99999999-9999-4999-8999-999999999999",
+		"exp": float64(time.Now().Add(time.Hour).Unix()),
+	})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/oauth/token" {
+			t.Errorf("request = %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		if r.PostForm.Get("grant_type") != "refresh_token" || r.PostForm.Get("refresh_token") != "old-refresh" {
+			t.Errorf("refresh form = %v", r.PostForm)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"access_token":  newAccess,
+			"refresh_token": "rotated-refresh",
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	cfgDir := filepath.Join(xdg, "citadel")
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	toml := "server_url = \"" + srv.URL + "\"\naccess_token = \"expired-access\"\nrefresh_token = \"old-refresh\"\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
+	got, err := hook(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != newAccess {
+		t.Fatalf("token = %q want %q", got, newAccess)
+	}
+	loaded, err := clicfg.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.AccessToken != newAccess || loaded.RefreshToken != "rotated-refresh" {
+		t.Fatalf("stored credentials = access %q refresh %q", loaded.AccessToken, loaded.RefreshToken)
+	}
+	if loaded.UserUUID != "99999999-9999-4999-8999-999999999999" {
+		t.Fatalf("UserUUID = %q", loaded.UserUUID)
+	}
+	if loaded.ExpiresAt.Before(time.Now()) {
+		t.Fatalf("ExpiresAt = %v", loaded.ExpiresAt)
+	}
+}
+
+func TestRotateAccessTokenOn401Hook_RefreshFailureClearsSecrets(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"refresh token revoked"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	xdg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	cfgDir := filepath.Join(xdg, "citadel")
+	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	toml := "server_url = \"" + srv.URL + "\"\naccess_token = \"expired-access\"\nrefresh_token = \"stale-refresh\"\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
+	_, err := hook(context.Background())
+	if err == nil || !errors.Is(err, errSessionExpired) {
+		t.Fatalf("expected session expired error, got %v", err)
+	}
+	cliErr, ok := FriendlyError(err).(*CLIError)
+	if !ok || cliErr.Kind != KindAuthRequired {
+		t.Fatalf("FriendlyError = %#v, want auth_required", FriendlyError(err))
+	}
+	loaded, err := clicfg.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.AccessToken != "" || loaded.RefreshToken != "" || !loaded.ExpiresAt.IsZero() {
+		t.Fatalf("stale credentials remain: %+v", loaded)
 	}
 }
 

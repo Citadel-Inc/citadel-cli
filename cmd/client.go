@@ -102,8 +102,40 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 		}
 		agentIDStr := strings.TrimSpace(cfg.AgentID)
 		if agentIDStr == "" {
-			// JWT-only / legacy config — cannot rotate; let the client surface the original 401.
-			return "", nil
+			refreshToken := strings.TrimSpace(cfg.RefreshToken)
+			if refreshToken == "" {
+				// JWT-only / legacy config — cannot rotate; let the client surface the original 401.
+				return "", nil
+			}
+			tokenResp, err := exchangeRefreshToken(cfg.ResolveServerURL(serverFlag(cmd)), refreshToken)
+			if err != nil || strings.TrimSpace(tokenResp.AccessToken) == "" {
+				if err == nil {
+					err = errors.New("refresh token response missing access_token")
+				}
+				cfg.AccessToken = ""
+				cfg.RefreshToken = ""
+				cfg.ExpiresAt = time.Time{}
+				if saveErr := cfg.Save(); saveErr != nil {
+					return "", fmt.Errorf("%w: refresh failed (%v); clear credentials: %w", errSessionExpired, err, saveErr)
+				}
+				return "", fmt.Errorf("%w: %v", errSessionExpired, err)
+			}
+			cfg.AccessToken = tokenResp.AccessToken
+			if strings.TrimSpace(tokenResp.RefreshToken) != "" {
+				cfg.RefreshToken = tokenResp.RefreshToken
+			}
+			if claims, claimsErr := claimsFromJWT(tokenResp.AccessToken); claimsErr == nil {
+				cfg.ExpiresAt = expiryFromClaims(claims, cfg.ExpiresAt)
+				if cfg.UserUUID == "" {
+					cfg.UserUUID = userUUIDFromClaims(claims)
+				}
+			} else if tokenResp.ExpiresIn > 0 {
+				cfg.ExpiresAt = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+			}
+			if err := cfg.Save(); err != nil {
+				return "", fmt.Errorf("save config after token refresh: %w", err)
+			}
+			return tokenResp.AccessToken, nil
 		}
 		uid, err := uuid.Parse(agentIDStr)
 		if err != nil {
