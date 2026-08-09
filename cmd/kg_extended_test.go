@@ -3,6 +3,8 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"net/http"
 	"reflect"
 	"strings"
 	"testing"
@@ -122,6 +124,113 @@ func TestKgWritePagesAllRejectsJSON(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "--output json") {
 		t.Fatalf("error = %v, want --output json conflict", err)
 	}
+}
+
+func TestKgSearch_AllPagination(t *testing.T) {
+	runKgAllPaginationTest(t,
+		"/api/kg/search",
+		[]string{"search", "needle", "--all", "--output", "ndjson"},
+		"results",
+		map[string]any{"path": "search-page-one.go"},
+		map[string]any{"path": "search-page-two.go"},
+		"search-page-one.go",
+		"search-page-two.go",
+	)
+}
+
+func TestKgSymbols_AllPagination(t *testing.T) {
+	runKgAllPaginationTest(t,
+		"/api/namespaces/org/kg/symbols",
+		[]string{"symbols", "org/r1", "--q", "needle", "--all", "--output", "ndjson"},
+		"symbols",
+		map[string]any{"symbol_name": "SymbolOne"},
+		map[string]any{"symbol_name": "SymbolTwo"},
+		"SymbolOne",
+		"SymbolTwo",
+	)
+}
+
+func TestKgFiles_AllPagination(t *testing.T) {
+	runKgAllPaginationTest(t,
+		"/api/namespaces/org/kg/files",
+		[]string{"files", "org/r1", "--all", "--output", "ndjson"},
+		"files",
+		map[string]any{"path": "files-page-one.go"},
+		map[string]any{"path": "files-page-two.go"},
+		"files-page-one.go",
+		"files-page-two.go",
+	)
+}
+
+func TestKgFulltext_AllPagination(t *testing.T) {
+	runKgAllPaginationTest(t,
+		"/api/namespaces/org/kg/fulltext",
+		[]string{"fulltext", "org/r1", "--q", "needle", "--all", "--output", "ndjson"},
+		"results",
+		map[string]any{"file_path": "fulltext-page-one.go"},
+		map[string]any{"file_path": "fulltext-page-two.go"},
+		"fulltext-page-one.go",
+		"fulltext-page-two.go",
+	)
+}
+
+func runKgAllPaginationTest(t *testing.T, path string, args []string, rowKey string, first, second map[string]any, wantValues ...string) {
+	t.Helper()
+	var calls int
+	var cursors []string
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != path {
+			t.Fatalf("request = %s %s, want GET %s", r.Method, r.URL.Path, path)
+		}
+		calls++
+		cursor := r.URL.Query().Get("cursor")
+		cursors = append(cursors, cursor)
+		switch calls {
+		case 1:
+			if cursor != "" {
+				t.Fatalf("first-page cursor = %q, want empty", cursor)
+			}
+			writeJSON(t, w, http.StatusOK, map[string]any{
+				rowKey:        []any{first},
+				"next_cursor": "cursor-page-two",
+			})
+		case 2:
+			if cursor != "cursor-page-two" {
+				t.Fatalf("second-page cursor = %q, want cursor-page-two", cursor)
+			}
+			writeJSON(t, w, http.StatusOK, map[string]any{rowKey: []any{second}})
+		default:
+			t.Fatalf("unexpected request %d with cursor %q", calls, cursor)
+		}
+	})
+
+	var output strings.Builder
+	if err := kgRootForOut(&output, args...).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if calls < 2 {
+		t.Fatalf("API calls = %d, want at least 2", calls)
+	}
+	if want := []string{"", "cursor-page-two"}; !reflect.DeepEqual(cursors, want) {
+		t.Fatalf("cursors = %#v, want %#v", cursors, want)
+	}
+	for _, value := range wantValues {
+		if !strings.Contains(output.String(), value) {
+			t.Fatalf("merged output missing %q: %s", value, output.String())
+		}
+	}
+}
+
+func kgRootForOut(stdout io.Writer, args ...string) *cobra.Command {
+	resetFlagsRecursive(KgCmd)
+	setOutRecursive(KgCmd, stdout, io.Discard)
+	root := NewRootCmd()
+	root.SetArgs(append([]string{"kg"}, args...))
+	root.SetOut(stdout)
+	root.SetErr(io.Discard)
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	return root
 }
 
 func kgTestOutputCommand(t *testing.T, output string) *cobra.Command {
