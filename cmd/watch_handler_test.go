@@ -7,12 +7,14 @@ package cmd_test
 // immediately cancels the test context so consumeSSEWatch returns nil.
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,13 +26,17 @@ import (
 // sseOnce is a helper that starts a test server emitting exactly one SSE
 // event (kind=init, data=jsonData) on path, then blocking until the request
 // context is canceled. cancel is called after the flush so the watch loop
-// exits cleanly.
-func sseOnce(t *testing.T, path, jsonData string, cancel context.CancelFunc) *httptest.Server {
+// exits cleanly. When gotQuery is non-nil, the matched request's RawQuery is
+// stored there for callers that assert pagination/watch query shape.
+func sseOnce(t *testing.T, path, jsonData string, cancel context.CancelFunc, gotQuery *string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != path {
 			http.NotFound(w, r)
 			return
+		}
+		if gotQuery != nil {
+			*gotQuery = r.URL.RawQuery
 		}
 		fl, ok := w.(http.Flusher)
 		if !ok {
@@ -52,19 +58,26 @@ func sseOnce(t *testing.T, path, jsonData string, cancel context.CancelFunc) *ht
 // is not context.Canceled / context.DeadlineExceeded.
 func runWatchCmd(t *testing.T, ctx context.Context, srvURL string, verb *cobra.Command, args ...string) {
 	t.Helper()
+	_ = runWatchCmdOut(t, ctx, srvURL, verb, args...)
+}
+
+// runWatchCmdOut is runWatchCmd that also returns captured stdout.
+func runWatchCmdOut(t *testing.T, ctx context.Context, srvURL string, verb *cobra.Command, args ...string) string {
+	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_SERVER", srvURL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
 
+	var out bytes.Buffer
 	resetFlagsRecursive(verb)
 	resetCtxRecursive(verb)
-	setOutRecursive(verb, io.Discard, io.Discard)
+	setOutRecursive(verb, &out, io.Discard)
 
 	root := &cobra.Command{Use: "test"}
 	addTestRootGroups(root)
 	root.AddCommand(verb)
 	root.SetArgs(append([]string{verb.Name()}, args...))
-	root.SetOut(io.Discard)
+	root.SetOut(&out)
 	root.SetErr(io.Discard)
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -80,6 +93,7 @@ func runWatchCmd(t *testing.T, ctx context.Context, srvURL string, verb *cobra.C
 	case <-time.After(30 * time.Second):
 		t.Fatal("timed out waiting for watch command to exit")
 	}
+	return out.String()
 }
 
 // ── agent list --watch ────────────────────────────────────────────────────────
@@ -88,7 +102,7 @@ func TestAgentListWatch_smokeNdjson(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	const data = `{"id":"00000000-0000-0000-0000-000000000001","name":"bot","owner_user_id":"u1"}`
-	srv := sseOnce(t, "/agents", data, cancel)
+	srv := sseOnce(t, "/agents", data, cancel, nil)
 	runWatchCmd(t, ctx, srv.URL, cmd.AgentCmd, "list", "--watch", "--output", "ndjson")
 }
 
@@ -96,7 +110,7 @@ func TestAgentListWatch_smokeTable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	const data = `{"id":"00000000-0000-0000-0000-000000000001","name":"bot","owner_user_id":"u1"}`
-	srv := sseOnce(t, "/agents", data, cancel)
+	srv := sseOnce(t, "/agents", data, cancel, nil)
 	runWatchCmd(t, ctx, srv.URL, cmd.AgentCmd, "list", "--watch")
 }
 
@@ -106,7 +120,7 @@ func TestOAuthClientsListWatch_smokeNdjson(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	const data = `{"id":"11111111-1111-1111-1111-111111111111","client_id":"cid","name":"App","allowed_scopes":["openid"],"redirect_uris":["https://x"],"is_public":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}`
-	srv := sseOnce(t, "/oauth/clients", data, cancel)
+	srv := sseOnce(t, "/oauth/clients", data, cancel, nil)
 	runWatchCmd(t, ctx, srv.URL, cmd.OauthCmd, "clients", "list", "--watch", "--output", "ndjson")
 }
 
@@ -114,7 +128,7 @@ func TestOAuthClientsListWatch_withOrg(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	const data = `{"id":"11111111-1111-1111-1111-111111111111","client_id":"cid","name":"App","allowed_scopes":[],"redirect_uris":["https://x"],"is_public":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}`
-	srv := sseOnce(t, "/oauth/clients", data, cancel)
+	srv := sseOnce(t, "/oauth/clients", data, cancel, nil)
 	runWatchCmd(t, ctx, srv.URL, cmd.OauthCmd, "clients", "list", "--watch", "--output", "ndjson", "--org", "myorg")
 }
 
@@ -124,7 +138,7 @@ func TestNsListWatch_smokeNdjson(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	const data = `{"slug":"myorg","display_name":"My Org","created_at":"2026-01-01T00:00:00Z"}`
-	srv := sseOnce(t, "/orgs", data, cancel)
+	srv := sseOnce(t, "/orgs", data, cancel, nil)
 	runWatchCmd(t, ctx, srv.URL, cmd.NamespaceCmd, "list", "--watch", "--output", "ndjson")
 }
 
@@ -132,7 +146,7 @@ func TestNsListWatch_smokeTable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	const data = `{"slug":"myorg","display_name":"My Org","created_at":"2026-01-01T00:00:00Z"}`
-	srv := sseOnce(t, "/orgs", data, cancel)
+	srv := sseOnce(t, "/orgs", data, cancel, nil)
 	runWatchCmd(t, ctx, srv.URL, cmd.NamespaceCmd, "list", "--watch")
 }
 
@@ -142,7 +156,7 @@ func TestNsMembersWatch_smokeNdjson(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	const data = `{"user_id":"u1","slug":"alice","display_name":"Alice","is_owner":true,"permissions":[],"joined_at":"2026-01-01T00:00:00Z"}`
-	srv := sseOnce(t, "/orgs/myorg/members", data, cancel)
+	srv := sseOnce(t, "/orgs/myorg/members", data, cancel, nil)
 	runWatchCmd(t, ctx, srv.URL, cmd.NamespaceCmd, "members", "myorg", "--watch", "--output", "ndjson")
 }
 
@@ -152,7 +166,7 @@ func TestNsTransferListPendingWatch_smokeNdjson(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	const data = `{"id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","org_namespace_id":"x","org_slug":"o","from_user_id":"a","from_user_slug":"fs","to_user_id":"b","to_user_slug":"ts","expires_at":"2026-02-01T00:00:00Z","created_at":"2026-01-01T00:00:00Z"}`
-	srv := sseOnce(t, "/transfers/pending", data, cancel)
+	srv := sseOnce(t, "/transfers/pending", data, cancel, nil)
 	runWatchCmd(t, ctx, srv.URL, cmd.NamespaceCmd, "transfer", "list-pending", "--watch", "--output", "ndjson")
 }
 
@@ -189,19 +203,95 @@ func TestTokenListWatch_smokeNdjson(t *testing.T) {
 // ── repo deploy-token list --watch ───────────────────────────────────────────
 
 func TestRepoDeployTokenListWatch_smokeNdjson(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	const data = `{"id":"repo-token-1","name":"ci","created_at":"2026-01-01T00:00:00Z","expires_at":"2026-02-01T00:00:00Z","revoked_at":null}`
-	srv := sseOnce(t, "/namespaces/myorg/myrepo/deploy-tokens", data, cancel)
-	runWatchCmd(t, ctx, srv.URL, cmd.RepoCmd, "deploy-token", "list", "-R", "myorg/myrepo", "--watch", "--output", "ndjson")
+	assertDeployTokenListWatch(t,
+		"/namespaces/myorg/myrepo/deploy-tokens",
+		`{"id":"repo-token-1","name":"ci","created_at":"2026-01-01T00:00:00Z","expires_at":"2026-02-01T00:00:00Z","revoked_at":null}`,
+		"repo-token-1",
+		cmd.RepoCmd,
+		"deploy-token", "list", "-R", "myorg/myrepo", "--watch", "--output", "ndjson",
+	)
 }
 
 // ── namespace deploy-token list --watch ──────────────────────────────────────
 
 func TestNamespaceDeployTokenListWatch_smokeNdjson(t *testing.T) {
+	assertDeployTokenListWatch(t,
+		"/namespaces/myorg/deploy-tokens",
+		`{"id":"namespace-token-1","name":"org-ci","created_at":"2026-01-01T00:00:00Z","expires_at":"2026-02-01T00:00:00Z","revoked_at":null}`,
+		"namespace-token-1",
+		cmd.NamespaceCmd,
+		"deploy-token", "list", "myorg", "--watch", "--output", "ndjson",
+	)
+}
+
+func assertDeployTokenListWatch(t *testing.T, path, jsonData, wantID string, verb *cobra.Command, args ...string) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	const data = `{"id":"namespace-token-1","name":"org-ci","created_at":"2026-01-01T00:00:00Z","expires_at":"2026-02-01T00:00:00Z","revoked_at":null}`
-	srv := sseOnce(t, "/namespaces/myorg/deploy-tokens", data, cancel)
-	runWatchCmd(t, ctx, srv.URL, cmd.NamespaceCmd, "deploy-token", "list", "myorg", "--watch", "--output", "ndjson")
+
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != path {
+			http.NotFound(w, r)
+			return
+		}
+		gotQuery = r.URL.RawQuery
+		fl, ok := w.(http.Flusher)
+		if !ok {
+			t.Error("responseWriter does not support Flush")
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = fmt.Fprintf(w, "event: init\ndata: %s\n\n", jsonData)
+		fl.Flush()
+		<-r.Context().Done()
+	}))
+	t.Cleanup(srv.Close)
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	out := &safeStdout{}
+	resetFlagsRecursive(verb)
+	resetCtxRecursive(verb)
+	setOutRecursive(verb, out, io.Discard)
+
+	root := &cobra.Command{Use: "test"}
+	addTestRootGroups(root)
+	root.AddCommand(verb)
+	root.SetArgs(append([]string{verb.Name()}, args...))
+	root.SetOut(out)
+	root.SetErr(io.Discard)
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- root.ExecuteContext(ctx) }()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if strings.Contains(out.String(), wantID) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	got := out.String()
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("ExecuteContext: %v", err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("timed out waiting for watch command to exit")
+	}
+
+	if !strings.Contains(got, `"type":"init"`) || !strings.Contains(got, wantID) {
+		t.Fatalf("expected ndjson init payload with %s, got: %s", wantID, got)
+	}
+	if !strings.Contains(gotQuery, "limit=") {
+		t.Fatalf("expected SSE URL query to include limit, got %q", gotQuery)
+	}
 }
