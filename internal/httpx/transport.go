@@ -216,7 +216,7 @@ func redactAuth(req *http.Request) *http.Request {
 
 func redactOAuthForm(body []byte, contentType string) []byte {
 	mediaType := strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0])
-	if mediaType != "application/x-www-form-urlencoded" {
+	if !strings.EqualFold(mediaType, "application/x-www-form-urlencoded") {
 		return body
 	}
 	parts := strings.Split(string(body), "&")
