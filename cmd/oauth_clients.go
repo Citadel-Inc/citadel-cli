@@ -117,6 +117,14 @@ func requireUUID(arg string) (string, error) {
 }
 
 func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
+	dcr, err := cmd.Flags().GetBool("dcr")
+	if err != nil {
+		return err
+	}
+	if dcr && watchFlag(cmd) {
+		return errors.New("--watch cannot be combined with --dcr")
+	}
+
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -166,6 +174,15 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 		clients := payload.Clients
+		if dcr {
+			filtered := clients[:0]
+			for _, client := range clients {
+				if client.Dcr {
+					filtered = append(filtered, client)
+				}
+			}
+			clients = filtered
+		}
 		next := strings.TrimSpace(payload.NextCursor)
 
 		if len(clients) == 0 && cursor != "" && next == "" {
@@ -447,6 +464,7 @@ func init() {
 		oauthClientsRotateSecretCmd, oauthClientsRevokeCmd)
 	addPaginationFlags(oauthClientsListCmd)
 	addWatchFlag(oauthClientsListCmd)
+	oauthClientsListCmd.Flags().Bool("dcr", false, "Show only dynamically registered clients")
 	addYesFlag(oauthClientsRevokeCmd)
 	addDryRunFlag(oauthClientsRevokeCmd)
 
