@@ -76,6 +76,32 @@ var repoWebhookDeleteCmd = &cobra.Command{
 	ValidArgsFunction: completeRepoWebhookIDs,
 }
 
+var repoWebhookDeliveriesCmd = &cobra.Command{
+	Use:   "deliveries",
+	Short: "Manage repository webhook deliveries",
+}
+
+var repoWebhookDeliveryListCmd = &cobra.Command{
+	Use:   "list [<namespace>/<repo>]",
+	Short: "List repository webhook deliveries",
+	Args:  cobra.RangeArgs(0, 1),
+	RunE:  runRepoWebhookDeliveryList,
+}
+
+var repoWebhookDeliveryGetCmd = &cobra.Command{
+	Use:   "get [<namespace>/<repo>] <delivery-id>",
+	Short: "Get a repository webhook delivery",
+	Args:  cobra.RangeArgs(1, 2),
+	RunE:  runRepoWebhookDeliveryGet,
+}
+
+var repoWebhookDeliveryRedeliverCmd = &cobra.Command{
+	Use:   "redeliver [<namespace>/<repo>] <delivery-id>",
+	Short: "Redeliver a repository webhook delivery",
+	Args:  cobra.RangeArgs(1, 2),
+	RunE:  runRepoWebhookDeliveryRedeliver,
+}
+
 var namespaceWebhookCmd = &cobra.Command{
 	Use:     "webhook",
 	Aliases: []string{"webhooks"},
@@ -122,6 +148,32 @@ var namespaceWebhookDeleteCmd = &cobra.Command{
 	ValidArgsFunction: completeNamespaceWebhookIDs,
 }
 
+var namespaceWebhookDeliveriesCmd = &cobra.Command{
+	Use:   "deliveries",
+	Short: "Manage namespace webhook deliveries",
+}
+
+var namespaceWebhookDeliveryListCmd = &cobra.Command{
+	Use:   "list <slug>",
+	Short: "List namespace webhook deliveries",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runNamespaceWebhookDeliveryList,
+}
+
+var namespaceWebhookDeliveryGetCmd = &cobra.Command{
+	Use:   "get <slug> <delivery-id>",
+	Short: "Get a namespace webhook delivery",
+	Args:  cobra.ExactArgs(2),
+	RunE:  runNamespaceWebhookDeliveryGet,
+}
+
+var namespaceWebhookDeliveryRedeliverCmd = &cobra.Command{
+	Use:   "redeliver <slug> <delivery-id>",
+	Short: "Redeliver a namespace webhook delivery",
+	Args:  cobra.ExactArgs(2),
+	RunE:  runNamespaceWebhookDeliveryRedeliver,
+}
+
 type webhookRow struct {
 	ID                 string     `json:"id"`
 	NamespaceID        string     `json:"namespace_id"`
@@ -137,6 +189,46 @@ type webhookRow struct {
 	LastDeliveryState  string     `json:"last_delivery_state,omitempty"`
 	SecretHint         string     `json:"secret_hint,omitempty"`
 	CleartextSecret    string     `json:"cleartext_secret,omitempty"`
+}
+
+type webhookDeliveryRow struct {
+	ID                   string         `json:"id"`
+	WebhookID            string         `json:"webhook_id"`
+	WebhookName          string         `json:"webhook_name,omitempty"`
+	WebhookURL           string         `json:"webhook_url,omitempty"`
+	EventID              string         `json:"event_id,omitempty"`
+	EventKind            string         `json:"event_kind"`
+	WebhookNamespacePath string         `json:"webhook_namespace_path,omitempty"`
+	SourceNamespacePath  string         `json:"source_namespace_path,omitempty"`
+	State                string         `json:"state"`
+	AttemptCount         int            `json:"attempt_count"`
+	LastAttemptAt        *time.Time     `json:"last_attempt_at,omitempty"`
+	DeliveredAt          *time.Time     `json:"delivered_at,omitempty"`
+	HTTPStatus           *int           `json:"http_status,omitempty"`
+	ResponseBody         string         `json:"response_body,omitempty"`
+	ResponseHeaders      map[string]any `json:"response_headers,omitempty"`
+	ErrorMessage         string         `json:"error_message,omitempty"`
+	CreatedAt            time.Time      `json:"created_at"`
+	Payload              any            `json:"payload,omitempty"`
+}
+
+func (r webhookDeliveryRow) CSVHeader() []string {
+	return []string{"id", "event_kind", "state", "attempt_count", "http_status", "created_at"}
+}
+
+func (r webhookDeliveryRow) CSVRecord() []string {
+	httpStatus := ""
+	if r.HTTPStatus != nil {
+		httpStatus = fmt.Sprintf("%d", *r.HTTPStatus)
+	}
+	return []string{
+		r.ID,
+		r.EventKind,
+		r.State,
+		fmt.Sprintf("%d", r.AttemptCount),
+		httpStatus,
+		r.CreatedAt.Format(time.RFC3339),
+	}
 }
 
 func (r webhookRow) CSVHeader() []string {
@@ -187,6 +279,15 @@ type webhookPatchRequest struct {
 
 func webhookAPIPath(namespacePath string) string {
 	return "/api/namespaces/" + url.PathEscape(strings.Trim(strings.TrimSpace(namespacePath), "/")) + "/webhooks"
+}
+
+func webhookDeliveryAPIPath(namespacePath, rawID string) (string, error) {
+	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
+	id, err := uuid.Parse(strings.TrimSpace(rawID))
+	if err != nil {
+		return "", fmt.Errorf("invalid delivery id: %w", err)
+	}
+	return webhookAPIPath(namespacePath) + "/deliveries/" + url.PathEscape(id.String()), nil
 }
 
 func webhookCompletionKey(namespacePath string) string {
@@ -474,6 +575,272 @@ func runNamespaceWebhookDelete(cmd *cobra.Command, args []string) error {
 	return runWebhookDelete(cmd, args[0], args[1])
 }
 
+func runRepoWebhookDeliveryList(cmd *cobra.Command, args []string) error {
+	pos := ""
+	if len(args) > 0 {
+		pos = args[0]
+	}
+	ns, slug, err := resolveRepoFromPosOrFlag(cmd, pos)
+	if err != nil {
+		return err
+	}
+	return runWebhookDeliveryList(cmd, ns+"/"+slug)
+}
+
+func runNamespaceWebhookDeliveryList(cmd *cobra.Command, args []string) error {
+	return runWebhookDeliveryList(cmd, args[0])
+}
+
+func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	limit, cursor, all, err := readPagination(cmd)
+	if err != nil {
+		return err
+	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	webhookID, _ := cmd.Flags().GetString("webhook-id")
+	state, _ := cmd.Flags().GetString("state")
+
+	var yamlAccum []webhookDeliveryRow
+	csvHdr := false
+	first := true
+	for {
+		q := url.Values{}
+		q.Set("limit", fmt.Sprintf("%d", limit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		}
+		if strings.TrimSpace(webhookID) != "" {
+			q.Set("webhook_id", strings.TrimSpace(webhookID))
+		}
+		if strings.TrimSpace(state) != "" {
+			q.Set("state", strings.TrimSpace(state))
+		}
+		var payload struct {
+			Deliveries []webhookDeliveryRow `json:"deliveries"`
+			Next       string               `json:"next_cursor"`
+		}
+		if err := c.Get(cmd.Context(), webhookAPIPath(namespacePath)+"/deliveries?"+q.Encode(), &payload); err != nil {
+			return decorateWebhookError(err, namespacePath, "list deliveries")
+		}
+		rows := payload.Deliveries
+		next := strings.TrimSpace(payload.Next)
+
+		if len(rows) == 0 && cursor != "" && next == "" {
+			return nil
+		}
+		if first && len(rows) == 0 && cursor == "" {
+			switch output {
+			case "json":
+				return emitJSON(cmd, []webhookDeliveryRow{})
+			case "ndjson":
+				return nil
+			case "csv":
+				return emitCSVHeaderOnly[webhookDeliveryRow](cmd)
+			case "yaml":
+				return emitYAML(cmd, []webhookDeliveryRow{})
+			default:
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No deliveries for namespace '%s'.\n", namespacePath)
+				return nil
+			}
+		}
+		first = false
+
+		switch output {
+		case "json":
+			return emitJSON(cmd, rows)
+		case "ndjson":
+			if err := emitNDJSONLines(cmd, rows); err != nil {
+				return err
+			}
+		case "csv":
+			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
+				return err
+			}
+		case "yaml":
+			if all {
+				yamlAccum = append(yamlAccum, rows...)
+			} else {
+				return emitYAML(cmd, rows)
+			}
+		default:
+			w := newTabWriter(cmd)
+			_, _ = fmt.Fprintln(w, "ID\tEVENT_KIND\tSTATE\tATTEMPT_COUNT\tHTTP_STATUS\tCREATED_AT")
+			for _, row := range rows {
+				httpStatus := "-"
+				if row.HTTPStatus != nil {
+					httpStatus = fmt.Sprintf("%d", *row.HTTPStatus)
+				}
+				_, _ = fmt.Fprintf(
+					w, "%s\t%s\t%s\t%d\t%s\t%s\n",
+					row.ID, row.EventKind, row.State, row.AttemptCount, httpStatus, row.CreatedAt.Format(time.RFC3339),
+				)
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
+		}
+
+		if !all {
+			if isHumanListOutput(output) && next != "" {
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
+			}
+			return nil
+		}
+		if next == "" {
+			break
+		}
+		cursor = next
+	}
+
+	if output == "yaml" {
+		return emitYAML(cmd, yamlAccum)
+	}
+	return nil
+}
+
+func runRepoWebhookDeliveryGet(cmd *cobra.Command, args []string) error {
+	namespacePath, id, err := parseRepoWebhookDeliveryIDArgs(cmd, args)
+	if err != nil {
+		return err
+	}
+	return runWebhookDeliveryGet(cmd, namespacePath, id)
+}
+
+func runNamespaceWebhookDeliveryGet(cmd *cobra.Command, args []string) error {
+	return runWebhookDeliveryGet(cmd, args[0], args[1])
+}
+
+func runWebhookDeliveryGet(cmd *cobra.Command, namespacePath, rawID string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+	path, err := webhookDeliveryAPIPath(namespacePath, rawID)
+	if err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	var delivery webhookDeliveryRow
+	if err := c.Get(cmd.Context(), path, &delivery); err != nil {
+		return decorateWebhookError(err, namespacePath, "get delivery")
+	}
+	switch out := strings.TrimSpace(strings.ToLower(outputFlag(cmd))); out {
+	case "json":
+		return emitJSON(cmd, delivery)
+	case "yaml":
+		return emitYAML(cmd, delivery)
+	default:
+		return emitWebhookDeliveryHuman(cmd, delivery)
+	}
+}
+
+func runRepoWebhookDeliveryRedeliver(cmd *cobra.Command, args []string) error {
+	namespacePath, id, err := parseRepoWebhookDeliveryIDArgs(cmd, args)
+	if err != nil {
+		return err
+	}
+	return runWebhookDeliveryRedeliver(cmd, namespacePath, id)
+}
+
+func runNamespaceWebhookDeliveryRedeliver(cmd *cobra.Command, args []string) error {
+	return runWebhookDeliveryRedeliver(cmd, args[0], args[1])
+}
+
+func runWebhookDeliveryRedeliver(cmd *cobra.Command, namespacePath, rawID string) error {
+	path, err := webhookDeliveryAPIPath(namespacePath, rawID)
+	if err != nil {
+		return err
+	}
+	path += "/redeliver"
+	if dryRunFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would POST %s (skipped; --dry-run)\n", path)
+		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	var delivery webhookDeliveryRow
+	if err := c.Post(cmd.Context(), path, nil, &delivery); err != nil {
+		return decorateWebhookError(err, namespacePath, "redeliver delivery")
+	}
+	switch out := strings.TrimSpace(strings.ToLower(outputFlag(cmd))); out {
+	case "json":
+		return emitJSON(cmd, delivery)
+	case "yaml":
+		return emitYAML(cmd, delivery)
+	default:
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Redelivered delivery %s for %s.\n", delivery.ID, strings.Trim(strings.TrimSpace(namespacePath), "/"))
+		return nil
+	}
+}
+
+func parseRepoWebhookDeliveryIDArgs(cmd *cobra.Command, args []string) (string, string, error) {
+	switch len(args) {
+	case 1:
+		ns, slug, err := resolveRepoFromPosOrFlag(cmd, "")
+		if err != nil {
+			return "", "", err
+		}
+		return ns + "/" + slug, strings.TrimSpace(args[0]), nil
+	case 2:
+		ns, slug, err := resolveRepoFromPosOrFlag(cmd, args[0])
+		if err != nil {
+			return "", "", err
+		}
+		return ns + "/" + slug, strings.TrimSpace(args[1]), nil
+	default:
+		return "", "", fmt.Errorf("expected <delivery-id> with -R/--repo, or <namespace>/<repo> <delivery-id>")
+	}
+}
+
+func emitWebhookDeliveryHuman(cmd *cobra.Command, delivery webhookDeliveryRow) error {
+	w := newTabWriter(cmd)
+	_, _ = fmt.Fprintln(w, "FIELD\tVALUE")
+	_, _ = fmt.Fprintf(w, "ID\t%s\n", delivery.ID)
+	_, _ = fmt.Fprintf(w, "Webhook ID\t%s\n", delivery.WebhookID)
+	if delivery.WebhookName != "" {
+		_, _ = fmt.Fprintf(w, "Webhook name\t%s\n", delivery.WebhookName)
+	}
+	if delivery.WebhookURL != "" {
+		_, _ = fmt.Fprintf(w, "Webhook URL\t%s\n", delivery.WebhookURL)
+	}
+	_, _ = fmt.Fprintf(w, "Event ID\t%s\n", delivery.EventID)
+	_, _ = fmt.Fprintf(w, "Event kind\t%s\n", delivery.EventKind)
+	_, _ = fmt.Fprintf(w, "State\t%s\n", delivery.State)
+	_, _ = fmt.Fprintf(w, "Attempt count\t%d\n", delivery.AttemptCount)
+	if delivery.HTTPStatus != nil {
+		_, _ = fmt.Fprintf(w, "HTTP status\t%d\n", *delivery.HTTPStatus)
+	}
+	_, _ = fmt.Fprintf(w, "Created\t%s\n", delivery.CreatedAt.Format(time.RFC3339))
+	if delivery.LastAttemptAt != nil {
+		_, _ = fmt.Fprintf(w, "Last attempt\t%s\n", delivery.LastAttemptAt.Format(time.RFC3339))
+	}
+	if delivery.DeliveredAt != nil {
+		_, _ = fmt.Fprintf(w, "Delivered\t%s\n", delivery.DeliveredAt.Format(time.RFC3339))
+	}
+	if delivery.ErrorMessage != "" {
+		_, _ = fmt.Fprintf(w, "Error\t%s\n", delivery.ErrorMessage)
+	}
+	return w.Flush()
+}
+
 func runWebhookDelete(cmd *cobra.Command, namespacePath, rawID string) error {
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	id, err := uuid.Parse(strings.TrimSpace(rawID))
@@ -759,6 +1126,10 @@ func init() {
 	repoWebhookCmd.AddCommand(repoWebhookGetCmd)
 	repoWebhookCmd.AddCommand(repoWebhookEditCmd)
 	repoWebhookCmd.AddCommand(repoWebhookDeleteCmd)
+	repoWebhookDeliveriesCmd.AddCommand(repoWebhookDeliveryListCmd)
+	repoWebhookDeliveriesCmd.AddCommand(repoWebhookDeliveryGetCmd)
+	repoWebhookDeliveriesCmd.AddCommand(repoWebhookDeliveryRedeliverCmd)
+	repoWebhookCmd.AddCommand(repoWebhookDeliveriesCmd)
 	RepoCmd.AddCommand(repoWebhookCmd)
 
 	namespaceWebhookCmd.AddCommand(namespaceWebhookListCmd)
@@ -766,16 +1137,28 @@ func init() {
 	namespaceWebhookCmd.AddCommand(namespaceWebhookGetCmd)
 	namespaceWebhookCmd.AddCommand(namespaceWebhookEditCmd)
 	namespaceWebhookCmd.AddCommand(namespaceWebhookDeleteCmd)
+	namespaceWebhookDeliveriesCmd.AddCommand(namespaceWebhookDeliveryListCmd)
+	namespaceWebhookDeliveriesCmd.AddCommand(namespaceWebhookDeliveryGetCmd)
+	namespaceWebhookDeliveriesCmd.AddCommand(namespaceWebhookDeliveryRedeliverCmd)
+	namespaceWebhookCmd.AddCommand(namespaceWebhookDeliveriesCmd)
 	NamespaceCmd.AddCommand(namespaceWebhookCmd)
 
 	addOutputFlag(
 		repoWebhookListCmd, repoWebhookCreateCmd, repoWebhookGetCmd, repoWebhookEditCmd, repoWebhookDeleteCmd,
 		namespaceWebhookListCmd, namespaceWebhookCreateCmd, namespaceWebhookGetCmd, namespaceWebhookEditCmd, namespaceWebhookDeleteCmd,
+		repoWebhookDeliveryListCmd, repoWebhookDeliveryGetCmd, repoWebhookDeliveryRedeliverCmd,
+		namespaceWebhookDeliveryListCmd, namespaceWebhookDeliveryGetCmd, namespaceWebhookDeliveryRedeliverCmd,
 	)
-	addPaginationFlags(repoWebhookListCmd, namespaceWebhookListCmd)
+	addPaginationFlags(repoWebhookListCmd, namespaceWebhookListCmd, repoWebhookDeliveryListCmd, namespaceWebhookDeliveryListCmd)
 	addRepoFlag(repoWebhookListCmd, repoWebhookCreateCmd, repoWebhookGetCmd, repoWebhookEditCmd, repoWebhookDeleteCmd)
 	addDryRunFlag(repoWebhookDeleteCmd, namespaceWebhookDeleteCmd)
 	addDryRunFlag(repoWebhookEditCmd, namespaceWebhookEditCmd)
+	addRepoFlag(repoWebhookDeliveryListCmd, repoWebhookDeliveryGetCmd, repoWebhookDeliveryRedeliverCmd)
+	addDryRunFlag(repoWebhookDeliveryRedeliverCmd, namespaceWebhookDeliveryRedeliverCmd)
+	for _, c := range []*cobra.Command{repoWebhookDeliveryListCmd, namespaceWebhookDeliveryListCmd} {
+		c.Flags().String("webhook-id", "", "Filter deliveries by webhook ID")
+		c.Flags().String("state", "", "Filter deliveries by state")
+	}
 
 	for _, c := range []*cobra.Command{repoWebhookCreateCmd, namespaceWebhookCreateCmd} {
 		c.Flags().String("name", "", "Optional webhook name")
