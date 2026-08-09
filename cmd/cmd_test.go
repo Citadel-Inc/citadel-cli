@@ -422,7 +422,7 @@ func TestRepoDeployTokenRevokeFlags(t *testing.T) {
 
 func TestRepoWebhookSubcommands(t *testing.T) {
 	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
-	for _, name := range []string{"list", "create", "get", "delete"} {
+	for _, name := range []string{"list", "create", "get", "edit", "delete"} {
 		if !hasSubcmd(webhook, name) {
 			t.Errorf("citadel repo webhook: missing subcommand %q", name)
 		}
@@ -455,6 +455,16 @@ func TestRepoWebhookGetFlags(t *testing.T) {
 	for _, flag := range []string{"repo", "no-cwd-repo", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel repo webhook get: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoWebhookEditFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
+	c := findSubcmd(t, webhook, "edit")
+	for _, flag := range []string{"repo", "no-cwd-repo", "name", "url", "events", "active", "rotate-secret", "dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo webhook edit: missing flag --%s", flag)
 		}
 	}
 }
@@ -500,7 +510,7 @@ func TestNamespaceDeployTokenSubcommands(t *testing.T) {
 
 func TestNamespaceWebhookSubcommands(t *testing.T) {
 	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
-	for _, name := range []string{"list", "create", "get", "delete"} {
+	for _, name := range []string{"list", "create", "get", "edit", "delete"} {
 		if !hasSubcmd(webhook, name) {
 			t.Errorf("citadel namespace webhook: missing subcommand %q", name)
 		}
@@ -532,6 +542,16 @@ func TestNamespaceWebhookGetFlags(t *testing.T) {
 	c := findSubcmd(t, webhook, "get")
 	if !hasFlag(c, "output") {
 		t.Errorf("citadel namespace webhook get: missing flag --output")
+	}
+}
+
+func TestNamespaceWebhookEditFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
+	c := findSubcmd(t, webhook, "edit")
+	for _, flag := range []string{"name", "url", "events", "active", "rotate-secret", "include-descendants", "dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel namespace webhook edit: missing flag --%s", flag)
+		}
 	}
 }
 
