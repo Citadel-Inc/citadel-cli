@@ -2,6 +2,16 @@
 
 All notable changes to `citadel-cli` are documented here.
 
+## Unreleased
+
+### Added
+
+- Added `make install` for the binary and section-1 man pages, raw JSON request
+  bodies via `api --input`, and operator project-graph recovery scans via
+  `project admin recovery-scan`.
+- Added client-side `oauth clients list --dcr` filtering, MCP list/read retries,
+  and root help command groups.
+
 ## v0.1.0 - 2026-05-07
 
 Initial visible release of the Citadel command-line client.
@@ -44,13 +54,3 @@ Initial visible release of the Citadel command-line client.
 - Added broad handler, helper, and command-tree coverage across auth, repo, issue, notification, webhook, audit, project graph, completion, MCP, config, HTTP, SSE, pager, and output-format paths.
 - Added opt-in live smoke tests for OAuth, repositories, issues, milestones, deploy tokens, audit, project graph, search, SSH keys, and related API-backed workflows.
 - Established `make verify` as the release gate: `go vet`, `go test -race ./...`, and `golangci-lint run`.
-
-## Unreleased
-
-### Added
-
-- Added `make install` for the binary and section-1 man pages, raw JSON request
-  bodies via `api --input`, and operator project-graph recovery scans via
-  `project admin recovery-scan`.
-- Added client-side `oauth clients list --dcr` filtering, MCP list/read retries,
-  and root help command groups.
