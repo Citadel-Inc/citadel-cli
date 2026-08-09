@@ -449,7 +449,7 @@ func runGistRaw(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.GetEventStream(cmd.Context(), path, "")
+	resp, err := c.GetStream(cmd.Context(), path)
 	if err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {
 			return fmt.Errorf("gist file %s not found", args[1])
