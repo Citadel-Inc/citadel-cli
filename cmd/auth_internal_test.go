@@ -109,6 +109,7 @@ func TestBootstrapAgentToken_Happy(t *testing.T) {
 		"exp": float64(time.Now().Add(time.Hour).Unix()),
 	})
 	var cfg clicfg.Config
+	cfg.RefreshToken = "existing-refresh-token"
 	cmd := &cobra.Command{}
 	if err := bootstrapAgentToken(ctx, cmd, &cfg, srv.URL, "", jwt); err != nil {
 		t.Fatalf("bootstrapAgentToken: %v", err)
@@ -126,8 +127,8 @@ func TestBootstrapAgentToken_Happy(t *testing.T) {
 	if cfg.AgentName != wantName {
 		t.Errorf("AgentName = %q want %q", cfg.AgentName, wantName)
 	}
-	if cfg.RefreshToken != "" {
-		t.Errorf("RefreshToken should be cleared, got %q", cfg.RefreshToken)
+	if cfg.RefreshToken != "existing-refresh-token" {
+		t.Errorf("RefreshToken = %q", cfg.RefreshToken)
 	}
 	if !cfg.ExpiresAt.Equal(exp) {
 		t.Errorf("ExpiresAt = %v want %v", cfg.ExpiresAt, exp)
@@ -268,6 +269,84 @@ func TestExchangePKCECode_BadStatus(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "bad code") {
 		t.Errorf("got %v", err)
 	}
+}
+
+func TestExchangePKCECode_OAuthError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"authorization code expired"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	_, err := exchangePKCECode(srv.URL, "http://127.0.0.1:1/callback", "x", "y")
+	if err == nil || !strings.Contains(err.Error(), "invalid_grant") || !strings.Contains(err.Error(), "authorization code expired") {
+		t.Errorf("got %v", err)
+	}
+}
+
+func TestExchangeRefreshToken_Happy(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/oauth/token" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		if got := r.PostForm.Get("grant_type"); got != "refresh_token" {
+			t.Errorf("grant_type = %q", got)
+		}
+		if got := r.PostForm.Get("refresh_token"); got != "refresh-abc" {
+			t.Errorf("refresh_token = %q", got)
+		}
+		if got := r.PostForm.Get("client_id"); got != oauthClientID {
+			t.Errorf("client_id = %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"new-access","refresh_token":"new-refresh"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	got, err := exchangeRefreshToken(srv.URL, "refresh-abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.AccessToken != "new-access" || got.RefreshToken != "new-refresh" {
+		t.Errorf("decoded %+v", got)
+	}
+}
+
+func TestExchangeRefreshToken_OAuthErrorAndTruncatedFallback(t *testing.T) {
+	t.Run("oauth error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"refresh token revoked"}`))
+		}))
+		t.Cleanup(srv.Close)
+
+		_, err := exchangeRefreshToken(srv.URL, "refresh-abc")
+		if err == nil || !strings.Contains(err.Error(), "invalid_grant") || !strings.Contains(err.Error(), "refresh token revoked") {
+			t.Errorf("got %v", err)
+		}
+	})
+
+	t.Run("long fallback", func(t *testing.T) {
+		body := strings.Repeat("sensitive upstream detail ", 100)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusBadGateway)
+			_, _ = w.Write([]byte(body))
+		}))
+		t.Cleanup(srv.Close)
+
+		_, err := exchangeRefreshToken(srv.URL, "refresh-abc")
+		if err == nil || !strings.Contains(err.Error(), "status=502") {
+			t.Fatalf("got %v", err)
+		}
+		if strings.Contains(err.Error(), body) {
+			t.Fatal("error contains the complete response body")
+		}
+	})
 }
 
 func TestExchangePKCECode_Unreachable(t *testing.T) {

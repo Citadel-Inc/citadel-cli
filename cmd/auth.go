@@ -242,6 +242,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	cfg.RefreshToken = tokenResp.RefreshToken
 
 	claims, err := claimsFromJWT(tokenResp.AccessToken)
 	if err != nil {
@@ -275,6 +276,7 @@ func runDeviceLogin(cmd *cobra.Command, cfg *clicfg.Config, serverURL, flagServe
 	if err != nil {
 		return err
 	}
+	cfg.RefreshToken = tokenResp.RefreshToken
 
 	claims, err := claimsFromJWT(tokenResp.AccessToken)
 	if err != nil {
@@ -473,7 +475,6 @@ func bootstrapAgentToken(ctx context.Context, cmd *cobra.Command, cfg *clicfg.Co
 		return errors.New("rotate token: empty cleartext_token in response")
 	}
 	cfg.AccessToken = newTok.CleartextToken
-	cfg.RefreshToken = ""
 	cfg.AgentID = agentID.String()
 	cfg.AgentName = agentName
 	if newTok.ExpiresAt != nil {
@@ -676,7 +677,7 @@ func exchangePKCECode(citadelBaseURL, redirectURI, code, verifier string) (pkceT
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return pkceTokenResponse{}, fmt.Errorf("token exchange failed: %s", string(body))
+		return pkceTokenResponse{}, oauthTokenExchangeError("token exchange", resp.StatusCode, body)
 	}
 
 	var out pkceTokenResponse
@@ -684,6 +685,54 @@ func exchangePKCECode(citadelBaseURL, redirectURI, code, verifier string) (pkceT
 		return pkceTokenResponse{}, fmt.Errorf("decode token response: %w", err)
 	}
 	return out, nil
+}
+
+func exchangeRefreshToken(citadelBaseURL, refreshToken string) (pkceTokenResponse, error) {
+	base := strings.TrimRight(citadelBaseURL, "/")
+	form := url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {refreshToken},
+		"client_id":     {oauthClientID},
+	}
+	resp, err := http.PostForm(base+"/api/oauth/token", form)
+	if err != nil {
+		return pkceTokenResponse{}, fmt.Errorf("refresh token exchange: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return pkceTokenResponse{}, oauthTokenExchangeError("refresh token exchange", resp.StatusCode, body)
+	}
+
+	var out pkceTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return pkceTokenResponse{}, fmt.Errorf("decode refresh token response: %w", err)
+	}
+	return out, nil
+}
+
+func oauthTokenExchangeError(operation string, statusCode int, body []byte) error {
+	var oauthErr struct {
+		Error       string `json:"error"`
+		Description string `json:"error_description"`
+	}
+	if err := json.Unmarshal(body, &oauthErr); err == nil && oauthErr.Error != "" {
+		if oauthErr.Description != "" {
+			return fmt.Errorf("%s failed: %s: %s", operation, oauthErr.Error, oauthErr.Description)
+		}
+		return fmt.Errorf("%s failed: %s", operation, oauthErr.Error)
+	}
+	return fmt.Errorf("%s endpoint unavailable: status=%d body=%s", operation, statusCode, truncateOAuthErrorBody(body))
+}
+
+func truncateOAuthErrorBody(body []byte) string {
+	const maxBody = 1024
+	bodyText := strings.TrimSpace(string(body))
+	if len(bodyText) <= maxBody {
+		return bodyText
+	}
+	return bodyText[:maxBody] + "..."
 }
 
 // claimsFromJWT performs an unverified parse of the bearer JWT and returns

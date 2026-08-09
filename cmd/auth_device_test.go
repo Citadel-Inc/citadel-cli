@@ -88,8 +88,9 @@ func TestRunDeviceLogin_SuccessStoresAgentToken(t *testing.T) {
 				t.Errorf("client_id = %q", got)
 			}
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"access_token": jwtToken,
-				"expires_in":   3600,
+				"access_token":  jwtToken,
+				"refresh_token": "device-refresh-token",
+				"expires_in":    3600,
 			})
 		case r.Method == http.MethodGet && r.URL.Path == "/agents":
 			_, _ = w.Write([]byte(`{"agents":[],"next_cursor":""}`))
@@ -134,8 +135,8 @@ func TestRunDeviceLogin_SuccessStoresAgentToken(t *testing.T) {
 	if loaded.AgentName == "" {
 		t.Error("AgentName is empty")
 	}
-	if loaded.RefreshToken != "" {
-		t.Errorf("RefreshToken = %q, want empty", loaded.RefreshToken)
+	if loaded.RefreshToken != "device-refresh-token" {
+		t.Errorf("RefreshToken = %q", loaded.RefreshToken)
 	}
 	if loaded.ServerURL != srv.URL {
 		t.Errorf("ServerURL = %q", loaded.ServerURL)
