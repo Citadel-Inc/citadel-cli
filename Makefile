@@ -1,9 +1,11 @@
 # citadel-cli — top-level developer ergonomics.
 
-.PHONY: help build build-all test vet lint golangci fmt verify clean coverage-check
+.PHONY: help build build-all install test vet lint golangci fmt verify clean coverage-check
 
 VERSION ?= dev
 LDFLAGS = -X github.com/Rethunk-Tech/citadel-cli/cmd.Version=$(VERSION)
+PREFIX ?= /usr/local
+DESTDIR ?=
 
 help: ## Show this help.
 	@awk 'BEGIN {FS = ":.*## "} /^[-a-zA-Z0-9_]+:.*## / { printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -17,6 +19,15 @@ build-all: ## Cross-compile for linux-amd64, linux-arm64, darwin-arm64, windows-
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(LDFLAGS) -s -w" -o dist/citadel-cli-linux-arm64 .
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$(LDFLAGS) -s -w" -o dist/citadel-cli-darwin-arm64 .
 	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS) -s -w" -o dist/citadel-cli-windows-amd64.exe .
+
+install: build ## Install the binary and man pages
+	@set -eu; \
+	install -d "$(DESTDIR)$(PREFIX)/bin" "$(DESTDIR)$(PREFIX)/share/man/man1"; \
+	install -m 755 ./citadel-cli "$(DESTDIR)$(PREFIX)/bin/citadel-cli"; \
+	man_dir="$$(mktemp -d)"; \
+	trap 'rm -rf "$$man_dir"' EXIT; \
+	./citadel-cli man "$$man_dir"; \
+	install -m 644 "$$man_dir"/*.1 "$(DESTDIR)$(PREFIX)/share/man/man1/"
 
 test: ## Run go test with race detector across all packages
 	go test -race ./...
