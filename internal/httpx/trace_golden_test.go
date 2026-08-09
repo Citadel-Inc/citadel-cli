@@ -76,10 +76,12 @@ func TestDebugHTTP_RedactsAuthorization(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c := &http.Client{Transport: Stack(nil, Options{DebugHTTP: true})}
-	req, err := http.NewRequest(http.MethodGet, srv.URL+"/secret", nil)
+	form := "refresh_token=raw-refresh&client_secret=raw-client&code=raw-code&code_verifier=raw-verifier"
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/secret", strings.NewReader(form))
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Authorization", "Bearer super-secret-token")
 	resp, err := c.Do(req)
 	if err != nil {
@@ -96,6 +98,11 @@ func TestDebugHTTP_RedactsAuthorization(t *testing.T) {
 	out := buf.String()
 	if strings.Contains(out, "super-secret-token") {
 		t.Fatal("debug dump leaked bearer token")
+	}
+	for _, secret := range []string{"raw-refresh", "raw-client", "raw-code", "raw-verifier"} {
+		if strings.Contains(out, secret) {
+			t.Fatalf("debug dump leaked OAuth secret %q", secret)
+		}
 	}
 	if !strings.Contains(out, "Authorization") {
 		t.Fatalf("expected Authorization header in dump, got: %q", out)

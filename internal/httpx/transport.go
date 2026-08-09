@@ -10,8 +10,10 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -158,7 +160,7 @@ func sleepCtx(req *http.Request, d time.Duration) error {
 // TraceTransport dumps redacted requests/responses to stderr.
 //
 // Verbose: one METHOD URL → STATUS line per call.
-// DebugHTTP: full headers + body, with Authorization scrubbed.
+// DebugHTTP: full headers + body, with credentials scrubbed.
 type TraceTransport struct {
 	Base      http.RoundTripper
 	Verbose   bool
@@ -189,12 +191,48 @@ func (tt *TraceTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-// redactAuth shallow-clones req with the Authorization header masked, so
-// httputil.DumpRequestOut never leaks the bearer token to stderr.
+// redactAuth clones req with auth headers and OAuth form fields masked, so
+// httputil.DumpRequestOut never leaks credentials to stderr.
 func redactAuth(req *http.Request) *http.Request {
 	clone := req.Clone(req.Context())
 	if clone.Header.Get("Authorization") != "" {
 		clone.Header.Set("Authorization", "Bearer <redacted>")
 	}
+	if req.Body == nil {
+		return clone
+	}
+	body, err := io.ReadAll(req.Body)
+	_ = req.Body.Close()
+	req.Body = io.NopCloser(bytes.NewReader(body))
+	if err != nil {
+		clone.Body = io.NopCloser(bytes.NewReader(nil))
+		return clone
+	}
+	redactedBody := redactOAuthForm(body, req.Header.Get("Content-Type"))
+	clone.Body = io.NopCloser(bytes.NewReader(redactedBody))
+	clone.ContentLength = int64(len(redactedBody))
 	return clone
+}
+
+func redactOAuthForm(body []byte, contentType string) []byte {
+	mediaType := strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0])
+	if mediaType != "application/x-www-form-urlencoded" {
+		return body
+	}
+	parts := strings.Split(string(body), "&")
+	for i, part := range parts {
+		key, _, ok := strings.Cut(part, "=")
+		if !ok {
+			continue
+		}
+		decodedKey, err := url.QueryUnescape(key)
+		if err != nil {
+			continue
+		}
+		switch decodedKey {
+		case "refresh_token", "client_secret", "code", "code_verifier":
+			parts[i] = key + "=%3Credacted%3E"
+		}
+	}
+	return []byte(strings.Join(parts, "&"))
 }
