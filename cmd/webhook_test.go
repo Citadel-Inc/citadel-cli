@@ -11,6 +11,7 @@ import (
 )
 
 const testWebhookID = "11111111-1111-1111-1111-111111111111"
+const testDeliveryID = "55555555-5555-5555-5555-555555555555"
 
 func webhookPayload() map[string]any {
 	return map[string]any{
@@ -478,5 +479,125 @@ func TestRepoWebhookDelete_BadRequest(t *testing.T) {
 		"acme/demo", testWebhookID).Execute()
 	if err == nil || !strings.Contains(err.Error(), "invalid") {
 		t.Fatalf("want invalid error, got %v", err)
+	}
+}
+
+func webhookDeliveryPayload() map[string]any {
+	return map[string]any{
+		"id":                     testDeliveryID,
+		"webhook_id":             testWebhookID,
+		"webhook_name":           "ci-hook",
+		"webhook_url":            "https://example.test/hook",
+		"event_id":               "event-123",
+		"event_kind":             "issue.opened",
+		"webhook_namespace_path": "acme/demo",
+		"source_namespace_path":  "acme/demo",
+		"state":                  "failed",
+		"attempt_count":          2,
+		"last_attempt_at":        "2026-05-07T00:01:00Z",
+		"delivered_at":           nil,
+		"http_status":            500,
+		"response_body":          "internal error",
+		"response_headers":       map[string]any{"content-type": "text/plain"},
+		"error_message":          "delivery failed",
+		"created_at":             "2026-05-07T00:00:00Z",
+		"payload":                map[string]any{"action": "opened"},
+	}
+}
+
+func TestRepoWebhookDeliveriesList_WebhookFilter(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || !issuePathMatches(r,
+			"/api/namespaces/acme%2Fdemo/webhooks/deliveries",
+			"/api/namespaces/acme/demo/webhooks/deliveries") {
+			http.NotFound(w, r)
+			return
+		}
+		query := r.URL.Query()
+		if query.Get("webhook_id") != testWebhookID || query.Get("state") != "failed" {
+			t.Fatalf("unexpected delivery filters: %v", query)
+		}
+		writeJSON(t, w, http.StatusOK, map[string]any{
+			"deliveries":  []map[string]any{webhookDeliveryPayload()},
+			"next_cursor": "",
+		})
+	})
+
+	var out strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &out,
+		"webhook", "deliveries", "list", "-R", "acme/demo",
+		"--webhook-id", testWebhookID, "--state", "failed", "--output", "json",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"event_kind": "issue.opened"`) {
+		t.Fatalf("unexpected delivery output: %s", out.String())
+	}
+}
+
+func TestNamespaceWebhookDeliveriesGet_JSON(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/namespaces/acme/webhooks/deliveries/"+testDeliveryID {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(t, w, http.StatusOK, webhookDeliveryPayload())
+	})
+
+	var out strings.Builder
+	if err := rootForOut(cmd.NamespaceCmd, &out,
+		"webhook", "deliveries", "get", "acme", testDeliveryID, "--output", "json",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"id": "55555555-5555-5555-5555-555555555555"`) {
+		t.Fatalf("unexpected delivery output: %s", out.String())
+	}
+}
+
+func TestRepoWebhookDeliveriesRedeliver(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || !issuePathMatches(r,
+			"/api/namespaces/acme%2Fdemo/webhooks/deliveries/"+testDeliveryID+"/redeliver",
+			"/api/namespaces/acme/demo/webhooks/deliveries/"+testDeliveryID+"/redeliver") {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(t, w, http.StatusOK, webhookDeliveryPayload())
+	})
+
+	var out strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &out,
+		"webhook", "deliveries", "redeliver", "-R", "acme/demo", testDeliveryID,
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "Redelivered delivery "+testDeliveryID+" for acme/demo.") {
+		t.Fatalf("unexpected redeliver output: %s", out.String())
+	}
+}
+
+func TestNamespaceWebhookDeliveriesRedeliver_DryRun(t *testing.T) {
+	var out strings.Builder
+	if err := rootForOut(cmd.NamespaceCmd, &out,
+		"webhook", "deliveries", "redeliver", "acme", testDeliveryID, "--dry-run",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	want := "Would POST /api/namespaces/acme/webhooks/deliveries/" + testDeliveryID + "/redeliver (skipped; --dry-run)"
+	if !strings.Contains(out.String(), want) {
+		t.Fatalf("unexpected dry-run output: %s", out.String())
+	}
+}
+
+func TestNamespaceWebhookDeliveriesGet_NotFound(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = io.WriteString(w, `{"error":"not found"}`)
+	})
+
+	err := rootFor(cmd.NamespaceCmd, "webhook", "deliveries", "get", "acme", testDeliveryID).Execute()
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("want not-found error, got %v", err)
 	}
 }
