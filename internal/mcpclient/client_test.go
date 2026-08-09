@@ -50,6 +50,25 @@ func writeError(w http.ResponseWriter, status, id, code int, message string) {
 	_, _ = w.Write(body)
 }
 
+type temporaryRoundTripError struct{}
+
+func (temporaryRoundTripError) Error() string   { return "temporary transport failure" }
+func (temporaryRoundTripError) Timeout() bool   { return true }
+func (temporaryRoundTripError) Temporary() bool { return true }
+
+type failSecondRoundTripper struct {
+	base  http.RoundTripper
+	calls int
+}
+
+func (t *failSecondRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.calls++
+	if t.calls == 2 {
+		return nil, temporaryRoundTripError{}
+	}
+	return t.base.RoundTrip(req)
+}
+
 func TestInitializeAndToolsList(t *testing.T) {
 	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
 		if got := r.Header.Get("Authorization"); got != "Bearer tok-123" {
@@ -92,6 +111,80 @@ func TestInitializeAndToolsList(t *testing.T) {
 	}
 }
 
+func TestToolsList_RetriesTransientTransportError(t *testing.T) {
+	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
+		switch req.Method {
+		case "initialize":
+			writeResult(w, "s", req.ID, map[string]any{"protocolVersion": ProtocolVersion})
+		case "tools/list":
+			writeResult(w, "s", req.ID, map[string]any{
+				"tools": []map[string]any{{"name": "get_namespace"}},
+			})
+		default:
+			t.Fatalf("unexpected method %q", req.Method)
+		}
+	})
+	defer srv.Close()
+
+	c := New(srv.URL, "t", time.Second, Options{})
+	transport := &failSecondRoundTripper{base: http.DefaultTransport}
+	c.HTTP.Transport = transport
+	if err := c.Initialize(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	tools, err := c.ToolsList(context.Background())
+	if err != nil {
+		t.Fatalf("ToolsList: %v", err)
+	}
+	if len(tools) != 1 || tools[0].Name != "get_namespace" {
+		t.Fatalf("tools = %+v", tools)
+	}
+	if transport.calls != 3 {
+		t.Fatalf("transport calls = %d, want 3", transport.calls)
+	}
+	if elapsed := time.Since(start); elapsed < 90*time.Millisecond {
+		t.Fatalf("retry completed without backoff: %v", elapsed)
+	}
+}
+
+func TestToolsList_RetriesHTTP500(t *testing.T) {
+	var calls int
+	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
+		switch req.Method {
+		case "initialize":
+			writeResult(w, "s", req.ID, map[string]any{"protocolVersion": ProtocolVersion})
+		case "tools/list":
+			calls++
+			if calls == 1 {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			writeResult(w, "s", req.ID, map[string]any{
+				"tools": []map[string]any{{"name": "get_namespace"}},
+			})
+		default:
+			t.Fatalf("unexpected method %q", req.Method)
+		}
+	})
+	defer srv.Close()
+
+	c := New(srv.URL, "t", time.Second, Options{})
+	if err := c.Initialize(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	tools, err := c.ToolsList(context.Background())
+	if err != nil {
+		t.Fatalf("ToolsList: %v", err)
+	}
+	if len(tools) != 1 || tools[0].Name != "get_namespace" {
+		t.Fatalf("tools = %+v", tools)
+	}
+	if calls != 2 {
+		t.Fatalf("tools/list calls = %d, want 2", calls)
+	}
+}
+
 func TestToolsCall(t *testing.T) {
 	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
 		switch req.Method {
@@ -122,6 +215,34 @@ func TestToolsCall(t *testing.T) {
 	}
 	if len(res.Content) != 1 || res.Content[0]["text"] != "hello" {
 		t.Errorf("content = %+v", res.Content)
+	}
+}
+
+func TestToolsCall_NoRetryOnHTTP500(t *testing.T) {
+	var calls int
+	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
+		switch req.Method {
+		case "initialize":
+			writeResult(w, "s", req.ID, map[string]any{"protocolVersion": ProtocolVersion})
+		case "tools/call":
+			calls++
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			t.Fatalf("unexpected method %q", req.Method)
+		}
+	})
+	defer srv.Close()
+
+	c := New(srv.URL, "t", time.Second, Options{})
+	if err := c.Initialize(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	_, err := c.ToolsCall(context.Background(), "get_namespace", nil)
+	if err == nil || !strings.Contains(err.Error(), "HTTP 500") {
+		t.Fatalf("want HTTP 500 error, got %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("tools/call calls = %d, want 1", calls)
 	}
 }
 
