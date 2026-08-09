@@ -31,5 +31,7 @@ func downloadTextMediaType(mediaType string) bool {
 	return strings.HasPrefix(mediaType, "text/") ||
 		mediaType == "application/json" ||
 		mediaType == "application/xml" ||
-		mediaType == "application/javascript"
+		mediaType == "application/javascript" ||
+		mediaType == "application/yaml" ||
+		mediaType == "application/x-yaml"
 }
