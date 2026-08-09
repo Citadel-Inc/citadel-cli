@@ -1,14 +1,20 @@
 package cmd
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 )
@@ -26,7 +32,8 @@ Examples:
   citadel-cli release view -R acme/demo v1.0.0
   citadel-cli release create -R acme/demo --tag v1.0.0 --name "v1.0.0" --body "Initial GA"
   citadel-cli release edit -R acme/demo v1.0.0 --prerelease=false
-  citadel-cli release delete -R acme/demo v1.0.0`,
+  citadel-cli release delete -R acme/demo v1.0.0
+  citadel-cli release asset list -R acme/demo v1.0.0`,
 }
 
 var releaseListCmd = &cobra.Command{
@@ -68,6 +75,40 @@ var releaseDeleteCmd = &cobra.Command{
 	RunE:  runReleaseDelete,
 }
 
+var releaseAssetCmd = &cobra.Command{
+	Use:   "asset",
+	Short: "Manage release assets",
+}
+
+var releaseAssetListCmd = &cobra.Command{
+	Use:   "list <tag>",
+	Short: "List assets attached to a release",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runReleaseAssetList,
+}
+
+var releaseAssetUploadCmd = &cobra.Command{
+	Use:   "upload <tag> <file>",
+	Short: "Upload a file as a release asset",
+	Args:  cobra.ExactArgs(2),
+	RunE:  runReleaseAssetUpload,
+}
+
+var releaseAssetDownloadCmd = &cobra.Command{
+	Use:   "download <tag> <asset_id>",
+	Short: "Download a release asset",
+	Args:  cobra.ExactArgs(2),
+	RunE:  runReleaseAssetDownload,
+}
+
+var releaseAssetDeleteCmd = &cobra.Command{
+	Use:               "delete <tag> <asset_id>",
+	Short:             "Delete a release asset",
+	Args:              cobra.ExactArgs(2),
+	ValidArgsFunction: completeReleaseAssetIDs,
+	RunE:              runReleaseAssetDelete,
+}
+
 type releaseRow struct {
 	ID           string     `json:"id"`
 	NamespaceID  string     `json:"namespace_id"`
@@ -81,6 +122,18 @@ type releaseRow struct {
 	PublishedAt  *time.Time `json:"published_at,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
+type releaseAssetRow struct {
+	ID          string    `json:"id"`
+	ReleaseID   string    `json:"release_id"`
+	RepoID      string    `json:"repo_id"`
+	UploaderID  string    `json:"uploader_id"`
+	Filename    string    `json:"filename"`
+	ContentType string    `json:"content_type"`
+	SizeBytes   int64     `json:"size_bytes"`
+	DownloadURL string    `json:"download_url,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type releaseCreateReq struct {
@@ -100,6 +153,10 @@ type releaseUpdateReq struct {
 
 func releaseBasePath(nsPath string) string {
 	return "/namespaces/" + url.PathEscape(nsPath) + "/releases"
+}
+
+func releaseAssetPath(nsPath, tag string) string {
+	return releaseBasePath(nsPath) + "/" + url.PathEscape(tag) + "/assets"
 }
 
 func runReleaseList(cmd *cobra.Command, _ []string) error {
@@ -361,6 +418,274 @@ func runReleaseDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runReleaseAssetList(cmd *cobra.Command, args []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
+	tag := strings.TrimSpace(args[0])
+	if tag == "" {
+		return fmt.Errorf("tag required")
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+
+	var payload struct {
+		Assets []releaseAssetRow `json:"assets"`
+	}
+	if err := c.Get(cmd.Context(), releaseAssetPath(nsPath, tag), &payload); err != nil {
+		return err
+	}
+	if payload.Assets == nil {
+		payload.Assets = []releaseAssetRow{}
+	}
+	switch output {
+	case "json":
+		return emitJSON(cmd, payload)
+	case "yaml":
+		return emitYAML(cmd, payload)
+	case "ndjson":
+		return emitNDJSONLines(cmd, payload.Assets)
+	default:
+		if len(payload.Assets) == 0 {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No assets for %s in %s.\n", tag, nsPath)
+			return nil
+		}
+		w := newTabWriter(cmd)
+		_, _ = fmt.Fprintln(w, "ASSET ID\tFILENAME\tTYPE\tSIZE\tCREATED")
+		for _, asset := range payload.Assets {
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n",
+				asset.ID,
+				asset.Filename,
+				asset.ContentType,
+				asset.SizeBytes,
+				formatRFC3339UTC(asset.CreatedAt),
+			)
+		}
+		return w.Flush()
+	}
+}
+
+func runReleaseAssetUpload(cmd *cobra.Command, args []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
+	tag := strings.TrimSpace(args[0])
+	if tag == "" {
+		return fmt.Errorf("tag required")
+	}
+	filePath := strings.TrimSpace(args[1])
+	if filePath == "" {
+		return fmt.Errorf("file required")
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+	path := releaseAssetPath(nsPath, tag)
+	if dryRunFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would POST %s file=%s (skipped; --dry-run)\n", path, filePath)
+		return nil
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("open asset file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	var asset releaseAssetRow
+	if err := c.PostMultipart(cmd.Context(), path, "file", filepath.Base(filePath), file, &asset); err != nil {
+		return releaseAssetUploadError(err)
+	}
+	return renderReleaseAssetDetail(cmd, nsPath, tag, asset, output, "Uploaded")
+}
+
+func runReleaseAssetDownload(cmd *cobra.Command, args []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
+	tag := strings.TrimSpace(args[0])
+	assetID := strings.TrimSpace(args[1])
+	if tag == "" {
+		return fmt.Errorf("tag required")
+	}
+	if assetID == "" {
+		return fmt.Errorf("asset ID required")
+	}
+	outputFile, _ := cmd.Flags().GetString("output-file")
+	resp, err := c.GetStream(cmd.Context(), releaseAssetPath(nsPath, tag)+"/"+url.PathEscape(assetID))
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	var dst io.Writer = cmd.OutOrStdout()
+	var file *os.File
+	if outputFile != "" && outputFile != "-" {
+		file, err = os.Create(outputFile)
+		if err != nil {
+			return fmt.Errorf("create output file: %w", err)
+		}
+		defer func() { _ = file.Close() }()
+		dst = file
+	}
+
+	if file == nil && releaseAssetOutputIsTTY(dst) {
+		prefix := make([]byte, 512)
+		n, readErr := io.ReadFull(resp.Body, prefix)
+		if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+			return fmt.Errorf("read release asset: %w", readErr)
+		}
+		if releaseAssetLooksBinary(resp.Header.Get("Content-Type"), prefix[:n]) {
+			return fmt.Errorf("refusing to write binary release asset to a terminal; redirect stdout or pass --output-file")
+		}
+		_, err = io.Copy(dst, io.MultiReader(bytes.NewReader(prefix[:n]), resp.Body))
+	} else {
+		_, err = io.Copy(dst, resp.Body)
+	}
+	if err != nil {
+		return fmt.Errorf("write release asset: %w", err)
+	}
+	if file != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Downloaded %s to %s.\n", assetID, outputFile)
+	}
+	return nil
+}
+
+func runReleaseAssetDelete(cmd *cobra.Command, args []string) error {
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
+	tag := strings.TrimSpace(args[0])
+	assetID := strings.TrimSpace(args[1])
+	if tag == "" {
+		return fmt.Errorf("tag required")
+	}
+	if assetID == "" {
+		return fmt.Errorf("asset ID required")
+	}
+	path := releaseAssetPath(nsPath, tag) + "/" + url.PathEscape(assetID)
+	if dryRunFlag(cmd) {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE %s (skipped; --dry-run)\n", path)
+		return nil
+	}
+	if err := confirmTypedValue(yesFlag(cmd), "delete release asset", assetID); err != nil {
+		return err
+	}
+	if err := c.Delete(cmd.Context(), path); err != nil {
+		return err
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if output == "json" {
+		return emitJSON(cmd, map[string]any{
+			"status":         "ok",
+			"namespace_path": nsPath,
+			"tag":            tag,
+			"asset_id":       assetID,
+		})
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Deleted release asset %s from %s.\n", assetID, nsPath)
+	return nil
+}
+
+func completeReleaseAssetIDs(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 1 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	var payload struct {
+		Assets []releaseAssetRow `json:"assets"`
+	}
+	if err := c.Get(cmd.Context(), releaseAssetPath(nsPath, args[0]), &payload); err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	out := make([]string, 0, len(payload.Assets))
+	for _, asset := range payload.Assets {
+		out = append(out, asset.ID+"\t"+asset.Filename)
+	}
+	return out, cobra.ShellCompDirectiveNoFileComp
+}
+
+func releaseAssetUploadError(err error) error {
+	if apiclient.IsStatus(err, http.StatusRequestEntityTooLarge) {
+		return fmt.Errorf("release asset exceeds the server size limit")
+	}
+	if apiclient.IsStatus(err, http.StatusServiceUnavailable) {
+		var httpErr *apiclient.HTTPError
+		if errors.As(err, &httpErr) && strings.Contains(httpErr.Body, "asset_store_unavailable") {
+			return fmt.Errorf("release asset storage is unavailable; configure the object store before uploading")
+		}
+	}
+	return err
+}
+
+func renderReleaseAssetDetail(cmd *cobra.Command, nsPath, tag string, asset releaseAssetRow, output, action string) error {
+	switch output {
+	case "json":
+		return emitJSON(cmd, asset)
+	case "yaml":
+		return emitYAML(cmd, asset)
+	default:
+		w := newTabWriter(cmd)
+		_, _ = fmt.Fprintf(w, "ASSET ID\t%s\n", asset.ID)
+		_, _ = fmt.Fprintf(w, "NAMESPACE\t%s\n", nsPath)
+		_, _ = fmt.Fprintf(w, "TAG\t%s\n", tag)
+		_, _ = fmt.Fprintf(w, "FILENAME\t%s\n", asset.Filename)
+		_, _ = fmt.Fprintf(w, "TYPE\t%s\n", asset.ContentType)
+		_, _ = fmt.Fprintf(w, "SIZE\t%d\n", asset.SizeBytes)
+		_, _ = fmt.Fprintf(w, "ACTION\t%s\n", action)
+		return w.Flush()
+	}
+}
+
+func releaseAssetOutputIsTTY(w io.Writer) bool {
+	file, ok := w.(*os.File)
+	return ok && term.IsTerminal(int(file.Fd()))
+}
+
+func releaseAssetLooksBinary(contentType string, prefix []byte) bool {
+	mediaType := strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0]))
+	if mediaType != "" {
+		return !strings.HasPrefix(mediaType, "text/") &&
+			mediaType != "application/json" &&
+			mediaType != "application/xml" &&
+			mediaType != "application/javascript"
+	}
+	detected := strings.ToLower(http.DetectContentType(prefix))
+	return !strings.HasPrefix(detected, "text/") &&
+		detected != "application/json" &&
+		detected != "application/xml"
+}
+
 func releaseState(r releaseRow) string {
 	switch {
 	case r.Draft:
@@ -406,12 +731,24 @@ func init() {
 		releaseCreateCmd,
 		releaseEditCmd,
 		releaseDeleteCmd,
+		releaseAssetCmd,
+	)
+	releaseAssetCmd.AddCommand(
+		releaseAssetListCmd,
+		releaseAssetUploadCmd,
+		releaseAssetDownloadCmd,
+		releaseAssetDeleteCmd,
 	)
 
 	addIssuePathFlag(releaseListCmd, releaseLatestCmd, releaseViewCmd, releaseCreateCmd, releaseEditCmd, releaseDeleteCmd)
 	addOutputFlag(releaseListCmd, releaseLatestCmd, releaseViewCmd, releaseCreateCmd, releaseEditCmd, releaseDeleteCmd)
 	addYesFlag(releaseDeleteCmd)
 	addDryRunFlag(releaseCreateCmd, releaseEditCmd, releaseDeleteCmd)
+	addIssuePathFlag(releaseAssetListCmd, releaseAssetUploadCmd, releaseAssetDownloadCmd, releaseAssetDeleteCmd)
+	addOutputFlag(releaseAssetListCmd, releaseAssetUploadCmd, releaseAssetDeleteCmd)
+	addYesFlag(releaseAssetDeleteCmd)
+	addDryRunFlag(releaseAssetUploadCmd, releaseAssetDeleteCmd)
+	releaseAssetDownloadCmd.Flags().StringP("output-file", "o", "", "Write the asset to this file instead of stdout")
 
 	releaseListCmd.Flags().Bool("include-drafts", false, "Include draft releases in the listing")
 	releaseListCmd.Flags().Int("limit", 0, "Max releases per page (server default = 20)")
