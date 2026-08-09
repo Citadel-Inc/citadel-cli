@@ -16,7 +16,10 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/internal/completion"
 )
 
-const webhookCompletionPrefix = "webhooks:"
+const (
+	webhookCompletionPrefix         = "webhooks:"
+	webhookDeliveryCompletionPrefix = "webhook-deliveries:"
+)
 
 var webhookEventKinds = []string{
 	"comment.created",
@@ -89,17 +92,19 @@ var repoWebhookDeliveryListCmd = &cobra.Command{
 }
 
 var repoWebhookDeliveryGetCmd = &cobra.Command{
-	Use:   "get [<namespace>/<repo>] <delivery-id>",
-	Short: "Get a repository webhook delivery",
-	Args:  cobra.RangeArgs(1, 2),
-	RunE:  runRepoWebhookDeliveryGet,
+	Use:               "get [<namespace>/<repo>] <delivery-id>",
+	Short:             "Get a repository webhook delivery",
+	Args:              cobra.RangeArgs(1, 2),
+	RunE:              runRepoWebhookDeliveryGet,
+	ValidArgsFunction: completeRepoWebhookDeliveryIDs,
 }
 
 var repoWebhookDeliveryRedeliverCmd = &cobra.Command{
-	Use:   "redeliver [<namespace>/<repo>] <delivery-id>",
-	Short: "Redeliver a repository webhook delivery",
-	Args:  cobra.RangeArgs(1, 2),
-	RunE:  runRepoWebhookDeliveryRedeliver,
+	Use:               "redeliver [<namespace>/<repo>] <delivery-id>",
+	Short:             "Redeliver a repository webhook delivery",
+	Args:              cobra.RangeArgs(1, 2),
+	RunE:              runRepoWebhookDeliveryRedeliver,
+	ValidArgsFunction: completeRepoWebhookDeliveryIDs,
 }
 
 var namespaceWebhookCmd = &cobra.Command{
@@ -161,17 +166,19 @@ var namespaceWebhookDeliveryListCmd = &cobra.Command{
 }
 
 var namespaceWebhookDeliveryGetCmd = &cobra.Command{
-	Use:   "get <slug> <delivery-id>",
-	Short: "Get a namespace webhook delivery",
-	Args:  cobra.ExactArgs(2),
-	RunE:  runNamespaceWebhookDeliveryGet,
+	Use:               "get <slug> <delivery-id>",
+	Short:             "Get a namespace webhook delivery",
+	Args:              cobra.ExactArgs(2),
+	RunE:              runNamespaceWebhookDeliveryGet,
+	ValidArgsFunction: completeNamespaceWebhookDeliveryIDs,
 }
 
 var namespaceWebhookDeliveryRedeliverCmd = &cobra.Command{
-	Use:   "redeliver <slug> <delivery-id>",
-	Short: "Redeliver a namespace webhook delivery",
-	Args:  cobra.ExactArgs(2),
-	RunE:  runNamespaceWebhookDeliveryRedeliver,
+	Use:               "redeliver <slug> <delivery-id>",
+	Short:             "Redeliver a namespace webhook delivery",
+	Args:              cobra.ExactArgs(2),
+	RunE:              runNamespaceWebhookDeliveryRedeliver,
+	ValidArgsFunction: completeNamespaceWebhookDeliveryIDs,
 }
 
 type webhookRow struct {
@@ -298,6 +305,10 @@ func webhookDeliveryAPIPath(namespacePath, rawID string) (string, error) {
 
 func webhookCompletionKey(namespacePath string) string {
 	return webhookCompletionPrefix + strings.Trim(strings.TrimSpace(namespacePath), "/")
+}
+
+func webhookDeliveryCompletionKey(namespacePath string) string {
+	return webhookDeliveryCompletionPrefix + strings.Trim(strings.TrimSpace(namespacePath), "/")
 }
 
 func runRepoWebhookList(cmd *cobra.Command, args []string) error {
@@ -1018,6 +1029,16 @@ func fetchWebhookRows(ctx context.Context, c *apiclient.Client, namespacePath st
 	return payload.Webhooks, nil
 }
 
+func fetchWebhookDeliveryIDs(ctx context.Context, c *apiclient.Client, namespacePath string) ([]webhookDeliveryRow, error) {
+	var payload struct {
+		Deliveries []webhookDeliveryRow `json:"deliveries"`
+	}
+	if err := c.Get(ctx, webhookAPIPath(namespacePath)+"/deliveries?limit=50", &payload); err != nil {
+		return nil, err
+	}
+	return payload.Deliveries, nil
+}
+
 func emitWebhookHuman(cmd *cobra.Command, hook webhookRow) error {
 	w := newTabWriter(cmd)
 	_, _ = fmt.Fprintln(w, "FIELD\tVALUE")
@@ -1076,10 +1097,60 @@ func completeNamespaceWebhookIDs(cmd *cobra.Command, args []string, _ string) ([
 	}
 }
 
+func completeRepoWebhookDeliveryIDs(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 1 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	ns, slug, err := resolveRepoFromPosOrFlag(cmd, "")
+	if err == nil && len(args) == 0 {
+		return lookupWebhookDeliveryIDs(cmd, ns+"/"+slug)
+	}
+	if len(args) == 0 {
+		return completeRepoSlugs(cmd, args, "")
+	}
+	ns, slug, err = resolveRepoFromPosOrFlag(cmd, args[0])
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return lookupWebhookDeliveryIDs(cmd, ns+"/"+slug)
+}
+
+func completeNamespaceWebhookDeliveryIDs(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	switch len(args) {
+	case 0:
+		return completeOrgNamespaceSlugs(cmd, args, "")
+	case 1:
+		return lookupWebhookDeliveryIDs(cmd, args[0])
+	default:
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
 func lookupWebhookIDs(cmd *cobra.Command, namespacePath string) ([]string, cobra.ShellCompDirective) {
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	vals, err := completion.Lookup(cmd.Context(), serverFlag(cmd), webhookCompletionKey(namespacePath), func(ctx context.Context, c *apiclient.Client) ([]string, error) {
 		rows, err := fetchWebhookRows(ctx, c, namespacePath)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]string, 0, len(rows))
+		for _, row := range rows {
+			if id := strings.TrimSpace(row.ID); id != "" {
+				out = append(out, id)
+			}
+		}
+		return out, nil
+	})
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return vals, cobra.ShellCompDirectiveNoFileComp
+}
+
+func lookupWebhookDeliveryIDs(cmd *cobra.Command, namespacePath string) ([]string, cobra.ShellCompDirective) {
+	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
+	vals, err := completion.Lookup(cmd.Context(), serverFlag(cmd), webhookDeliveryCompletionKey(namespacePath), func(ctx context.Context, c *apiclient.Client) ([]string, error) {
+		rows, err := fetchWebhookDeliveryIDs(ctx, c, namespacePath)
 		if err != nil {
 			return nil, err
 		}

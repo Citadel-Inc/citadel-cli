@@ -98,6 +98,58 @@ func namespaceWebhookGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Comma
 	return nil
 }
 
+func repoWebhookDeliveryGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	t.Helper()
+	for _, c := range root.Commands() {
+		if c.Name() != "repo" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() != "webhook" {
+				continue
+			}
+			for _, deliveries := range sc.Commands() {
+				if deliveries.Name() != "deliveries" {
+					continue
+				}
+				for _, leaf := range deliveries.Commands() {
+					if leaf.Name() == "get" {
+						return leaf
+					}
+				}
+			}
+		}
+	}
+	t.Fatal("repo webhook deliveries get not found")
+	return nil
+}
+
+func namespaceWebhookDeliveryGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	t.Helper()
+	for _, c := range root.Commands() {
+		if c.Name() != "namespace" {
+			continue
+		}
+		for _, sc := range c.Commands() {
+			if sc.Name() != "webhook" {
+				continue
+			}
+			for _, deliveries := range sc.Commands() {
+				if deliveries.Name() != "deliveries" {
+					continue
+				}
+				for _, leaf := range deliveries.Commands() {
+					if leaf.Name() == "get" {
+						return leaf
+					}
+				}
+			}
+		}
+	}
+	t.Fatal("namespace webhook deliveries get not found")
+	return nil
+}
+
 func issueMilestoneViewFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
 	t.Helper()
 	for _, c := range root.Commands() {
@@ -620,6 +672,61 @@ func TestCompleteNamespaceWebhookIDs_UsesNamespaceArg(t *testing.T) {
 	get := namespaceWebhookGetFromRoot(t, root)
 	get.SetContext(context.Background())
 	vals, d := completeNamespaceWebhookIDs(get, []string{"acme"}, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 1 || vals[0] != "cccccccc-cccc-cccc-cccc-cccccccccccc" {
+		t.Fatalf("got %q", vals)
+	}
+}
+
+func TestCompleteRepoWebhookDeliveryIDs_UsesRepoContext(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if !webhookPathMatches(r,
+			"/api/namespaces/acme%2Fdemo/webhooks/deliveries",
+			"/api/namespaces/acme/demo/webhooks/deliveries") ||
+			r.URL.Query().Get("limit") != "50" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"deliveries": []any{
+				map[string]any{"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"},
+				map[string]any{"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"},
+			},
+		})
+	})
+	root := NewRootCmd()
+	get := repoWebhookDeliveryGetFromRoot(t, root)
+	get.SetContext(context.Background())
+	if err := get.Flags().Set("repo", "acme/demo"); err != nil {
+		t.Fatal(err)
+	}
+	vals, d := completeRepoWebhookDeliveryIDs(get, []string{}, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 2 || vals[0] != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" || vals[1] != "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" {
+		t.Fatalf("got %q", vals)
+	}
+}
+
+func TestCompleteNamespaceWebhookDeliveryIDs_UsesNamespaceArg(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/namespaces/acme/webhooks/deliveries" || r.URL.Query().Get("limit") != "50" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"deliveries": []any{
+				map[string]any{"id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+			},
+		})
+	})
+	root := NewRootCmd()
+	get := namespaceWebhookDeliveryGetFromRoot(t, root)
+	get.SetContext(context.Background())
+	vals, d := completeNamespaceWebhookDeliveryIDs(get, []string{"acme"}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
 	}
