@@ -150,17 +150,25 @@ func TestAPI_PutWithInputStdin(t *testing.T) {
 }
 
 func TestAPI_EmptyInput(t *testing.T) {
+	var requests int
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST /foo": func(w http.ResponseWriter, _ *http.Request) {
-			t.Error("request should not be sent for empty JSON input")
+			requests++
 			writeJSON(t, w, http.StatusCreated, map[string]any{"ok": true})
 		},
 	}))
 
 	root := rootFor(cmd.APICmd, "-X", "POST", "/foo", "--input", "-")
 	root.SetIn(strings.NewReader(""))
-	if err := root.Execute(); err == nil {
+	err := root.Execute()
+	if err == nil {
 		t.Fatal("want error for empty JSON input")
+	}
+	if !strings.Contains(err.Error(), "--input") {
+		t.Fatalf("error = %q, want --input", err)
+	}
+	if requests != 0 {
+		t.Fatalf("requests = %d, want 0", requests)
 	}
 }
 
@@ -170,15 +178,23 @@ func TestAPI_InvalidJSONInput(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var requests int
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST /foo": func(w http.ResponseWriter, _ *http.Request) {
-			t.Error("request should not be sent for invalid JSON input")
+			requests++
 			writeJSON(t, w, http.StatusCreated, map[string]any{"ok": true})
 		},
 	}))
 
-	if err := rootFor(cmd.APICmd, "-X", "POST", "/foo", "--input", inputPath).Execute(); err == nil {
+	err := rootFor(cmd.APICmd, "-X", "POST", "/foo", "--input", inputPath).Execute()
+	if err == nil {
 		t.Fatal("want error for invalid JSON input")
+	}
+	if !strings.Contains(err.Error(), "--input") {
+		t.Fatalf("error = %q, want --input", err)
+	}
+	if requests != 0 {
+		t.Fatalf("requests = %d, want 0", requests)
 	}
 }
 

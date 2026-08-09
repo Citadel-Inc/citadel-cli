@@ -75,6 +75,10 @@ func runAPI(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("read API input %q: %w", input, err)
 		}
+		var inputValue any
+		if err := json.Unmarshal(inputJSON, &inputValue); err != nil {
+			return fmt.Errorf("--input: invalid JSON: %w", err)
+		}
 		body = json.RawMessage(inputJSON)
 	}
 
