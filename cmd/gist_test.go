@@ -263,9 +263,9 @@ func TestGistRawRefusesBinaryTTY(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", server.URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
 
-	originalOutputIsTTY := gistRawOutputIsTTY
-	gistRawOutputIsTTY = func(io.Writer) bool { return true }
-	defer func() { gistRawOutputIsTTY = originalOutputIsTTY }()
+	originalOutputIsTTY := downloadOutputIsTTY
+	downloadOutputIsTTY = func(io.Writer) bool { return true }
+	defer func() { downloadOutputIsTTY = originalOutputIsTTY }()
 
 	_, err := executeGistTestCommand(t, "gist", "raw", "g1", "image.bin")
 	if err == nil || !strings.Contains(err.Error(), "refusing to write binary gist file to a terminal") {

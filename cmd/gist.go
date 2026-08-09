@@ -8,10 +8,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 )
@@ -473,13 +471,13 @@ func runGistRaw(cmd *cobra.Command, args []string) error {
 		dst = file
 	}
 
-	if file == nil && gistRawOutputIsTTY(dst) {
+	if file == nil && downloadOutputIsTTY(dst) {
 		prefix := make([]byte, 512)
 		n, readErr := io.ReadFull(resp.Body, prefix)
 		if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
 			return fmt.Errorf("read gist file: %w", readErr)
 		}
-		if gistRawLooksBinary(resp.Header.Get("Content-Type"), prefix[:n]) {
+		if downloadLooksBinary(resp.Header.Get("Content-Type"), prefix[:n]) {
 			return fmt.Errorf("refusing to write binary gist file to a terminal; redirect stdout or pass --output-file")
 		}
 		_, err = io.Copy(dst, io.MultiReader(bytes.NewReader(prefix[:n]), resp.Body))
@@ -490,28 +488,6 @@ func runGistRaw(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("write gist file: %w", err)
 	}
 	return nil
-}
-
-var gistRawOutputIsTTY = func(w io.Writer) bool {
-	file, ok := w.(*os.File)
-	return ok && term.IsTerminal(int(file.Fd()))
-}
-
-func gistRawLooksBinary(contentType string, prefix []byte) bool {
-	mediaType := strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0]))
-	if mediaType != "" {
-		return !strings.HasPrefix(mediaType, "text/") &&
-			mediaType != "application/json" &&
-			mediaType != "application/xml" &&
-			mediaType != "application/javascript"
-	}
-	if bytes.IndexByte(prefix, 0) >= 0 || !utf8.Valid(prefix) {
-		return true
-	}
-	detected := strings.ToLower(http.DetectContentType(prefix))
-	return !strings.HasPrefix(detected, "text/") &&
-		detected != "application/json" &&
-		detected != "application/xml"
 }
 
 func renderGistView(cmd *cobra.Command, payload gistViewPayload) error {

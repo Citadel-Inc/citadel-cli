@@ -28,8 +28,8 @@ func TestReleaseAssetLooksBinary(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if got := releaseAssetLooksBinary(test.contentType, test.prefix); got != test.want {
-				t.Fatalf("releaseAssetLooksBinary(%q, %v) = %v, want %v", test.contentType, test.prefix, got, test.want)
+			if got := downloadLooksBinary(test.contentType, test.prefix); got != test.want {
+				t.Fatalf("downloadLooksBinary(%q, %v) = %v, want %v", test.contentType, test.prefix, got, test.want)
 			}
 		})
 	}
@@ -56,9 +56,9 @@ func TestRunReleaseAssetDownload_RefusesBinaryTTY(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", srv.URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
 
-	originalTTYCheck := releaseAssetOutputIsTTY
-	releaseAssetOutputIsTTY = func(io.Writer) bool { return true }
-	defer func() { releaseAssetOutputIsTTY = originalTTYCheck }()
+	originalTTYCheck := downloadOutputIsTTY
+	downloadOutputIsTTY = func(io.Writer) bool { return true }
+	defer func() { downloadOutputIsTTY = originalTTYCheck }()
 
 	var out bytes.Buffer
 	command := &cobra.Command{}

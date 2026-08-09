@@ -27,9 +27,9 @@ func TestRunRepoBrowseRaw_RefusesBinaryTTY(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", srv.URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
 
-	originalTTYCheck := repoBrowseOutputIsTTY
-	repoBrowseOutputIsTTY = func(io.Writer) bool { return true }
-	defer func() { repoBrowseOutputIsTTY = originalTTYCheck }()
+	originalTTYCheck := downloadOutputIsTTY
+	downloadOutputIsTTY = func(io.Writer) bool { return true }
+	defer func() { downloadOutputIsTTY = originalTTYCheck }()
 
 	var out bytes.Buffer
 	command := &cobra.Command{}
