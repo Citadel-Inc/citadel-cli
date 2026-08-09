@@ -51,6 +51,39 @@ func TestProjectAdminRecoveryScan_HappyPath(t *testing.T) {
 	}
 }
 
+func TestProjectAdminRecoveryScan_ConfirmMismatch(t *testing.T) {
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	stdin, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	previousStdin := os.Stdin
+	os.Stdin = stdin
+	t.Cleanup(func() { os.Stdin = previousStdin })
+	if _, err := writer.WriteString("wrong\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = writer.Close()
+
+	var stdout bytes.Buffer
+	cmd := newProjectAdminRecoveryScanTestCommand(&stdout)
+	if err := runProjectAdminRecoveryScan(cmd, nil); err == nil {
+		t.Fatal("expected confirmation mismatch error")
+	}
+	if requests != 0 {
+		t.Fatalf("requests = %d, want 0", requests)
+	}
+}
+
 func TestProjectAdminRecoveryScan_Yes(t *testing.T) {
 	var requests int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
