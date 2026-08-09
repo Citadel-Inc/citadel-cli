@@ -500,6 +500,34 @@ func TestRotateAccessTokenOn401Hook_EmptyAgentID(t *testing.T) {
 	}
 }
 
+func TestRotateAccessTokenOn401Hook_EnvAccessTokenSkipsRefresh(t *testing.T) {
+	t.Setenv("CITADEL_ACCESS_TOKEN", "env-access")
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := clicfg.Config{
+		AccessToken:  "stored-access",
+		RefreshToken: "stored-refresh",
+	}
+	if err := cfg.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
+	got, err := hook(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "" {
+		t.Fatalf("token = %q, want empty", got)
+	}
+	loaded, err := clicfg.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.RefreshToken != "stored-refresh" {
+		t.Fatalf("refresh token changed: %q", loaded.RefreshToken)
+	}
+}
+
 func TestRotateAccessTokenOn401Hook_RefreshSuccess(t *testing.T) {
 	newAccess := makeUnsignedJWT(t, jwt.MapClaims{
 		"sub": "99999999-9999-4999-8999-999999999999",

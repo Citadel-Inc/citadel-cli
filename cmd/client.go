@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -96,6 +97,9 @@ func doPublicJSON(cmd *cobra.Command, method, path string, body, out any) error 
 
 func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (string, error) {
 	return func(ctx context.Context) (string, error) {
+		if os.Getenv("CITADEL_ACCESS_TOKEN") != "" {
+			return "", nil
+		}
 		cfg, err := clicfg.Load()
 		if err != nil {
 			return "", fmt.Errorf("reload config for token rotation: %w", err)
