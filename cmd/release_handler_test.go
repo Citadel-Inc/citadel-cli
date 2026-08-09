@@ -363,3 +363,21 @@ func TestReleaseAssetUpload_SizeLimit(t *testing.T) {
 		t.Fatalf("want size-limit error, got %v", err)
 	}
 }
+
+func TestReleaseAssetDownload_MissingURL(t *testing.T) {
+	const assetID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && issuePathMatches(r,
+			"/namespaces/acme%2Fdemo/releases/v1.0.0/assets/"+assetID,
+			"/namespaces/acme/demo/releases/v1.0.0/assets/"+assetID,
+		) {
+			writeJSON(t, w, http.StatusOK, map[string]any{"id": assetID})
+			return
+		}
+		http.NotFound(w, r)
+	})
+	err := rootFor(cmd.ReleaseCmd, "asset", "download", "v1.0.0", assetID, "-R", "acme/demo", "-o", t.TempDir()+"/asset.bin").Execute()
+	if err == nil || !strings.Contains(err.Error(), "no download URL") {
+		t.Fatalf("want missing-download-url error, got %v", err)
+	}
+}
