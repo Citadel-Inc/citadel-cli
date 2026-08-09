@@ -317,6 +317,54 @@ func runProjectReindex(cmd *cobra.Command, args []string) error {
 	return projectEmitMutationOK(cmd, out)
 }
 
+// ── admin ─────────────────────────────────────────────────────────────────────
+
+var projectAdminCmd = &cobra.Command{
+	Use:   "admin",
+	Short: "Run project graph administration operations",
+}
+
+var projectAdminRecoveryScanCmd = &cobra.Command{
+	Use:   "recovery-scan",
+	Short: "Queue a project graph recovery scan",
+	RunE:  runProjectAdminRecoveryScan,
+}
+
+func runProjectAdminRecoveryScan(cmd *cobra.Command, _ []string) error {
+	if err := confirmTypedValue(yesFlag(cmd), "run project graph recovery scan", "recovery-scan"); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	var out struct {
+		ReposEnqueued int `json:"repos_enqueued"`
+	}
+	if err := c.Post(cmd.Context(), "/api/projectgraph/admin/recovery-scan", nil, &out); err != nil {
+		return upgradeUnauthorized(err)
+	}
+
+	outMode := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if jsonFlag(cmd) {
+		outMode = "json"
+	}
+	if err := validateGetOutput(outMode); err != nil {
+		return err
+	}
+	switch outMode {
+	case "json":
+		return emitJSON(cmd, out)
+	case "yaml":
+		return emitYAML(cmd, out)
+	case "", "table":
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "repos_enqueued:\t%d\n", out.ReposEnqueued)
+		return nil
+	default:
+		return fmt.Errorf("--output: only json|yaml|table supported for this command")
+	}
+}
+
 // projectgraphPath builds /api/projectgraph/<escaped slug>/<suffix>.
 func projectgraphPath(slug, suffix string) string {
 	slug = strings.Trim(slug, "/")
@@ -452,7 +500,9 @@ func init() {
 		projectStatusRollupCmd, projectStatusDrilldownCmd,
 		projectEdgeAddCmd, projectEdgeRestoreCmd,
 	)
-	addYesFlag(projectEdgeDeleteCmd, projectEdgeRestoreCmd, projectReindexCmd)
+	addYesFlag(projectEdgeDeleteCmd, projectEdgeRestoreCmd, projectReindexCmd, projectAdminRecoveryScanCmd)
+	addOutputFlag(projectAdminRecoveryScanCmd)
+	addJSONFlag(projectAdminRecoveryScanCmd)
 
 	projectWalkCmd.Flags().String("kind", "", "Graph kind (required)")
 	projectWalkCmd.Flags().Int("max-depth", 0, "Optional positive walk depth")
@@ -485,6 +535,8 @@ func init() {
 		projectStatusCmd,
 		projectEdgeCmd,
 		projectReindexCmd,
+		projectAdminCmd,
 	)
 	projectStatusCmd.AddCommand(projectStatusRollupCmd, projectStatusDrilldownCmd)
+	projectAdminCmd.AddCommand(projectAdminRecoveryScanCmd)
 }
