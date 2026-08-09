@@ -9,7 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -167,5 +169,117 @@ func TestGistCRUDAndRaw(t *testing.T) {
 	}
 	if string(data) != rawContent {
 		t.Fatalf("downloaded gist = %q, want %q", data, rawContent)
+	}
+}
+
+type gistStreamingBuffer struct {
+	mu         sync.Mutex
+	buffer     bytes.Buffer
+	firstWrite chan struct{}
+	once       sync.Once
+}
+
+func (b *gistStreamingBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	n, err := b.buffer.Write(p)
+	if n > 0 {
+		b.once.Do(func() { close(b.firstWrite) })
+	}
+	return n, err
+}
+
+func (b *gistStreamingBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buffer.String()
+}
+
+func TestGistRawStreamsBeforeResponseEOF(t *testing.T) {
+	const (
+		rawPrefix = "package "
+		rawSuffix = "main\n"
+	)
+	firstChunkSent := make(chan struct{})
+	sendRemainder := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Path; got != "/gists/g1/raw/main.go" {
+			t.Errorf("request path = %q, want /gists/g1/raw/main.go", got)
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = io.WriteString(w, rawPrefix)
+		w.(http.Flusher).Flush()
+		close(firstChunkSent)
+		<-sendRemainder
+		_, _ = io.WriteString(w, rawSuffix)
+	}))
+	defer server.Close()
+	t.Setenv("CITADEL_SERVER", server.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	resetGistTestFlags()
+	root := NewRootCmd()
+	output := &gistStreamingBuffer{firstWrite: make(chan struct{})}
+	root.SetOut(output)
+	root.SetErr(output)
+	root.SetArgs([]string{"gist", "raw", "g1", "main.go"})
+	done := make(chan error, 1)
+	go func() { done <- root.Execute() }()
+
+	select {
+	case <-firstChunkSent:
+	case <-time.After(2 * time.Second):
+		close(sendRemainder)
+		<-done
+		t.Fatal("server did not send the first response chunk")
+	}
+	select {
+	case <-output.firstWrite:
+	case <-time.After(2 * time.Second):
+		close(sendRemainder)
+		<-done
+		t.Fatal("gist raw did not write before response EOF")
+	}
+	close(sendRemainder)
+
+	if err := <-done; err != nil {
+		t.Fatalf("gist raw: %v", err)
+	}
+	if got, want := output.String(), rawPrefix+rawSuffix; got != want {
+		t.Fatalf("gist raw output = %q, want %q", got, want)
+	}
+}
+
+func TestGistRawRefusesBinaryTTY(t *testing.T) {
+	const rawContent = "\x00\x01\x02binary"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Path; got != "/gists/g1/raw/image.bin" {
+			t.Errorf("request path = %q, want /gists/g1/raw/image.bin", got)
+		}
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, _ = io.WriteString(w, rawContent)
+	}))
+	defer server.Close()
+	t.Setenv("CITADEL_SERVER", server.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	originalOutputIsTTY := gistRawOutputIsTTY
+	gistRawOutputIsTTY = func(io.Writer) bool { return true }
+	defer func() { gistRawOutputIsTTY = originalOutputIsTTY }()
+
+	_, err := executeGistTestCommand(t, "gist", "raw", "g1", "image.bin")
+	if err == nil || !strings.Contains(err.Error(), "refusing to write binary gist file to a terminal") {
+		t.Fatalf("gist raw binary TTY error = %v", err)
+	}
+	target := filepath.Join(t.TempDir(), "image.bin")
+	if _, err := executeGistTestCommand(t, "gist", "raw", "g1", "image.bin", "--output-file", target); err != nil {
+		t.Fatalf("gist raw binary --output-file: %v", err)
+	}
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("read downloaded binary gist: %v", err)
+	}
+	if string(data) != rawContent {
+		t.Fatalf("downloaded binary gist = %q, want %q", data, rawContent)
 	}
 }
