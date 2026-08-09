@@ -214,27 +214,27 @@ func kgWriteTable(cmd *cobra.Command, pages []any, rowKeys ...string) error {
 		}
 	}
 	w := newTabWriter(cmd)
-	if strings.Contains(strings.Join(rowKeys, ","), "symbols") {
+	if len(rowKeys) > 0 && rowKeys[0] == "symbols" {
 		_, _ = fmt.Fprintln(w, "NAME\tKIND\tPATH\tLINE\tSIGNATURE")
 		for _, row := range rows {
 			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-				kgCell(row, "name", "symbol", "qualified_name"),
-				kgCell(row, "kind", "symbol_kind"),
-				kgCell(row, "path", "file_path"),
-				kgCell(row, "line", "line_start", "start_line"),
-				kgCell(row, "signature", "detail"),
+				kgCell(row, "name", "symbol_name", "symbol", "qualified_name"),
+				kgCell(row, "kind", "symbol_kind", "type"),
+				kgCell(row, "path", "file_path", "file"),
+				kgCell(row, "line", "line_start", "start_line", "line_number"),
+				kgCell(row, "signature", "signature_text", "detail"),
 			)
 		}
 	} else {
 		_, _ = fmt.Fprintln(w, "NAMESPACE\tREPOSITORY\tPATH\tLINE\tSYMBOL\tSNIPPET")
 		for _, row := range rows {
 			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-				kgCell(row, "namespace", "namespace_slug", "owner"),
-				kgCell(row, "repo", "repo_slug", "repository"),
-				kgCell(row, "path", "file_path"),
-				kgCell(row, "line", "line_start", "start_line"),
+				kgCell(row, "namespace", "namespace_slug", "namespace_name", "owner"),
+				kgCell(row, "repo", "repo_slug", "repository", "repository_slug", "repo_name"),
+				kgCell(row, "path", "file_path", "file"),
+				kgCell(row, "line", "line_start", "start_line", "line_number"),
 				kgCell(row, "symbol", "name", "qualified_name"),
-				kgCell(row, "snippet", "content", "text"),
+				kgCell(row, "snippet", "match", "content", "text"),
 			)
 		}
 	}
