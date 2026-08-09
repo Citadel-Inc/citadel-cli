@@ -101,3 +101,20 @@ func TestAuditRBAC_ListForbidden(t *testing.T) {
 		t.Fatalf("want 403/forbidden/permission error, got %v", err)
 	}
 }
+
+func TestAuditRBAC_ShowForbidden(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events/event-1": func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "audit read forbidden", http.StatusForbidden)
+		},
+	}))
+
+	err := rootFor(cmd.AuditCmd, "show", "event-1").Execute()
+	if err == nil {
+		t.Fatal("expected forbidden error")
+	}
+	msg := strings.ToLower(err.Error())
+	if !strings.Contains(msg, "403") && !strings.Contains(msg, "forbidden") && !strings.Contains(msg, "permission") {
+		t.Fatalf("want 403/forbidden/permission error, got %v", err)
+	}
+}
