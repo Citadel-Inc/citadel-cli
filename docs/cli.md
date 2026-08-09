@@ -55,9 +55,17 @@ The CLI defaults to the server URL in `CITADEL_SERVER`; if unset, the built-in d
 
 ### Headless / CI bootstrap
 
-When a browser is unavailable, persist a Supabase JWT directly and let the CLI
-upgrade it to a Citadel agent token on a later command when the server is
-reachable:
+When a local browser is unavailable but an interactive terminal is available,
+use device-code login (RFC 8628). The CLI prints a user code and verification
+URL, polls `/api/oauth/token`, then bootstraps the same agent-token shape as
+browser login:
+
+```bash
+citadel-cli auth login --device
+```
+
+For fully non-interactive CI, persist a Supabase JWT and let the CLI upgrade it
+to a Citadel agent token on a later command when the server is reachable:
 
 ```bash
 citadel-cli auth set-token --token "$JWT"
@@ -65,8 +73,8 @@ echo "$JWT" | citadel-cli auth set-token
 CITADEL_ACCESS_TOKEN="$JWT" citadel-cli auth set-token
 ```
 
-Use this path for CI, SSH-only hosts, containers, or other non-interactive
-environments where `citadel-cli auth login` is unavailable.
+Use `auth set-token` for CI, containers, or other non-interactive environments
+where even device-code polling is unavailable.
 
 ### Check authentication status
 
@@ -240,7 +248,50 @@ printf '%s\n' '{"name":"demo"}' | citadel-cli api -X POST /api/example --input -
 ```
 
 `--input -` reads the body from stdin. `--input` is mutually exclusive with
-`-f`/`--field`; GET and DELETE reject `--input`.
+`-f`/`--field`; GET and DELETE reject `--input`. Empty or invalid JSON fails
+before any HTTP round-trip with an error that names `--input`.
+
+### Gists
+
+```bash
+citadel-cli gist list
+citadel-cli gist view <id>
+citadel-cli gist create --title "Snippet" --file main.go='package main'
+citadel-cli gist edit <id> --visibility private
+citadel-cli gist delete <id> --yes
+citadel-cli gist raw <id> path/to/file
+citadel-cli gist raw <id> path/to/file --output-file ./file
+```
+
+Use `--visibility public`, `--visibility unlisted`, or `--visibility private`
+(`secret` is accepted as an alias). Standard `--output json|yaml|ndjson|csv`
+applies where supported.
+
+### Releases and assets
+
+```bash
+citadel-cli release list -R acme/demo
+citadel-cli release view -R acme/demo v1.0.0
+citadel-cli release asset list -R acme/demo v1.0.0
+citadel-cli release asset upload -R acme/demo v1.0.0 ./dist/app.tar.gz
+citadel-cli release asset download -R acme/demo v1.0.0 <asset-id> -o ./app.tar.gz
+citadel-cli release asset delete -R acme/demo v1.0.0 <asset-id> --yes
+```
+
+Download resolves asset metadata then follows `download_url` (often a signed
+object-store URL). Binary assets refuse to dump to a TTY without redirect or
+`--output-file` / `-o`.
+
+### OAuth clients
+
+```bash
+citadel-cli oauth clients list
+citadel-cli oauth clients list --dcr
+```
+
+`--dcr` filters the listed page client-side for dynamically registered clients
+(the daemon list endpoint has no `dcr` query). It cannot be combined with
+`--watch`.
 
 ### Repositories via system git
 
@@ -334,7 +385,7 @@ token immediately — it will not be displayed again. Subsequent calls to
 Error paths:
 
 | Server response | CLI message |
-|---|---|
+| --- | --- |
 | 409 Conflict | `agent name already taken` |
 | 403 Forbidden | `insufficient permission` |
 | 422 Unprocessable | field-level validation hint |
@@ -362,6 +413,7 @@ citadel-cli token issue --agent <name> [--scopes <scope>[,<scope>...]] [--expire
 Creates or finds an agent with the given name and issues a new token. Prints the clear-text token exactly once to stdout (with no debug output). Subsequent `citadel-cli token list` calls will show only metadata, not the secret.
 
 Parameters:
+
 - `--agent <name>` (required): Agent name; if the agent does not exist, it is created.
 - `--scopes <scope>[,<scope>...]` (optional): Comma-separated list of scopes (e.g., `mcp:read,mcp:write`). Default: no scopes.
 - `--expires <duration>` (optional): Token expiry time (e.g., `24h`, `7d`, `no-expiry`). Default: no expiration.
@@ -545,12 +597,15 @@ Query the Citadel **knowledge-graph REST API** (`kgapi`) with your saved session
 ```bash
 citadel-cli kg search "auth middleware"
 citadel-cli kg search --query "TODO" --mode fts --path-prefix internal/
+citadel-cli kg search "auth" --all --output ndjson
+citadel-cli kg search "auth" --output table
 ```
 
 ### Namespace-scoped verbs
 
 ```bash
 citadel-cli kg symbols --q Handler -R myorg/myrepo
+citadel-cli kg symbols --q Handler -R myorg/myrepo --all --output table
 citadel-cli kg files -R myorg/myrepo --path-prefix pkg/
 citadel-cli kg fulltext --q "panic(" -R myorg/myrepo
 citadel-cli kg walk --seed-id <symbol-uuid> -R myorg/myrepo --depth 2
@@ -560,7 +615,10 @@ citadel-cli kg impact myorg/myrepo MyFunc   # symbol name or UUID
 
 **`kg impact`** uses **`GET /api/namespaces/{namespace}/kg/impact`** (legacy **`/kg/{owner}/impact`** is no longer called).
 
-Machine output: **`--output json`** or **`yaml`** on each verb.
+`--all` walks pages when the response advertises `next_cursor`. It cannot be
+combined with `--output json` (use `--output ndjson` to stream every row).
+`--output table` renders stable columns for search/symbols (and related list
+shapes). Machine output also supports **`json`**, **`yaml`**, and **`ndjson`**.
 
 ### Live integration test
 
@@ -618,10 +676,10 @@ Authentication uses your saved Citadel CLI session by default (typically an opaq
 
 ```bash
 $ citadel-cli mcp tools
-get_namespace	Look up a namespace by slug or path
-kg_find_symbol	Search the knowledge graph for symbols matching a query
-kg_list_files	List indexed files in a namespace
-kg_walk	Walk symbol edges from a starting symbol
+get_namespace Look up a namespace by slug or path
+kg_find_symbol Search the knowledge graph for symbols matching a query
+kg_list_files List indexed files in a namespace
+kg_walk Walk symbol edges from a starting symbol
 ```
 
 ### Call a tool
@@ -638,24 +696,24 @@ $ citadel-cli mcp call get_namespace --arg path=damon
 Use `--json` for the raw JSON-RPC `tools/call` response (useful for scripting):
 
 ```bash
-$ citadel-cli mcp call get_namespace --arg path=damon --json
+citadel-cli mcp call get_namespace --arg path=damon --json
 ```
 
 ### Argument coercion
 
 `--arg key=value` coerces the value automatically. Use `--arg-string key=value` to opt out for a single argument.
 
-| Input form           | Coerced type | Example                          |
-|----------------------|--------------|----------------------------------|
-| `key=hello`          | string       | `"hello"`                        |
-| `key=true` / `false` | bool         | `true` / `false`                 |
-| `key=5`              | int64        | `5`                              |
-| `key=-7`             | int64        | `-7`                             |
-| `key=07823`          | string       | `"07823"` (leading zero kept)    |
-| `key=1.5`            | float64      | `1.5`                            |
-| `key=a,b,c`          | array        | `["a","b","c"]`                  |
-| `key=1,2,3`          | array of int | `[1, 2, 3]`                      |
-| `key=1,foo,true`     | mixed array  | `[1, "foo", true]`               |
+| Input form | Coerced type | Example |
+| ---------------------- | -------------- | ---------------------------------- |
+| `key=hello` | string | `"hello"` |
+| `key=true` / `false` | bool | `true` / `false` |
+| `key=5` | int64 | `5` |
+| `key=-7` | int64 | `-7` |
+| `key=07823` | string | `"07823"` (leading zero kept) |
+| `key=1.5` | float64 | `1.5` |
+| `key=a,b,c` | array | `["a","b","c"]` |
+| `key=1,2,3` | array of int | `[1, 2, 3]` |
+| `key=1,foo,true` | mixed array | `[1, "foo", true]` |
 
 Edge cases that fall through to string: `.5`, `5.`, `1.2.3`, anything with non-digit non-dot non-comma characters.
 
@@ -670,11 +728,11 @@ Edge cases that fall through to string: `.5`, `5.`, `1.2.3`, anything with non-d
 
 ### Exit codes
 
-| Code | Meaning                                                                |
-|------|------------------------------------------------------------------------|
-| 0    | Success.                                                               |
-| 1    | Local error: bad flags, no token, transport failure, server JSON-RPC error. |
-| 2    | Tool returned `isError: true` (the call reached the tool; the tool failed).|
+| Code | Meaning |
+| ------ | ------------------------------------------------------------------------ |
+| 0 | Success. |
+| 1 | Local error: bad flags, no token, transport failure, server JSON-RPC error. |
+| 2 | Tool returned `isError: true` (the call reached the tool; the tool failed). |
 
 ### Phase 0 operator cookbook (HTTPS MCP)
 
@@ -689,7 +747,7 @@ citadel-cli mcp tools
 Below, treat **`<tool>`** as a name from that list. Argument shapes mirror the Proof-of-Life dossier **appendix K** tool groups (`namespace.*`, `repo.*`, `issue.*`, `project.*`, `kg.*`, `agent.*`, `audit.*`, `key.*`) — **wire names differ** (often `snake_case`); always confirm with `mcp tools`.
 
 | Intent | Pattern |
-|--------|---------|
+| -------- | --------- |
 | Resolve namespace / org | `citadel-cli mcp call <tool> --arg path=<slug>` — typical discovery tool (historically `get_namespace`; confirm via `mcp tools`). |
 | Knowledge graph | Tools such as **`kg_find_symbol`**, **`kg_list_files`**, **`kg_walk`** (examples; verify list). Pass repo/namespace args your server’s schema expects, often `--arg namespace_path=…` or `--arg-string` for opaque IDs. |
 | Project-as-graph | Project tools accept **`project_path`** or **`namespace_path`**-style args per server registration — use `--json` when responses are large. |
@@ -1247,6 +1305,7 @@ citadel self-host init
 ```
 
 You will be prompted for:
+
 - **API endpoint** — base URL of your Citadel API server (e.g. `https://citadel.example.com`)
 - **Supabase URL** — your Supabase project URL (e.g. `https://abc.supabase.co`)
 - **Admin key** — Supabase service-role key (kept in config file at 0600)
@@ -1283,7 +1342,7 @@ Overall: GREEN
 Exit code 0 = GREEN; 1 = AMBER or RED.
 
 | Status | Meaning |
-|--------|---------|
+| -------- | --------- |
 | GREEN | All components reachable; migrations current |
 | AMBER | Components up but migrations pending |
 | RED | API or Supabase unreachable |
