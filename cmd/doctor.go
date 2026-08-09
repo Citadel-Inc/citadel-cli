@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
 	"github.com/Rethunk-Tech/citadel-cli/internal/mcpclient"
 )
@@ -32,7 +33,9 @@ Checks performed:
   - Server reachable (HTTP HEAD / GET against the configured base URL)
   - Auth token present + not expired (claim-only inspection; no round trip)
   - MCP endpoint reachable (initialize handshake)
-  - ~/.config/citadel/config.toml mode 0600 (UNIX only)`,
+  - ~/.config/citadel/config.toml mode 0600 (UNIX only)
+  - Resolved REST and MCP base URLs
+  - CWD git origin points at a Citadel host when CITADEL_REPO is unset`,
 	RunE: runDoctor,
 }
 
@@ -72,6 +75,8 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		checkAuthToken(cfg),
 		checkMCP(cmd.Context(), cfg, server, mcpclient.Options{Verbose: verboseFlag(cmd), DebugHTTP: debugHTTPFlag(cmd)}),
 		checkConfigPerms(),
+		checkServerBases(server),
+		checkGitRemote(cmd.Context()),
 	}
 	for _, r := range results {
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), r.String())
@@ -112,6 +117,13 @@ func checkServer(ctx context.Context, base string) checkResult {
 		return checkResult{name, statusFail, fmt.Sprintf("%s returned HTTP %d", base, resp.StatusCode)}
 	}
 	return checkResult{name, statusPass, fmt.Sprintf("%s reachable (HTTP %d)", base, resp.StatusCode)}
+}
+
+func checkServerBases(server string) checkResult {
+	const name = "server-bases"
+	restBase := apiclient.ResolveRESTServerURL(server)
+	mcpBase := resolveMCPURL(server)
+	return checkResult{name, statusPass, fmt.Sprintf("REST %s; MCP %s", restBase, mcpBase)}
 }
 
 func checkAuthToken(cfg clicfg.Config) checkResult {
@@ -178,4 +190,30 @@ func checkConfigPerms() checkResult {
 		return checkResult{name, statusFail, fmt.Sprintf("%s mode is %#o; should be 0600", configPath, mode)}
 	}
 	return checkResult{name, statusPass, fmt.Sprintf("%s mode %#o", configPath, mode)}
+}
+
+func checkGitRemote(ctx context.Context) checkResult {
+	const name = "git-origin"
+	if repo := strings.TrimSpace(os.Getenv(citadelRepoEnv)); repo != "" {
+		return checkResult{name, statusPass, fmt.Sprintf("%s is set (%s); CWD origin not required", citadelRepoEnv, repo)}
+	}
+
+	dir, err := os.Getwd()
+	if err != nil {
+		return checkResult{name, statusWarn, fmt.Sprintf("cannot resolve CWD: %v", err)}
+	}
+	return checkGitOrigin(ctx, dir)
+}
+
+func checkGitOrigin(ctx context.Context, dir string) checkResult {
+	const name = "git-origin"
+	rawURL, err := gitOriginURL(ctx, dir)
+	if err != nil {
+		return checkResult{name, statusWarn, fmt.Sprintf("could not read origin: %v", err)}
+	}
+	ns, slug, err := parseOriginIntoRepo(rawURL, mergeCitadelHosts())
+	if err != nil {
+		return checkResult{name, statusWarn, fmt.Sprintf("origin %q is not a Citadel repository: %v", rawURL, err)}
+	}
+	return checkResult{name, statusPass, fmt.Sprintf("origin %s (%s/%s)", rawURL, ns, slug)}
 }
