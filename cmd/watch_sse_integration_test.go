@@ -94,6 +94,7 @@ func TestRepoListWatch_scriptedSSESequence_ndjson(t *testing.T) {
 	setOutRecursive(cmd.RepoCmd, out, io.Discard)
 
 	root := &cobra.Command{Use: "test"}
+	addTestRootGroups(root)
 	root.AddCommand(cmd.RepoCmd)
 	root.SetArgs([]string{"repo", "list", "--namespace", "myorg", "--watch", "--output", "ndjson", "--limit", "10"})
 	root.SetOut(out)

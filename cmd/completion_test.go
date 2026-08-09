@@ -14,6 +14,7 @@ func TestCompletion_AllShells(t *testing.T) {
 	for _, shell := range []string{"bash", "zsh", "fish", "powershell"} {
 		t.Run(shell, func(t *testing.T) {
 			root := &cobra.Command{Use: "citadel-cli"}
+			addTestRootGroups(root)
 			root.AddCommand(cmd.AuthCmd)
 			root.AddCommand(cmd.CompletionCmd)
 			root.SetArgs([]string{"completion", shell})

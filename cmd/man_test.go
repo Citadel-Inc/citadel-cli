@@ -14,6 +14,7 @@ import (
 func TestMan_GeneratesPages(t *testing.T) {
 	dir := t.TempDir()
 	root := &cobra.Command{Use: "citadel-cli"}
+	addTestRootGroups(root)
 	root.AddCommand(cmd.AuthCmd)
 	root.AddCommand(cmd.ManCmd)
 	root.SetArgs([]string{"man", dir})
