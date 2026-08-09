@@ -60,6 +60,7 @@ func runWatchCmd(t *testing.T, ctx context.Context, srvURL string, verb *cobra.C
 	setOutRecursive(verb, io.Discard, io.Discard)
 
 	root := &cobra.Command{Use: "test"}
+	addTestRootGroups(root)
 	root.AddCommand(verb)
 	root.SetArgs(append([]string{verb.Name()}, args...))
 	root.SetOut(io.Discard)
