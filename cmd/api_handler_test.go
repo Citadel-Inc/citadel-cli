@@ -125,6 +125,63 @@ func TestAPI_PatchWithInputFile(t *testing.T) {
 	}
 }
 
+func TestAPI_PutWithInputStdin(t *testing.T) {
+	const input = `{"title":"updated","enabled":true}`
+
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"PUT /namespaces/acme/demo/issues/42": func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Errorf("read request body: %v", err)
+				return
+			}
+			if string(body) != input {
+				t.Errorf("request body = %q, want %q", body, input)
+			}
+			writeJSON(t, w, http.StatusOK, map[string]any{"ok": true})
+		},
+	}))
+
+	root := rootFor(cmd.APICmd, "-X", "PUT", "/namespaces/acme/demo/issues/42", "--input", "-")
+	root.SetIn(strings.NewReader(input))
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAPI_EmptyInput(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /foo": func(w http.ResponseWriter, _ *http.Request) {
+			t.Error("request should not be sent for empty JSON input")
+			writeJSON(t, w, http.StatusCreated, map[string]any{"ok": true})
+		},
+	}))
+
+	root := rootFor(cmd.APICmd, "-X", "POST", "/foo", "--input", "-")
+	root.SetIn(strings.NewReader(""))
+	if err := root.Execute(); err == nil {
+		t.Fatal("want error for empty JSON input")
+	}
+}
+
+func TestAPI_InvalidJSONInput(t *testing.T) {
+	inputPath := filepath.Join(t.TempDir(), "invalid.json")
+	if err := os.WriteFile(inputPath, []byte(`{"title":`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /foo": func(w http.ResponseWriter, _ *http.Request) {
+			t.Error("request should not be sent for invalid JSON input")
+			writeJSON(t, w, http.StatusCreated, map[string]any{"ok": true})
+		},
+	}))
+
+	if err := rootFor(cmd.APICmd, "-X", "POST", "/foo", "--input", inputPath).Execute(); err == nil {
+		t.Fatal("want error for invalid JSON input")
+	}
+}
+
 func TestAPI_InputAndFieldsConflict(t *testing.T) {
 	err := rootFor(cmd.APICmd, "-X", "POST", "/foo", "--input", "-", "-f", "name=value").Execute()
 	if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
