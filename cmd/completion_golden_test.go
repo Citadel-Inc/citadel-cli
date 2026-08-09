@@ -98,7 +98,7 @@ func namespaceWebhookGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Comma
 	return nil
 }
 
-func repoWebhookDeliveryGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+func repoWebhookDeliveryLeafFromRoot(t *testing.T, root *cobra.Command, leafName string) *cobra.Command {
 	t.Helper()
 	for _, c := range root.Commands() {
 		if c.Name() != "repo" {
@@ -113,15 +113,23 @@ func repoWebhookDeliveryGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Co
 					continue
 				}
 				for _, leaf := range deliveries.Commands() {
-					if leaf.Name() == "get" {
+					if leaf.Name() == leafName {
 						return leaf
 					}
 				}
 			}
 		}
 	}
-	t.Fatal("repo webhook deliveries get not found")
+	t.Fatalf("repo webhook deliveries %s not found", leafName)
 	return nil
+}
+
+func repoWebhookDeliveryGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	return repoWebhookDeliveryLeafFromRoot(t, root, "get")
+}
+
+func repoWebhookDeliveryRedeliverFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
+	return repoWebhookDeliveryLeafFromRoot(t, root, "redeliver")
 }
 
 func namespaceWebhookDeliveryGetFromRoot(t *testing.T, root *cobra.Command) *cobra.Command {
@@ -708,6 +716,19 @@ func TestCompleteRepoWebhookDeliveryIDs_UsesRepoContext(t *testing.T) {
 	}
 	if len(vals) != 2 || vals[0] != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" || vals[1] != "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" {
 		t.Fatalf("got %q", vals)
+	}
+
+	redeliver := repoWebhookDeliveryRedeliverFromRoot(t, root)
+	redeliver.SetContext(context.Background())
+	if err := redeliver.Flags().Set("repo", "acme/demo"); err != nil {
+		t.Fatal(err)
+	}
+	redeliverVals, redeliverDir := completeRepoWebhookDeliveryIDs(redeliver, []string{}, "")
+	if redeliverDir != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("redeliver directive %v", redeliverDir)
+	}
+	if len(redeliverVals) != len(vals) || redeliverVals[0] != vals[0] || redeliverVals[1] != vals[1] {
+		t.Fatalf("redeliver got %q, want %q", redeliverVals, vals)
 	}
 }
 

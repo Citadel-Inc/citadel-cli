@@ -6,8 +6,12 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
+	"github.com/Rethunk-Tech/citadel-cli/internal/pagination"
 )
 
 const testWebhookID = "11111111-1111-1111-1111-111111111111"
@@ -532,6 +536,70 @@ func TestRepoWebhookDeliveriesList_WebhookFilter(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), `"event_kind": "issue.opened"`) {
 		t.Fatalf("unexpected delivery output: %s", out.String())
+	}
+}
+
+func TestRepoWebhookDeliveriesList_NegativeOffset(t *testing.T) {
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "deliveries", "list", "-R", "acme/demo",
+		"--offset", "-1", "--output", "json",
+	).Execute()
+	if err == nil {
+		t.Fatal("expected negative offset error")
+	}
+	if !strings.Contains(err.Error(), "--offset cannot be negative") {
+		t.Fatalf("want negative offset error, got %v", err)
+	}
+}
+
+func TestRepoWebhookDeliveriesList_AllOmitsOffsetOnSecondPage(t *testing.T) {
+	next := pagination.EncodeDesc(time.Unix(100, 0).UTC(), uuid.MustParse(testDeliveryID))
+	var pages int
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || !issuePathMatches(r,
+			"/api/namespaces/acme%2Fdemo/webhooks/deliveries",
+			"/api/namespaces/acme/demo/webhooks/deliveries") {
+			http.NotFound(w, r)
+			return
+		}
+		pages++
+		query := r.URL.Query()
+		switch pages {
+		case 1:
+			if query.Get("offset") != "5" {
+				t.Fatalf("first page offset = %q, want 5", query.Get("offset"))
+			}
+			if query.Get("cursor") != "" {
+				t.Fatalf("first page cursor = %q, want empty", query.Get("cursor"))
+			}
+			writeJSON(t, w, http.StatusOK, map[string]any{
+				"deliveries":  []map[string]any{webhookDeliveryPayload()},
+				"next_cursor": next,
+			})
+		case 2:
+			if _, ok := query["offset"]; ok {
+				t.Fatalf("second page must omit offset, got %v", query)
+			}
+			if query.Get("cursor") != next {
+				t.Fatalf("second page cursor = %q, want %q", query.Get("cursor"), next)
+			}
+			writeJSON(t, w, http.StatusOK, map[string]any{
+				"deliveries":  []map[string]any{},
+				"next_cursor": "",
+			})
+		default:
+			t.Fatalf("unexpected page %d", pages)
+		}
+	})
+
+	if err := rootFor(cmd.RepoCmd,
+		"webhook", "deliveries", "list", "-R", "acme/demo",
+		"--offset", "5", "--all", "--output", "ndjson",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if pages != 2 {
+		t.Fatalf("pages = %d, want 2", pages)
 	}
 }
 
