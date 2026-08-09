@@ -10,8 +10,9 @@ import (
 // subcommands emit a shell completion script to stdout suitable for
 // sourcing. Cobra ships the generators; this file is a thin facade.
 var CompletionCmd = &cobra.Command{
-	Use:   "completion [bash|zsh|fish|powershell]",
-	Short: "Generate shell completion script",
+	Use:     "completion [bash|zsh|fish|powershell]",
+	GroupID: "meta",
+	Short:   "Generate shell completion script",
 	Long: `Emits a shell completion script to stdout.
 
 Bash:

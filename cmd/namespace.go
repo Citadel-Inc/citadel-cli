@@ -19,6 +19,7 @@ import (
 // NamespaceCmd is the top-level `citadel namespace` command.
 var NamespaceCmd = &cobra.Command{
 	Use:     "namespace",
+	GroupID: "collab",
 	Aliases: []string{"ns"},
 	Short:   "Manage namespaces (list, get, members, transfer)",
 	Long: `Operations against Citadel org namespaces.

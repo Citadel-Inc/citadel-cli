@@ -20,6 +20,7 @@ import (
 // SSHKeyCmd is the top-level `citadel-cli ssh-key` command.
 var SSHKeyCmd = &cobra.Command{
 	Use:     "ssh-key",
+	GroupID: "auth",
 	Aliases: []string{"ssh-keys"},
 	Short:   "Manage SSH public keys for your account",
 	Long: `List, add, and delete SSH **public** keys registered for Git authentication.

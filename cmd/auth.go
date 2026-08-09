@@ -78,9 +78,10 @@ func maybeEagerMigrateLegacyJWT(cmd *cobra.Command) {
 }
 
 var AuthCmd = &cobra.Command{
-	Use:   "auth",
-	Short: "Manage authentication and linked auth providers",
-	Long:  `Commands for managing authentication with the Citadel server.`,
+	Use:     "auth",
+	GroupID: "auth",
+	Short:   "Manage authentication and linked auth providers",
+	Long:    `Commands for managing authentication with the Citadel server.`,
 }
 
 var loginCmd = &cobra.Command{

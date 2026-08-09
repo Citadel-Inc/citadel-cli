@@ -18,8 +18,9 @@ import (
 )
 
 var IssueCmd = &cobra.Command{
-	Use:   "issue",
-	Short: "Manage issues across Citadel namespaces",
+	Use:     "issue",
+	GroupID: "collab",
+	Short:   "Manage issues across Citadel namespaces",
 	Long: `Issue workflows target any Citadel namespace path via -R <ns/path>.
 
 Examples:

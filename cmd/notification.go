@@ -15,6 +15,7 @@ import (
 // NotificationCmd is the top-level `citadel-cli notification` command.
 var NotificationCmd = &cobra.Command{
 	Use:     "notification",
+	GroupID: "collab",
 	Aliases: []string{"notifications", "notif"},
 	Short:   "Manage your notification inbox and preferences",
 	Long: `Browse and manage your Citadel notification inbox.

@@ -17,8 +17,9 @@ import (
 
 // ProjectCmd is `citadel-cli project` — namespace-scoped project graph API (JWT).
 var ProjectCmd = &cobra.Command{
-	Use:   "project",
-	Short: "Inspect and update the Citadel project graph (namespaces, pins, edges)",
+	Use:     "project",
+	GroupID: "repo",
+	Short:   "Inspect and update the Citadel project graph (namespaces, pins, edges)",
 	Long: `Talks to GET/POST /api/projectgraph/... with your saved session.
 
 Namespace paths may be multi-segment (for example org/repo or org/project/repo); the

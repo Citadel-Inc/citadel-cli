@@ -20,8 +20,9 @@ import (
 // glyph + one-line summary; failures do not abort the run so operators
 // get the full picture.
 var DoctorCmd = &cobra.Command{
-	Use:   "doctor",
-	Short: "Verify CLI environment health (server, auth, MCP, config)",
+	Use:     "doctor",
+	GroupID: "meta",
+	Short:   "Verify CLI environment health (server, auth, MCP, config)",
 	Long: `Runs a sequence of read-only checks against the configured server,
 authentication state, MCP endpoint, and on-disk config file. Each line
 prints PASS / WARN / FAIL with one-line context. Exits non-zero if any

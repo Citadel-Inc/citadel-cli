@@ -15,8 +15,9 @@ import (
 
 // ReleaseCmd is the root verb for per-repo release management.
 var ReleaseCmd = &cobra.Command{
-	Use:   "release",
-	Short: "Manage per-repo releases (tag, name, body, draft/prerelease flags)",
+	Use:     "release",
+	GroupID: "repo",
+	Short:   "Manage per-repo releases (tag, name, body, draft/prerelease flags)",
 	Long: `Release verbs target the repo under a Citadel namespace path via -R <ns/repo>.
 
 Examples:

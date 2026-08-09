@@ -14,8 +14,9 @@ import (
 
 // APICmd exposes an authenticated escape-hatch mirroring `gh api`.
 var APICmd = &cobra.Command{
-	Use:   "api <path>",
-	Short: "Make an authenticated HTTP request to the Citadel API",
+	Use:     "api <path>",
+	GroupID: "ops",
+	Short:   "Make an authenticated HTTP request to the Citadel API",
 	Long: `Make an authenticated HTTP request to the Citadel REST API and print the response as JSON.
 
 Mirrors 'gh api'. The path must begin with '/'. Fields are supplied with -f key=value and

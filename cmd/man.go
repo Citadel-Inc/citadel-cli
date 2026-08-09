@@ -11,8 +11,9 @@ import (
 // ManCmd writes one nroff(7) man page per verb to a target directory.
 // Distros + Homebrew formula consume the output via `make install`.
 var ManCmd = &cobra.Command{
-	Use:   "man <out-dir>",
-	Short: "Generate man pages for every verb",
+	Use:     "man <out-dir>",
+	GroupID: "meta",
+	Short:   "Generate man pages for every verb",
 	Long: "Writes one nroff(7) man page per verb to the target directory.\n\n" +
 		"Outputs files like:\n\n" +
 		"  citadel-cli.1\n" +

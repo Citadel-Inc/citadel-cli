@@ -28,8 +28,9 @@ var ErrToolCallFailed = errors.New("tool call returned isError")
 // CITADEL_AGENT_TOKEN for agent / CI use. The MCP server accepts both OAuth
 // JWTs and opaque agent tokens where the route supports them.
 var McpCmd = &cobra.Command{
-	Use:   "mcp",
-	Short: "Interact with MCP tools, resources, and prompts",
+	Use:     "mcp",
+	GroupID: "ops",
+	Short:   "Interact with MCP tools, resources, and prompts",
 	Long: `Commands for listing MCP tools, resources, and prompts and invoking
 tool / resource / prompt RPCs via the Citadel MCP server.
 

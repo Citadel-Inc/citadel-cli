@@ -16,9 +16,10 @@ import (
 )
 
 var TokenCmd = &cobra.Command{
-	Use:   "token",
-	Short: "Manage agent tokens (list, issue, revoke)",
-	Long:  `Commands for managing agent authentication tokens.`,
+	Use:     "token",
+	GroupID: "auth",
+	Short:   "Manage agent tokens (list, issue, revoke)",
+	Long:    `Commands for managing agent authentication tokens.`,
 }
 
 var listCmd = &cobra.Command{

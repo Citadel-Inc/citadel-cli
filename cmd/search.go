@@ -14,8 +14,9 @@ import (
 
 // SearchCmd is the top-level `citadel-cli search` command (dashboard Cmd-K parity).
 var SearchCmd = &cobra.Command{
-	Use:   "search <query>",
-	Short: "Search namespaces and repositories on Citadel",
+	Use:     "search <query>",
+	GroupID: "repo",
+	Short:   "Search namespaces and repositories on Citadel",
 	Long: `Runs authenticated GET /api/search against the Citadel API.
 
 Like every citadel-cli verb, search requires a login ('citadel-cli auth login').

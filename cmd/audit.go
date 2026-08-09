@@ -13,8 +13,9 @@ import (
 
 // AuditCmd is the top-level `citadel-cli audit` command.
 var AuditCmd = &cobra.Command{
-	Use:   "audit",
-	Short: "Query Citadel audit events",
+	Use:     "audit",
+	GroupID: "ops",
+	Short:   "Query Citadel audit events",
 	Long: `List and inspect audit log events and sessions for namespaces you can access.
 
 Requires a token with audit visibility for the target namespace (audit:read grant

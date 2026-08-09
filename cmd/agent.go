@@ -18,9 +18,10 @@ import (
 
 // AgentCmd is the top-level `citadel agent` command.
 var AgentCmd = &cobra.Command{
-	Use:   "agent",
-	Short: "Manage agents (list, get, delete, rotate-token, create)",
-	Long:  `CRUD operations against the Citadel agent API.`,
+	Use:     "agent",
+	GroupID: "collab",
+	Short:   "Manage agents (list, get, delete, rotate-token, create)",
+	Long:    `CRUD operations against the Citadel agent API.`,
 }
 
 var agentCreateCmd = &cobra.Command{

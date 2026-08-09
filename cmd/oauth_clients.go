@@ -22,8 +22,9 @@ import (
 
 // OauthCmd is the top-level `citadel-cli oauth` command.
 var OauthCmd = &cobra.Command{
-	Use:   "oauth",
-	Short: "OAuth client registry (session + oauth:manage)",
+	Use:     "oauth",
+	GroupID: "auth",
+	Short:   "OAuth client registry (session + oauth:manage)",
 }
 
 var oauthClientsCmd = &cobra.Command{

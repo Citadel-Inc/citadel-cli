@@ -17,8 +17,9 @@ import (
 
 // PrCmd is the exported root for `citadel-cli pr`.
 var PrCmd = &cobra.Command{
-	Use:   "pr",
-	Short: "Manage pull requests",
+	Use:     "pr",
+	GroupID: "collab",
+	Short:   "Manage pull requests",
 	Long: `Create, view, and manage pull requests across Citadel namespace paths.
 
 Subcommands:

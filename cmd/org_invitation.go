@@ -18,8 +18,9 @@ import (
 
 // OrgCmd is the top-level `citadel-cli org` command.
 var OrgCmd = &cobra.Command{
-	Use:   "org",
-	Short: "Organization operations (invitations, …)",
+	Use:     "org",
+	GroupID: "collab",
+	Short:   "Organization operations (invitations, …)",
 	Long: `Organization-scoped commands such as membership invitations.
 
 These routes require appropriate org grants (for example members:read /

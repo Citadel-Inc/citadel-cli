@@ -26,6 +26,16 @@ Server URL configured via CITADEL_SERVER env var or --server flag.`,
 		SuggestionsMinimumDistance: 2,
 	}
 
+	root.AddGroup(
+		&cobra.Group{ID: "auth", Title: "Auth:"},
+		&cobra.Group{ID: "repo", Title: "Repo & Git:"},
+		&cobra.Group{ID: "collab", Title: "Collaboration:"},
+		&cobra.Group{ID: "ops", Title: "Ops:"},
+		&cobra.Group{ID: "meta", Title: "Meta:"},
+	)
+	root.SetHelpCommandGroupID("meta")
+	root.SetCompletionCommandGroupID("meta")
+
 	root.PersistentFlags().String("server", "", "Server URL (overrides CITADEL_SERVER env and stored config)")
 	root.PersistentFlags().BoolP("verbose", "v", false, "Print one METHOD URL → STATUS line per HTTP call to stderr")
 	root.PersistentFlags().BoolP("quiet", "q", false, "Suppress non-essential stderr output (overrides --verbose)")

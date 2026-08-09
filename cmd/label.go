@@ -14,8 +14,9 @@ import (
 )
 
 var LabelCmd = &cobra.Command{
-	Use:   "label",
-	Short: "Manage namespace labels",
+	Use:     "label",
+	GroupID: "collab",
+	Short:   "Manage namespace labels",
 	Long: `Create, list, edit, and delete labels for any Citadel namespace.
 
 Examples:

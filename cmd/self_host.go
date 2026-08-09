@@ -52,8 +52,9 @@ func selfHostDebugf(cmd *cobra.Command, format string, args ...any) {
 
 // SelfHostCmd is the top-level `citadel self-host` command group.
 var SelfHostCmd = &cobra.Command{
-	Use:   "self-host",
-	Short: "Manage a self-hosted Citadel deployment",
+	Use:     "self-host",
+	GroupID: "ops",
+	Short:   "Manage a self-hosted Citadel deployment",
 	Long: `Commands for initializing, operating, and health-checking a
 self-hosted Citadel installation.
 
