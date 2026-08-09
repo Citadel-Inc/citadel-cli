@@ -264,13 +264,14 @@ func runLogin(cmd *cobra.Command, args []string) error {
 }
 
 func runDeviceLogin(cmd *cobra.Command, cfg *clicfg.Config, serverURL, flagServer string) error {
-	device, err := requestDeviceAuthorization(cmd.Context(), serverURL)
+	ctx := contextForCommand(cmd)
+	device, err := requestDeviceAuthorization(ctx, serverURL)
 	if err != nil {
 		return err
 	}
 	printDeviceAuthorization(cmd, device)
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Waiting for authorization...")
-	tokenResp, err := pollDeviceToken(cmd.Context(), serverURL, device)
+	tokenResp, err := pollDeviceToken(ctx, serverURL, device)
 	if err != nil {
 		return err
 	}
@@ -280,7 +281,7 @@ func runDeviceLogin(cmd *cobra.Command, cfg *clicfg.Config, serverURL, flagServe
 		return fmt.Errorf("parse access token: %w", err)
 	}
 	userUUID := userUUIDFromClaims(claims)
-	if err := bootstrapAgentToken(cmd.Context(), cmd, cfg, serverURL, flagServer, tokenResp.AccessToken); err != nil {
+	if err := bootstrapAgentToken(ctx, cmd, cfg, serverURL, flagServer, tokenResp.AccessToken); err != nil {
 		return err
 	}
 
@@ -292,6 +293,13 @@ func runDeviceLogin(cmd *cobra.Command, cfg *clicfg.Config, serverURL, flagServe
 
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Authentication successful! User: %s, agent: %s (%s)\n", userUUID, cfg.AgentName, cfg.AgentID)
 	return nil
+}
+
+func contextForCommand(cmd *cobra.Command) context.Context {
+	if cmd != nil && cmd.Context() != nil {
+		return cmd.Context()
+	}
+	return context.Background()
 }
 
 func printDeviceAuthorization(cmd *cobra.Command, device deviceAuthorizationResponse) {
@@ -549,7 +557,10 @@ func pollDeviceToken(ctx context.Context, citadelBaseURL string, device deviceAu
 	if interval <= 0 {
 		interval = 5 * time.Second
 	}
+	return pollDeviceTokenWithInterval(ctx, citadelBaseURL, device, interval)
+}
 
+func pollDeviceTokenWithInterval(ctx context.Context, citadelBaseURL string, device deviceAuthorizationResponse, interval time.Duration) (pkceTokenResponse, error) {
 	for {
 		timer := time.NewTimer(interval)
 		select {
