@@ -68,6 +68,7 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 | | |
 | --- | --- |
 | **Packages / files** | `cmd/auth.go`, `internal/clicfg`, `docs/cli.md` (First-run / headless) |
+| **Upstream** | Citadel `POST /api/oauth/device` (RFC 8628) + `urn:ietf:params:oauth:grant-type:device_code` on `/api/oauth/token` — already live in `citadel/internal/api/authapi` |
 | **Carry-from** | `specs/done/cli-oauth-login/spec.md` (device-code OOS) |
 | **Traps** | Server must expose device authorization endpoints; UX shows user-code + verification URL; poll with backoff; do not weaken PKCE browser path |
 | **Acceptance** | `auth login --device` (or equivalent) completes on a machine without a local browser; stores the same agent-token shape as PKCE login |
@@ -93,3 +94,120 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 | Restoring `account *` security verbs | Deliberate removal `b1871a6` |
 | Live-smoke / C1-only residuals on done specs | Env-gated operator work, not product features |
 | shadcn / web component work | This repo is a Go Cobra CLI; browser UX lives in Citadel web |
+
+---
+
+## Round 2 — server-ahead CLI gaps (091204ZAUG26)
+
+Cross-checked against `Citadel-Inc/citadel` HTTP surface. Prefer developer/operator workflows; skip settings-panel and parked items.
+
+### 8. Release asset upload / download / delete
+
+**Feature.** Daemon already serves release asset CRUD under `/api/namespaces/{slug}/releases/{tag}/assets`; CLI `release` only covers release metadata.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/release.go`, `internal/apiclient`, `docs/cli.md` (releases) |
+| **Upstream** | `citadel/internal/api/releasesapi` (`handleCreateAsset` / `handleListAssets` / `handleGetAsset` / `handleDeleteAsset`); Spaces-backed store when configured |
+| **Traps** | Multipart/stream upload size caps (`CITADEL_RELEASE_ASSET_MAX_BYTES`); store may be nil → clear CLI error; download must be binary-safe to file/stdout; completion for asset IDs |
+| **Acceptance** | `release asset list | upload | download | delete` (or nested verbs) round-trip against a tagged release; human mode never dumps binary to TTY without redirect |
+
+### 9. Project graph admin recovery-scan
+
+**Feature.** Operator `POST …/projectgraph/admin/recovery-scan` exists; CLI deferred it in Q4.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/project.go`, `docs/cli.md` (project graph) |
+| **Carry-from** | `specs/done/cli-projectgraph` Q4 / tasks B2 |
+| **Upstream** | `citadel/internal/api/projectgraphapi` `handleRecoveryScan` |
+| **Traps** | Operator-only; destructive/expensive queue flood — require typed confirm or `--yes`; surface enqueue count; do not expose as casual user verb |
+| **Acceptance** | Documented `project admin recovery-scan` (name TBD) succeeds for operator tokens, denies others with `forbidden`, confirms before enqueue |
+
+### 10. Gist command group (`gh gist` parity)
+
+**Feature.** Full `gistapi` is live on the daemon; CLI has zero gist verbs.
+
+| | |
+| --- | --- |
+| **Packages / files** | new `cmd/gist.go` (+ registration in `cmd/root.go`), completion helpers, `docs/cli.md` |
+| **Upstream** | `citadel/internal/api/gistapi` (`/api/gists*`, promote, raw, Atom feeds) |
+| **Traps** | Visibility (public/secret); raw rate limits; promote-to-repo needs `ReposDir` semantics; secret scanning on write; keep scope to create/list/view/edit/delete/clone-raw before comments/feeds |
+| **Acceptance** | Core CRUD + raw/download works with standard `--output`; docs show a `gh gist`-shaped cookbook |
+
+### 11. MCP client read retries (and optional official SDK)
+
+**Feature.** Hand-rolled `internal/mcpclient` intentionally skips JSON-RPC retries; lists/reads are idempotent and could retry. Official `modelcontextprotocol/go-sdk` Streamable client offers reconnection options.
+
+| | |
+| --- | --- |
+| **Packages / files** | `internal/mcpclient/client.go` (Options comment ~79–82), `cmd/mcp.go`, `cmd/doctor.go` |
+| **Refs** | Context7 `/modelcontextprotocol/go-sdk` — `StreamableClientTransport` + `ReconnectOptions` |
+| **Traps** | Never auto-retry `tools/call`; protocol version pin `2025-11-25` must stay aligned; migrating to the SDK is a larger swap — stage retries first |
+| **Acceptance** | Transient network failures on `tools`/`resources`/`prompts` list/read retry with backoff; `tools call` remains single-shot; doctor still initializes cleanly |
+
+### 12. Cobra help command groups
+
+**Feature.** Root help is a flat ~20-verb list; group Auth / Repo & Git / Collaboration / Ops / Meta for discoverability.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/root.go` (`NewRootCmd`) |
+| **Refs** | Context7 `/spf13/cobra` — `AddGroup` + `GroupID`, `SetHelpCommandGroupId` / `SetCompletionCommandGroupId` |
+| **Traps** | Group order is definition order; keep `completion`/`help` in a Meta group; do not change verb names or paths |
+| **Acceptance** | `citadel-cli --help` shows titled groups; every registered command has a `GroupID`; scripts invoking verbs unchanged |
+
+### 13. `api` escape-hatch body input
+
+**Feature.** `citadel-cli api` only accepts `-f key=value` string fields; nested JSON / raw bodies need a stdin/`--input` path (gh-like).
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/api.go`, `docs/cli.md` (if section missing, add) |
+| **Traps** | Mutually exclusive with `-f` or define merge rules; validate path still starts with `/`; respect `--output` vs raw response bytes; no secret logging |
+| **Acceptance** | `--input -` and `--input file.json` POST/PATCH arbitrary JSON; DELETE still bodyless by default |
+
+### 14. Packaging: `make install` + Homebrew formula
+
+**Feature.** `cmd/man.go` claims distros/Homebrew consume via `make install`, but Makefile has no `install` target; docs still defer Homebrew.
+
+| | |
+| --- | --- |
+| **Packages / files** | `Makefile`, `cmd/man.go`, `docs/cli.md` (Installation / Distribution), optional `rethunk-tech/tap` formula (out of tree) |
+| **Carry-from** | `go-citadel-cli` R3 / docs Homebrew deferred note |
+| **Traps** | PREFIX/`DESTDIR` conventions; man-page install path; do not force tap until a second non-operator adopter (docs already gate demand) — land `make install` first |
+| **Acceptance** | `make install PREFIX=…` installs binary + generated man pages; docs match; Homebrew remains optional follow-on SOP |
+
+---
+
+## Round 3 — secondary carry-forwards (091204ZAUG26)
+
+### 15. OAuth client `--dcr` filter
+
+**Feature.** List rows already decode `dcr` / `dcr_sponsored_by_user_id`; no filter flag (deferred to `go-oauth-dcr`).
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/oauth_clients.go` |
+| **Traps** | Confirm list query param with daemon before inventing client-side-only filter; admin DCR routes (`/api/admin/oauth/dcr-*`) are a different surface |
+| **Acceptance** | `oauth clients list --dcr` (or equivalent) returns only DCR-tagged clients when server supports it |
+
+### 16. Replace Phase 0 placeholder LICENSE
+
+**Feature.** Root `LICENSE` still says terms may change; releases publish under that text.
+
+| | |
+| --- | --- |
+| **Packages / files** | `LICENSE`, `NOTICE`, README license badge/blurb if any |
+| **Traps** | Legal decision — not an agent fiat; keep NOTICE attributions intact |
+| **Acceptance** | Chosen license text committed; README/HUMANS link matches; no "Phase 0 placeholder" language remains |
+
+### 17. Doctor: API host coercion + git remote sanity
+
+**Feature.** Doctor checks server `/healthz`, token presence, MCP init, config mode — not REST host coercion (`api.` vs MCP host) or CWD git remote inference.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/doctor.go`, `cmd/repocontext.go`, `cmd/client.go` (host routing) |
+| **Traps** | Keep checks read-only; WARN not FAIL for missing git remote; do not require network beyond existing probes |
+| **Acceptance** | Doctor reports resolved REST base vs MCP base; optional WARN when CWD origin is non-Citadel while `CITADEL_REPO` unset |
