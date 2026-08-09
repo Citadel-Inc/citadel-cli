@@ -536,36 +536,6 @@ panel. The CLI does not expose account security management verbs.
 
 Do not paste **`--debug-http`** traces into tickets: Authorization is redacted, but never assume other fields are safe to publish.
 
-## Account security (passkeys and devices)
-
-Manage **WebAuthn passkeys** (list, rename, delete registered credentials) and **signed-in devices** (list, revoke). Passkey **enrolment** (begin/finish) is browser-only — use the Citadel web app to add new passkeys.
-
-### Passkeys
-
-```bash
-citadel-cli account passkey list
-citadel-cli account passkey list --output json
-citadel-cli account passkey rename <id> --name "Work laptop"
-citadel-cli account passkey delete <id>
-```
-
-### Devices
-
-Revoking a device calls the daemon’s DELETE endpoint; the server may require **recent MFA** (HTTP **412**). Complete verification in a **logged-in browser session** for the same account, then retry the CLI command.
-
-```bash
-citadel-cli account device list
-citadel-cli account device revoke <device-id>
-```
-
-### `--debug-http` and secrets
-
-Do not paste **`--debug-http`** traces into tickets: Authorization is redacted, but never assume other fields are safe to publish.
-
-### Live integration test
-
-Opt-in: set **`CITADEL_TEST_ACCOUNT_SECURITY_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`** (and optional **`CITADEL_SERVER`**). See `cmd/account_live_test.go`. CI skips when unset.
-
 ## Knowledge graph (HTTP)
 
 Query the Citadel **knowledge-graph REST API** (`kgapi`) with your saved session bearer (normally the agent token minted by `auth login`). Commands follow **`cli-cwd-context`**: pass **`-R namespace/repo`**, set **`CITADEL_REPO`**, or rely on **`git remote origin`** when the remote host is recognised.
