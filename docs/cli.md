@@ -49,7 +49,7 @@ Pre-built binaries for linux-amd64, linux-arm64, darwin-arm64, and windows-amd64
 citadel-cli auth login
 ```
 
-This opens your default browser to Citadel's OAuth authorization endpoint (`/api/oauth/authorize`). After you authenticate, the browser redirects to a local loopback server running on your machine; the CLI exchanges the authorization code against `/api/oauth/token`, then immediately mints and stores a long-lived Citadel **agent token** for `citadel-cli@<hostname>`. The short-lived OAuth JWT is discarded after bootstrap.
+This opens your default browser to Citadel's OAuth authorization endpoint (`/api/oauth/authorize`). After you authenticate, the browser redirects to a local loopback server running on your machine; the CLI exchanges the authorization code against `/api/oauth/token`, persists any returned OAuth refresh token, then immediately mints and stores a long-lived Citadel **agent token** for `citadel-cli@<hostname>`. Device-code login (`auth login --device`) follows the same persistence path after the token poll succeeds.
 
 The CLI defaults to the server URL in `CITADEL_SERVER`; if unset, the built-in default is used. Set `CITADEL_SERVER` or edit the config file directly (key: `server_url`) to point at your deployment.
 
@@ -262,6 +262,9 @@ citadel-cli gist delete <id> --yes
 citadel-cli gist raw <id> path/to/file
 citadel-cli gist raw <id> path/to/file --output-file ./file
 ```
+
+`gist raw` streams bytes to stdout or `--output-file`. Binary content is
+refused when stdout is a terminal unless `--output-file` is set.
 
 Use `--visibility public`, `--visibility unlisted`, or `--visibility private`
 (`secret` is accepted as an alias). Standard `--output json|yaml|ndjson|csv`
@@ -778,7 +781,7 @@ A 401 / `-32001 unauthorized` from the server prints:
 unauthorized: run `citadel-cli auth login` to refresh your session, or pass --token / set CITADEL_AGENT_TOKEN
 ```
 
-The CLI retries once on **401** by rotating the stored agent token when it has an agent binding. If that one-shot refresh also fails, re-authenticate explicitly.
+The CLI retries once on **401**: with an agent binding it rotates the stored agent token; without an agent ID it exchanges a stored OAuth refresh token once, persists the replacement tokens, and retries. A failed refresh clears stored access and refresh tokens and requires `citadel-cli auth login` again. `CITADEL_ACCESS_TOKEN` overrides the on-disk access token and disables the refresh path for that process.
 
 ## Agent token semantics
 
@@ -1112,6 +1115,17 @@ citadel-cli repo browse blob acme/demo --path assets/logo.png
 citadel-cli repo browse blob acme/demo --path go.mod --output json
 ```
 
+### Download raw bytes
+
+Stream repository file bytes to stdout or `--output-file` (binary-safe). Binary
+content is refused when stdout is a terminal unless `--output-file` is set.
+
+```bash
+citadel-cli repo browse raw acme/demo README.md
+citadel-cli repo browse raw acme/demo src/main.go --ref feature/x
+citadel-cli repo browse raw acme/demo image.png --output-file image.png
+```
+
 ## Repository topics
 
 View and manage the topics attached to a repository. Topics are free-form labels used for discovery.
@@ -1227,7 +1241,8 @@ Attempting to delete the last default label for a semantic role returns a `label
 ### Environment health check
 
 Run `citadel-cli doctor` to check server reachability, local auth state, MCP
-endpoint reachability, and config-file permissions in one pass.
+endpoint reachability, config-file permissions, resolved REST/MCP bases, and
+CWD git-origin sanity when `CITADEL_REPO` is unset in one pass.
 
 ```bash
 citadel-cli doctor
