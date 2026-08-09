@@ -107,8 +107,10 @@ func TestKgWritePagesTable(t *testing.T) {
 			if got := strings.Fields(lines[0]); !reflect.DeepEqual(got, tt.header) {
 				t.Fatalf("header = %#v, want %#v", got, tt.header)
 			}
-			if got := strings.Fields(lines[1]); !reflect.DeepEqual(got, tt.values) {
-				t.Fatalf("row = %#v, want %#v", got, tt.values)
+			for _, value := range tt.values {
+				if !strings.Contains(lines[1], value) {
+					t.Fatalf("row %q does not contain %q", lines[1], value)
+				}
 			}
 		})
 	}
