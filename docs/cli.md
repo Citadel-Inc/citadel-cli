@@ -235,8 +235,8 @@ go test ./cmd -run TestLiveIssues_roundTrip_optIn -count=1
 Use `citadel-cli api` for raw JSON request bodies on POST, PUT, and PATCH:
 
 ```bash
-citadel-cli api POST /api/example --input request.json
-printf '%s\n' '{"name":"demo"}' | citadel-cli api POST /api/example --input -
+citadel-cli api -X POST /api/example --input request.json
+printf '%s\n' '{"name":"demo"}' | citadel-cli api -X POST /api/example --input -
 ```
 
 `--input -` reads the body from stdin. `--input` is mutually exclusive with
