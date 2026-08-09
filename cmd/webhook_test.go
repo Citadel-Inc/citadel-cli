@@ -514,7 +514,7 @@ func TestRepoWebhookDeliveriesList_WebhookFilter(t *testing.T) {
 			return
 		}
 		query := r.URL.Query()
-		if query.Get("webhook_id") != testWebhookID || query.Get("state") != "failed" {
+		if query.Get("webhook_id") != testWebhookID || query.Get("state") != "failed" || query.Get("offset") != "1" {
 			t.Fatalf("unexpected delivery filters: %v", query)
 		}
 		writeJSON(t, w, http.StatusOK, map[string]any{
@@ -526,7 +526,7 @@ func TestRepoWebhookDeliveriesList_WebhookFilter(t *testing.T) {
 	var out strings.Builder
 	if err := rootForOut(cmd.RepoCmd, &out,
 		"webhook", "deliveries", "list", "-R", "acme/demo",
-		"--webhook-id", testWebhookID, "--state", "failed", "--output", "json",
+		"--webhook-id", testWebhookID, "--state", "failed", "--offset", "1", "--output", "json",
 	).Execute(); err != nil {
 		t.Fatal(err)
 	}

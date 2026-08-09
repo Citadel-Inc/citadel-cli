@@ -363,6 +363,7 @@ List, inspect, and redeliver webhook delivery attempts:
 ```bash
 citadel-cli repo webhook deliveries list -R acme/demo
 citadel-cli repo webhook deliveries list -R acme/demo --webhook-id <webhook-id> --state failed
+citadel-cli repo webhook deliveries list -R acme/demo --offset 50
 citadel-cli repo webhook deliveries get -R acme/demo <delivery-id>
 citadel-cli repo webhook deliveries redeliver -R acme/demo <delivery-id>
 citadel-cli repo webhook deliveries redeliver -R acme/demo <delivery-id> --dry-run
@@ -372,7 +373,7 @@ citadel-cli namespace webhook deliveries get acme <delivery-id>
 citadel-cli namespace webhook deliveries redeliver acme <delivery-id>
 ```
 
-- `list` supports `--webhook-id`, `--state`, pagination (`--limit` / `--cursor` / `--all`), and `--output`.
+- `list` supports `--webhook-id`, `--state`, `--offset`, pagination (`--limit` / `--cursor` / `--all`), and `--output`.
 - `get` shows one delivery including payload and response fields when present.
 - `redeliver` POSTs a new attempt for an existing delivery; `--dry-run` prints the request without sending it.
 

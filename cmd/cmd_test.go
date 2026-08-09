@@ -493,7 +493,7 @@ func TestRepoWebhookDeliveriesListFlags(t *testing.T) {
 	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
 	deliveries := findSubcmd(t, webhook, "deliveries")
 	c := findSubcmd(t, deliveries, "list")
-	for _, flag := range []string{"repo", "no-cwd-repo", "webhook-id", "state", "limit", "cursor", "all", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "webhook-id", "state", "limit", "cursor", "all", "offset", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel repo webhook deliveries list: missing flag --%s", flag)
 		}
@@ -622,7 +622,7 @@ func TestNamespaceWebhookDeliveriesListFlags(t *testing.T) {
 	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
 	deliveries := findSubcmd(t, webhook, "deliveries")
 	c := findSubcmd(t, deliveries, "list")
-	for _, flag := range []string{"webhook-id", "state", "limit", "cursor", "all", "output"} {
+	for _, flag := range []string{"webhook-id", "state", "limit", "cursor", "all", "offset", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel namespace webhook deliveries list: missing flag --%s", flag)
 		}

@@ -622,6 +622,13 @@ func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
 	if err != nil {
 		return err
 	}
+	offset, err := cmd.Flags().GetInt("offset")
+	if err != nil {
+		return err
+	}
+	if offset < 0 {
+		return fmt.Errorf("--offset cannot be negative")
+	}
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
 	}
@@ -639,6 +646,9 @@ func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
 		q.Set("limit", fmt.Sprintf("%d", limit))
 		if cursor != "" {
 			q.Set("cursor", cursor)
+		}
+		if offset > 0 && cursor == "" {
+			q.Set("offset", fmt.Sprintf("%d", offset))
 		}
 		if strings.TrimSpace(webhookID) != "" {
 			q.Set("webhook_id", strings.TrimSpace(webhookID))
@@ -1257,6 +1267,7 @@ func init() {
 	for _, c := range []*cobra.Command{repoWebhookDeliveryListCmd, namespaceWebhookDeliveryListCmd} {
 		c.Flags().String("webhook-id", "", "Filter deliveries by webhook ID")
 		c.Flags().String("state", "", "Filter deliveries by state")
+		c.Flags().Int("offset", 0, "Skip deliveries before the first page")
 	}
 
 	for _, c := range []*cobra.Command{repoWebhookCreateCmd, namespaceWebhookCreateCmd} {
