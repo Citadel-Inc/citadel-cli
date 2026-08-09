@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 091627ZAUG26 (fenced wave 4)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 1 | OAuth refresh-token exchange | Persist refresh; one-shot 401 refresh when no agent; flock `clicfg.Update`; skip when `CITADEL_ACCESS_TOKEN` set |
+| 7 | Repo raw blob download | `repo browse raw`; stream + TTY binary guard; output files `0600` |
+| 17 | Doctor host + git remote | REST vs MCP bases; WARN on non-Citadel / missing origin |
+| 23 | Gist raw stream + TTY | `io.Copy` + binary TTY refusal |
+| 24 | KG `--all` handler tests | Multi-page httptest for search/symbols/files/fulltext |
+| 25 | Soft PKCE/refresh errors | `error`/`error_description` + truncated body; debug-http form redaction |
+
+---
+
 ## Shipped 091358ZAUG26 (fenced wave 3)
 
 | # | Item | Notes |
@@ -35,18 +48,7 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
-## Round 1 — session continuity and list UX (091204ZAUG26)
-
-### 1. Wire OAuth refresh-token exchange
-
-**Feature.** `refresh_token` is persisted on login but never used to mint a new access token; sessions past JWT expiry force a full re-login (or env JWT).
-
-| | |
-| --- | --- |
-| **Packages / files** | `internal/clicfg/clicfg.go` (`Load` comment ~53–58), `cmd/auth.go` (token exchange), `cmd/client.go` (`errSessionExpired`), `docs/cli.md` (auth / 401 recovery) |
-| **Upstream** | Citadel `/api/oauth/token` refresh grant (same client as PKCE login) |
-| **Traps** | Agent-token path already does one-shot 401 rotation — do not double-refresh or clobber agent binding; never log refresh tokens under `--debug-http`; race between concurrent commands rewriting `config.toml` |
-| **Acceptance** | After access JWT expiry with a valid stored refresh token, a REST command succeeds without interactive login; failed refresh yields `auth_required` and clears stale secrets; docs describe the behaviour |
+## Round 1 — blocked on server SSE (091204ZAUG26)
 
 ### 3. Audit event tail / `--watch`
 
@@ -68,17 +70,6 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 | **Packages / files** | `cmd/issue.go`, `cmd/pr.go`, `cmd/notification.go`, `cmd/watch.go` / `watch_table.go` |
 | **Blocked** | Daemon issues/PR/notification APIs have **no** listwatch SSE (same audit as #3). |
 | **Acceptance** | Documented `--watch` on issue/PR/notification lists when server supports them; behaviour matches `repo list --watch` |
-
-### 7. Repo raw blob download
-
-**Feature.** `repo browse blob` prints text / skips binaries; authenticated `/raw?ref=&path=` streaming download was deferred.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/repo_browse.go`, `internal/apiclient` (`GetStream` now available), `docs/cli.md` (browse) |
-| **Carry-from** | `specs/done/cli-repo-browse/spec.md` Out of scope |
-| **Traps** | Reuse `GetStream` (absolute/same-origin); binary-safe; progress optional but must not corrupt pipes |
-| **Acceptance** | `repo browse raw` (or flag) writes bytes for large/binary paths; `--output` modes documented |
 
 ---
 
@@ -119,16 +110,6 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 | **Traps** | Legal decision — not an agent fiat; keep NOTICE attributions intact |
 | **Acceptance** | Chosen license text committed; README/HUMANS link matches; no "Phase 0 placeholder" language remains |
 
-### 17. Doctor: API host coercion + git remote sanity
-
-**Feature.** Doctor checks server `/healthz`, token presence, MCP init, config mode — not REST host coercion (`api.` vs MCP host) or CWD git remote inference.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/doctor.go`, `cmd/repocontext.go`, `cmd/client.go` (host routing) |
-| **Traps** | Keep checks read-only; WARN not FAIL for missing git remote; do not require network beyond existing probes |
-| **Acceptance** | Doctor reports resolved REST base vs MCP base; optional WARN when CWD origin is non-Citadel while `CITADEL_REPO` unset |
-
 ---
 
 ## Round 4 — post-wave carry-forwards
@@ -146,31 +127,22 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
-## Round 5 — wave-3 audit optional follow-ons (091358ZAUG26)
+## Round 6 — wave-4 audit optional follow-ons (091627ZAUG26)
 
-### 23. Gist raw TTY / buffering polish
+### 26. Shared binary/TTY download helpers
 
-**Feature.** `gist raw` buffers the full body and has no TTY binary refusal (upstream forces `text/plain`, but large files still buffer).
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/gist.go` |
-| **Acceptance** | Stream to stdout/file; optional TTY guard parity with release asset download |
-
-### 24. KG handler-level `--all` tests
-
-**Feature.** Pagination/table unit-tested; no multi-page httptest handler test for `kg search`/`symbols`/`files`/`fulltext`.
+**Feature.** Identical TTY/binary helpers live in `release.go`, `repo_browse.go`, and `gist.go` by wave-4 fence design.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/kg_extended_test.go` (or handler test) |
-| **Acceptance** | Multi-page `--all` asserts multiple GETs and merged output |
+| **Packages / files** | `cmd/release.go`, `cmd/repo_browse.go`, `cmd/gist.go` (extract shared helper) |
+| **Acceptance** | One shared helper; call sites unchanged in behaviour |
 
-### 25. Soften PKCE token-exchange error bodies
+### 27. Allow `application/yaml` (and kin) on TTY downloads
 
-**Feature.** `exchangePKCECode` embeds full HTTP body in errors; prefer truncated/redacted OAuth error fields.
+**Feature.** Binary allowlist omits `application/yaml`; YAML blobs/gists/assets can false-refuse on a TTY.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/auth.go` |
-| **Acceptance** | Failed exchange errors stay actionable without dumping full payloads |
+| **Packages / files** | Shared helper once #26 lands (or the three copies) |
+| **Acceptance** | YAML/text-like content-types stream to TTY; true binaries still refused |
