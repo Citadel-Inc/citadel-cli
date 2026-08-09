@@ -1,11 +1,17 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 )
@@ -77,6 +83,25 @@ Use --output json to get the full metadata envelope (sha, size, binary, content)
   # Get metadata as JSON
   citadel-cli repo browse blob acme/myrepo --path go.mod --output json`,
 	RunE: runRepoBrowseBlob,
+}
+
+var repoBrowseRawCmd = &cobra.Command{
+	Use:   "raw [<namespace>/<repo>] <path>",
+	Short: "Stream a file's raw content from a repository",
+	Long: `Stream a repository file's raw bytes to stdout or an output file.
+
+Use --ref to target a specific branch, tag, or commit SHA.
+Binary files are refused on a terminal unless --output-file is used.`,
+	Example: `  # Stream a file from the repo selected by -R
+  citadel-cli repo browse raw README.md -R acme/myrepo
+
+  # Stream a file from a specific branch
+  citadel-cli repo browse raw acme/myrepo src/main.go --ref feature/x
+
+  # Save binary content to a file
+  citadel-cli repo browse raw acme/myrepo image.png --output-file image.png`,
+	Args: cobra.RangeArgs(1, 2),
+	RunE: runRepoBrowseRaw,
 }
 
 // ── handlers ─────────────────────────────────────────────────────────────────
@@ -227,11 +252,108 @@ func runRepoBrowseBlob(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runRepoBrowseRaw(cmd *cobra.Command, args []string) error {
+	posArg := ""
+	path := args[0]
+	if len(args) == 2 {
+		posArg = args[0]
+		path = args[1]
+	}
+	if path == "" {
+		return fmt.Errorf("file path required")
+	}
+
+	ns, slug, err := resolveRepoFromPosOrFlag(cmd, posArg)
+	if err != nil {
+		return err
+	}
+	ref, _ := cmd.Flags().GetString("ref")
+	outputFile, _ := cmd.Flags().GetString("output-file")
+
+	client, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	q := url.Values{}
+	q.Set("path", path)
+	if ref != "" {
+		q.Set("ref", ref)
+	}
+	apiPath := fmt.Sprintf("/api/namespaces/%s/repos/%s/raw?%s", ns, slug, q.Encode())
+	resp, err := client.GetStream(cmd.Context(), apiPath)
+	if err != nil {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("file not found: %s", path)
+		}
+		if apiclient.IsStatus(err, http.StatusBadRequest) {
+			return fmt.Errorf("invalid path: %s", path)
+		}
+		if apiclient.IsStatus(err, http.StatusUnauthorized) {
+			return fmt.Errorf("authentication required — run: citadel-cli auth login")
+		}
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	var dst io.Writer = cmd.OutOrStdout()
+	var file *os.File
+	if outputFile != "" && outputFile != "-" {
+		file, err = os.Create(outputFile)
+		if err != nil {
+			return fmt.Errorf("create output file: %w", err)
+		}
+		defer func() { _ = file.Close() }()
+		dst = file
+	}
+
+	if file == nil && repoBrowseOutputIsTTY(dst) {
+		prefix := make([]byte, 512)
+		n, readErr := io.ReadFull(resp.Body, prefix)
+		if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+			return fmt.Errorf("read repository file: %w", readErr)
+		}
+		if repoBrowseLooksBinary(resp.Header.Get("Content-Type"), prefix[:n]) {
+			return fmt.Errorf("refusing to write binary repository file to a terminal; redirect stdout or pass --output-file")
+		}
+		_, err = io.Copy(dst, io.MultiReader(bytes.NewReader(prefix[:n]), resp.Body))
+	} else {
+		_, err = io.Copy(dst, resp.Body)
+	}
+	if err != nil {
+		return fmt.Errorf("write repository file: %w", err)
+	}
+	return nil
+}
+
+var repoBrowseOutputIsTTY = func(w io.Writer) bool {
+	file, ok := w.(*os.File)
+	return ok && term.IsTerminal(int(file.Fd()))
+}
+
+func repoBrowseLooksBinary(contentType string, prefix []byte) bool {
+	mediaType := strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0]))
+	if mediaType != "" {
+		return !strings.HasPrefix(mediaType, "text/") &&
+			mediaType != "application/json" &&
+			mediaType != "application/xml" &&
+			mediaType != "application/javascript"
+	}
+	if bytes.IndexByte(prefix, 0) >= 0 || !utf8.Valid(prefix) {
+		return true
+	}
+	detected := strings.ToLower(http.DetectContentType(prefix))
+	return !strings.HasPrefix(detected, "text/") &&
+		detected != "application/json" &&
+		detected != "application/xml"
+}
+
 // ── init ──────────────────────────────────────────────────────────────────────
 
 func init() {
 	repoBrowseCmd.AddCommand(repoBrowseTreeCmd)
 	repoBrowseCmd.AddCommand(repoBrowseBlobCmd)
+	repoBrowseCmd.AddCommand(repoBrowseRawCmd)
 
 	addOutputFlag(repoBrowseTreeCmd, repoBrowseBlobCmd)
 	addRepoFlag(repoBrowseTreeCmd, repoBrowseBlobCmd)
@@ -241,4 +363,8 @@ func init() {
 
 	repoBrowseBlobCmd.Flags().String("ref", "", "Branch, tag, or commit SHA (default: repo default branch)")
 	repoBrowseBlobCmd.Flags().String("path", "", "File path to read (required)")
+
+	addRepoFlag(repoBrowseRawCmd)
+	repoBrowseRawCmd.Flags().String("ref", "", "Branch, tag, or commit SHA (default: repo default branch)")
+	repoBrowseRawCmd.Flags().StringP("output-file", "o", "", "Write raw content to this file instead of stdout")
 }
