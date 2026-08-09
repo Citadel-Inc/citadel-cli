@@ -6,6 +6,17 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 091637ZAUG26 (fenced wave 5)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 26 | Shared binary/TTY download helpers | `cmd/download_tty.go`; release/repo raw/gist call sites |
+| 27 | YAML TTY allowlist | `application/yaml`, `application/x-yaml` (+ `text/*`) |
+| 28 | Deploy-token list `--watch` tests | Repo + namespace ndjson smoke; asserts payload + `limit=` query |
+| 29 | Webhook edit (PATCH) | `repo`/`namespace webhook edit`; rotate-secret; dry-run |
+
+---
+
 ## Shipped 091627ZAUG26 (fenced wave 4)
 
 | # | Item | Notes |
@@ -127,22 +138,13 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
-## Round 6 — wave-4 audit optional follow-ons (091627ZAUG26)
+## Round 7 — wave-5 audit carry-forwards (091637ZAUG26)
 
-### 26. Shared binary/TTY download helpers
+### 30. Completion test attaches AuthCmd without auth group
 
-**Feature.** Identical TTY/binary helpers live in `release.go`, `repo_browse.go`, and `gist.go` by wave-4 fence design.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/release.go`, `cmd/repo_browse.go`, `cmd/gist.go` (extract shared helper) |
-| **Acceptance** | One shared helper; call sites unchanged in behaviour |
-
-### 27. Allow `application/yaml` (and kin) on TTY downloads
-
-**Feature.** Binary allowlist omits `application/yaml`; YAML blobs/gists/assets can false-refuse on a TTY.
+**Bug.** `go test ./...` can panic in `cmd/completion_test.go` when attaching `AuthCmd` without the `auth` Cobra group defined on the test root (`cmd/root.go` registers groups). Predates wave 5; not wave-owned.
 
 | | |
 | --- | --- |
-| **Packages / files** | Shared helper once #26 lands (or the three copies) |
-| **Acceptance** | YAML/text-like content-types stream to TTY; true binaries still refused |
+| **Packages / files** | `cmd/completion_test.go`, possibly shared test root helpers |
+| **Acceptance** | `go test ./cmd -run Completion` (and package suite) does not panic on group registration |
