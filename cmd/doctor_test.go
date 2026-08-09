@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -54,6 +55,52 @@ func TestCheckServer_NoURL(t *testing.T) {
 	got := checkServer(context.Background(), "")
 	if got.status != statusFail {
 		t.Errorf("empty URL must FAIL: %s", got)
+	}
+}
+
+func TestCheckServerBases_ReportsRESTAndMCPBases(t *testing.T) {
+	got := checkServerBases("https://mcp.src.land/")
+	if got.status != statusPass {
+		t.Fatalf("server bases: %s", got)
+	}
+	if !strings.Contains(got.detail, "REST https://api.src.land") {
+		t.Errorf("REST base was not coerced: %s", got)
+	}
+	if !strings.Contains(got.detail, "MCP https://mcp.src.land/mcp") {
+		t.Errorf("MCP base was not reported: %s", got)
+	}
+}
+
+func TestCheckGitOrigin_NonCitadelWarns(t *testing.T) {
+	dir := newDoctorGitRepo(t, "https://github.com/example/project.git")
+	got := checkGitOrigin(context.Background(), dir)
+	if got.status != statusWarn {
+		t.Fatalf("non-Citadel origin must WARN: %s", got)
+	}
+	if !strings.Contains(got.detail, "not a Citadel repository") {
+		t.Errorf("unexpected non-Citadel detail: %s", got)
+	}
+}
+
+func TestCheckGitOrigin_MissingRemoteWarns(t *testing.T) {
+	dir := newDoctorGitRepo(t, "")
+	got := checkGitOrigin(context.Background(), dir)
+	if got.status != statusWarn {
+		t.Fatalf("missing origin must WARN: %s", got)
+	}
+	if !strings.Contains(got.detail, "could not read origin") {
+		t.Errorf("unexpected missing-origin detail: %s", got)
+	}
+}
+
+func TestCheckGitRemote_RepoOverrideSkipsOrigin(t *testing.T) {
+	t.Setenv(citadelRepoEnv, "acme/project")
+	got := checkGitRemote(context.Background())
+	if got.status != statusPass {
+		t.Fatalf("CITADEL_REPO override: %s", got)
+	}
+	if !strings.Contains(got.detail, "CITADEL_REPO is set") {
+		t.Errorf("unexpected override detail: %s", got)
 	}
 }
 
@@ -216,4 +263,23 @@ func TestAnyFailed_falseWithoutFail(t *testing.T) {
 	if anyFailed([]checkResult{{status: statusPass}, {status: statusWarn}}) {
 		t.Fatal("WARN must not count as failure")
 	}
+}
+
+func newDoctorGitRepo(t *testing.T, origin string) string {
+	t.Helper()
+	dir := t.TempDir()
+	cmd := exec.Command("git", "init", "--quiet")
+	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, output)
+	}
+	if origin == "" {
+		return dir
+	}
+	cmd = exec.Command("git", "remote", "add", "origin", origin)
+	cmd.Dir = dir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git remote add: %v\n%s", err, output)
+	}
+	return dir
 }
