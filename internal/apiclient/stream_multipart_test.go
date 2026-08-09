@@ -71,6 +71,47 @@ func TestClient_GetStream_ReturnsHTTPError(t *testing.T) {
 	}
 }
 
+func TestClient_GetStream_RetriesAfterTokenRefresh(t *testing.T) {
+	var requests int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 1 {
+			if got := r.Header.Get("Authorization"); got != "Bearer old" {
+				t.Errorf("first Authorization = %q", got)
+			}
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer new" {
+			t.Errorf("retry Authorization = %q", got)
+		}
+		_, _ = w.Write([]byte{0x00, 0xff})
+	}))
+	defer srv.Close()
+
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "old"}, Options{
+		RetryOn401: func(context.Context) (string, error) { return "new", nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.GetStream(context.Background(), "/asset")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	got, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string([]byte{0x00, 0xff}) {
+		t.Fatalf("body = %v", got)
+	}
+	if requests != 2 {
+		t.Fatalf("requests = %d, want 2", requests)
+	}
+}
+
 func TestClient_PostMultipart_StreamsFileField(t *testing.T) {
 	payload := []byte("release asset")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

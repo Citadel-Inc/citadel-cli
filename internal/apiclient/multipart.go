@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -32,28 +33,41 @@ func newMultipartUploadBody(field, filename string, src io.Reader) (io.ReadClose
 // The stream client has no request timeout so callers can consume large
 // downloads without the JSON client's short request deadline.
 func (c *Client) GetStream(ctx context.Context, path string) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.server+path, nil)
-	if err != nil {
-		return nil, fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("User-Agent", c.userAgent)
-	req.Header.Set("Accept", "application/octet-stream")
+	for attempt := 0; attempt < 2; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.server+path, nil)
+		if err != nil {
+			return nil, fmt.Errorf("build request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+c.token)
+		req.Header.Set("User-Agent", c.userAgent)
+		req.Header.Set("Accept", "application/octet-stream")
 
-	resp, err := c.streamHTTP.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		resp, err := c.streamHTTP.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("request failed: %w", err)
+		}
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return resp, nil
+		}
+		b, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 && c.retryOn401 != nil {
+			newTok, retryErr := c.retryOn401(ctx)
+			if retryErr != nil {
+				return nil, retryErr
+			}
+			if newTok != "" {
+				c.token = newTok
+				continue
+			}
+		}
+		return nil, &HTTPError{
+			StatusCode: resp.StatusCode,
+			Body:       strings.TrimSpace(string(b)),
+			RetryAfter: ParseRetryAfterSeconds(resp.Header.Get("Retry-After")),
+		}
 	}
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return resp, nil
-	}
-	b, _ := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	return nil, &HTTPError{
-		StatusCode: resp.StatusCode,
-		Body:       strings.TrimSpace(string(b)),
-		RetryAfter: ParseRetryAfterSeconds(resp.Header.Get("Retry-After")),
-	}
+	return nil, errors.New("stream request: exhausted 401 retries")
 }
 
 // PostMultipart streams one file field to path and decodes its JSON response.
