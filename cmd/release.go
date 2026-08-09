@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -679,6 +680,9 @@ func releaseAssetLooksBinary(contentType string, prefix []byte) bool {
 			mediaType != "application/json" &&
 			mediaType != "application/xml" &&
 			mediaType != "application/javascript"
+	}
+	if bytes.IndexByte(prefix, 0) >= 0 || !utf8.Valid(prefix) {
+		return true
 	}
 	detected := strings.ToLower(http.DetectContentType(prefix))
 	return !strings.HasPrefix(detected, "text/") &&
