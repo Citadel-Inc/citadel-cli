@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -228,5 +229,129 @@ func TestReleaseDelete_NotFound(t *testing.T) {
 	err := rootFor(cmd.ReleaseCmd, "delete", "v9.9.9", "-R", "acme/demo", "--yes").Execute()
 	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("want not-found, got %v", err)
+	}
+}
+
+func TestReleaseAssetCRUD_RoundTrip(t *testing.T) {
+	const assetID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	payload := []byte{0x00, 0x01, 0x7f, 0x80, 0xff}
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && issuePathMatches(r,
+			"/namespaces/acme%2Fdemo/releases/v1.0.0/assets",
+			"/namespaces/acme/demo/releases/v1.0.0/assets",
+		):
+			writeJSON(t, w, http.StatusOK, map[string]any{"assets": []map[string]any{{
+				"id": assetID, "filename": "artifact.bin", "content_type": "application/octet-stream",
+				"size_bytes": len(payload), "created_at": "2026-05-10T00:00:00Z",
+			}}})
+		case r.Method == http.MethodPost && issuePathMatches(r,
+			"/namespaces/acme%2Fdemo/releases/v1.0.0/assets",
+			"/namespaces/acme/demo/releases/v1.0.0/assets",
+		):
+			part, err := r.MultipartReader()
+			if err != nil {
+				t.Fatal(err)
+			}
+			filePart, err := part.NextPart()
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := io.ReadAll(filePart)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if filePart.FormName() != "file" || filePart.FileName() != "artifact.bin" || string(got) != string(payload) {
+				t.Fatalf("upload part = %q/%q %v", filePart.FormName(), filePart.FileName(), got)
+			}
+			writeJSON(t, w, http.StatusCreated, map[string]any{
+				"id": assetID, "filename": "artifact.bin", "content_type": "application/octet-stream",
+				"size_bytes": len(payload), "created_at": "2026-05-10T00:00:00Z",
+			})
+		case r.Method == http.MethodGet && issuePathMatches(r,
+			"/namespaces/acme%2Fdemo/releases/v1.0.0/assets/"+assetID,
+			"/namespaces/acme/demo/releases/v1.0.0/assets/"+assetID,
+		):
+			w.Header().Set("Content-Type", "application/octet-stream")
+			_, _ = w.Write(payload)
+		case r.Method == http.MethodDelete && issuePathMatches(r,
+			"/namespaces/acme%2Fdemo/releases/v1.0.0/assets/"+assetID,
+			"/namespaces/acme/demo/releases/v1.0.0/assets/"+assetID,
+		):
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected asset request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	})
+
+	var listOut strings.Builder
+	if err := rootForOut(cmd.ReleaseCmd, &listOut, "asset", "list", "v1.0.0", "-R", "acme/demo", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(listOut.String(), assetID) {
+		t.Fatalf("list output = %s", listOut.String())
+	}
+
+	uploadPath := t.TempDir() + "/artifact.bin"
+	if err := os.WriteFile(uploadPath, payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var uploadOut strings.Builder
+	if err := rootForOut(cmd.ReleaseCmd, &uploadOut, "asset", "upload", "v1.0.0", uploadPath, "-R", "acme/demo", "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(uploadOut.String(), assetID) {
+		t.Fatalf("upload output = %s", uploadOut.String())
+	}
+
+	downloadPath := t.TempDir() + "/download.bin"
+	if err := rootFor(cmd.ReleaseCmd, "asset", "download", "v1.0.0", assetID, "-R", "acme/demo", "-o", downloadPath).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(downloadPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(payload) {
+		t.Fatalf("download = %v, want %v", got, payload)
+	}
+
+	if err := rootFor(cmd.ReleaseCmd, "asset", "delete", "v1.0.0", assetID, "-R", "acme/demo", "--yes").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReleaseAssetUpload_StoreUnavailable(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("method = %s, want POST", r.Method)
+		}
+		writeJSON(t, w, http.StatusServiceUnavailable, map[string]string{"error": "asset_store_unavailable"})
+	})
+	uploadPath := t.TempDir() + "/artifact.bin"
+	if err := os.WriteFile(uploadPath, []byte("payload"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err := rootFor(cmd.ReleaseCmd, "asset", "upload", "v1.0.0", uploadPath, "-R", "acme/demo").Execute()
+	if err == nil || !strings.Contains(err.Error(), "object store") {
+		t.Fatalf("want clear object-store error, got %v", err)
+	}
+}
+
+func TestReleaseAssetUpload_SizeLimit(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("method = %s, want POST", r.Method)
+		}
+		writeJSON(t, w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload_too_large"})
+	})
+	uploadPath := t.TempDir() + "/artifact.bin"
+	if err := os.WriteFile(uploadPath, []byte("payload"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err := rootFor(cmd.ReleaseCmd, "asset", "upload", "v1.0.0", uploadPath, "-R", "acme/demo").Execute()
+	if err == nil || !strings.Contains(err.Error(), "size limit") {
+		t.Fatalf("want size-limit error, got %v", err)
 	}
 }
