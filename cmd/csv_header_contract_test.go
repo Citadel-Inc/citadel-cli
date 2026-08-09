@@ -104,6 +104,11 @@ func TestCSVHeaders_matchREADMEFrozenContract(t *testing.T) {
 			want: []string{"id", "name", "namespace_path", "target_url", "event_kinds", "include_descendants", "active", "created_at", "updated_at", "last_delivery_at", "last_delivery_state", "secret_hint"},
 		},
 		{
+			name: "webhook delivery list",
+			got:  (webhookDeliveryRow{}).CSVHeader(),
+			want: []string{"id", "event_kind", "state", "attempt_count", "http_status", "created_at"},
+		},
+		{
 			name: "milestone list",
 			got:  (milestoneListRow{}).CSVHeader(),
 			want: []string{"id", "title", "state", "due_on", "progress", "created_at"},
@@ -191,6 +196,10 @@ func TestCSVRecord_columnCountMatchesHeader(t *testing.T) {
 
 	wh := webhookRow{ID: "w1", NamespacePath: "acme/demo", TargetURL: "https://x.test/h", EventKinds: []string{"issue.opened"}, CreatedAt: now, UpdatedAt: now}
 	check(t, "webhook", wh.CSVHeader(), wh.CSVRecord())
+
+	status := 500
+	wd := webhookDeliveryRow{ID: "d1", EventKind: "issue.opened", State: "failed", AttemptCount: 2, HTTPStatus: &status, CreatedAt: now}
+	check(t, "webhook delivery", wd.CSVHeader(), wd.CSVRecord())
 
 	ml := milestoneListRow{ID: "m1", Title: "v1", State: "open", CreatedAt: now}
 	check(t, "milestone", ml.CSVHeader(), ml.CSVRecord())
