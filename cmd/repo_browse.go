@@ -299,7 +299,7 @@ func runRepoBrowseRaw(cmd *cobra.Command, args []string) error {
 	var dst io.Writer = cmd.OutOrStdout()
 	var file *os.File
 	if outputFile != "" && outputFile != "-" {
-		file, err = os.Create(outputFile)
+		file, err = os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 		if err != nil {
 			return fmt.Errorf("create output file: %w", err)
 		}
