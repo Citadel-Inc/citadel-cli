@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -88,6 +89,34 @@ func TestProjectAdminRecoveryScan_Yes(t *testing.T) {
 	}
 	if got.ReposEnqueued != 9 {
 		t.Fatalf("repos_enqueued = %d, want 9", got.ReposEnqueued)
+	}
+}
+
+func TestProjectAdminRecoveryScan_Forbidden(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/projectgraph/admin/recovery-scan" {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "forbidden", http.StatusForbidden)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout bytes.Buffer
+	cmd := newProjectAdminRecoveryScanTestCommand(&stdout)
+	if err := cmd.Flags().Set("yes", "true"); err != nil {
+		t.Fatal(err)
+	}
+	err := runProjectAdminRecoveryScan(cmd, nil)
+	if err == nil {
+		t.Fatal("expected forbidden recovery scan error")
+	}
+	message := strings.ToLower(err.Error())
+	if !strings.Contains(message, "forbidden") && !strings.Contains(message, "403") {
+		t.Fatalf("error = %q, want forbidden or 403", err)
 	}
 }
 
