@@ -561,8 +561,22 @@ func pollDeviceToken(ctx context.Context, citadelBaseURL string, device deviceAu
 }
 
 func pollDeviceTokenWithInterval(ctx context.Context, citadelBaseURL string, device deviceAuthorizationResponse, interval time.Duration) (pkceTokenResponse, error) {
+	expiresIn := time.Duration(device.ExpiresIn) * time.Second
+	if expiresIn <= 0 {
+		expiresIn = 30 * time.Minute
+	}
+	deadline := time.Now().Add(expiresIn)
+
 	for {
-		timer := time.NewTimer(interval)
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return pkceTokenResponse{}, errors.New("device authorization expired while waiting for approval")
+		}
+		wait := interval
+		if wait > remaining {
+			wait = remaining
+		}
+		timer := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():
 			if !timer.Stop() {
@@ -574,10 +588,16 @@ func pollDeviceTokenWithInterval(ctx context.Context, citadelBaseURL string, dev
 			return pkceTokenResponse{}, fmt.Errorf("device token poll: %w", ctx.Err())
 		case <-timer.C:
 		}
+		if time.Now().After(deadline) {
+			return pkceTokenResponse{}, errors.New("device authorization expired while waiting for approval")
+		}
 
 		tokenResp, code, description, err := pollDeviceTokenOnce(ctx, citadelBaseURL, device.DeviceCode)
 		if err != nil {
-			return pkceTokenResponse{}, err
+			if ctx.Err() != nil {
+				return pkceTokenResponse{}, fmt.Errorf("device token poll: %w", ctx.Err())
+			}
+			continue
 		}
 		switch code {
 		case "":
@@ -623,7 +643,7 @@ func pollDeviceTokenOnce(ctx context.Context, citadelBaseURL, deviceCode string)
 		if err := json.Unmarshal(body, &oauthErr); err == nil && oauthErr.Error != "" {
 			return pkceTokenResponse{}, oauthErr.Error, oauthErr.Description, nil
 		}
-		return pkceTokenResponse{}, "", "", fmt.Errorf("device token poll failed: %s", strings.TrimSpace(string(body)))
+		return pkceTokenResponse{}, "", "", fmt.Errorf("device token endpoint unavailable: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
 	var out pkceTokenResponse

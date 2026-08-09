@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -181,6 +182,82 @@ func TestPollDeviceToken_DeniedAndExpired(t *testing.T) {
 				t.Fatalf("error = %v", err)
 			}
 		})
+	}
+}
+
+func TestPollDeviceToken_Expires(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("token endpoint called after device authorization expired: %s %s", r.Method, r.URL.Path)
+		http.Error(w, "unexpected poll", http.StatusBadRequest)
+	}))
+	t.Cleanup(srv.Close)
+
+	_, err := pollDeviceTokenWithInterval(context.Background(), srv.URL, deviceAuthorizationResponse{
+		DeviceCode: "device-secret",
+		ExpiresIn:  1,
+	}, 2*time.Second)
+	if err == nil || !strings.Contains(err.Error(), "device authorization expired") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestPollDeviceToken_RetriesTransientHTTPBody(t *testing.T) {
+	polls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		polls++
+		if polls == 1 {
+			http.Error(w, "upstream unavailable", http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"access_token": "device-token"})
+	}))
+	t.Cleanup(srv.Close)
+
+	got, err := pollDeviceTokenWithInterval(context.Background(), srv.URL, deviceAuthorizationResponse{
+		DeviceCode: "device-secret",
+		ExpiresIn:  1,
+	}, time.Nanosecond)
+	if err != nil {
+		t.Fatalf("pollDeviceTokenWithInterval: %v", err)
+	}
+	if got.AccessToken != "device-token" {
+		t.Errorf("AccessToken = %q", got.AccessToken)
+	}
+	if polls != 2 {
+		t.Errorf("polls = %d want 2", polls)
+	}
+}
+
+func TestRunLogin_DeviceFlagWiresDevicePath(t *testing.T) {
+	deviceHits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/oauth/device" {
+			deviceHits++
+			http.Error(w, "device path reached", http.StatusBadRequest)
+			return
+		}
+		t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Cleanup(func() { _ = loginCmd.Flags().Set("device", "false") })
+
+	root := NewRootCmd()
+	root.SetArgs([]string{"auth", "login", "--device"})
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	if err := root.Execute(); err == nil {
+		t.Fatal("expected device authorization request error")
+	}
+	if deviceHits != 1 {
+		t.Fatalf("device endpoint hits = %d want 1", deviceHits)
 	}
 }
 
