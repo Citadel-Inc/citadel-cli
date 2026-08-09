@@ -331,11 +331,13 @@ under the existing parent resources:
 citadel-cli repo webhook list -R acme/demo
 citadel-cli repo webhook create -R acme/demo --url https://hooks.example.test/in --events issue.opened,comment.created
 citadel-cli repo webhook get -R acme/demo <webhook-id>
+citadel-cli repo webhook edit -R acme/demo <webhook-id> --url https://hooks.example.test/updated
 citadel-cli repo webhook delete -R acme/demo <webhook-id> --dry-run
 
 citadel-cli namespace webhook list acme
 citadel-cli namespace webhook create acme --url https://hooks.example.test/in --events issue.opened --include-descendants
 citadel-cli namespace webhook get acme <webhook-id>
+citadel-cli namespace webhook edit acme <webhook-id> --active=false --rotate-secret
 citadel-cli namespace webhook delete acme <webhook-id>
 ```
 
