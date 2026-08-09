@@ -1,7 +1,10 @@
 package cmd_test
 
 import (
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -69,5 +72,76 @@ func TestAPI_SlashPrepended(t *testing.T) {
 	// Path without leading slash should be prepended automatically.
 	if err := rootFor(cmd.APICmd, "ping").Execute(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestAPI_PostWithInputStdin(t *testing.T) {
+	const input = `{"title":"hello","labels":["bug"],"metadata":{"priority":3}}`
+
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /namespaces/acme/demo/issues": func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Errorf("read request body: %v", err)
+				return
+			}
+			if string(body) != input {
+				t.Errorf("request body = %q, want %q", body, input)
+			}
+			writeJSON(t, w, http.StatusCreated, map[string]any{"ok": true})
+		},
+	}))
+
+	root := rootFor(cmd.APICmd, "-X", "POST", "/namespaces/acme/demo/issues", "--input", "-")
+	root.SetIn(strings.NewReader(input))
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAPI_PatchWithInputFile(t *testing.T) {
+	const input = `{"state":"closed","details":{"reason":"done"}}`
+	inputPath := filepath.Join(t.TempDir(), "body.json")
+	if err := os.WriteFile(inputPath, []byte(input), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"PATCH /namespaces/acme/demo/issues/42": func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Errorf("read request body: %v", err)
+				return
+			}
+			if string(body) != input {
+				t.Errorf("request body = %q, want %q", body, input)
+			}
+			writeJSON(t, w, http.StatusOK, map[string]any{"ok": true})
+		},
+	}))
+
+	if err := rootFor(cmd.APICmd, "-X", "PATCH", "/namespaces/acme/demo/issues/42", "--input", inputPath).Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAPI_InputAndFieldsConflict(t *testing.T) {
+	err := rootFor(cmd.APICmd, "-X", "POST", "/foo", "--input", "-", "-f", "name=value").Execute()
+	if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Fatalf("want input/field conflict error, got %v", err)
+	}
+}
+
+func TestAPI_InputRejectsGet(t *testing.T) {
+	err := rootFor(cmd.APICmd, "--input", "-", "/foo").Execute()
+	if err == nil || !strings.Contains(err.Error(), "only supported with POST, PUT, or PATCH") {
+		t.Fatalf("want GET input error, got %v", err)
+	}
+}
+
+func TestAPI_InputRejectsDelete(t *testing.T) {
+	err := rootFor(cmd.APICmd, "-X", "DELETE", "/foo", "--input", "-").Execute()
+	if err == nil || !strings.Contains(err.Error(), "only supported with POST, PUT, or PATCH") {
+		t.Fatalf("want DELETE input error, got %v", err)
 	}
 }
