@@ -235,7 +235,8 @@ func TestReleaseDelete_NotFound(t *testing.T) {
 func TestReleaseAssetCRUD_RoundTrip(t *testing.T) {
 	const assetID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	payload := []byte{0x00, 0x01, 0x7f, 0x80, 0xff}
-	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+	var downloadURL string
+	srv := withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && issuePathMatches(r,
 			"/namespaces/acme%2Fdemo/releases/v1.0.0/assets",
@@ -272,6 +273,12 @@ func TestReleaseAssetCRUD_RoundTrip(t *testing.T) {
 			"/namespaces/acme%2Fdemo/releases/v1.0.0/assets/"+assetID,
 			"/namespaces/acme/demo/releases/v1.0.0/assets/"+assetID,
 		):
+			writeJSON(t, w, http.StatusOK, map[string]any{
+				"id": assetID, "filename": "artifact.bin", "content_type": "application/octet-stream",
+				"size_bytes": len(payload), "download_url": downloadURL,
+				"created_at": "2026-05-10T00:00:00Z",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/signed/artifact.bin":
 			w.Header().Set("Content-Type", "application/octet-stream")
 			_, _ = w.Write(payload)
 		case r.Method == http.MethodDelete && issuePathMatches(r,
@@ -284,6 +291,7 @@ func TestReleaseAssetCRUD_RoundTrip(t *testing.T) {
 			http.NotFound(w, r)
 		}
 	})
+	downloadURL = srv.URL + "/signed/artifact.bin"
 
 	var listOut strings.Builder
 	if err := rootForOut(cmd.ReleaseCmd, &listOut, "asset", "list", "v1.0.0", "-R", "acme/demo", "--output", "json").Execute(); err != nil {
