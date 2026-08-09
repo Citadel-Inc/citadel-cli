@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -58,6 +59,13 @@ var gistDeleteCmd = &cobra.Command{
 	Short: "Delete a gist",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runGistDelete,
+}
+
+var gistRawCmd = &cobra.Command{
+	Use:   "raw <id> <file>",
+	Short: "Download one gist file",
+	Args:  cobra.ExactArgs(2),
+	RunE:  runGistRaw,
 }
 
 type gistRow struct {
@@ -126,6 +134,22 @@ type gistUpdateRequest struct {
 
 func gistPath(id string) string {
 	return "/gists/" + url.PathEscape(strings.TrimSpace(id))
+}
+
+func gistRawPath(id, file string) (string, error) {
+	file = strings.Trim(strings.TrimSpace(file), "/")
+	if file == "" {
+		return "", fmt.Errorf("file path required")
+	}
+	parts := strings.Split(file, "/")
+	encoded := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part == "" || part == "." || part == ".." {
+			return "", fmt.Errorf("invalid file path %q", file)
+		}
+		encoded = append(encoded, url.PathEscape(part))
+	}
+	return gistPath(id) + "/raw/" + strings.Join(encoded, "/"), nil
 }
 
 func normalizeGistVisibility(value string) (string, error) {
@@ -412,6 +436,42 @@ func runGistDelete(cmd *cobra.Command, args []string) error {
 	}
 }
 
+func runGistRaw(cmd *cobra.Command, args []string) error {
+	id := strings.TrimSpace(args[0])
+	if id == "" {
+		return fmt.Errorf("gist id required")
+	}
+	path, err := gistRawPath(id, args[1])
+	if err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	resp, err := c.GetEventStream(cmd.Context(), path, "")
+	if err != nil {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("gist file %s not found", args[1])
+		}
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read gist file: %w", err)
+	}
+	outputFile, _ := cmd.Flags().GetString("output-file")
+	if outputFile != "" {
+		if err := os.WriteFile(outputFile, data, 0o600); err != nil {
+			return fmt.Errorf("write %s: %w", outputFile, err)
+		}
+		return nil
+	}
+	_, err = cmd.OutOrStdout().Write(data)
+	return err
+}
+
 func renderGistView(cmd *cobra.Command, payload gistViewPayload) error {
 	w := newTabWriter(cmd)
 	_, _ = fmt.Fprintf(w, "ID\t%s\n", payload.Gist.ID)
@@ -455,7 +515,7 @@ func renderGistWriteResult(cmd *cobra.Command, output, label string, result gist
 }
 
 func init() {
-	GistCmd.AddCommand(gistListCmd, gistViewCmd, gistCreateCmd, gistEditCmd, gistDeleteCmd)
+	GistCmd.AddCommand(gistListCmd, gistViewCmd, gistCreateCmd, gistEditCmd, gistDeleteCmd, gistRawCmd)
 
 	addOutputFlag(gistListCmd, gistViewCmd, gistCreateCmd, gistEditCmd, gistDeleteCmd)
 	addYesFlag(gistDeleteCmd)
@@ -479,4 +539,6 @@ func init() {
 	gistEditCmd.Flags().String("message", "", "Commit message")
 	gistEditCmd.Flags().Bool("confirm-secret-publish", false, "Confirm publishing content flagged by the secret scanner")
 	gistEditCmd.Flags().String("expires-in", "", "Set expiration or use clear to remove it")
+
+	gistRawCmd.Flags().StringP("output-file", "o", "", "Write downloaded bytes to a file instead of stdout")
 }
