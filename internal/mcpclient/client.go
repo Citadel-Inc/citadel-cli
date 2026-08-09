@@ -10,9 +10,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"syscall"
 	"time"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/httpx"
@@ -77,9 +80,8 @@ type MCPPromptArgument struct {
 }
 
 // Options are the per-invocation knobs surfaced from the CLI persistent
-// flags. JSON-RPC retry on POST is intentionally NOT included — tools/call
-// is not idempotent in general; reads/lists could be retried in a future
-// pass via a per-method allowlist.
+// flags. JSON-RPC retries are fixed to the idempotent list/read methods in
+// call; tools/call and initialize remain single-shot.
 type Options struct {
 	Verbose   bool
 	DebugHTTP bool
@@ -251,50 +253,117 @@ func (c *Client) call(ctx context.Context, method string, params any, out any) (
 	if err != nil {
 		return "", fmt.Errorf("marshal %s: %w", method, err)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.ServerURL, bytes.NewReader(bodyBytes))
-	if err != nil {
-		return "", fmt.Errorf("new request: %w", err)
-	}
-	httpReq.Header.Set("Authorization", "Bearer "+c.Token)
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Accept", "application/json")
-	if c.sessionID != "" {
-		httpReq.Header.Set(sessionHeader, c.sessionID)
-	}
-
-	resp, err := c.HTTP.Do(httpReq)
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", method, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	respBytes, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return "", &Error{Kind: KindUnauthorized, Message: "unauthorized"}
-	}
-
-	var rpc struct {
-		Result json.RawMessage `json:"result"`
-		Error  *struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if len(respBytes) > 0 {
-		if err := json.Unmarshal(respBytes, &rpc); err != nil {
-			return "", fmt.Errorf("%s: decode response (HTTP %d): %w", method, resp.StatusCode, err)
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.ServerURL, bytes.NewReader(bodyBytes))
+		if err != nil {
+			return "", fmt.Errorf("new request: %w", err)
 		}
-	}
-	if rpc.Error != nil {
-		return "", classifyJSONRPCError(rpc.Error.Code, rpc.Error.Message)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("%s: HTTP %d", method, resp.StatusCode)
-	}
-	if out != nil && len(rpc.Result) > 0 {
-		if err := json.Unmarshal(rpc.Result, out); err != nil {
-			return "", fmt.Errorf("%s: decode result: %w", method, err)
+		httpReq.Header.Set("Authorization", "Bearer "+c.Token)
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Accept", "application/json")
+		if c.sessionID != "" {
+			httpReq.Header.Set(sessionHeader, c.sessionID)
 		}
+
+		resp, err := c.HTTP.Do(httpReq)
+		if err != nil {
+			if retryableMethod(method) && attempt < maxAttempts-1 && transientTransportError(ctx, err) {
+				if err := waitRetry(ctx, attempt); err != nil {
+					return "", fmt.Errorf("%s: %w", method, err)
+				}
+				continue
+			}
+			return "", fmt.Errorf("%s: %w", method, err)
+		}
+		respBytes, readErr := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if readErr != nil {
+			if retryableMethod(method) && attempt < maxAttempts-1 && transientTransportError(ctx, readErr) {
+				if err := waitRetry(ctx, attempt); err != nil {
+					return "", fmt.Errorf("%s: %w", method, err)
+				}
+				continue
+			}
+			return "", fmt.Errorf("%s: read response: %w", method, readErr)
+		}
+
+		if resp.StatusCode == http.StatusUnauthorized {
+			return "", &Error{Kind: KindUnauthorized, Message: "unauthorized"}
+		}
+
+		var rpc struct {
+			Result json.RawMessage `json:"result"`
+			Error  *struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if len(respBytes) > 0 {
+			if err := json.Unmarshal(respBytes, &rpc); err != nil {
+				if retryableMethod(method) && attempt < maxAttempts-1 && resp.StatusCode >= http.StatusInternalServerError {
+					if err := waitRetry(ctx, attempt); err != nil {
+						return "", fmt.Errorf("%s: %w", method, err)
+					}
+					continue
+				}
+				return "", fmt.Errorf("%s: decode response (HTTP %d): %w", method, resp.StatusCode, err)
+			}
+		}
+		if rpc.Error != nil {
+			return "", classifyJSONRPCError(rpc.Error.Code, rpc.Error.Message)
+		}
+		if resp.StatusCode != http.StatusOK {
+			if retryableMethod(method) && attempt < maxAttempts-1 && resp.StatusCode >= http.StatusInternalServerError {
+				if err := waitRetry(ctx, attempt); err != nil {
+					return "", fmt.Errorf("%s: %w", method, err)
+				}
+				continue
+			}
+			return "", fmt.Errorf("%s: HTTP %d", method, resp.StatusCode)
+		}
+		if out != nil && len(rpc.Result) > 0 {
+			if err := json.Unmarshal(rpc.Result, out); err != nil {
+				return "", fmt.Errorf("%s: decode result: %w", method, err)
+			}
+		}
+		return resp.Header.Get(sessionHeader), nil
 	}
-	return resp.Header.Get(sessionHeader), nil
+	return "", fmt.Errorf("%s: retry attempts exhausted", method)
+}
+
+const maxAttempts = 3
+
+func retryableMethod(method string) bool {
+	switch method {
+	case "tools/list", "resources/list", "resources/read", "prompts/list", "prompts/get":
+		return true
+	default:
+		return false
+	}
+}
+
+func transientTransportError(ctx context.Context, err error) bool {
+	if err == nil || ctx.Err() != nil {
+		return false
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && (netErr.Timeout() || netErr.Temporary()) {
+		return true
+	}
+	return errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF)
+}
+
+func waitRetry(ctx context.Context, attempt int) error {
+	timer := time.NewTimer(100 * time.Millisecond * time.Duration(1<<attempt))
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
