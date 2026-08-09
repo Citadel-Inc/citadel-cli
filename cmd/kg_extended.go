@@ -233,7 +233,7 @@ func kgWriteTable(cmd *cobra.Command, pages []any, rowKeys ...string) error {
 				kgCell(row, "repo", "repo_slug", "repository", "repository_slug", "repo_name"),
 				kgCell(row, "path", "file_path", "file"),
 				kgCell(row, "line", "line_start", "start_line", "line_number"),
-				kgCell(row, "symbol", "name", "qualified_name"),
+				kgCell(row, "symbol", "symbol_name", "name", "qualified_name"),
 				kgCell(row, "snippet", "match", "content", "text"),
 			)
 		}
