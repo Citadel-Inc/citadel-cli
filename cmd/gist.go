@@ -1,14 +1,17 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 )
@@ -457,19 +460,58 @@ func runGistRaw(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("read gist file: %w", err)
-	}
+
 	outputFile, _ := cmd.Flags().GetString("output-file")
-	if outputFile != "" {
-		if err := os.WriteFile(outputFile, data, 0o600); err != nil {
-			return fmt.Errorf("write %s: %w", outputFile, err)
+	var dst io.Writer = cmd.OutOrStdout()
+	var file *os.File
+	if outputFile != "" && outputFile != "-" {
+		file, err = os.OpenFile(outputFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+		if err != nil {
+			return fmt.Errorf("create output file: %w", err)
 		}
-		return nil
+		defer func() { _ = file.Close() }()
+		dst = file
 	}
-	_, err = cmd.OutOrStdout().Write(data)
-	return err
+
+	if file == nil && gistRawOutputIsTTY(dst) {
+		prefix := make([]byte, 512)
+		n, readErr := io.ReadFull(resp.Body, prefix)
+		if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+			return fmt.Errorf("read gist file: %w", readErr)
+		}
+		if gistRawLooksBinary(resp.Header.Get("Content-Type"), prefix[:n]) {
+			return fmt.Errorf("refusing to write binary gist file to a terminal; redirect stdout or pass --output-file")
+		}
+		_, err = io.Copy(dst, io.MultiReader(bytes.NewReader(prefix[:n]), resp.Body))
+	} else {
+		_, err = io.Copy(dst, resp.Body)
+	}
+	if err != nil {
+		return fmt.Errorf("write gist file: %w", err)
+	}
+	return nil
+}
+
+var gistRawOutputIsTTY = func(w io.Writer) bool {
+	file, ok := w.(*os.File)
+	return ok && term.IsTerminal(int(file.Fd()))
+}
+
+func gistRawLooksBinary(contentType string, prefix []byte) bool {
+	mediaType := strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0]))
+	if mediaType != "" {
+		return !strings.HasPrefix(mediaType, "text/") &&
+			mediaType != "application/json" &&
+			mediaType != "application/xml" &&
+			mediaType != "application/javascript"
+	}
+	if bytes.IndexByte(prefix, 0) >= 0 || !utf8.Valid(prefix) {
+		return true
+	}
+	detected := strings.ToLower(http.DetectContentType(prefix))
+	return !strings.HasPrefix(detected, "text/") &&
+		detected != "application/json" &&
+		detected != "application/xml"
 }
 
 func renderGistView(cmd *cobra.Command, payload gistViewPayload) error {
