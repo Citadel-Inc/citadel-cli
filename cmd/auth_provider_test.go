@@ -61,6 +61,13 @@ func rootFor(args ...string) *cobra.Command {
 	resetFlagsRecursive(AuthCmd)
 	setOutRecursive(AuthCmd, io.Discard, io.Discard)
 	root := &cobra.Command{Use: "test"}
+	root.AddGroup(
+		&cobra.Group{ID: "auth", Title: "Auth:"},
+		&cobra.Group{ID: "repo", Title: "Repo & Git:"},
+		&cobra.Group{ID: "collab", Title: "Collaboration:"},
+		&cobra.Group{ID: "ops", Title: "Ops:"},
+		&cobra.Group{ID: "meta", Title: "Meta:"},
+	)
 	root.AddCommand(AuthCmd)
 	root.SetArgs(append([]string{"auth"}, args...))
 	root.SetOut(io.Discard)
@@ -74,6 +81,13 @@ func rootForOut(stdout io.Writer, args ...string) *cobra.Command {
 	resetFlagsRecursive(AuthCmd)
 	setOutRecursive(AuthCmd, stdout, io.Discard)
 	root := &cobra.Command{Use: "test"}
+	root.AddGroup(
+		&cobra.Group{ID: "auth", Title: "Auth:"},
+		&cobra.Group{ID: "repo", Title: "Repo & Git:"},
+		&cobra.Group{ID: "collab", Title: "Collaboration:"},
+		&cobra.Group{ID: "ops", Title: "Ops:"},
+		&cobra.Group{ID: "meta", Title: "Meta:"},
+	)
 	root.AddCommand(AuthCmd)
 	root.SetArgs(append([]string{"auth"}, args...))
 	root.SetOut(stdout)

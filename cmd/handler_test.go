@@ -40,6 +40,7 @@ func rootFor(verb *cobra.Command, args ...string) *cobra.Command {
 	resetFlagsRecursive(verb)
 	setOutRecursive(verb, io.Discard, io.Discard)
 	root := &cobra.Command{Use: "test"}
+	addTestRootGroups(root)
 	root.AddCommand(verb)
 	root.SetArgs(append([]string{verb.Name()}, args...))
 	root.SetOut(io.Discard)
@@ -54,6 +55,7 @@ func rootForOut(verb *cobra.Command, stdout io.Writer, args ...string) *cobra.Co
 	resetFlagsRecursive(verb)
 	setOutRecursive(verb, stdout, io.Discard)
 	root := &cobra.Command{Use: "test"}
+	addTestRootGroups(root)
 	root.AddCommand(verb)
 	root.SetArgs(append([]string{verb.Name()}, args...))
 	root.SetOut(stdout)
@@ -61,6 +63,17 @@ func rootForOut(verb *cobra.Command, stdout io.Writer, args ...string) *cobra.Co
 	root.SilenceErrors = true
 	root.SilenceUsage = true
 	return root
+}
+
+// addTestRootGroups mirrors NewRoot help groups so verbs with GroupID execute under rootFor.
+func addTestRootGroups(root *cobra.Command) {
+	root.AddGroup(
+		&cobra.Group{ID: "auth", Title: "Auth:"},
+		&cobra.Group{ID: "repo", Title: "Repo & Git:"},
+		&cobra.Group{ID: "collab", Title: "Collaboration:"},
+		&cobra.Group{ID: "ops", Title: "Ops:"},
+		&cobra.Group{ID: "meta", Title: "Meta:"},
+	)
 }
 
 func setOutRecursive(c *cobra.Command, out, err io.Writer) {
