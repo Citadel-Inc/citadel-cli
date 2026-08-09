@@ -220,6 +220,108 @@ func TestNamespaceWebhookCreate_IncludeDescendants(t *testing.T) {
 	}
 }
 
+func TestRepoWebhookEdit_URLAndRotateSecret(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch || !issuePathMatches(r,
+			"/api/namespaces/acme%2Fdemo/webhooks/"+testWebhookID,
+			"/api/namespaces/acme/demo/webhooks/"+testWebhookID) {
+			http.NotFound(w, r)
+			return
+		}
+		var body map[string]json.RawMessage
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		var targetURL string
+		if err := json.Unmarshal(body["target_url"], &targetURL); err != nil {
+			t.Fatal(err)
+		}
+		var rotateSecret bool
+		if err := json.Unmarshal(body["rotate_secret"], &rotateSecret); err != nil {
+			t.Fatal(err)
+		}
+		if targetURL != "https://example.test/updated" || !rotateSecret {
+			t.Fatalf("unexpected edit body: %+v", body)
+		}
+		for _, field := range []string{"name", "event_kinds", "active", "include_descendants"} {
+			if _, ok := body[field]; ok {
+				t.Fatalf("unset field %q was sent: %v", field, body)
+			}
+		}
+		payload := webhookPayload()
+		payload["target_url"] = targetURL
+		payload["cleartext_secret"] = "rotated-secret"
+		writeJSON(t, w, http.StatusOK, payload)
+	})
+
+	var out strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &out,
+		"webhook", "edit", "-R", "acme/demo", testWebhookID,
+		"--url", "https://example.test/updated",
+		"--rotate-secret",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "Updated webhook "+testWebhookID+" for acme/demo.") {
+		t.Fatalf("unexpected output: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "Secret (save now; shown once): rotated-secret") {
+		t.Fatalf("missing rotated secret: %s", out.String())
+	}
+}
+
+func TestNamespaceWebhookEdit_Flags(t *testing.T) {
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch || r.URL.Path != "/api/namespaces/acme/webhooks/"+testWebhookID {
+			http.NotFound(w, r)
+			return
+		}
+		var body struct {
+			Name               *string  `json:"name"`
+			EventKinds         []string `json:"event_kinds"`
+			IncludeDescendants *bool    `json:"include_descendants"`
+			Active             *bool    `json:"active"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Name == nil || *body.Name != "renamed" ||
+			len(body.EventKinds) != 1 || body.EventKinds[0] != "issue.closed" ||
+			body.IncludeDescendants == nil || !*body.IncludeDescendants ||
+			body.Active == nil || *body.Active {
+			t.Fatalf("unexpected namespace edit body: %+v", body)
+		}
+		payload := webhookPayload()
+		payload["namespace_path"] = "acme"
+		payload["name"] = "renamed"
+		payload["event_kinds"] = []string{"issue.closed"}
+		payload["include_descendants"] = true
+		payload["active"] = false
+		writeJSON(t, w, http.StatusOK, payload)
+	})
+
+	var out strings.Builder
+	if err := rootForOut(cmd.NamespaceCmd, &out,
+		"webhook", "edit", "acme", testWebhookID,
+		"--name", "renamed",
+		"--events", "issue.closed",
+		"--active=false",
+		"--include-descendants=true",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "Updated webhook "+testWebhookID+" for acme.") {
+		t.Fatalf("unexpected output: %s", out.String())
+	}
+}
+
+func TestRepoWebhookEdit_RequiresChangingFlag(t *testing.T) {
+	err := rootFor(cmd.RepoCmd, "webhook", "edit", "acme/demo", testWebhookID).Execute()
+	if err == nil || !strings.Contains(err.Error(), "at least one changing flag is required") {
+		t.Fatalf("expected missing edit flag error, got %v", err)
+	}
+}
+
 // ── namespace webhook list ────────────────────────────────────────────────────
 
 func TestNamespaceWebhookList_Human(t *testing.T) {
