@@ -112,6 +112,38 @@ func TestClient_GetStream_RetriesAfterTokenRefresh(t *testing.T) {
 	}
 }
 
+func TestClient_GetStream_AbsoluteSignedURLOmitsAPIHeaders(t *testing.T) {
+	signed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "" {
+			t.Errorf("Authorization = %q, want empty for cross-origin URL", got)
+		}
+		if got := r.Header.Get("Accept"); got != "" {
+			t.Errorf("Accept = %q, want empty for signed URL", got)
+		}
+		_, _ = w.Write([]byte{0x00, 0xff})
+	}))
+	defer signed.Close()
+	api := httptest.NewServer(http.NotFoundHandler())
+	defer api.Close()
+
+	c, err := New(clicfg.Config{ServerURL: api.URL, AccessToken: "tok"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.GetStream(context.Background(), signed.URL+"/artifact.bin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	got, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string([]byte{0x00, 0xff}) {
+		t.Fatalf("body = %v", got)
+	}
+}
+
 func TestClient_PostMultipart_StreamsFileField(t *testing.T) {
 	payload := []byte("release asset")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

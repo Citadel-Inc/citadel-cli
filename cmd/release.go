@@ -531,7 +531,15 @@ func runReleaseAssetDownload(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("asset ID required")
 	}
 	outputFile, _ := cmd.Flags().GetString("output-file")
-	resp, err := c.GetStream(cmd.Context(), releaseAssetPath(nsPath, tag)+"/"+url.PathEscape(assetID))
+	var asset releaseAssetRow
+	if err := c.Get(cmd.Context(), releaseAssetPath(nsPath, tag)+"/"+url.PathEscape(assetID), &asset); err != nil {
+		return err
+	}
+	downloadURL := strings.TrimSpace(asset.DownloadURL)
+	if downloadURL == "" {
+		return fmt.Errorf("release asset %s has no download URL; the object store may be unconfigured", assetID)
+	}
+	resp, err := c.GetStream(cmd.Context(), downloadURL)
 	if err != nil {
 		return err
 	}
@@ -668,7 +676,7 @@ func renderReleaseAssetDetail(cmd *cobra.Command, nsPath, tag string, asset rele
 	}
 }
 
-func releaseAssetOutputIsTTY(w io.Writer) bool {
+var releaseAssetOutputIsTTY = func(w io.Writer) bool {
 	file, ok := w.(*os.File)
 	return ok && term.IsTerminal(int(file.Fd()))
 }

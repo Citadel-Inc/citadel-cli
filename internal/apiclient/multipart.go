@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -33,14 +34,17 @@ func newMultipartUploadBody(field, filename string, src io.Reader) (io.ReadClose
 // The stream client has no request timeout so callers can consume large
 // downloads without the JSON client's short request deadline.
 func (c *Client) GetStream(ctx context.Context, path string) (*http.Response, error) {
+	target, sameOrigin := c.streamTarget(path)
 	for attempt := 0; attempt < 2; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.server+path, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 		if err != nil {
 			return nil, fmt.Errorf("build request: %w", err)
 		}
-		req.Header.Set("Authorization", "Bearer "+c.token)
 		req.Header.Set("User-Agent", c.userAgent)
-		req.Header.Set("Accept", "application/octet-stream")
+		if sameOrigin {
+			req.Header.Set("Authorization", "Bearer "+c.token)
+			req.Header.Set("Accept", "application/octet-stream")
+		}
 
 		resp, err := c.streamHTTP.Do(req)
 		if err != nil {
@@ -68,6 +72,18 @@ func (c *Client) GetStream(ctx context.Context, path string) (*http.Response, er
 		}
 	}
 	return nil, errors.New("stream request: exhausted 401 retries")
+}
+
+func (c *Client) streamTarget(target string) (string, bool) {
+	parsed, err := url.Parse(target)
+	if err == nil && parsed.IsAbs() && parsed.Host != "" {
+		base, baseErr := url.Parse(c.server)
+		sameOrigin := baseErr == nil &&
+			strings.EqualFold(base.Scheme, parsed.Scheme) &&
+			strings.EqualFold(base.Host, parsed.Host)
+		return target, sameOrigin
+	}
+	return c.server + target, true
 }
 
 // PostMultipart streams one file field to path and decodes its JSON response.
