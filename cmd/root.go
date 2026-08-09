@@ -70,6 +70,7 @@ Server URL configured via CITADEL_SERVER env var or --server flag.`,
 	root.AddCommand(LabelCmd)
 	root.AddCommand(APICmd)
 	root.AddCommand(ReleaseCmd)
+	root.AddCommand(GistCmd)
 	root.AddCommand(SelfHostCmd)
 
 	return root
