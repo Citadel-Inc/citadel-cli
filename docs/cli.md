@@ -356,6 +356,26 @@ citadel-cli namespace webhook delete acme <webhook-id>
 - Citadel now exposes a server-side webhook test/ping endpoint; `citadel-cli`
   does not yet wrap it as a `webhook test` command.
 
+### Webhook deliveries
+
+List, inspect, and redeliver webhook delivery attempts:
+
+```bash
+citadel-cli repo webhook deliveries list -R acme/demo
+citadel-cli repo webhook deliveries list -R acme/demo --webhook-id <webhook-id> --state failed
+citadel-cli repo webhook deliveries get -R acme/demo <delivery-id>
+citadel-cli repo webhook deliveries redeliver -R acme/demo <delivery-id>
+citadel-cli repo webhook deliveries redeliver -R acme/demo <delivery-id> --dry-run
+
+citadel-cli namespace webhook deliveries list acme
+citadel-cli namespace webhook deliveries get acme <delivery-id>
+citadel-cli namespace webhook deliveries redeliver acme <delivery-id>
+```
+
+- `list` supports `--webhook-id`, `--state`, pagination (`--limit` / `--cursor` / `--all`), and `--output`.
+- `get` shows one delivery including payload and response fields when present.
+- `redeliver` POSTs a new attempt for an existing delivery; `--dry-run` prints the request without sending it.
+
 ### Agents
 
 Manage the agents registered to your account. An agent is a named identity that
