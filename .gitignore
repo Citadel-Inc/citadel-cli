@@ -40,3 +40,6 @@ coverage/
 /build/
 /coverage/
 *.log
+
+# Orchestration scratch
+.orchestrate/
