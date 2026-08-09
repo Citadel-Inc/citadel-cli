@@ -422,7 +422,7 @@ func TestRepoDeployTokenRevokeFlags(t *testing.T) {
 
 func TestRepoWebhookSubcommands(t *testing.T) {
 	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
-	for _, name := range []string{"list", "create", "get", "edit", "delete"} {
+	for _, name := range []string{"list", "create", "get", "edit", "delete", "deliveries"} {
 		if !hasSubcmd(webhook, name) {
 			t.Errorf("citadel repo webhook: missing subcommand %q", name)
 		}
@@ -479,6 +479,49 @@ func TestRepoWebhookDeleteFlags(t *testing.T) {
 	}
 }
 
+func TestRepoWebhookDeliveriesSubcommands(t *testing.T) {
+	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
+	deliveries := findSubcmd(t, webhook, "deliveries")
+	for _, name := range []string{"list", "get", "redeliver"} {
+		if !hasSubcmd(deliveries, name) {
+			t.Errorf("citadel repo webhook deliveries: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestRepoWebhookDeliveriesListFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
+	deliveries := findSubcmd(t, webhook, "deliveries")
+	c := findSubcmd(t, deliveries, "list")
+	for _, flag := range []string{"repo", "no-cwd-repo", "webhook-id", "state", "limit", "cursor", "all", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo webhook deliveries list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoWebhookDeliveriesGetFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
+	deliveries := findSubcmd(t, webhook, "deliveries")
+	c := findSubcmd(t, deliveries, "get")
+	for _, flag := range []string{"repo", "no-cwd-repo", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo webhook deliveries get: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestRepoWebhookDeliveriesRedeliverFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.RepoCmd, "webhook")
+	deliveries := findSubcmd(t, webhook, "deliveries")
+	c := findSubcmd(t, deliveries, "redeliver")
+	for _, flag := range []string{"repo", "no-cwd-repo", "dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel repo webhook deliveries redeliver: missing flag --%s", flag)
+		}
+	}
+}
+
 // ── namespace ────────────────────────────────────────────────────────────────
 
 func TestNamespaceCmdExists(t *testing.T) {
@@ -510,7 +553,7 @@ func TestNamespaceDeployTokenSubcommands(t *testing.T) {
 
 func TestNamespaceWebhookSubcommands(t *testing.T) {
 	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
-	for _, name := range []string{"list", "create", "get", "edit", "delete"} {
+	for _, name := range []string{"list", "create", "get", "edit", "delete", "deliveries"} {
 		if !hasSubcmd(webhook, name) {
 			t.Errorf("citadel namespace webhook: missing subcommand %q", name)
 		}
@@ -561,6 +604,47 @@ func TestNamespaceWebhookDeleteFlags(t *testing.T) {
 	for _, flag := range []string{"dry-run", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel namespace webhook delete: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestNamespaceWebhookDeliveriesSubcommands(t *testing.T) {
+	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
+	deliveries := findSubcmd(t, webhook, "deliveries")
+	for _, name := range []string{"list", "get", "redeliver"} {
+		if !hasSubcmd(deliveries, name) {
+			t.Errorf("citadel namespace webhook deliveries: missing subcommand %q", name)
+		}
+	}
+}
+
+func TestNamespaceWebhookDeliveriesListFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
+	deliveries := findSubcmd(t, webhook, "deliveries")
+	c := findSubcmd(t, deliveries, "list")
+	for _, flag := range []string{"webhook-id", "state", "limit", "cursor", "all", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel namespace webhook deliveries list: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestNamespaceWebhookDeliveriesGetFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
+	deliveries := findSubcmd(t, webhook, "deliveries")
+	c := findSubcmd(t, deliveries, "get")
+	if !hasFlag(c, "output") {
+		t.Errorf("citadel namespace webhook deliveries get: missing flag --output")
+	}
+}
+
+func TestNamespaceWebhookDeliveriesRedeliverFlags(t *testing.T) {
+	webhook := findSubcmd(t, cmd.NamespaceCmd, "webhook")
+	deliveries := findSubcmd(t, webhook, "deliveries")
+	c := findSubcmd(t, deliveries, "redeliver")
+	for _, flag := range []string{"dry-run", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel namespace webhook deliveries redeliver: missing flag --%s", flag)
 		}
 	}
 }
