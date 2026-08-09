@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -170,5 +171,53 @@ func TestRepoBrowseBlob_NotFound(t *testing.T) {
 	err := rootFor(cmd.RepoCmd, "browse", "blob", "acme/demo", "--path", "missing.go").Execute()
 	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("expected not found error, got: %v", err)
+	}
+}
+
+// ── browse raw ────────────────────────────────────────────────────────────────
+
+func TestRepoBrowseRaw_TextStream(t *testing.T) {
+	const content = "Hello, streamed world!\n"
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/raw": func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("path") != "README.md" {
+				http.Error(w, "missing path", http.StatusBadRequest)
+				return
+			}
+			if r.URL.Query().Get("ref") != "feature/x" {
+				http.Error(w, "missing ref", http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			_, _ = w.Write([]byte(content))
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "browse", "raw", "acme/demo", "README.md", "--ref", "feature/x").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if buf.String() != content {
+		t.Fatalf("expected streamed content %q, got %q", content, buf.String())
+	}
+}
+
+func TestRepoBrowseRaw_FileOutput(t *testing.T) {
+	want := append([]byte{0x00, 0xff, 0x10}, bytes.Repeat([]byte("payload"), 2048)...)
+	outputPath := t.TempDir() + "/artifact.bin"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/raw": func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/octet-stream")
+			_, _ = w.Write(want)
+		},
+	}))
+	if err := rootFor(cmd.RepoCmd, "browse", "raw", "acme/demo", "artifact.bin", "--output-file", outputPath).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("read output file: %v", err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("output file bytes differ: got %d bytes, want %d", len(got), len(want))
 	}
 }
