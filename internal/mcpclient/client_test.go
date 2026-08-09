@@ -69,6 +69,19 @@ func (t *failSecondRoundTripper) RoundTrip(req *http.Request) (*http.Response, e
 	return t.base.RoundTrip(req)
 }
 
+type failFirstRoundTripper struct {
+	base  http.RoundTripper
+	calls int
+}
+
+func (t *failFirstRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.calls++
+	if t.calls == 1 {
+		return nil, temporaryRoundTripError{}
+	}
+	return t.base.RoundTrip(req)
+}
+
 func TestInitializeAndToolsList(t *testing.T) {
 	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
 		if got := r.Header.Get("Authorization"); got != "Bearer tok-123" {
@@ -108,6 +121,28 @@ func TestInitializeAndToolsList(t *testing.T) {
 	}
 	if len(tools) != 1 || tools[0].Name != "get_namespace" {
 		t.Fatalf("tools = %+v", tools)
+	}
+}
+
+func TestInitialize_NoRetryOnTransientTransportError(t *testing.T) {
+	var serverCalls int
+	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
+		serverCalls++
+		t.Fatalf("initialize reached server after transport failure: call %d", serverCalls)
+	})
+	defer srv.Close()
+
+	c := New(srv.URL, "t", time.Second, Options{})
+	transport := &failFirstRoundTripper{base: http.DefaultTransport}
+	c.HTTP.Transport = transport
+	if err := c.Initialize(context.Background()); err == nil {
+		t.Fatal("Initialize succeeded after transient transport failure")
+	}
+	if transport.calls != 1 {
+		t.Fatalf("transport calls = %d, want 1", transport.calls)
+	}
+	if serverCalls != 0 {
+		t.Fatalf("server calls = %d, want 0", serverCalls)
 	}
 }
 
@@ -182,6 +217,35 @@ func TestToolsList_RetriesHTTP500(t *testing.T) {
 	}
 	if calls != 2 {
 		t.Fatalf("tools/list calls = %d, want 2", calls)
+	}
+}
+
+func TestToolsList_NoRetryOnJSONRPCApplicationError(t *testing.T) {
+	var calls int
+	srv := newRPCServer(t, func(w http.ResponseWriter, r *http.Request, req rpcReq) {
+		switch req.Method {
+		case "initialize":
+			writeResult(w, "s", req.ID, map[string]any{"protocolVersion": ProtocolVersion})
+		case "tools/list":
+			calls++
+			writeError(w, http.StatusBadRequest, req.ID, -32602, "invalid parameters")
+		default:
+			t.Fatalf("unexpected method %q", req.Method)
+		}
+	})
+	defer srv.Close()
+
+	c := New(srv.URL, "t", time.Second, Options{})
+	if err := c.Initialize(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	_, err := c.ToolsList(context.Background())
+	e, ok := err.(*Error)
+	if !ok || e.Kind != KindInvalidParams {
+		t.Fatalf("want KindInvalidParams, got %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("tools/list calls = %d, want 1", calls)
 	}
 }
 
