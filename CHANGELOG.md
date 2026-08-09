@@ -11,7 +11,7 @@ Initial visible release of the Citadel command-line client.
 - Added the Cobra-based `citadel-cli` binary with version injection, global server selection, quiet/verbose/debug HTTP flags, color controls, pager support, shell completion, manpage generation, and `doctor` diagnostics.
 - Added browser OAuth login with PKCE, headless `auth set-token`, eager JWT-to-agent-token migration, token status/logout flows, OAuth provider list/link/unlink, and one-shot 401 recovery via agent-token rotation.
 - Added agent-token management, `agent create` with initial-token issuance, and agent list/get/delete/rotate-token workflows.
-- Added repository, namespace, and account surfaces: repo/namespace/agent CRUD, namespace alias `ns`, account passkeys/devices, account SSH keys, org invitations, namespace profiles, and namespace notifications.
+- Added repository, namespace, and account surfaces: repo/namespace/agent CRUD, namespace alias `ns`, account settings via the web panel, account SSH keys, org invitations, namespace profiles, and namespace notifications.
 - Added repository workflows for clone/push/pull over SSH, branch and tag management, deploy tokens, webhooks, commit list/get, tree/blob browsing, topics, and repository insights.
 - Added namespace issue workflows including list/view/create/comment/close/reopen/label/close-refs and issue milestone list/view/create/edit/delete.
 - Added top-level project graph verbs, authenticated global search, audit event list/show, audit session list/show, and extended Knowledge Graph queries.

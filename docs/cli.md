@@ -14,6 +14,21 @@ make build
 cp ./citadel-cli /usr/local/bin/citadel-cli
 ```
 
+For a standard installation of the binary and generated section-1 man pages,
+run:
+
+```bash
+make install
+```
+
+`make install` uses `PREFIX=/usr/local` by default and installs the binary
+under `$(DESTDIR)$(PREFIX)/bin` and man pages under
+`$(DESTDIR)$(PREFIX)/share/man/man1`. Set `DESTDIR` when staging a package:
+
+```bash
+make install PREFIX=/usr DESTDIR="$pkgdir"
+```
+
 ### Via `go install` (latest)
 
 ```bash
@@ -131,6 +146,18 @@ citadel-cli project edge delete org/repo <edge-uuid> --yes
 citadel-cli project reindex org/repo --yes
 ```
 
+Operators can enqueue a project-graph recovery scan. The command is
+operator-only and requires typing `recovery-scan` to confirm unless `--yes` is
+provided:
+
+```bash
+citadel-cli project admin recovery-scan
+citadel-cli project admin recovery-scan --yes --output json
+```
+
+The result includes `repos_enqueued`; use `--output json` or `--output yaml`
+for machine-readable output.
+
 HTTP **404** responses may indicate RBAC denial (`projectgraph:read` / `projectgraph:manage`) rather than a wrong path — verify grants before assuming the slug is invalid.
 
 Opt-in live smoke (requires **`CITADEL_TEST_PROJECTGRAPH_LIVE=1`**, **`CITADEL_ACCESS_TOKEN`**, and **`CITADEL_TEST_PROJECTGRAPH_SLUG`**):
@@ -202,6 +229,18 @@ CITADEL_TEST_ISSUES_LIVE=1 \
 CITADEL_TEST_ISSUES_NS=acme/demo \
 go test ./cmd -run TestLiveIssues_roundTrip_optIn -count=1
 ```
+
+### Direct API requests
+
+Use `citadel-cli api` for raw JSON request bodies on POST, PUT, and PATCH:
+
+```bash
+citadel-cli api POST /api/example --input request.json
+printf '%s\n' '{"name":"demo"}' | citadel-cli api POST /api/example --input -
+```
+
+`--input -` reads the body from stdin. `--input` is mutually exclusive with
+`-f`/`--field`; GET and DELETE reject `--input`.
 
 ### Repositories via system git
 
@@ -487,6 +526,15 @@ citadel-cli ssh-key delete <key-id>
 ### Live integration test
 
 Opt-in: **`CITADEL_TEST_SSH_KEYS_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`** (see `cmd/ssh_key_live_test.go`). CI skips when unset.
+
+## Account security
+
+Manage passkeys and signed-in devices in the Citadel web app's settings
+panel. The CLI does not expose account security management verbs.
+
+### `--debug-http` and secrets
+
+Do not paste **`--debug-http`** traces into tickets: Authorization is redacted, but never assume other fields are safe to publish.
 
 ## Account security (passkeys and devices)
 
