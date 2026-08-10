@@ -241,16 +241,16 @@ func runReleaseView(cmd *cobra.Command, args []string) error {
 }
 
 func getReleaseAtPath(cmd *cobra.Command, suffix, tagForErr string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	var row releaseRow
@@ -267,14 +267,6 @@ func getReleaseAtPath(cmd *cobra.Command, suffix, tagForErr string) error {
 }
 
 func runReleaseCreate(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
 		return err
@@ -283,6 +275,14 @@ func runReleaseCreate(cmd *cobra.Command, _ []string) error {
 	tag = strings.TrimSpace(tag)
 	if tag == "" {
 		return fmt.Errorf("--tag required")
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
 	}
 	name, _ := cmd.Flags().GetString("name")
 	name = strings.TrimSpace(name)
@@ -318,14 +318,6 @@ func runReleaseCreate(cmd *cobra.Command, _ []string) error {
 }
 
 func runReleaseEdit(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
 		return err
@@ -333,6 +325,14 @@ func runReleaseEdit(cmd *cobra.Command, args []string) error {
 	tag := strings.TrimSpace(args[0])
 	if tag == "" {
 		return fmt.Errorf("tag required")
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
 	}
 
 	req := releaseUpdateReq{}
@@ -472,14 +472,6 @@ func runReleaseAssetList(cmd *cobra.Command, args []string) error {
 }
 
 func runReleaseAssetUpload(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
-		return err
-	}
 	tag := strings.TrimSpace(args[0])
 	if tag == "" {
 		return fmt.Errorf("tag required")
@@ -490,6 +482,14 @@ func runReleaseAssetUpload(cmd *cobra.Command, args []string) error {
 	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	path := releaseAssetPath(nsPath, tag)
