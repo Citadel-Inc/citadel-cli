@@ -109,7 +109,7 @@ Full reference: [docs/cli.md](docs/cli.md).
 
 Cursor-backed list verbs (`repo list`, `repo deploy-token list`, `repo webhook list`, `repo commit list`, `namespace deploy-token list`, `namespace webhook list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`, `notification list`, `audit list`) accept **`--limit`** (default 50, maximum 200), **`--cursor`** (opaque token from the prior response’s `next_cursor` field), and **`--all`** (walk pages serially until exhausted). In human/table mode, when more rows exist the CLI prints a trailing hint: `(use --cursor … for more, or --all to fetch everything)`.
 
-Offset-paginated lists (`gist list` and `audit sessions list`) use **`--limit`/`--offset`** (not **`--cursor`**); negative values are rejected.
+Offset-paginated lists (`gist list` and `audit sessions list`) use **`--limit`/`--offset`** (not **`--cursor`**); negative values are rejected, and a value of `0` omits the parameter or uses the server default.
 
 **`--output json`** returns a single JSON array for one server round-trip only; **`--output ndjson`** emits one JSON object per row and is the supported mode for **`--all`** when you want a machine-readable stream without buffering the entire result set. Passing **`--all` with `--output json`** is rejected with an error directing you to `ndjson`.
 
