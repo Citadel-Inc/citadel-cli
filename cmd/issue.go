@@ -555,10 +555,6 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 }
 
 func runIssueView(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -569,6 +565,10 @@ func runIssueView(cmd *cobra.Command, args []string) error {
 	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	var payload issueDetailPayload
@@ -970,10 +970,6 @@ func runIssueLabel(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueCloseRefs(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -984,6 +980,10 @@ func runIssueCloseRefs(cmd *cobra.Command, args []string) error {
 	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	var payload struct {
