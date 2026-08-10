@@ -326,14 +326,6 @@ func runReleaseEdit(cmd *cobra.Command, args []string) error {
 	if tag == "" {
 		return fmt.Errorf("tag required")
 	}
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
-		return err
-	}
 
 	req := releaseUpdateReq{}
 	hasUpdate := false
@@ -361,6 +353,14 @@ func runReleaseEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("nothing to update: pass --name, --body, --draft, or --prerelease")
 	}
 
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
 	path := releaseBasePath(nsPath) + "/" + url.PathEscape(tag)
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would PATCH %s (skipped; --dry-run)\n", path)
