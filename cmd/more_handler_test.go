@@ -147,6 +147,20 @@ func TestAuditSessionsList_NoNS(t *testing.T) {
 	}
 }
 
+func TestAuditSessionsList_NegativeOffset(t *testing.T) {
+	err := rootFor(cmd.AuditCmd, "sessions", "list", "--ns", "myorg", "--offset", "-1").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--offset cannot be negative") {
+		t.Fatalf("want negative offset error, got %v", err)
+	}
+}
+
+func TestAuditSessionsList_NegativeLimit(t *testing.T) {
+	err := rootFor(cmd.AuditCmd, "sessions", "list", "--ns", "myorg", "--limit", "-1").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--limit cannot be negative") {
+		t.Fatalf("want negative limit error, got %v", err)
+	}
+}
+
 func TestAuditSessionsList_OutputJSON(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /audit/sessions": func(w http.ResponseWriter, _ *http.Request) {
