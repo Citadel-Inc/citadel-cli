@@ -369,6 +369,7 @@ citadel-cli repo webhook deliveries redeliver -R acme/demo <delivery-id>
 citadel-cli repo webhook deliveries redeliver -R acme/demo <delivery-id> --dry-run
 
 citadel-cli namespace webhook deliveries list acme
+citadel-cli namespace webhook deliveries list acme --offset 50
 citadel-cli namespace webhook deliveries get acme <delivery-id>
 citadel-cli namespace webhook deliveries redeliver acme <delivery-id>
 ```
