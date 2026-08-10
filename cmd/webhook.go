@@ -14,6 +14,7 @@ import (
 
 	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
 	"github.com/Rethunk-Tech/citadel-cli/internal/completion"
+	"github.com/Rethunk-Tech/citadel-cli/internal/pagination"
 )
 
 const (
@@ -1043,7 +1044,7 @@ func fetchWebhookDeliveryIDs(ctx context.Context, c *apiclient.Client, namespace
 	var payload struct {
 		Deliveries []webhookDeliveryRow `json:"deliveries"`
 	}
-	if err := c.Get(ctx, webhookAPIPath(namespacePath)+"/deliveries?limit=50", &payload); err != nil {
+	if err := c.Get(ctx, webhookAPIPath(namespacePath)+"/deliveries?limit="+fmt.Sprintf("%d", pagination.DefaultLimit), &payload); err != nil {
 		return nil, err
 	}
 	return payload.Deliveries, nil
