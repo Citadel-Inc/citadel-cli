@@ -100,6 +100,15 @@ func TestIssueView_NotFound(t *testing.T) {
 	}
 }
 
+func TestIssueView_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "view", "-R", "acme/demo", "7", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestIssueCreate_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues", "/namespaces/acme/demo/issues") {
@@ -431,5 +440,14 @@ func TestIssueCloseRefs_Happy(t *testing.T) {
 	})
 	if err := rootFor(cmd.IssueCmd, "close-refs", "-R", "acme/demo", "7").Execute(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestIssueCloseRefs_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "close-refs", "-R", "acme/demo", "7", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }

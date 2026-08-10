@@ -81,6 +81,15 @@ func TestIssueMilestoneView_NotFound(t *testing.T) {
 	}
 }
 
+func TestIssueMilestoneView_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "milestone", "view", "-R", "acme/demo", "11111111-1111-1111-1111-111111111111", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestIssueMilestoneCreate_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || !issuePathMatches(r, "/namespaces/acme%2Fdemo/milestones", "/namespaces/acme/demo/milestones") {
