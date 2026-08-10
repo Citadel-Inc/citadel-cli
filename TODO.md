@@ -6,6 +6,17 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 102348ZAUG26 (fenced wave 11)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 47 | Keep-split limit validation docs | `docs/cli.md` List pagination; HUMANS pagination notes |
+| 48 | Webhook create/edit/get/redeliver auth-before-guard | Flag/output/UUID before `newAPIClient` + hermetic tests |
+| — | Audit sessions show output-before-auth | `validateGetOutput` + hermetic bad-output |
+| — | Search negative `--limit` hermetic | Local guard coverage |
+
+---
+
 ## Shipped 102337ZAUG26 (fenced wave 10)
 
 | # | Item | Notes |
@@ -225,20 +236,53 @@ _(#44–#46 shipped in wave 10; audit should-fixes closed in-wave.)_
 
 ## Round 12 — wave-10 audit carry-forwards (102337ZAUG26)
 
-### 47. Negative `--limit` message models (do not unify casually)
+_(#47–#48 shipped in wave 11.)_
 
-**Polish.** `gist list` / audit sessions use `--limit cannot be negative` (0 means omit). Cursor-paginated webhook list/deliveries use `readPagination` → `--limit must be between 1 and N`. Wave 10 left both; product call required before unifying.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/gist.go`, `cmd/audit_sessions.go`, `cmd/pagination.go`, webhook list handlers |
-| **Acceptance** | Documented single policy, or explicit keep-split note in `docs/cli.md` pagination section |
+## Round 13 — wave-11 audit carry-forwards (102348ZAUG26)
 
-### 48. Broader webhook handler auth-before-guard sweep
+### 49. Audit show auth-before-guard
 
-**Polish.** Wave 10 fixed `runWebhookList` / `runWebhookDeliveryList` only. Create/edit/get/redeliver still authenticate before local flag validation.
+**Polish.** `runAuditShow` still calls `newAPIClient` before `validateGetOutput`.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/webhook.go` (`runWebhookCreate` / `Edit` / `DeliveryGet` / siblings) |
-| **Acceptance** | Client-independent flag errors surface under empty `XDG_CONFIG_HOME` without auth noise; focused tests where guards exist |
+| **Packages / files** | `cmd/audit.go`, `cmd/audit_rbac_handler_test.go` |
+| **Acceptance** | Bad `--output` fails under empty `XDG_CONFIG_HOME` without auth noise |
+
+### 50. Release auth-before-guard
+
+**Polish.** `getReleaseAtPath` / create / edit / asset upload validate output (and cheap required flags) after auth.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/release.go`, `cmd/release_handler_test.go` |
+| **Acceptance** | Hermetic bad-output / missing-flag errors before client construction |
+
+### 51. Issue + milestone auth-before-guard
+
+**Polish.** `runIssueView`, `runIssueCloseRefs`, `runIssueMilestoneView` invert validation vs auth.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/issue.go`, `cmd/issue_milestone.go`, matching handler tests |
+| **Acceptance** | Hermetic output validation before auth |
+
+### 52. PR view/check auth-before-guard
+
+**Polish.** `runPRView` / `runPRCheck` validate output after `newAPIClient`.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/pr.go`, `cmd/pr_collab.go`, `cmd/pr_handler_test.go` |
+| **Acceptance** | Hermetic bad-output before auth |
+
+### 53. Repo commit get auth-before-guard
+
+**Polish.** `runRepoCommitGet` builds the API client before `validateGetOutput`.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/repo_commit.go`, `cmd/repo_commit_handler_test.go` |
+| **Acceptance** | Hermetic bad-output before auth |
