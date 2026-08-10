@@ -213,6 +213,17 @@ func TestReleaseEdit_NoChange(t *testing.T) {
 	}
 }
 
+func TestReleaseEdit_NoChange_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.ReleaseCmd,
+		"edit", "v1.0.0", "-R", "acme/demo",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "nothing to update") {
+		t.Fatalf("want nothing-to-update error, got %v", err)
+	}
+}
+
 func TestReleaseEdit_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
