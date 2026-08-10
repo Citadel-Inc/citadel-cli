@@ -355,7 +355,7 @@ func runWebhookList(cmd *cobra.Command, namespacePath string) error {
 	first := true
 	for {
 		q := url.Values{}
-		q.Set("limit", fmt.Sprintf("%d", limit))
+		q.Set("limit", strconv.Itoa(limit))
 		if cursor != "" {
 			q.Set("cursor", cursor)
 		}
@@ -645,12 +645,12 @@ func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
 	first := true
 	for {
 		q := url.Values{}
-		q.Set("limit", fmt.Sprintf("%d", limit))
+		q.Set("limit", strconv.Itoa(limit))
 		if cursor != "" {
 			q.Set("cursor", cursor)
 		}
 		if offset > 0 && cursor == "" {
-			q.Set("offset", fmt.Sprintf("%d", offset))
+			q.Set("offset", strconv.Itoa(offset))
 		}
 		if strings.TrimSpace(webhookID) != "" {
 			q.Set("webhook_id", strings.TrimSpace(webhookID))
