@@ -203,6 +203,14 @@ func TestAuditSessionsShow_Happy(t *testing.T) {
 	}
 }
 
+func TestAuditSessionsShow_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	err := rootFor(cmd.AuditCmd, "sessions", "show", "sess-abc", "--output", "csv").Execute()
+	if err == nil || !strings.Contains(err.Error(), `--output: unknown format "csv"`) {
+		t.Fatalf("want invalid output error, got %v", err)
+	}
+}
+
 func TestAuditSessionsShow_OutputJSON(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /audit/sessions/sess-xyz": func(w http.ResponseWriter, _ *http.Request) {
