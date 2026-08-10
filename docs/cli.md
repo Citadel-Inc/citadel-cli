@@ -487,6 +487,9 @@ citadel-cli namespace deploy-token revoke acme <token-id>
 List verbs support the standard `--limit`, `--cursor`, `--all`, `--watch`, and
 `--output json|yaml|ndjson|csv|table` flags.
 
+Create prints the one-time cleartext token to stdout in human mode and includes
+it in `--output json`. Revoke supports `--dry-run`.
+
 ### List pagination
 
 List commands use one of two pagination policies:
@@ -498,9 +501,6 @@ List commands use one of two pagination policies:
 - Offset-paginated verbs, including `gist list` and [audit sessions
   list](#audit-sessions), reject negative `--limit` and `--offset` values with
   `cannot be negative`. A value of `0` omits the parameter or uses its default.
-
-Create prints the one-time cleartext token to stdout in human mode and includes
-it in `--output json`. Revoke supports `--dry-run`.
 
 ## Org members
 
