@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 102354ZAUG26 (fenced wave 12)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 49 | Audit list/show auth-before-guard | Flags/output before client; hermetic RBAC tests |
+| 50 | Release auth-before-guard | get/create/edit/upload + empty-edit before auth |
+| 51 | Issue/milestone/comment auth-before-guard | View/close-refs/milestone view+list/comment list |
+| 52 | PR view/check auth-before-guard | Output before client + hermetic |
+| 53 | Repo commit get auth-before-guard | Output before client + hermetic |
+| — | Webhook delete output-before-auth | Scout leftover from #48 |
+
+---
+
 ## Shipped 102348ZAUG26 (fenced wave 11)
 
 | # | Item | Notes |
@@ -242,47 +255,35 @@ _(#47–#48 shipped in wave 11.)_
 
 ## Round 13 — wave-11 audit carry-forwards (102348ZAUG26)
 
-### 49. Audit show auth-before-guard
+_(#49–#53 shipped in wave 12; should-fixes closed in-wave.)_
 
-**Polish.** `runAuditShow` still calls `newAPIClient` before `validateGetOutput`.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/audit.go`, `cmd/audit_rbac_handler_test.go` |
-| **Acceptance** | Bad `--output` fails under empty `XDG_CONFIG_HOME` without auth noise |
+## Round 14 — wave-12 audit carry-forwards (102354ZAUG26)
 
-### 50. Release auth-before-guard
+### 54. Release list/asset-list auth-before-guard
 
-**Polish.** `getReleaseAtPath` / create / edit / asset upload validate output (and cheap required flags) after auth.
+**Polish.** `runReleaseList` / `runReleaseAssetList` still call `newAPIClient` before `validateListOutput`.
 
 | | |
 | --- | --- |
 | **Packages / files** | `cmd/release.go`, `cmd/release_handler_test.go` |
-| **Acceptance** | Hermetic bad-output / missing-flag errors before client construction |
-
-### 51. Issue + milestone auth-before-guard
-
-**Polish.** `runIssueView`, `runIssueCloseRefs`, `runIssueMilestoneView` invert validation vs auth.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/issue.go`, `cmd/issue_milestone.go`, matching handler tests |
-| **Acceptance** | Hermetic output validation before auth |
-
-### 52. PR view/check auth-before-guard
-
-**Polish.** `runPRView` / `runPRCheck` validate output after `newAPIClient`.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/pr.go`, `cmd/pr_collab.go`, `cmd/pr_handler_test.go` |
 | **Acceptance** | Hermetic bad-output before auth |
 
-### 53. Repo commit get auth-before-guard
+### 55. Repo commit list auth-before-guard
 
-**Polish.** `runRepoCommitGet` builds the API client before `validateGetOutput`.
+**Polish.** `runRepoCommitList` still authenticates before list-output validation.
 
 | | |
 | --- | --- |
 | **Packages / files** | `cmd/repo_commit.go`, `cmd/repo_commit_handler_test.go` |
 | **Acceptance** | Hermetic bad-output before auth |
+
+### 56. Broader auth-before-guard sweep (remaining cmd handlers)
+
+**Polish.** Many list/mutate handlers outside wave-12 fences still authenticate before local validation. Sweep by package when touching them.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/*.go` handlers with `validate*Output` after `newAPIClient` |
+| **Acceptance** | Client-independent errors under empty `XDG_CONFIG_HOME`; prefer hermetic tests when adding guards |
