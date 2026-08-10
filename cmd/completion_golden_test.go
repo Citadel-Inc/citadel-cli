@@ -732,6 +732,44 @@ func TestCompleteRepoWebhookDeliveryIDs_UsesRepoContext(t *testing.T) {
 	}
 }
 
+func TestCompleteRepoWebhookDeliveryIDs_UsesPositionalRepo(t *testing.T) {
+	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if !webhookPathMatches(r,
+			"/api/namespaces/acme%2Fdemo/webhooks/deliveries",
+			"/api/namespaces/acme/demo/webhooks/deliveries") ||
+			r.URL.Query().Get("limit") != "50" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"deliveries": []any{
+				map[string]any{"id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"},
+				map[string]any{"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"},
+			},
+		})
+	})
+	root := NewRootCmd()
+	get := repoWebhookDeliveryGetFromRoot(t, root)
+	get.SetContext(context.Background())
+	vals, d := completeRepoWebhookDeliveryIDs(get, []string{"acme/demo"}, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(vals) != 2 || vals[0] != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" || vals[1] != "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" {
+		t.Fatalf("got %q", vals)
+	}
+
+	redeliver := repoWebhookDeliveryRedeliverFromRoot(t, root)
+	redeliver.SetContext(context.Background())
+	redeliverVals, redeliverDir := completeRepoWebhookDeliveryIDs(redeliver, []string{"acme/demo"}, "")
+	if redeliverDir != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("redeliver directive %v", redeliverDir)
+	}
+	if len(redeliverVals) != len(vals) || redeliverVals[0] != vals[0] || redeliverVals[1] != vals[1] {
+		t.Fatalf("redeliver got %q, want %q", redeliverVals, vals)
+	}
+}
+
 func TestCompleteNamespaceWebhookDeliveryIDs_UsesNamespaceArg(t *testing.T) {
 	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/namespaces/acme/webhooks/deliveries" || r.URL.Query().Get("limit") != "50" {
