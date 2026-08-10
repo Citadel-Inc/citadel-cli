@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -196,16 +197,20 @@ func runGistList(cmd *cobra.Command, _ []string) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
+	limit, _ := cmd.Flags().GetInt("limit")
+	if limit < 0 {
+		return fmt.Errorf("--limit cannot be negative")
+	}
 	q := url.Values{}
-	if limit, _ := cmd.Flags().GetInt("limit"); limit > 0 {
-		q.Set("limit", fmt.Sprintf("%d", limit))
+	if limit > 0 {
+		q.Set("limit", strconv.Itoa(limit))
 	}
 	offset, _ := cmd.Flags().GetInt("offset")
 	if offset < 0 {
 		return fmt.Errorf("--offset cannot be negative")
 	}
 	if offset > 0 {
-		q.Set("offset", fmt.Sprintf("%d", offset))
+		q.Set("offset", strconv.Itoa(offset))
 	}
 	path := "/gists"
 	if encoded := q.Encode(); encoded != "" {
