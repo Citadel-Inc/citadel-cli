@@ -78,8 +78,11 @@ func runAuditSessionsList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if limit < 0 || offset < 0 {
-		return fmt.Errorf("--limit and --offset must be non-negative")
+	if limit < 0 {
+		return fmt.Errorf("--limit cannot be negative")
+	}
+	if offset < 0 {
+		return fmt.Errorf("--offset cannot be negative")
 	}
 	actorType, _ := cmd.Flags().GetString("actor-type")
 
