@@ -40,6 +40,7 @@ func resetGistTestFlags() {
 
 func executeGistTestCommand(t *testing.T, args ...string) (string, error) {
 	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	resetGistTestFlags()
 	root := NewRootCmd()
 	var output bytes.Buffer
@@ -176,6 +177,13 @@ func TestGistList_NegativeOffset(t *testing.T) {
 	_, err := executeGistTestCommand(t, "gist", "list", "--offset", "-1", "--output", "json")
 	if err == nil || !strings.Contains(err.Error(), "--offset cannot be negative") {
 		t.Fatalf("gist list negative offset error = %v", err)
+	}
+}
+
+func TestGistList_NegativeLimit(t *testing.T) {
+	_, err := executeGistTestCommand(t, "gist", "list", "--limit", "-1", "--output", "json")
+	if err == nil || !strings.Contains(err.Error(), "--limit cannot be negative") {
+		t.Fatalf("gist list negative limit error = %v", err)
 	}
 }
 
