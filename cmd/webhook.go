@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1044,7 +1045,7 @@ func fetchWebhookDeliveryIDs(ctx context.Context, c *apiclient.Client, namespace
 	var payload struct {
 		Deliveries []webhookDeliveryRow `json:"deliveries"`
 	}
-	if err := c.Get(ctx, webhookAPIPath(namespacePath)+"/deliveries?limit="+fmt.Sprintf("%d", pagination.DefaultLimit), &payload); err != nil {
+	if err := c.Get(ctx, webhookAPIPath(namespacePath)+"/deliveries?limit="+strconv.Itoa(pagination.DefaultLimit), &payload); err != nil {
 		return nil, err
 	}
 	return payload.Deliveries, nil
