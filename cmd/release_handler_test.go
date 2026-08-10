@@ -123,6 +123,18 @@ func TestReleaseView_NotFound(t *testing.T) {
 	}
 }
 
+func TestReleaseView_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.ReleaseCmd,
+		"view", "v1.0.0", "-R", "acme/demo",
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestReleaseCreate_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -166,6 +178,30 @@ func TestReleaseCreate_TagNotPushed(t *testing.T) {
 	}
 }
 
+func TestReleaseCreate_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.ReleaseCmd,
+		"create", "-R", "acme/demo",
+		"--tag", "v1.0.0",
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestReleaseCreate_MissingTag_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.ReleaseCmd,
+		"create", "-R", "acme/demo",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "tag") {
+		t.Fatalf("want missing tag validation error, got %v", err)
+	}
+}
+
 func TestReleaseEdit_NoChange(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		t.Error("should not call server when nothing to update")
@@ -174,6 +210,19 @@ func TestReleaseEdit_NoChange(t *testing.T) {
 	err := rootFor(cmd.ReleaseCmd, "edit", "v1.0.0", "-R", "acme/demo").Execute()
 	if err == nil || !strings.Contains(err.Error(), "nothing to update") {
 		t.Fatalf("want nothing-to-update error, got %v", err)
+	}
+}
+
+func TestReleaseEdit_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.ReleaseCmd,
+		"edit", "v1.0.0", "-R", "acme/demo",
+		"--name", "renamed",
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
@@ -361,6 +410,18 @@ func TestReleaseAssetUpload_SizeLimit(t *testing.T) {
 	err := rootFor(cmd.ReleaseCmd, "asset", "upload", "v1.0.0", uploadPath, "-R", "acme/demo").Execute()
 	if err == nil || !strings.Contains(err.Error(), "size limit") {
 		t.Fatalf("want size-limit error, got %v", err)
+	}
+}
+
+func TestReleaseAssetUpload_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.ReleaseCmd,
+		"asset", "upload", "v1.0.0", "artifact.bin", "-R", "acme/demo",
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
