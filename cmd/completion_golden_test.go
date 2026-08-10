@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
+	"github.com/Rethunk-Tech/citadel-cli/internal/pagination"
 	"github.com/spf13/cobra"
 )
 
@@ -693,7 +695,7 @@ func TestCompleteRepoWebhookDeliveryIDs_UsesRepoContext(t *testing.T) {
 		if !webhookPathMatches(r,
 			"/api/namespaces/acme%2Fdemo/webhooks/deliveries",
 			"/api/namespaces/acme/demo/webhooks/deliveries") ||
-			r.URL.Query().Get("limit") != "50" {
+			r.URL.Query().Get("limit") != strconv.Itoa(pagination.DefaultLimit) {
 			http.NotFound(w, r)
 			return
 		}
@@ -737,7 +739,7 @@ func TestCompleteRepoWebhookDeliveryIDs_UsesPositionalRepo(t *testing.T) {
 		if !webhookPathMatches(r,
 			"/api/namespaces/acme%2Fdemo/webhooks/deliveries",
 			"/api/namespaces/acme/demo/webhooks/deliveries") ||
-			r.URL.Query().Get("limit") != "50" {
+			r.URL.Query().Get("limit") != strconv.Itoa(pagination.DefaultLimit) {
 			http.NotFound(w, r)
 			return
 		}
@@ -772,7 +774,7 @@ func TestCompleteRepoWebhookDeliveryIDs_UsesPositionalRepo(t *testing.T) {
 
 func TestCompleteNamespaceWebhookDeliveryIDs_UsesNamespaceArg(t *testing.T) {
 	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/namespaces/acme/webhooks/deliveries" || r.URL.Query().Get("limit") != "50" {
+		if r.URL.Path != "/api/namespaces/acme/webhooks/deliveries" || r.URL.Query().Get("limit") != strconv.Itoa(pagination.DefaultLimit) {
 			http.NotFound(w, r)
 			return
 		}
