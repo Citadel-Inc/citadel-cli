@@ -883,6 +883,9 @@ func emitWebhookDeliveryHuman(cmd *cobra.Command, delivery webhookDeliveryRow) e
 }
 
 func runWebhookDelete(cmd *cobra.Command, namespacePath, rawID string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	id, err := uuid.Parse(strings.TrimSpace(rawID))
 	if err != nil {
