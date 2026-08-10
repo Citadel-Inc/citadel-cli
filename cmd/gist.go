@@ -189,10 +189,6 @@ func parseGistFiles(values []string) (map[string]string, error) {
 }
 
 func runGistList(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
@@ -215,6 +211,10 @@ func runGistList(cmd *cobra.Command, _ []string) error {
 	path := "/gists"
 	if encoded := q.Encode(); encoded != "" {
 		path += "?" + encoded
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	var payload gistListPayload
 	if err := c.Get(cmd.Context(), path, &payload); err != nil {
