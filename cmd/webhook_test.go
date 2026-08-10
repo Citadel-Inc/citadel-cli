@@ -554,6 +554,21 @@ func TestRepoWebhookDeliveriesList_NegativeOffset(t *testing.T) {
 	}
 }
 
+func TestRepoWebhookDeliveriesList_NegativeLimit(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "deliveries", "list", "-R", "acme/demo",
+		"--limit", "-1", "--output", "json",
+	).Execute()
+	if err == nil {
+		t.Fatal("expected negative limit error")
+	}
+	if !strings.Contains(err.Error(), "--limit must be between") {
+		t.Fatalf("want negative limit error, got %v", err)
+	}
+}
+
 func TestRepoWebhookDeliveriesList_AllOmitsOffsetOnSecondPage(t *testing.T) {
 	next := pagination.EncodeDesc(time.Unix(100, 0).UTC(), uuid.MustParse(testDeliveryID))
 	var pages int
