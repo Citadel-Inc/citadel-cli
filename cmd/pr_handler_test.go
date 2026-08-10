@@ -173,6 +173,18 @@ func TestPRView_NotFound(t *testing.T) {
 	}
 }
 
+func TestPRView_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.PrCmd,
+		"view", "-R", testNSPath, "7",
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 // ── pr create ─────────────────────────────────────────────────────────────────
 
 func TestPRCreate_Happy(t *testing.T) {
@@ -408,6 +420,18 @@ func TestPRCheck_JSON(t *testing.T) {
 	}
 	if out["mergeable"] != true {
 		t.Fatalf("want mergeable=true, got %v", out["mergeable"])
+	}
+}
+
+func TestPRCheck_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.PrCmd,
+		"check", "-R", testNSPath, "7",
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
