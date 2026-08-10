@@ -68,6 +68,18 @@ func TestAuditRBAC_ShowHappy(t *testing.T) {
 	}
 }
 
+func TestAuditRBAC_ShowBadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.AuditCmd,
+		"show", "event-1",
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestAuditRBAC_ShowNotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /audit/events/missing": func(w http.ResponseWriter, _ *http.Request) {
