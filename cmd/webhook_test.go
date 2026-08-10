@@ -477,6 +477,18 @@ func TestRepoWebhookDelete_DryRun(t *testing.T) {
 	}
 }
 
+func TestRepoWebhookDelete_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "delete", "acme/demo", testWebhookID,
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestRepoWebhookDelete_Forbidden(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
