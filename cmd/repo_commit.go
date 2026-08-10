@@ -216,6 +216,11 @@ func runRepoCommitList(cmd *cobra.Command, args []string) error {
 // ── get ───────────────────────────────────────────────────────────────────────
 
 func runRepoCommitGet(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -239,10 +244,6 @@ func runRepoCommitGet(cmd *cobra.Command, args []string) error {
 		sha = strings.TrimSpace(args[1])
 	}
 
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
-		return err
-	}
 	filePath, _ := cmd.Flags().GetString("path")
 
 	// If --path is given, fetch the per-file unified diff
