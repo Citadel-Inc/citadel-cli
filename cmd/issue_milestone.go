@@ -258,10 +258,6 @@ func lookupMilestoneIDs(cmd *cobra.Command, nsPath string) ([]string, cobra.Shel
 }
 
 func runIssueMilestoneList(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -279,6 +275,10 @@ func runIssueMilestoneList(cmd *cobra.Command, _ []string) error {
 	case "open", "closed", "all":
 	default:
 		return fmt.Errorf("--state must be open, closed, or all")
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	rows, err := fetchMilestones(cmd.Context(), c, nsPath)
 	if err != nil {

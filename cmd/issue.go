@@ -782,10 +782,6 @@ func runIssueCommentAdd(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueCommentList(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -796,6 +792,10 @@ func runIssueCommentList(cmd *cobra.Command, args []string) error {
 	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	var payload struct {
