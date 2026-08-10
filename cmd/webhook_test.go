@@ -121,6 +121,32 @@ func TestRepoWebhookCreate_HumanShowsReturnedSecret(t *testing.T) {
 	}
 }
 
+func TestRepoWebhookCreate_MissingURL_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "create", "acme/demo",
+		"--events", "issue.opened",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--url is required") {
+		t.Fatalf("want missing URL validation error, got %v", err)
+	}
+}
+
+func TestRepoWebhookCreate_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "create", "acme/demo",
+		"--url", "https://example.test/inbox",
+		"--events", "issue.opened",
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestRepoWebhookGet_JSONFiltersFromList(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || !issuePathMatches(r, "/api/namespaces/acme%2Fdemo/webhooks", "/api/namespaces/acme/demo/webhooks") {
@@ -324,6 +350,19 @@ func TestRepoWebhookEdit_RequiresChangingFlag(t *testing.T) {
 	err := rootFor(cmd.RepoCmd, "webhook", "edit", "acme/demo", testWebhookID).Execute()
 	if err == nil || !strings.Contains(err.Error(), "at least one changing flag is required") {
 		t.Fatalf("expected missing edit flag error, got %v", err)
+	}
+}
+
+func TestRepoWebhookEdit_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "edit", "acme/demo", testWebhookID,
+		"--name", "renamed",
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
@@ -569,6 +608,21 @@ func TestRepoWebhookDeliveriesList_NegativeLimit(t *testing.T) {
 	}
 }
 
+func TestRepoWebhookList_NegativeLimit(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "list", "-R", "acme/demo",
+		"--limit", "-1", "--output", "json",
+	).Execute()
+	if err == nil {
+		t.Fatal("expected negative limit error")
+	}
+	if !strings.Contains(err.Error(), "--limit must be between") {
+		t.Fatalf("want negative limit error, got %v", err)
+	}
+}
+
 func TestRepoWebhookDeliveriesList_AllOmitsOffsetOnSecondPage(t *testing.T) {
 	next := pagination.EncodeDesc(time.Unix(100, 0).UTC(), uuid.MustParse(testDeliveryID))
 	var pages int
@@ -692,6 +746,18 @@ func TestRepoWebhookDeliveriesRedeliver(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "Event kind: issue.opened") {
 		t.Fatalf("missing event kind in redeliver output: %s", out.String())
+	}
+}
+
+func TestRepoWebhookDeliveriesRedeliver_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "deliveries", "redeliver", "-R", "acme/demo", testDeliveryID,
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 

@@ -1286,8 +1286,6 @@ func init() {
 		c.Flags().String("url", "", "Target URL for webhook delivery (required)")
 		c.Flags().StringSlice("events", nil, "Comma-separated or repeated event kinds to deliver (required)")
 		c.Flags().Bool("active", true, "Create the webhook in active state")
-		_ = c.MarkFlagRequired("url")
-		_ = c.MarkFlagRequired("events")
 		_ = c.RegisterFlagCompletionFunc("events", completeWebhookEvents)
 	}
 	namespaceWebhookCreateCmd.Flags().Bool("include-descendants", false, "Deliver matching events from descendant namespaces as well")
