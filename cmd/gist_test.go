@@ -172,6 +172,13 @@ func TestGistCRUDAndRaw(t *testing.T) {
 	}
 }
 
+func TestGistList_NegativeOffset(t *testing.T) {
+	_, err := executeGistTestCommand(t, "gist", "list", "--offset", "-1", "--output", "json")
+	if err == nil || !strings.Contains(err.Error(), "--offset cannot be negative") {
+		t.Fatalf("gist list negative offset error = %v", err)
+	}
+}
+
 type gistStreamingBuffer struct {
 	mu         sync.Mutex
 	buffer     bytes.Buffer

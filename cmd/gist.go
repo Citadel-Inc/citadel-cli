@@ -200,7 +200,11 @@ func runGistList(cmd *cobra.Command, _ []string) error {
 	if limit, _ := cmd.Flags().GetInt("limit"); limit > 0 {
 		q.Set("limit", fmt.Sprintf("%d", limit))
 	}
-	if offset, _ := cmd.Flags().GetInt("offset"); offset > 0 {
+	offset, _ := cmd.Flags().GetInt("offset")
+	if offset < 0 {
+		return fmt.Errorf("--offset cannot be negative")
+	}
+	if offset > 0 {
 		q.Set("offset", fmt.Sprintf("%d", offset))
 	}
 	path := "/gists"
