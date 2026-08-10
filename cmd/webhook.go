@@ -330,10 +330,6 @@ func runNamespaceWebhookList(cmd *cobra.Command, args []string) error {
 }
 
 func runWebhookList(cmd *cobra.Command, namespacePath string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
@@ -348,6 +344,10 @@ func runWebhookList(cmd *cobra.Command, namespacePath string) error {
 	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 
 	var yamlAccum []webhookRow
