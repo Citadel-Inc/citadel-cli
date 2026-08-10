@@ -6,6 +6,16 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 102245ZAUG26 (fenced wave 9)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 41 | Delivery completion goldens pin `DefaultLimit` | Three mocks use `strconv.Itoa(pagination.DefaultLimit)` |
+| 42 | Delivery completion `strconv.Itoa` | `fetchWebhookDeliveryIDs` limit query |
+| 43 | Gist list negative `--offset` | Shared `--offset cannot be negative` + test |
+
+---
+
 ## Shipped 102238ZAUG26 (fenced wave 8)
 
 | # | Item | Notes |
@@ -190,29 +200,35 @@ _(#37–#40 shipped in wave 8.)_
 
 ## Round 10 — wave-8 audit carry-forwards (102238ZAUG26)
 
-### 41. Delivery completion goldens pin `DefaultLimit`
+_(#41–#43 shipped in wave 9.)_
 
-**Hygiene.** Completion httptest mocks still assert `limit != "50"`; prod now uses `pagination.DefaultLimit`.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/completion_golden_test.go` |
-| **Acceptance** | Mock limit check uses `strconv.Itoa(pagination.DefaultLimit)` (or equivalent) |
+## Round 11 — wave-9 audit carry-forwards (102245ZAUG26)
 
-### 42. Prefer `strconv.Itoa` for delivery completion limit query
+### 44. Hermetic config for gist negative-offset test
 
-**Polish.** `fetchWebhookDeliveryIDs` builds `limit=` via `fmt.Sprintf("%d", …)`; sibling list verbs use `strconv.Itoa`.
+**Polish.** `TestGistList_NegativeOffset` hits `newAPIClient` before the offset guard; a bad host config can fail the test before the assertion. Same latent shape as webhook deliveries negative-offset tests.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/webhook.go` |
-| **Acceptance** | Query uses `strconv.Itoa(pagination.DefaultLimit)` consistent with other list builders |
+| **Packages / files** | `cmd/gist_test.go` (optionally mirror in webhook negative-offset tests) |
+| **Acceptance** | `t.Setenv("XDG_CONFIG_HOME", t.TempDir())` (or shared helper) so the guard assertion is hermetic |
 
-### 43. Gist list negative `--offset` guard
+### 45. Gist list negative `--limit` guard
 
-**Polish.** `gist list` only applies `offset > 0`; negative values are silently dropped (no `--offset cannot be negative`).
+**Polish.** `gist list` only applies `limit > 0`; negatives are silently dropped. Wave 9 deliberately scoped offset-only.
 
 | | |
 | --- | --- |
 | **Packages / files** | `cmd/gist.go`, `cmd/gist_test.go` |
-| **Acceptance** | Negative `--offset` errors with the shared `--offset cannot be negative` wording |
+| **Acceptance** | Negative `--limit` errors with `--limit cannot be negative` (audit/webhook wording) |
+
+### 46. Webhook list builders prefer `strconv.Itoa`
+
+**Polish.** Repo/namespace webhook list still use `fmt.Sprintf("%d", limit|offset)` at list sites; delivery completion fetch already uses `strconv.Itoa`.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/webhook.go` (list handlers ~358/648/653); optionally `cmd/gist.go` list query builders |
+| **Acceptance** | List query builders use `strconv.Itoa` consistently with sibling verbs |
