@@ -302,6 +302,15 @@ func TestIssueCommentList_Empty(t *testing.T) {
 	}
 }
 
+func TestIssueCommentList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "comment", "list", "-R", "acme/demo", "7", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestIssueCommentEdit_Happy(t *testing.T) {
 	const commentID = "00000000-0000-0000-0000-000000000099"
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {

@@ -45,6 +45,15 @@ func TestIssueMilestoneList_JSON(t *testing.T) {
 	}
 }
 
+func TestIssueMilestoneList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "milestone", "list", "-R", "acme/demo", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestIssueMilestoneView_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || !issuePathMatches(r, "/namespaces/acme%2Fdemo/milestones/11111111-1111-1111-1111-111111111111", "/namespaces/acme/demo/milestones/11111111-1111-1111-1111-111111111111") {
