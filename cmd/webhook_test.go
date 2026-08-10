@@ -540,6 +540,8 @@ func TestRepoWebhookDeliveriesList_WebhookFilter(t *testing.T) {
 }
 
 func TestRepoWebhookDeliveriesList_NegativeOffset(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 	err := rootFor(cmd.RepoCmd,
 		"webhook", "deliveries", "list", "-R", "acme/demo",
 		"--offset", "-1", "--output", "json",
