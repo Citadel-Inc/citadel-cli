@@ -55,10 +55,6 @@ type auditSessionSummary struct {
 }
 
 func runAuditSessionsList(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
@@ -85,6 +81,11 @@ func runAuditSessionsList(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--offset cannot be negative")
 	}
 	actorType, _ := cmd.Flags().GetString("actor-type")
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 
 	q := url.Values{}
 	q.Set("ns", ns)
