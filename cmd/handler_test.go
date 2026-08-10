@@ -2234,6 +2234,14 @@ func TestSearch_QueryTooShortLocal(t *testing.T) {
 	}
 }
 
+func TestSearch_LocalNegativeLimit(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	err := rootFor(cmd.SearchCmd, "ab", "--limit", "-1").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--limit must be between 1 and 25") {
+		t.Fatalf("want negative limit validation error, got %v", err)
+	}
+}
+
 func TestSearch_InvalidScopeFlag(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{}))
 	err := rootFor(cmd.SearchCmd, "ab", "--scope", "bogus").Execute()
