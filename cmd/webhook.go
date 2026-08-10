@@ -611,10 +611,6 @@ func runNamespaceWebhookDeliveryList(cmd *cobra.Command, args []string) error {
 }
 
 func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
@@ -639,6 +635,10 @@ func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
 	}
 	webhookID, _ := cmd.Flags().GetString("webhook-id")
 	state, _ := cmd.Flags().GetString("state")
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 
 	var yamlAccum []webhookDeliveryRow
 	csvHdr := false
