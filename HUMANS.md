@@ -60,7 +60,7 @@ Makefile                         build / build-all / test / vet / lint / verify
 ## Day-to-day
 
 | Need | Run |
-|------|-----|
+| ------ | ----- |
 | Local build | `make build` (binary at `./citadel-cli`) |
 | Cross-compile release artefacts | `make build-all` (4 platforms into `dist/`) |
 | Run tests | `make test` |
@@ -109,7 +109,7 @@ Full reference: [docs/cli.md](docs/cli.md).
 
 Cursor-backed list verbs (`repo list`, `repo deploy-token list`, `repo webhook list`, `repo commit list`, `namespace deploy-token list`, `namespace webhook list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`, `notification list`, `audit list`) accept **`--limit`** (default 50, maximum 200), **`--cursor`** (opaque token from the prior response’s `next_cursor` field), and **`--all`** (walk pages serially until exhausted). In human/table mode, when more rows exist the CLI prints a trailing hint: `(use --cursor … for more, or --all to fetch everything)`.
 
-Offset-paginated lists (`gist list` and `audit sessions list`) use **`--limit`**/`**--offset`** (not **`--cursor`**); negative values are rejected.
+Offset-paginated lists (`gist list` and `audit sessions list`) use **`--limit`/`--offset`** (not **`--cursor`**); negative values are rejected.
 
 **`--output json`** returns a single JSON array for one server round-trip only; **`--output ndjson`** emits one JSON object per row and is the supported mode for **`--all`** when you want a machine-readable stream without buffering the entire result set. Passing **`--all` with `--output json`** is rejected with an error directing you to `ndjson`.
 
@@ -145,7 +145,7 @@ On failure, machine-readable output modes use a single top-level object with an 
 ### `kind` values (v1)
 
 | `kind` | Typical meaning |
-|--------|-----------------|
+| -------- | ----------------- |
 | `auth_required` | Missing token, HTTP 401, or MCP unauthorized |
 | `mfa_required` | HTTP 412 (recent MFA / verification) |
 | `forbidden` | HTTP 403 |
@@ -163,7 +163,7 @@ On failure, machine-readable output modes use a single top-level object with an 
 ### Exit code map (v1)
 
 | Code | Meaning |
-|------|---------|
+| ------ | --------- |
 | 0 | Success |
 | 1 | `internal` and other generic failures |
 | 2 | `validation`, `dry_run`, and MCP `tools/call` `isError` (`ErrToolCallFailed`) |
