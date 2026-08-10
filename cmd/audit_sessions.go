@@ -147,12 +147,12 @@ func runAuditSessionsList(cmd *cobra.Command, _ []string) error {
 }
 
 func runAuditSessionsShow(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	id := strings.TrimSpace(args[0])
