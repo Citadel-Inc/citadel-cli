@@ -85,10 +85,6 @@ type auditShowPayload struct {
 }
 
 func runAuditList(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
@@ -102,6 +98,11 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 	}
 	if err := validateAuditCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 
 	since, _ := cmd.Flags().GetString("since")
