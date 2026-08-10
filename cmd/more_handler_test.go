@@ -148,6 +148,7 @@ func TestAuditSessionsList_NoNS(t *testing.T) {
 }
 
 func TestAuditSessionsList_NegativeOffset(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	err := rootFor(cmd.AuditCmd, "sessions", "list", "--ns", "myorg", "--offset", "-1").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--offset cannot be negative") {
 		t.Fatalf("want negative offset error, got %v", err)
@@ -155,6 +156,7 @@ func TestAuditSessionsList_NegativeOffset(t *testing.T) {
 }
 
 func TestAuditSessionsList_NegativeLimit(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	err := rootFor(cmd.AuditCmd, "sessions", "list", "--ns", "myorg", "--limit", "-1").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--limit cannot be negative") {
 		t.Fatalf("want negative limit error, got %v", err)
