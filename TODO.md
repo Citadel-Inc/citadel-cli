@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 102337ZAUG26 (fenced wave 10)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 44 | Hermetic gist + webhook deliveries negative-offset | `executeGistTestCommand` XDG; deliveries test XDG |
+| 45 | Gist list negative `--limit` | Guard + test; validation before auth |
+| 46 | Webhook list `strconv.Itoa` | List + deliveries query builders |
+| — | Webhook list/deliveries auth-before-guard | Flags before `newAPIClient` |
+| — | Audit sessions auth-before-guard + hermetic negatives | Handler + both tests |
+| — | Deliveries negative `--limit` test | `readPagination` range wording |
+
+---
+
 ## Shipped 102245ZAUG26 (fenced wave 9)
 
 | # | Item | Notes |
@@ -206,29 +219,26 @@ _(#41–#43 shipped in wave 9.)_
 
 ## Round 11 — wave-9 audit carry-forwards (102245ZAUG26)
 
-### 44. Hermetic config for gist negative-offset test
+_(#44–#46 shipped in wave 10; audit should-fixes closed in-wave.)_
 
-**Polish.** `TestGistList_NegativeOffset` hits `newAPIClient` before the offset guard; a bad host config can fail the test before the assertion. Same latent shape as webhook deliveries negative-offset tests.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/gist_test.go` (optionally mirror in webhook negative-offset tests) |
-| **Acceptance** | `t.Setenv("XDG_CONFIG_HOME", t.TempDir())` (or shared helper) so the guard assertion is hermetic |
+## Round 12 — wave-10 audit carry-forwards (102337ZAUG26)
 
-### 45. Gist list negative `--limit` guard
+### 47. Negative `--limit` message models (do not unify casually)
 
-**Polish.** `gist list` only applies `limit > 0`; negatives are silently dropped. Wave 9 deliberately scoped offset-only.
+**Polish.** `gist list` / audit sessions use `--limit cannot be negative` (0 means omit). Cursor-paginated webhook list/deliveries use `readPagination` → `--limit must be between 1 and N`. Wave 10 left both; product call required before unifying.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/gist.go`, `cmd/gist_test.go` |
-| **Acceptance** | Negative `--limit` errors with `--limit cannot be negative` (audit/webhook wording) |
+| **Packages / files** | `cmd/gist.go`, `cmd/audit_sessions.go`, `cmd/pagination.go`, webhook list handlers |
+| **Acceptance** | Documented single policy, or explicit keep-split note in `docs/cli.md` pagination section |
 
-### 46. Webhook list builders prefer `strconv.Itoa`
+### 48. Broader webhook handler auth-before-guard sweep
 
-**Polish.** Repo/namespace webhook list still use `fmt.Sprintf("%d", limit|offset)` at list sites; delivery completion fetch already uses `strconv.Itoa`.
+**Polish.** Wave 10 fixed `runWebhookList` / `runWebhookDeliveryList` only. Create/edit/get/redeliver still authenticate before local flag validation.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/webhook.go` (list handlers ~358/648/653); optionally `cmd/gist.go` list query builders |
-| **Acceptance** | List query builders use `strconv.Itoa` consistently with sibling verbs |
+| **Packages / files** | `cmd/webhook.go` (`runWebhookCreate` / `Edit` / `DeliveryGet` / siblings) |
+| **Acceptance** | Client-independent flag errors surface under empty `XDG_CONFIG_HOME` without auth noise; focused tests where guards exist |
