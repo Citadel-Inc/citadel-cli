@@ -463,12 +463,15 @@ func runNamespaceWebhookCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runWebhookCreate(cmd *cobra.Command, namespacePath string, allowDescendants bool) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
 		return err
 	}
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	body, err := readWebhookCreateRequest(cmd, allowDescendants)
+	if err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -524,6 +527,9 @@ func runNamespaceWebhookEdit(cmd *cobra.Command, args []string) error {
 }
 
 func runWebhookEdit(cmd *cobra.Command, namespacePath, rawID string, allowDescendants bool) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	id, err := uuid.Parse(strings.TrimSpace(rawID))
 	if err != nil {
@@ -792,6 +798,9 @@ func runNamespaceWebhookDeliveryRedeliver(cmd *cobra.Command, args []string) err
 }
 
 func runWebhookDeliveryRedeliver(cmd *cobra.Command, namespacePath, rawID string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
 	path, err := webhookDeliveryAPIPath(namespacePath, rawID)
 	if err != nil {
 		return err
