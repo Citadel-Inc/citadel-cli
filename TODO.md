@@ -6,6 +6,17 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 102238ZAUG26 (fenced wave 8)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 37 | Delivery completion `DefaultLimit` | `fetchWebhookDeliveryIDs` uses `pagination.DefaultLimit` |
+| 38 | Positional-repo delivery golden | `TestCompleteRepoWebhookDeliveryIDs_UsesPositionalRepo` get+redeliver |
+| 39 | Namespace deliveries `--offset` docs | Example beside namespace list block in `docs/cli.md` |
+| 40 | Align negative-offset copy | Audit split to `--limit`/`--offset cannot be negative`; webhook kept; tests |
+
+---
+
 ## Shipped 091705ZAUG26 (fenced wave 7)
 
 | # | Item | Notes |
@@ -173,38 +184,35 @@ _(#34–#36 shipped in wave 7.)_
 
 ## Round 9 — wave-7 audit carry-forwards (091705ZAUG26)
 
-### 37. Delivery completion uses `pagination.DefaultLimit`
+_(#37–#40 shipped in wave 8.)_
 
-**Hygiene.** `fetchWebhookDeliveryIDs` hardcodes `limit=50`; `pagination.DefaultLimit` is currently also 50.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/webhook.go` |
-| **Acceptance** | Completion fetch uses `pagination.DefaultLimit` (or shared constant) so limit drift cannot desync |
+## Round 10 — wave-8 audit carry-forwards (102238ZAUG26)
 
-### 38. Positional-repo delivery completion golden
+### 41. Delivery completion goldens pin `DefaultLimit`
 
-**Test.** Repo delivery completion golden covers `-R` only; `args[0]=ns/repo` path untested (same gap as webhook-ID completion).
+**Hygiene.** Completion httptest mocks still assert `limit != "50"`; prod now uses `pagination.DefaultLimit`.
 
 | | |
 | --- | --- |
 | **Packages / files** | `cmd/completion_golden_test.go` |
-| **Acceptance** | Golden asserts delivery IDs when completing with positional repo arg |
+| **Acceptance** | Mock limit check uses `strconv.Itoa(pagination.DefaultLimit)` (or equivalent) |
 
-### 39. Namespace deliveries `--offset` docs example
+### 42. Prefer `strconv.Itoa` for delivery completion limit query
 
-**Docs.** `docs/cli.md` documents repo `--offset` example; namespace block has none (shared bullet already lists the flag).
-
-| | |
-| --- | --- |
-| **Packages / files** | `docs/cli.md` (optional `HUMANS.md` pagination note) |
-| **Acceptance** | One namespace deliveries list example includes `--offset` |
-
-### 40. Align negative-offset error copy
-
-**Polish.** Webhook deliveries say `--offset cannot be negative`; audit sessions say `must be non-negative`.
+**Polish.** `fetchWebhookDeliveryIDs` builds `limit=` via `fmt.Sprintf("%d", …)`; sibling list verbs use `strconv.Itoa`.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/webhook.go`, `cmd/audit_sessions.go` (and any sibling offset validators) |
-| **Acceptance** | Shared wording for negative `--offset` across list verbs |
+| **Packages / files** | `cmd/webhook.go` |
+| **Acceptance** | Query uses `strconv.Itoa(pagination.DefaultLimit)` consistent with other list builders |
+
+### 43. Gist list negative `--offset` guard
+
+**Polish.** `gist list` only applies `offset > 0`; negative values are silently dropped (no `--offset cannot be negative`).
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/gist.go`, `cmd/gist_test.go` |
+| **Acceptance** | Negative `--offset` errors with the shared `--offset cannot be negative` wording |
