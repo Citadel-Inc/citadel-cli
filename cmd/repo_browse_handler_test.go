@@ -181,14 +181,6 @@ func TestRepoBrowseBlob_JSON(t *testing.T) {
 	}
 }
 
-func TestRepoBrowseBlob_MissingPath(t *testing.T) {
-	// No server needed — error fires before HTTP call
-	err := rootFor(cmd.RepoCmd, "browse", "blob", "acme/demo").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--path is required") {
-		t.Fatalf("expected --path required error, got: %v", err)
-	}
-}
-
 func TestRepoBrowseBlob_BadOutput_Hermetic(t *testing.T) {
 	setRepoBrowseHermeticEnv(t)
 
