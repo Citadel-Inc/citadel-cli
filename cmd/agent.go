@@ -331,7 +331,7 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	if err := c.Post(cmd.Context(), "/agents/"+a.ID.String()+"/rotate-token", nil, &newTok); err != nil {
 		return fmt.Errorf("rotate token: %w", err)
 	}
-	fmt.Println(newTok.CleartextToken)
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), newTok.CleartextToken)
 	return nil
 }
 
