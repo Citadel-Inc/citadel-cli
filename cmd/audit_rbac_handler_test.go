@@ -8,6 +8,13 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
 )
 
+func setAuditHermeticEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+}
+
 func TestAuditRBAC_ListHappy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
@@ -68,7 +75,7 @@ func TestAuditRBAC_ListNamespaceFilter(t *testing.T) {
 }
 
 func TestAuditRBAC_ListBadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setAuditHermeticEnv(t)
 
 	err := rootFor(cmd.AuditCmd,
 		"list",
@@ -80,7 +87,7 @@ func TestAuditRBAC_ListBadOutput_Hermetic(t *testing.T) {
 }
 
 func TestAuditRBAC_ListNegativeLimit_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setAuditHermeticEnv(t)
 
 	err := rootFor(cmd.AuditCmd,
 		"list",
@@ -112,7 +119,7 @@ func TestAuditRBAC_ShowHappy(t *testing.T) {
 }
 
 func TestAuditRBAC_ShowBadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setAuditHermeticEnv(t)
 
 	err := rootFor(cmd.AuditCmd,
 		"show", "event-1",
