@@ -173,7 +173,7 @@ func TestNotificationList_BadCursor_Hermetic(t *testing.T) {
 	setNotificationHermeticEnv(t)
 
 	err := rootFor(cmd.NotificationCmd, "list", "--cursor", "not-base64!!!").Execute()
-	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
+	if err == nil || err.Error() != `invalid --cursor: invalid_cursor: desc` {
 		t.Fatalf("want invalid cursor error, got %v", err)
 	}
 }
