@@ -403,11 +403,14 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 	if err := validateMemberCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
+	slug := strings.TrimSpace(args[0])
+	if slug == "" {
+		return fmt.Errorf("namespace slug required")
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	slug := args[0]
 	if watchFlag(cmd) {
 		return runNsMembersWatch(cmd, c, slug, limit, cursor, all)
 	}
