@@ -662,6 +662,19 @@ func TestTokenRevoke_DryRun_Hermetic(t *testing.T) {
 	}
 }
 
+func TestTokenIssue_InvalidExpires_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	var sb strings.Builder
+	err := rootForOut(cmd.TokenCmd, &sb, "issue", "--agent", "mybot", "--expires", "not-a-duration").Execute()
+	if err == nil {
+		t.Fatal("expected invalid --expires error")
+	}
+	if !strings.Contains(err.Error(), "invalid --expires") {
+		t.Fatalf("expected invalid --expires error, got %v", err)
+	}
+}
+
 // ── namespace delete ──────────────────────────────────────────────────────────
 
 func TestNsDelete_Success(t *testing.T) {
