@@ -132,7 +132,7 @@ func init() {
 // ── list ──────────────────────────────────────────────────────────────────────
 
 func runNotificationList(cmd *cobra.Command, _ []string) error {
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
