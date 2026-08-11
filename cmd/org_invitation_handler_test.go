@@ -1,6 +1,8 @@
 package cmd_test
 
 import (
+	"bytes"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -56,6 +58,33 @@ func TestOrgInvAccept_BadOutput_Hermetic(t *testing.T) {
 	err := rootFor(cmd.OrgCmd, "invitation", "accept", "token", "--output", "toml").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output for accept supports json or default human summary only") {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestOrgInvRevoke_EmptyID_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	err := rootFor(cmd.OrgCmd, "invitation", "revoke", "acme", " ").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invitation ID is required") {
+		t.Fatalf("want invitation ID required error, got %v", err)
+	}
+}
+
+func TestOrgInvRevoke_HappyOutput(t *testing.T) {
+	var stdout bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /orgs/acme/invitations/inv-123": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	}))
+
+	if err := rootForOut(cmd.OrgCmd, &stdout, "invitation", "revoke", " acme ", " inv-123 ").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); got != "Revoked invitation inv-123.\n" {
+		t.Fatalf("revoke output = %q", got)
 	}
 }
 
