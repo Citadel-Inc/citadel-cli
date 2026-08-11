@@ -690,10 +690,6 @@ func runNsTransferDecline(cmd *cobra.Command, args []string) error {
 }
 
 func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	transferID := args[0]
 
 	if dryRunFlag(cmd) {
@@ -704,6 +700,10 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	if err := c.Delete(cmd.Context(), "/transfers/"+url.PathEscape(transferID)); err != nil {
 		return err
 	}
@@ -712,10 +712,6 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 }
 
 func runNsDelete(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	slug := strings.TrimSpace(args[0])
 	if dryRunFlag(cmd) {
 		fmt.Printf("Would DELETE /namespaces/%s (skipped; --dry-run)\n", slug)
@@ -725,6 +721,10 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	if err := c.Delete(cmd.Context(), "/namespaces/"+url.PathEscape(slug)); err != nil {
 		var he *apiclient.HTTPError
 		if errors.As(err, &he) {
