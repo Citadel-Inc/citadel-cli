@@ -214,7 +214,7 @@ func TestAgentList_NoAuth(t *testing.T) {
 	}
 }
 
-func TestAgentList_BadOutput(t *testing.T) {
+func TestAgentList_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.AgentCmd, "list", "--output", "toml").Execute()
@@ -223,7 +223,17 @@ func TestAgentList_BadOutput(t *testing.T) {
 	}
 }
 
-func TestAgentList_WatchBadOutput(t *testing.T) {
+func TestAgentList_AllJSON_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.AgentCmd, "list", "--all", "--output", "json").Execute()
+	const want = "--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page"
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("want --all conflict error, got %v", err)
+	}
+}
+
+func TestAgentList_WatchBadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.AgentCmd, "list", "--watch", "--output", "json").Execute()
@@ -232,7 +242,7 @@ func TestAgentList_WatchBadOutput(t *testing.T) {
 	}
 }
 
-func TestAgentCreate_BadOutput(t *testing.T) {
+func TestAgentCreate_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.AgentCmd, "create", "alpha", "--output", "toml").Execute()
@@ -629,7 +639,7 @@ func TestTokenList_MissingAgent(t *testing.T) {
 	}
 }
 
-func TestTokenList_BadOutput(t *testing.T) {
+func TestTokenList_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--output", "toml").Execute()
@@ -638,7 +648,17 @@ func TestTokenList_BadOutput(t *testing.T) {
 	}
 }
 
-func TestTokenList_WatchBadOutput(t *testing.T) {
+func TestTokenList_AllJSON_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--all", "--output", "json").Execute()
+	const want = "--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page"
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("want --all conflict error, got %v", err)
+	}
+}
+
+func TestTokenList_WatchBadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--watch", "--output", "json").Execute()
