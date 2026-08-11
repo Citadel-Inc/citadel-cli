@@ -204,6 +204,19 @@ func TestGistDelete_YAMLOutput_DryRunHermetic(t *testing.T) {
 	}
 }
 
+func TestGistCreate_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	output, err := executeGistTestCommand(t, "gist", "create", "--title", "One", "--file", "main.go=package main", "--dry-run")
+	if err != nil {
+		t.Fatalf("gist create dry-run: %v", err)
+	}
+	if output != "Would POST /gists title=One (skipped; --dry-run)\n" {
+		t.Fatalf("gist create dry-run output = %q", output)
+	}
+}
+
 func TestGistDelete_DryRun_Hermetic(t *testing.T) {
 	output, err := executeGistTestCommand(t, "gist", "delete", "g1", "--dry-run")
 	if err != nil {
