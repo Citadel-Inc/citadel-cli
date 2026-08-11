@@ -149,11 +149,6 @@ func runRepoCreate(cmd *cobra.Command, _ []string) error {
 }
 
 func runRepoList(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	ns, _ := cmd.Flags().GetString("namespace")
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
@@ -168,14 +163,17 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
 	}
-	if watchFlag(cmd) {
-		if err := validateDescCursor(cursor); err != nil {
-			return fmt.Errorf("invalid --cursor: %w", err)
-		}
-		return runRepoListWatch(cmd, c, ns, limit, cursor, all)
-	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+
+	ns, _ := cmd.Flags().GetString("namespace")
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	if watchFlag(cmd) {
+		return runRepoListWatch(cmd, c, ns, limit, cursor, all)
 	}
 
 	var yamlAccum []repoRow
