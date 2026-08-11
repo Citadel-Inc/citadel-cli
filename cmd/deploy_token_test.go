@@ -127,6 +127,30 @@ func TestRepoDeployTokenRevokeDryRun(t *testing.T) {
 	}
 }
 
+func TestRepoDeployTokenRevokeDryRunHermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var out strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &out, "deploy-token", "revoke", "-R", "myorg/myrepo", "tok-3", "--dry-run").Execute(); err != nil {
+		t.Fatalf("repo deploy token revoke dry-run: %v", err)
+	}
+	if !strings.Contains(out.String(), "Would DELETE /namespaces/myorg%2Fmyrepo/deploy-tokens/tok-3") {
+		t.Fatalf("unexpected dry-run output: %q", out.String())
+	}
+}
+
+func TestNamespaceDeployTokenRevokeDryRunHermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var out strings.Builder
+	if err := rootForOut(cmd.NamespaceCmd, &out, "deploy-token", "revoke", "myorg", "tok-3", "--dry-run").Execute(); err != nil {
+		t.Fatalf("namespace deploy token revoke dry-run: %v", err)
+	}
+	if !strings.Contains(out.String(), "Would DELETE /namespaces/myorg/deploy-tokens/tok-3") {
+		t.Fatalf("unexpected dry-run output: %q", out.String())
+	}
+}
+
 func TestNamespaceDeployTokenRevokeNotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /namespaces/myorg/deploy-tokens/tok-404": func(w http.ResponseWriter, r *http.Request) {
