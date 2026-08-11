@@ -38,6 +38,39 @@ func TestNamespaceGet_EmptySlug_Hermetic(t *testing.T) {
 	}
 }
 
+func TestNamespaceMembers_EmptySlug_Hermetic(t *testing.T) {
+	setNamespaceHermeticEnv(t)
+
+	err := rootFor(cmd.NamespaceCmd, "members", " \t").Execute()
+	if err == nil || err.Error() != "namespace slug required" {
+		t.Fatalf("want empty slug validation error, got %v", err)
+	}
+}
+
+func TestNamespaceGet_TrimmedSlug_HTTP(t *testing.T) {
+	setNamespaceHermeticEnv(t)
+
+	var method, path string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method = r.Method
+		path = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"slug":"myorg"}`)
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+	t.Setenv("CITADEL_SERVER", server.URL)
+
+	var output bytes.Buffer
+	err := rootForOut(cmd.NamespaceCmd, &output, "get", " myorg ").Execute()
+	if err != nil {
+		t.Fatalf("namespace get trimmed slug: %v", err)
+	}
+	if method != http.MethodGet || path != "/namespaces/myorg" {
+		t.Fatalf("request = %s %s, want GET /namespaces/myorg", method, path)
+	}
+}
+
 func TestNamespaceTransferListPending_BadOutput_Hermetic(t *testing.T) {
 	assertNamespaceBadOutput(t, "transfer", "list-pending")
 }
