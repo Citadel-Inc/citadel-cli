@@ -331,7 +331,7 @@ func runRepoDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if dryRunFlag(cmd) {
-		fmt.Printf("Would DELETE /namespaces/%s/%s (skipped; --dry-run)\n", ns, slug)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /namespaces/%s/%s (skipped; --dry-run)\n", ns, slug)
 		return nil
 	}
 
