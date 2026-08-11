@@ -168,7 +168,7 @@ func TestLabelCreate_BadColor(t *testing.T) {
 }
 
 func TestLabelCreate_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setLabelHermeticEnv(t)
 
 	err := rootFor(cmd.LabelCmd, "create", "-R", "acme/demo",
 		"--name", "Bug", "--color", "d73a4a", "--output", "toml").Execute()
@@ -228,7 +228,7 @@ func TestLabelEdit_NotFound(t *testing.T) {
 }
 
 func TestLabelEdit_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setLabelHermeticEnv(t)
 
 	err := rootFor(cmd.LabelCmd, "edit", "-R", "acme/demo", "bug",
 		"--name", "Bug", "--output", "toml").Execute()
@@ -300,7 +300,7 @@ func TestLabelDelete_DryRun(t *testing.T) {
 }
 
 func TestLabelDelete_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setLabelHermeticEnv(t)
 
 	err := rootFor(cmd.LabelCmd, "delete", "-R", "acme/demo", "bug",
 		"--yes", "--output", "toml").Execute()
