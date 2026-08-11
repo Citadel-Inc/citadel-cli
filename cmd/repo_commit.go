@@ -87,6 +87,11 @@ Examples:
 // ── list ─────────────────────────────────────────────────────────────────────
 
 func runRepoCommitList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -97,10 +102,6 @@ func runRepoCommitList(cmd *cobra.Command, args []string) error {
 	}
 	ns, slug, err := resolveRepoFromPosOrFlag(cmd, pos)
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateListOutput(output); err != nil {
 		return err
 	}
 	limit, cursor, all, err := readPagination(cmd)
