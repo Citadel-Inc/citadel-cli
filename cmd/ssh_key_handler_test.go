@@ -45,3 +45,15 @@ func TestSSHKeyAdd_EmptyKey_Hermetic(t *testing.T) {
 		t.Fatalf("want empty key validation error, got %v", err)
 	}
 }
+
+func TestSSHKeyDelete_DryRunHermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	var sb strings.Builder
+
+	if err := rootForOut(cmd.SSHKeyCmd, &sb, "delete", "test-key-id", "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if out := sb.String(); !strings.Contains(out, "Would DELETE") || !strings.Contains(out, "test-key-id") {
+		t.Fatalf("expected dry-run output, got %q", out)
+	}
+}

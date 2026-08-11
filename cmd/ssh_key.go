@@ -207,14 +207,14 @@ func validateSSHPublicKeyMaterial(raw string, source string) error {
 }
 
 func runSSHKeyDelete(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	id := strings.TrimSpace(args[0])
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /account/ssh-keys/%s (skipped; --dry-run)\n", id)
 		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	path := "/account/ssh-keys/" + url.PathEscape(id)
 	if err := c.Delete(cmd.Context(), path); err != nil {
