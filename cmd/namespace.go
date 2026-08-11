@@ -294,7 +294,7 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 			case "yaml":
 				return emitYAML(cmd, []nsOrgRow{})
 			default:
-				fmt.Println("No org namespaces found.")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No org namespaces found.")
 				return nil
 			}
 		}
@@ -330,7 +330,7 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 
 		if !all {
 			if isHumanListOutput(output) && next != "" {
-				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
 			}
 			return nil
 		}
@@ -444,7 +444,7 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 			case "yaml":
 				return emitYAML(cmd, []nsMemberRow{})
 			default:
-				fmt.Println(empty)
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), empty)
 				return nil
 			}
 		}
@@ -488,7 +488,7 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 
 		if !all {
 			if isHumanListOutput(output) && next != "" {
-				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
 			}
 			return nil
 		}
@@ -531,9 +531,9 @@ func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
 		return emitJSON(cmd, result)
 	}
 	id, _ := result["id"].(string)
-	fmt.Printf("Transfer initiated. ID: %s\n", id)
-	fmt.Printf("The recipient '%s' must accept via:\n", to)
-	fmt.Printf("  citadel-cli namespace transfer accept %s\n", id)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Transfer initiated. ID: %s\n", id)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "The recipient '%s' must accept via:\n", to)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  citadel-cli namespace transfer accept %s\n", id)
 	return nil
 }
 
@@ -596,7 +596,7 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 			case "yaml":
 				return emitYAML(cmd, []nsTransferRow{})
 			default:
-				fmt.Println("No pending transfers.")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No pending transfers.")
 				return nil
 			}
 		}
@@ -634,7 +634,7 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 
 		if !all {
 			if isHumanListOutput(output) && next != "" {
-				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
 			}
 			return nil
 		}
@@ -671,7 +671,7 @@ func runNsTransferAccept(cmd *cobra.Command, args []string) error {
 	if output == "json" {
 		return emitJSON(cmd, result)
 	}
-	fmt.Printf("Transfer %s accepted.\n", transferID)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Transfer %s accepted.\n", transferID)
 	return nil
 }
 
