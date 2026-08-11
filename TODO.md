@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110324ZAUG26 (fenced wave 20)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 89 | Auth provider link normalize before client | Empty-XDG hermetic |
+| 90 | Release create/edit/asset-upload dry-run before auth | Empty-XDG full-string hermetics |
+| 91 | Org invitation create/accept auth-before-guard | Mutation output; invitee/token before client; hermetics |
+| 92 | Deploy-token create `--expires` before auth | Empty-XDG invalid-expires hermetic |
+| 94 | Token issue expires + OutOrStdout | Shared `parseExpiresFlag`; empty-XDG hermetic |
+| — | Should-fix closeout | Clear inherited API env on hermetics; mutation output on inv create/accept; empty-list OutOrStdout |
+
+---
+
 ## Shipped 110316ZAUG26 (fenced wave 19)
 
 | # | Item | Notes |
@@ -399,11 +412,44 @@ _(#82–#88 shipped in wave 19; should-fixes closed in-wave.)_
 
 ## Round 21 — wave-19 audit carry-forwards (110316ZAUG26)
 
-### 89. Auth provider link normalize before client
+_(#89 shipped in wave 20; should-fixes closed in-wave.)_
 
-**Polish.** `runAuthProviderLink` still builds `newAPIClient` before `normalizeAuthProviderID`. Wave 19 scoped unlink only.
+---
+
+## Round 22 — wave-20 audit carry-forwards (110324ZAUG26)
+
+### 93. Gist create/edit dry-run hermetics
+
+**Polish.** Handlers already dry-run before client; only delete has empty-XDG hermetics.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/auth_provider.go`, `cmd/auth_provider_test.go` |
-| **Acceptance** | Normalize before `newAPIClient`; empty-XDG hermetic for bad/empty provider |
+| **Packages / files** | `cmd/gist_test.go` (read-only `cmd/gist.go`) |
+| **Acceptance** | `TestGistCreate_DryRun_Hermetic` / `TestGistEdit_DryRun_Hermetic` with full-string asserts via `executeGistTestCommand`; clear inherited API env |
+
+### 95. Agent rotate-token OutOrStdout
+
+**Polish.** Cleartext still uses `fmt.Println`; token issue now uses `cmd.OutOrStdout()`.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/agent.go`, rotate-token tests |
+| **Acceptance** | Print via `cmd.OutOrStdout()`; captureable in hermetic/`rootForOut` |
+
+### 96. OAuth create/rotate secret OutOrStdout
+
+**Polish.** Sibling secret printers still use `fmt.Println` / raw stderr paths inconsistently with wave-19 revoke routing.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/oauth_clients.go`, `cmd/oauth_clients_handler_test.go` |
+| **Acceptance** | Cleartext/secret success paths use command writers; dry-run/hermetic capture remains stable |
+
+### 97. Release list/view/latest/download path-before-client
+
+**Polish.** Wave 20 scoped create/edit/upload only; list/view/latest/asset-download still resolve namespace after `newAPIClient`.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/release.go`, `cmd/release_handler_test.go` |
+| **Acceptance** | `resolveIssueNamespacePath` (+ local arg guards) before client; empty-XDG hermetics where local failure is meaningful |
