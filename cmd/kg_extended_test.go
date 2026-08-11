@@ -146,6 +146,83 @@ func TestKgSearchAllJSONHermetic(t *testing.T) {
 	}
 }
 
+func TestKgExtendedBadOutputHermetic(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "symbols",
+			args: []string{"symbols", "org/r1", "--q", "needle", "--output", "bogus"},
+			want: `--output: unknown format "bogus"`,
+		},
+		{
+			name: "files",
+			args: []string{"files", "org/r1", "--output", "bogus"},
+			want: `--output: unknown format "bogus"`,
+		},
+		{
+			name: "fulltext",
+			args: []string{"fulltext", "org/r1", "--q", "needle", "--output", "bogus"},
+			want: `--output: unknown format "bogus"`,
+		},
+		{
+			name: "walk",
+			args: []string{"walk", "org/r1", "--seed-id", "seed", "--output", "bogus"},
+			want: `--output supports json or yaml for kg queries; got "bogus"`,
+		},
+		{
+			name: "diff",
+			args: []string{"diff", "org/r1", "--output", "bogus"},
+			want: `--output supports json or yaml for kg queries; got "bogus"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+			var output strings.Builder
+			err := kgRootForOut(&output, tt.args...).Execute()
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want local output validation containing %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestKgExtendedRequiredFlagsHermetic(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "symbols query",
+			args: []string{"symbols", "org/r1"},
+			want: "q",
+		},
+		{
+			name: "walk seed",
+			args: []string{"walk", "org/r1"},
+			want: "seed-id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+			var output strings.Builder
+			err := kgRootForOut(&output, tt.args...).Execute()
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want required flag validation containing %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestKgSearch_AllPagination(t *testing.T) {
 	runKgAllPaginationTest(t,
 		"/api/kg/search",
