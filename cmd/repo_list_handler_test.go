@@ -69,3 +69,15 @@ func TestRepoList_BadCursor_Hermetic(t *testing.T) {
 		t.Fatalf("want cursor validation error, got %v", err)
 	}
 }
+
+func TestRepoDelete_DryRunHermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var out strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &out, "delete", "myorg/myrepo", "--dry-run").Execute(); err != nil {
+		t.Fatalf("repo delete dry-run: %v", err)
+	}
+	if !strings.Contains(out.String(), "Would DELETE /namespaces/myorg/myrepo (skipped; --dry-run)") {
+		t.Fatalf("unexpected dry-run output: %q", out.String())
+	}
+}
