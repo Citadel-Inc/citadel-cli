@@ -316,6 +316,17 @@ func TestTokenList_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestTokenList_BadCursor_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+
+	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--cursor", "not-base64!!!").Execute()
+	if err == nil || err.Error() != `invalid --cursor: invalid_cursor: desc` {
+		t.Fatalf("want invalid cursor error, got %v", err)
+	}
+}
+
 func TestTokenList_OutputJSON(t *testing.T) {
 	const agentID = "00000000-0000-0000-0000-00000000000a"
 	withServer(t, route(t, map[string]http.HandlerFunc{
