@@ -559,3 +559,27 @@ func TestReleaseAssetList_BadOutput_Hermetic(t *testing.T) {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
+
+func TestReleasePathGuards_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "list", args: []string{"list", "-R", "/"}},
+		{name: "latest", args: []string{"latest", "-R", "/"}},
+		{name: "view", args: []string{"view", "v1.0.0", "-R", "/"}},
+		{name: "asset download", args: []string{"asset", "download", "v1.0.0", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "-R", "/"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := rootFor(cmd.ReleaseCmd, tt.args...).Execute()
+			if err == nil || !strings.Contains(err.Error(), "namespace path required") {
+				t.Fatalf("want namespace-path validation error, got %v", err)
+			}
+		})
+	}
+}
