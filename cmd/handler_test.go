@@ -1934,10 +1934,13 @@ func TestAuditShow_tableExercisesOptionalFields(t *testing.T) {
 
 func TestAgentDelete_DryRun_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	t.Setenv("CITADEL_SERVER", "http://127.0.0.1:1")
-	t.Setenv("CITADEL_ACCESS_TOKEN", "")
-	if err := rootFor(cmd.AgentCmd, "delete", "alpha", "--dry-run").Execute(); err != nil {
+	var stdout strings.Builder
+	if err := rootForOut(cmd.AgentCmd, &stdout, "delete", "alpha", "--dry-run").Execute(); err != nil {
 		t.Fatal(err)
+	}
+	const want = "Would DELETE agent 'alpha' (skipped; --dry-run)\n"
+	if stdout.String() != want {
+		t.Fatalf("preview = %q want %q", stdout.String(), want)
 	}
 }
 

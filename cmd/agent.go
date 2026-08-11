@@ -285,7 +285,7 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 func runAgentDelete(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	if dryRunFlag(cmd) {
-		fmt.Printf("Would DELETE agent '%s' (skipped; --dry-run)\n", name)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE agent '%s' (skipped; --dry-run)\n", name)
 		return nil
 	}
 	if err := confirmSlug(yesFlag(cmd), "delete agent", name); err != nil {
