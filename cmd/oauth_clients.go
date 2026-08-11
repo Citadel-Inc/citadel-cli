@@ -356,11 +356,14 @@ func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "rotate"); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
 	copyClip, _ := cmd.Flags().GetBool("copy-to-clipboard")
 
 	var out oauthClientWithSecret
@@ -394,8 +397,8 @@ func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
-	if err != nil {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "revoke"); err != nil {
 		return err
 	}
 
@@ -406,7 +409,10 @@ func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
 	if err := confirmTypedValue(yesFlag(cmd), "revoke OAuth client", id); err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 
 	if err := c.Delete(cmd.Context(), "/oauth/clients/"+url.PathEscape(id)); err != nil {
 		return err
