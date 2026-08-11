@@ -20,6 +20,24 @@ func TestNamespaceMembers_BadOutput_Hermetic(t *testing.T) {
 	assertNamespaceBadOutput(t, "members", "acme")
 }
 
+func TestNamespaceGet_BadOutput_Hermetic(t *testing.T) {
+	setNamespaceHermeticEnv(t)
+
+	err := rootFor(cmd.NamespaceCmd, "get", "myorg", "--output", "xml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "xml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestNamespaceGet_EmptySlug_Hermetic(t *testing.T) {
+	setNamespaceHermeticEnv(t)
+
+	err := rootFor(cmd.NamespaceCmd, "get", " \t").Execute()
+	if err == nil || err.Error() != "namespace slug required" {
+		t.Fatalf("want empty slug validation error, got %v", err)
+	}
+}
+
 func TestNamespaceTransferListPending_BadOutput_Hermetic(t *testing.T) {
 	assertNamespaceBadOutput(t, "transfer", "list-pending")
 }
