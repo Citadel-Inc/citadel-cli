@@ -147,7 +147,7 @@ func TestIssueCreate_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.IssueCmd, "create", "-R", "acme/demo", "--title", "Ship it", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "supports json or default human summary") {
+	if err == nil || !strings.Contains(err.Error(), "--output for create supports json or default human summary only") {
 		t.Fatalf("want mutation output validation error, got %v", err)
 	}
 }
@@ -286,7 +286,7 @@ func TestIssueAssign_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.IssueCmd, "assign", "-R", "acme/demo", "7", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "supports json or default human summary") {
+	if err == nil || !strings.Contains(err.Error(), "--output for assign supports json or default human summary only") {
 		t.Fatalf("want mutation output validation error, got %v", err)
 	}
 }
@@ -400,7 +400,7 @@ func TestIssueClose_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.IssueCmd, "close", "-R", "acme/demo", "7", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "supports json or default human summary") {
+	if err == nil || !strings.Contains(err.Error(), "--output for close supports json or default human summary only") {
 		t.Fatalf("want mutation output validation error, got %v", err)
 	}
 }
@@ -470,7 +470,7 @@ func TestIssueLabel_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.IssueCmd, "label", "-R", "acme/demo", "7", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "supports json or default human summary") {
+	if err == nil || !strings.Contains(err.Error(), "--output for label supports json or default human summary only") {
 		t.Fatalf("want mutation output validation error, got %v", err)
 	}
 }
