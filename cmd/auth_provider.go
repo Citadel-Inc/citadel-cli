@@ -169,15 +169,15 @@ func runAuthProviderLink(cmd *cobra.Command, args []string) error {
 }
 
 func runAuthProviderUnlink(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	provider, err := normalizeAuthProviderID(args[0])
 	if err != nil {
 		return err
 	}
 	if err := confirmTypedValue(yesFlag(cmd), "unlink provider", provider); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	var resp map[string]any
