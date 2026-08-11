@@ -253,11 +253,11 @@ func TestNotificationUnreadCount_JSON(t *testing.T) {
 }
 
 func TestNotificationUnreadCount_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setNotificationHermeticEnv(t)
 
 	err := rootFor(cmd.NotificationCmd, "unread-count", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
-		t.Fatalf("want output validation error, got %v", err)
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want exact output validation error, got %v", err)
 	}
 }
 
@@ -304,11 +304,11 @@ func TestNotificationPrefsGet_JSON(t *testing.T) {
 }
 
 func TestNotificationPrefsGet_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setNotificationHermeticEnv(t)
 
 	err := rootFor(cmd.NotificationCmd, "prefs", "get", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
-		t.Fatalf("want output validation error, got %v", err)
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want exact output validation error, got %v", err)
 	}
 }
 
