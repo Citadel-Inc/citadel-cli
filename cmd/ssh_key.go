@@ -121,10 +121,8 @@ func runSSHKeyAdd(cmd *cobra.Command, _ []string) error {
 	label = strings.TrimSpace(label)
 
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	switch output {
-	case "", "json":
-	default:
-		return fmt.Errorf("--output for add supports json or default human summary only; got %q", output)
+	if err := validateMutationOutput(output, "add"); err != nil {
+		return err
 	}
 
 	material, source, err := resolveSSHPublicKeyMaterial(pubFlag, keyFile)
