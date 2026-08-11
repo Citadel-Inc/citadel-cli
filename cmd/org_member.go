@@ -168,10 +168,6 @@ func orgMemberFriendlyError(err error) error {
 }
 
 func runOrgMemberList(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
@@ -185,6 +181,11 @@ func runOrgMemberList(cmd *cobra.Command, args []string) error {
 	}
 	if err := validateMemberCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	orgSlug := strings.TrimSpace(args[0])
 
