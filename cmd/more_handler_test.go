@@ -163,6 +163,17 @@ func TestAuditSessionsList_NegativeLimit(t *testing.T) {
 	}
 }
 
+func TestAuditSessionsList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+
+	err := rootFor(cmd.AuditCmd, "sessions", "list", "--ns", "myorg", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestAuditSessionsList_OutputJSON(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /audit/sessions": func(w http.ResponseWriter, _ *http.Request) {
