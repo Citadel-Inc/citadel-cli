@@ -33,6 +33,25 @@ func TestOAuthClientsList_EmptyHuman(t *testing.T) {
 	}
 }
 
+func TestOAuthClientsList_PaginationHint(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /oauth/clients": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"clients":     []map[string]any{oauthClientRow()},
+				"next_cursor": "Y29hdXRoY3Vyc29y",
+			})
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.OauthCmd, &stdout, "clients", "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "(use --cursor Y29hdXRoY3Vyc29y for more, or --all to fetch everything)") {
+		t.Fatalf("expected pagination hint, got %q", stdout.String())
+	}
+}
+
 func TestOAuthClientsCreate_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
