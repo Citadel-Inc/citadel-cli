@@ -1538,8 +1538,12 @@ func TestOAuthRotateSecret_WithClipboard(t *testing.T) {
 			})
 		},
 	}))
-	if err := rootFor(cmd.OauthCmd, "clients", "rotate-secret", "00000000-0000-0000-0000-000000000001", "--copy-to-clipboard").Execute(); err != nil {
+	var stdout strings.Builder
+	if err := rootForOut(cmd.OauthCmd, &stdout, "clients", "rotate-secret", "00000000-0000-0000-0000-000000000001", "--copy-to-clipboard").Execute(); err != nil {
 		t.Fatal(err)
+	}
+	if got := stdout.String(); got != "sek\n" {
+		t.Fatalf("rotate secret output = %q, want %q", got, "sek\n")
 	}
 }
 
