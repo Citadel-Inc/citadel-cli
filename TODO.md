@@ -6,6 +6,18 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110340ZAUG26 (fenced wave 21)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 93 | Gist create/edit dry-run hermetics | Full-string empty-XDG; delete hermetics cleared + exact asserts |
+| 95 | Agent rotate-token OutOrStdout | `rootForOut` capture in Success/Happy |
+| 96 | OAuth create/rotate secret OutOrStdout | Command writers; HumanSecretOutput + handler happy capture |
+| 97 | Release list/view/latest/download path-before-client | Path guards hermetic; exact namespace-path assert |
+| — | Should-fix closeout | Revoke ErrOrStderr; revoke/gist delete API-env clear; handler happy capture; path-guard exact assert |
+
+---
+
 ## Shipped 110324ZAUG26 (fenced wave 20)
 
 | # | Item | Notes |
@@ -418,38 +430,44 @@ _(#89 shipped in wave 20; should-fixes closed in-wave.)_
 
 ## Round 22 — wave-20 audit carry-forwards (110324ZAUG26)
 
-### 93. Gist create/edit dry-run hermetics
+_(#93, #95–#97 shipped in wave 21; should-fixes closed in-wave.)_
 
-**Polish.** Handlers already dry-run before client; only delete has empty-XDG hermetics.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/gist_test.go` (read-only `cmd/gist.go`) |
-| **Acceptance** | `TestGistCreate_DryRun_Hermetic` / `TestGistEdit_DryRun_Hermetic` with full-string asserts via `executeGistTestCommand`; clear inherited API env |
+## Round 23 — wave-21 audit carry-forwards (110340ZAUG26)
 
-### 95. Agent rotate-token OutOrStdout
+### 98. Release asset list path-before-client
 
-**Polish.** Cleartext still uses `fmt.Println`; token issue now uses `cmd.OutOrStdout()`.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/agent.go`, rotate-token tests |
-| **Acceptance** | Print via `cmd.OutOrStdout()`; captureable in hermetic/`rootForOut` |
-
-### 96. OAuth create/rotate secret OutOrStdout
-
-**Polish.** Sibling secret printers still use `fmt.Println` / raw stderr paths inconsistently with wave-19 revoke routing.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/oauth_clients.go`, `cmd/oauth_clients_handler_test.go` |
-| **Acceptance** | Cleartext/secret success paths use command writers; dry-run/hermetic capture remains stable |
-
-### 97. Release list/view/latest/download path-before-client
-
-**Polish.** Wave 20 scoped create/edit/upload only; list/view/latest/asset-download still resolve namespace after `newAPIClient`.
+**Polish.** Wave 21 fixed list/view/latest/download; `runReleaseAssetList` still calls `newAPIClient` before `resolveIssueNamespacePath`.
 
 | | |
 | --- | --- |
 | **Packages / files** | `cmd/release.go`, `cmd/release_handler_test.go` |
-| **Acceptance** | `resolveIssueNamespacePath` (+ local arg guards) before client; empty-XDG hermetics where local failure is meaningful |
+| **Acceptance** | Namespace resolve (+ tag empty guard) before client; empty-XDG hermetic for path failure |
+
+### 99. Release asset ID completion path-before-client
+
+**Polish.** `completeReleaseAssetIDs` still builds the client before namespace resolve.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/release.go`, completion golden/tests if present |
+| **Acceptance** | `resolveIssueNamespacePath` before `newAPIClient` in the completion helper |
+
+### 100. Agent / OAuth list OutOrStdout
+
+**Polish.** Empty-list and cursor-hint paths still use bare `fmt.Println` after secret paths moved to command writers.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/agent.go`, `cmd/oauth_clients.go`, list tests |
+| **Acceptance** | List human messages via `cmd.OutOrStdout()`; captureable with `rootForOut` |
+
+### 101. OAuth rotate-secret clipboard test stdout capture
+
+**Polish.** `TestOAuthRotateSecret_WithClipboard` still uses `rootFor` and ignores secret stdout after wave-21 writer routing.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/handler_test.go:TestOAuthRotateSecret_WithClipboard` |
+| **Acceptance** | `rootForOut` + exact secret assert alongside clipboard stub success |
