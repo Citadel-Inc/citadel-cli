@@ -67,6 +67,9 @@ func upgradeUnauthorized(err error) error {
 
 func runKgImpact(cmd *cobra.Command, args []string) error {
 	symbol := strings.TrimSpace(args[len(args)-1])
+	if symbol == "" {
+		return fmt.Errorf("symbol cannot be empty")
+	}
 	depth, _ := cmd.Flags().GetInt("depth")
 	rawJSON := jsonFlag(cmd)
 
