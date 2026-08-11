@@ -305,7 +305,7 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 	if err := c.Delete(cmd.Context(), "/agents/"+a.ID.String()); err != nil {
 		return err
 	}
-	fmt.Printf("Agent '%s' deleted.\n", name)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Agent '%s' deleted.\n", name)
 	return nil
 }
 
