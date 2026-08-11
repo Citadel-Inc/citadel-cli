@@ -1,6 +1,9 @@
 package cmd_test
 
 import (
+	"bytes"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -46,6 +49,43 @@ func TestNamespaceRename_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestNamespaceTransferRevoke_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	transferID := "550e8400-e29b-41d4-a716-446655440000"
+	output, err := executeNamespaceCommand(t, "transfer", "revoke", transferID, "--dry-run")
+	if err != nil {
+		t.Fatalf("namespace transfer revoke dry-run: %v", err)
+	}
+	if !strings.Contains(output, "Would DELETE /transfers/"+transferID+" (skipped; --dry-run)") {
+		t.Fatalf("namespace transfer revoke dry-run output = %q", output)
+	}
+}
+
+func TestNamespaceDelete_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	output, err := executeNamespaceCommand(t, "delete", "acme", "--dry-run")
+	if err != nil {
+		t.Fatalf("namespace delete dry-run: %v", err)
+	}
+	if !strings.Contains(output, "Would DELETE /namespaces/acme (skipped; --dry-run)") {
+		t.Fatalf("namespace delete dry-run output = %q", output)
+	}
+}
+
+func TestNamespaceRename_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	output, err := executeNamespaceCommand(t, "rename", "acme", "--new-slug", "new-acme", "--dry-run")
+	if err != nil {
+		t.Fatalf("namespace rename dry-run: %v", err)
+	}
+	if !strings.Contains(output, "Would rename acme → new-acme (skipped; --dry-run)") {
+		t.Fatalf("namespace rename dry-run output = %q", output)
+	}
+}
+
 func TestNamespaceList_WatchJSON_Hermetic(t *testing.T) {
 	assertNamespaceWatchJSON(t, "list")
 }
@@ -76,4 +116,31 @@ func assertNamespaceWatchJSON(t *testing.T, args ...string) {
 	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
 		t.Fatalf("want watch/output validation error, got %v", err)
 	}
+}
+
+func executeNamespaceCommand(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+
+	originalStdout := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("create stdout pipe: %v", err)
+	}
+	var commandOutput bytes.Buffer
+	root := rootForOut(cmd.NamespaceCmd, &commandOutput, args...)
+	os.Stdout = writer
+	executeErr := root.Execute()
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close stdout pipe: %v", err)
+	}
+	os.Stdout = originalStdout
+
+	output, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("read stdout pipe: %v", err)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatalf("close stdout reader: %v", err)
+	}
+	return commandOutput.String() + string(output), executeErr
 }
