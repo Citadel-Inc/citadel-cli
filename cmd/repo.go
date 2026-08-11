@@ -321,10 +321,6 @@ func runRepoGet(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoDelete(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -340,6 +336,11 @@ func runRepoDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := confirmSlug(yesFlag(cmd), "delete", slug); err != nil {
+		return err
+	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 
