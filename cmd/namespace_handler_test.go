@@ -95,7 +95,7 @@ func TestNamespaceList_PaginationHint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("namespace list pagination: %v", err)
 	}
-	want := "SLUG          DISPLAY NAME  CREATED\nacme          Acme          0001-01-01\n(use --cursor next-123 for more, or --all to fetch everything)\n"
+	want := "SLUG  DISPLAY NAME  CREATED\nacme  Acme          0001-01-01\n(use --cursor next-123 for more, or --all to fetch everything)\n"
 	if output != want {
 		t.Fatalf("namespace list pagination output = %q, want %q", output, want)
 	}
