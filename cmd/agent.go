@@ -283,23 +283,22 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 }
 
 func runAgentDelete(cmd *cobra.Command, args []string) error {
+	name := args[0]
+	if dryRunFlag(cmd) {
+		fmt.Printf("Would DELETE agent '%s' (skipped; --dry-run)\n", name)
+		return nil
+	}
+	if err := confirmSlug(yesFlag(cmd), "delete agent", name); err != nil {
+		return err
+	}
+
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	name := args[0]
 
 	a, err := findAgentByName(cmd.Context(), c, name)
 	if err != nil {
-		return err
-	}
-
-	if dryRunFlag(cmd) {
-		fmt.Printf("Would DELETE /agents/%s (skipped; --dry-run)\n", a.ID)
-		return nil
-	}
-
-	if err := confirmSlug(yesFlag(cmd), "delete agent", name); err != nil {
 		return err
 	}
 
@@ -311,13 +310,13 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 }
 
 func runAgentRotateToken(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
+	name := args[0]
+	if err := confirmSlug(yesFlag(cmd), "rotate token for agent", name); err != nil {
 		return err
 	}
-	name := args[0]
 
-	if err := confirmSlug(yesFlag(cmd), "rotate token for agent", name); err != nil {
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 
