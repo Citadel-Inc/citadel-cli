@@ -57,15 +57,15 @@ func runRepoTagList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
 	}
 
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
 	}
 	ns, slug, err := resolveRepoFromPosOrFlag(cmd, pos)
+	if err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
