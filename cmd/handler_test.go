@@ -242,6 +242,24 @@ func TestAgentList_WatchBadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestAgentList_WatchBadOutputYAML_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.AgentCmd, "list", "--watch", "--output", "yaml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
+		t.Fatalf("want watch output validation error, got %v", err)
+	}
+}
+
+func TestAgentList_WatchBadOutputCSV_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.AgentCmd, "list", "--watch", "--output", "csv").Execute()
+	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
+		t.Fatalf("want watch output validation error, got %v", err)
+	}
+}
+
 func TestAgentCreate_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -662,6 +680,24 @@ func TestTokenList_WatchBadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--watch", "--output", "json").Execute()
+	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
+		t.Fatalf("want watch output validation error, got %v", err)
+	}
+}
+
+func TestTokenList_WatchBadOutputYAML_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--watch", "--output", "yaml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
+		t.Fatalf("want watch output validation error, got %v", err)
+	}
+}
+
+func TestTokenList_WatchBadOutputCSV_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--watch", "--output", "csv").Execute()
 	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
 		t.Fatalf("want watch output validation error, got %v", err)
 	}
