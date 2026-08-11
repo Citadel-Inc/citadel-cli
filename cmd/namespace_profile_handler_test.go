@@ -12,6 +12,13 @@ import (
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+func setNamespaceProfileHermeticEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+}
+
 func makeProfile(slug, kind, visibility string) map[string]any {
 	return map[string]any{
 		"namespace_id":    "11111111-1111-1111-1111-111111111111",
@@ -135,12 +142,26 @@ func TestNamespaceProfileGet_NotFound(t *testing.T) {
 }
 
 func TestNamespaceProfileGet_NoAuth(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	t.Setenv("CITADEL_ACCESS_TOKEN", "")
-	t.Setenv("CITADEL_SERVER", "http://nope")
+	setNamespaceProfileHermeticEnv(t)
 	err := rootFor(cmd.NamespaceCmd, "profile", "get", "myorg").Execute()
 	if err == nil || !strings.Contains(err.Error(), "not authenticated") {
 		t.Fatalf("want not-authenticated, got %v", err)
+	}
+}
+
+func TestNamespaceProfileGet_BadOutput_Hermetic(t *testing.T) {
+	setNamespaceProfileHermeticEnv(t)
+	err := rootFor(cmd.NamespaceCmd, "profile", "get", "myorg", "--output", "xml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "xml" (use json|yaml|table)` {
+		t.Fatalf("want exact bad-output error, got %v", err)
+	}
+}
+
+func TestNamespaceProfileGet_EmptySlug_Hermetic(t *testing.T) {
+	setNamespaceProfileHermeticEnv(t)
+	err := rootFor(cmd.NamespaceCmd, "profile", "get", " \t").Execute()
+	if err == nil || err.Error() != "namespace slug required" {
+		t.Fatalf("want exact empty-slug error, got %v", err)
 	}
 }
 
