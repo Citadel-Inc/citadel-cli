@@ -271,6 +271,9 @@ func runPRList(cmd *cobra.Command, _ []string) error {
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson or omit --all")
 	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 	state, _ := cmd.Flags().GetString("state")
 	state = strings.TrimSpace(strings.ToLower(state))
 
