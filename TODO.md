@@ -6,6 +6,18 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110204ZAUG26 (fenced wave 15)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 61b | Agent/token list(+create) auth-before-guard | List/pagination/watch/cursor + create mutation before client; hermetics |
+| 62 | Issue mutate auth-before-guard | create/assign/state/label mutation-output before client; hermetics |
+| 63 | Milestone create/edit/delete auth-before-guard | Mutation-output (+ title/UUID) before client; hermetics |
+| 64 | OAuth create + repo tag delete auth-before-guard | Create mutation+flags before client; tag delete already ordered + hermetic |
+| — | Should-fix closeout | Empty issue title + whitespace OAuth `--name` before auth + hermetics |
+
+---
+
 ## Shipped 110131ZAUG26 (fenced wave 14)
 
 | # | Item | Notes |
@@ -299,38 +311,35 @@ _(#57–#60 and #61a shipped in wave 14; should-fixes closed in-wave.)_
 
 ## Round 16 — wave-14 audit carry-forwards (110131ZAUG26)
 
-### 61b. Agent/token list(+create) auth-before-guard
+_(#61b–#64 shipped in wave 15; should-fixes closed in-wave.)_
 
-**Polish.** `runAgentList` / `runAgentCreate` / `runTokenList` still authenticate before local validation. Serialize — share `cmd/handler_test.go`.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/agent.go`, `cmd/token.go`, `cmd/handler_test.go` |
-| **Acceptance** | Output/pagination/watch/cursor before client; hermetic bad-output (and watch where applicable) under empty XDG |
+## Round 17 — wave-15 audit carry-forwards (110204ZAUG26)
 
-### 62. Issue mutate auth-before-guard
+### 65. Issue reopen bad-output hermetic
 
-**Polish.** Still inverted: `runIssueCreate`, `runIssueAssign`, `runIssueStateMutation` (close/reopen), `runIssueLabel`.
+**Polish.** Close hermetic covers `runIssueStateMutation`; reopen shares the path but has no dedicated empty-XDG bad-output test.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/issue.go`, `cmd/issue_handler_test.go` |
-| **Acceptance** | `validateMutationOutput` before client; hermetic bad-output |
+| **Packages / files** | `cmd/issue_handler_test.go` |
+| **Acceptance** | `TestIssueReopen_BadOutput_Hermetic` (or equivalent) under empty XDG |
 
-### 63. Milestone create/edit/delete auth-before-guard
+### 66. Agent/token list hermetic depth
 
-**Polish.** `runIssueMilestoneCreate` / `Edit` / `Delete` still authenticate before mutation-output validation.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/issue_milestone.go`, `cmd/issue_milestone_test.go` |
-| **Acceptance** | Mutation-output before client; hermetic bad-output |
-
-### 64. OAuth clients create + repo tag delete auth-before-guard
-
-**Polish.** `runOAuthClientsCreate` authenticates before local flag checks and lacks `validateMutationOutput`. `runRepoTagDelete` still authenticates before `validateMutationOutput` (list/create fixed in #60).
+**Polish.** Agent/token bad-output tests omit `_Hermetic` suffix used elsewhere; no `--all --output json` hermetic; watch hermetics only cover `--watch --output json` (not yaml/csv/default branches).
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/oauth_clients.go`, `cmd/oauth_clients_handler_test.go`, `cmd/repo_tag.go`, `cmd/repo_refs_handler_test.go` |
-| **Acceptance** | Local validation before client; hermetic bad-output |
+| **Packages / files** | `cmd/handler_test.go` |
+| **Acceptance** | Naming aligned; `--all`+json and additional watch-output hermetics under empty XDG |
+
+### 67. Tighten issue mutate hermetic assert strings
+
+**Polish.** Issue mutate hermetics assert substring `supports json or default human summary`; siblings pin the full canonical wording from `deploy_token` / milestone create tests.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/issue_handler_test.go` |
+| **Acceptance** | Assert full mutation-output error string for create/assign/close/label hermetics |
