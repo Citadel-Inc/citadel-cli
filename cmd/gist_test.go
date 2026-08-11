@@ -217,6 +217,19 @@ func TestGistCreate_DryRun_Hermetic(t *testing.T) {
 	}
 }
 
+func TestGistEdit_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	output, err := executeGistTestCommand(t, "gist", "edit", "g1", "--title", "Two", "--dry-run")
+	if err != nil {
+		t.Fatalf("gist edit dry-run: %v", err)
+	}
+	if output != "Would PUT /gists/g1 (skipped; --dry-run)\n" {
+		t.Fatalf("gist edit dry-run output = %q", output)
+	}
+}
+
 func TestGistDelete_DryRun_Hermetic(t *testing.T) {
 	output, err := executeGistTestCommand(t, "gist", "delete", "g1", "--dry-run")
 	if err != nil {
