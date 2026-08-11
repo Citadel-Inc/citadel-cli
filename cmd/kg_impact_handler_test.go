@@ -14,7 +14,7 @@ func TestKgImpact_HumanOutput(t *testing.T) {
 		"GET /api/namespaces/myorg/kg/impact": func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(t, w, http.StatusOK, map[string]any{
 				"symbol":             map[string]any{"id": id, "kind": "function", "name": "foo", "path": "x.go"},
-				"direct_callers":     []any{},
+				"direct_callers":     []map[string]any{{"id": "caller-id", "name": "bar", "path": "caller.go"}},
 				"transitive_callers": []any{},
 				"affected_files":     []string{"x.go"},
 			})
@@ -28,6 +28,9 @@ func TestKgImpact_HumanOutput(t *testing.T) {
 	lines := strings.Split(stdout.String(), "\n")
 	if lines[0] != "rename-impact for foo (function) at x.go" {
 		t.Fatalf("impact header = %q", lines[0])
+	}
+	if !strings.Contains(stdout.String(), "    - bar  in caller.go\n") {
+		t.Fatalf("impact direct caller missing from output: %q", stdout.String())
 	}
 }
 
