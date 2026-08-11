@@ -202,8 +202,25 @@ func TestIssueMilestoneDelete_JSON(t *testing.T) {
 	}
 }
 
+func TestIssueMilestoneDelete_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+
+	var out strings.Builder
+	if err := rootForOut(cmd.IssueCmd, &out, "milestone", "delete", "-R", "acme/demo", "11111111-1111-1111-1111-111111111111", "--dry-run").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	want := "Would DELETE /namespaces/acme%2Fdemo/milestones/11111111-1111-1111-1111-111111111111 (skipped; --dry-run)\n"
+	if out.String() != want {
+		t.Fatalf("unexpected output: got %q, want %q", out.String(), want)
+	}
+}
+
 func TestIssueMilestoneDelete_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
 
 	err := rootFor(cmd.IssueCmd, "milestone", "delete", "-R", "acme/demo", "11111111-1111-1111-1111-111111111111", "--output", "toml").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output for delete supports json or default human summary only") {
