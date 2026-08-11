@@ -122,6 +122,15 @@ func TestPRList_NotFound(t *testing.T) {
 	}
 }
 
+func TestPRList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.PrCmd, "list", "-R", testNSPath, "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 // ── pr view ───────────────────────────────────────────────────────────────────
 
 func TestPRView_Happy(t *testing.T) {
