@@ -26,6 +26,14 @@ func labelsPayload(labels ...map[string]any) map[string]any {
 	return map[string]any{"labels": labels}
 }
 
+func setLabelHermeticEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+}
+
 // ── list ─────────────────────────────────────────────────────────────────────
 
 func TestLabelList_Happy(t *testing.T) {
@@ -72,11 +80,21 @@ func TestLabelList_Empty(t *testing.T) {
 }
 
 func TestLabelList_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setLabelHermeticEnv(t)
 
 	err := rootFor(cmd.LabelCmd, "list", "-R", "acme/demo", "--output", "toml").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestLabelList_MissingRepo_Hermetic(t *testing.T) {
+	setLabelHermeticEnv(t)
+	t.Chdir(t.TempDir())
+
+	err := rootFor(cmd.LabelCmd, "list").Execute()
+	if err == nil || !strings.Contains(err.Error(), "namespace path required") {
+		t.Fatalf("want namespace path error, got %v", err)
 	}
 }
 
