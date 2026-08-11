@@ -383,10 +383,10 @@ func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {
 	if out.ClientSecret == "" {
 		return fmt.Errorf("server returned no client_secret (public clients have no secret)")
 	}
-	fmt.Println(out.ClientSecret)
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), out.ClientSecret)
 	if copyClip {
 		if err := copySecretToClipboard(out.ClientSecret); err != nil {
-			fmt.Fprintf(os.Stderr, "clipboard: %v\n", err)
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "clipboard: %v\n", err)
 		}
 	}
 	return nil
