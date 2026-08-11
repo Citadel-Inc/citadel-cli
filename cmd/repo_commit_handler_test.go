@@ -34,6 +34,7 @@ func setRepoCommitHermeticEnv(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 }
 
 // ── list ─────────────────────────────────────────────────────────────────────
