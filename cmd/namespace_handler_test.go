@@ -23,7 +23,7 @@ func TestNamespaceTransferInitiate_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.NamespaceCmd, "transfer", "initiate", "acme", "--to", "newowner", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for transfer supports json or default human summary only") {
+	if err == nil || err.Error() != `--output for transfer supports json or default human summary only; got "toml"` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -32,7 +32,7 @@ func TestNamespaceTransferAccept_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.NamespaceCmd, "transfer", "accept", "550e8400-e29b-41d4-a716-446655440000", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for transfer supports json or default human summary only") {
+	if err == nil || err.Error() != `--output for transfer supports json or default human summary only; got "toml"` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -41,7 +41,7 @@ func TestNamespaceRename_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.NamespaceCmd, "rename", "acme", "--new-slug", "new-acme", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for rename supports json or default human summary only") {
+	if err == nil || err.Error() != `--output for rename supports json or default human summary only; got "toml"` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
