@@ -362,10 +362,6 @@ func runIssueMilestoneView(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueMilestoneCreate(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -394,6 +390,10 @@ func runIssueMilestoneCreate(cmd *cobra.Command, _ []string) error {
 			payload["due_on"] = dueOn
 		}
 	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	var created milestoneRow
 	if err := c.Post(cmd.Context(), milestoneBasePath(nsPath), payload, &created); err != nil {
 		return err
@@ -406,10 +406,6 @@ func runIssueMilestoneCreate(cmd *cobra.Command, _ []string) error {
 }
 
 func runIssueMilestoneEdit(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -456,6 +452,10 @@ func runIssueMilestoneEdit(cmd *cobra.Command, args []string) error {
 	if len(payload) == 0 {
 		return fmt.Errorf("set at least one field to update")
 	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	var updated milestoneRow
 	if err := c.Put(cmd.Context(), milestoneBasePath(nsPath)+"/"+url.PathEscape(id), payload, &updated); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {
@@ -471,10 +471,6 @@ func runIssueMilestoneEdit(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueMilestoneDelete(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -485,6 +481,10 @@ func runIssueMilestoneDelete(cmd *cobra.Command, args []string) error {
 	}
 	output := outputFlag(cmd)
 	if err := validateMutationOutput(output, "delete"); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	path := milestoneBasePath(nsPath) + "/" + url.PathEscape(id)
