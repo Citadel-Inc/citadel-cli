@@ -301,8 +301,12 @@ func TestAgentDelete_Happy(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
-	if err := rootFor(cmd.AgentCmd, "delete", "alpha", "--yes").Execute(); err != nil {
+	var stdout strings.Builder
+	if err := rootForOut(cmd.AgentCmd, &stdout, "delete", "alpha", "--yes").Execute(); err != nil {
 		t.Fatal(err)
+	}
+	if got := stdout.String(); got != "Agent 'alpha' deleted.\n" {
+		t.Fatalf("delete output = %q, want %q", got, "Agent 'alpha' deleted.\n")
 	}
 }
 
