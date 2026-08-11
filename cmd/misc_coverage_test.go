@@ -138,6 +138,22 @@ func TestAgentList_PaginationHint(t *testing.T) {
 	}
 }
 
+func TestAgentList_EmptyHuman(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"agents": []map[string]any{}})
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.AgentCmd, &stdout, "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != "No agents found.\n" {
+		t.Fatalf("empty list output = %q", stdout.String())
+	}
+}
+
 func TestAgentList_TableWithModelHint(t *testing.T) {
 	id := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 	withServer(t, route(t, map[string]http.HandlerFunc{
