@@ -8,8 +8,15 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
 )
 
-func TestRepoCreate_BadOutput_Hermetic(t *testing.T) {
+func setRepoHermeticEnv(t *testing.T) {
+	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+}
+
+func TestRepoCreate_BadOutput_Hermetic(t *testing.T) {
+	setRepoHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, "create", "--namespace", "acme", "--slug", "repo", "--output", "toml").Execute()
 	if err == nil || !strings.Contains(err.Error(), `--output for create supports json or default human summary only; got "toml"`) {
@@ -40,7 +47,7 @@ func TestRepoCreate_HumanOutput(t *testing.T) {
 }
 
 func TestRepoCreate_EmptyNamespace_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, "create", "--namespace", "", "--slug", "repo").Execute()
 	if err == nil || !strings.Contains(err.Error(), "namespace cannot be empty") {
@@ -49,7 +56,7 @@ func TestRepoCreate_EmptyNamespace_Hermetic(t *testing.T) {
 }
 
 func TestRepoCreate_EmptySlug_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, "create", "--namespace", "acme", "--slug", "").Execute()
 	if err == nil || !strings.Contains(err.Error(), "slug cannot be empty") {
@@ -58,7 +65,7 @@ func TestRepoCreate_EmptySlug_Hermetic(t *testing.T) {
 }
 
 func TestRepoCreate_BadVisibility_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, "create", "--namespace", "acme", "--slug", "repo", "--visibility", "internal").Execute()
 	if err == nil || !strings.Contains(err.Error(), "visibility must be public or private") {
@@ -67,7 +74,7 @@ func TestRepoCreate_BadVisibility_Hermetic(t *testing.T) {
 }
 
 func TestRepoList_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, "list", "--namespace", "acme", "--output", "toml").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
@@ -76,7 +83,7 @@ func TestRepoList_BadOutput_Hermetic(t *testing.T) {
 }
 
 func TestRepoList_WatchJSON_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, "list", "--namespace", "acme", "--watch", "--output", "json").Execute()
 	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
@@ -85,7 +92,7 @@ func TestRepoList_WatchJSON_Hermetic(t *testing.T) {
 }
 
 func TestRepoList_BadCursor_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, "list", "--namespace", "acme", "--cursor", "not-base64!!!").Execute()
 	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
@@ -112,13 +119,13 @@ func TestRepoDelete_HumanOutput(t *testing.T) {
 }
 
 func TestRepoDelete_DryRunHermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoHermeticEnv(t)
 
 	var out strings.Builder
 	if err := rootForOut(cmd.RepoCmd, &out, "delete", "myorg/myrepo", "--dry-run").Execute(); err != nil {
 		t.Fatalf("repo delete dry-run: %v", err)
 	}
-	if !strings.Contains(out.String(), "Would DELETE /namespaces/myorg/myrepo (skipped; --dry-run)") {
-		t.Fatalf("unexpected dry-run output: %q", out.String())
+	if got := out.String(); got != "Would DELETE /namespaces/myorg/myrepo (skipped; --dry-run)\n" {
+		t.Fatalf("dry-run output = %q, want %q", got, "Would DELETE /namespaces/myorg/myrepo (skipped; --dry-run)\n")
 	}
 }
