@@ -593,10 +593,6 @@ func runIssueView(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueCreate(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -626,6 +622,10 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 		payload["milestone_id"] = id
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	var created issueRow
 	if err := c.Post(cmd.Context(), issueBasePath(nsPath), payload, &created); err != nil {
@@ -700,10 +700,6 @@ func runIssueEdit(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueAssign(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -720,6 +716,10 @@ func runIssueAssign(cmd *cobra.Command, args []string) error {
 	set = normalizeStringSlice(set)
 	if set == nil {
 		set = []string{}
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	if err := c.Put(cmd.Context(), issueBasePath(nsPath)+"/"+strconv.FormatInt(num, 10)+"/assignees", map[string]any{
 		"assignees": set,
@@ -883,10 +883,6 @@ func runIssueCommentEdit(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueStateMutation(cmd *cobra.Command, args []string, state string, verb string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -897,6 +893,10 @@ func runIssueStateMutation(cmd *cobra.Command, args []string, state string, verb
 	}
 	output := outputFlag(cmd)
 	if err := validateMutationOutput(output, verb); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	var resp map[string]any
@@ -924,10 +924,6 @@ func runIssueReopen(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueLabel(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -946,6 +942,10 @@ func runIssueLabel(cmd *cobra.Command, args []string) error {
 	remove = normalizeStringSlice(remove)
 	if len(add) == 0 && len(remove) == 0 {
 		return fmt.Errorf("set at least one --add or --remove label")
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	if err := c.Post(cmd.Context(), issueBasePath(nsPath)+"/"+strconv.FormatInt(num, 10)+"/labels", map[string]any{
 		"add":    add,
