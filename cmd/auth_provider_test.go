@@ -242,3 +242,14 @@ func TestAuthProviderUnlink_BadProvider_Hermetic(t *testing.T) {
 		t.Fatalf("unlink error = %v, want provider required", err)
 	}
 }
+
+func TestAuthProviderLink_BadProvider_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	err := rootFor("provider", "link", "").Execute()
+	if err == nil || err.Error() != "provider required" {
+		t.Fatalf("link error = %v, want provider required", err)
+	}
+}
