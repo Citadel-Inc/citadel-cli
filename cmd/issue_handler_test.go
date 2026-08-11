@@ -152,6 +152,15 @@ func TestIssueCreate_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestIssueCreate_EmptyTitle_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "create", "-R", "acme/demo", "--title", "   ").Execute()
+	if err == nil || !strings.Contains(err.Error(), "title cannot be empty") {
+		t.Fatalf("want empty-title validation error, got %v", err)
+	}
+}
+
 func TestIssueCommentAdd_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7/comments", "/namespaces/acme/demo/issues/7/comments") {
