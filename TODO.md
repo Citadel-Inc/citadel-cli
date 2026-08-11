@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110131ZAUG26 (fenced wave 14)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 57 | Label list auth-before-guard | `validateListOutput` before client + hermetic |
+| 58 | Notification list auth-before-guard | Output + pagination + `--all`/json before client; normalize + hermetics |
+| 59 | Org member list auth-before-guard | Output + pagination + member cursor before client; hermetics |
+| 60 | Repo branch/tag list(+create) | List/pagination + tag create mutation before client; hermetics |
+| 61a | Repo list + inv list/pending + SSH list + recovery-scan | Full list/watch/cursor before client; dedicated hermetic files |
+| — | Should-fix closeout | Notification output normalize; all/json + bad-cursor hermetics |
+
+---
+
 ## Shipped 110123ZAUG26 (fenced wave 13)
 
 | # | Item | Notes |
@@ -280,47 +293,44 @@ _(#54–#55 and #56a–c shipped in wave 13; watch should-fixes closed in-wave.)
 
 ## Round 15 — wave-13 audit carry-forwards (110123ZAUG26)
 
-### 57. Label list auth-before-guard
+_(#57–#60 and #61a shipped in wave 14; should-fixes closed in-wave.)_
 
-**Polish.** `runLabelList` still authenticates before `validateListOutput`.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/label.go`, `cmd/label_handler_test.go` |
-| **Acceptance** | Hermetic bad-output before auth |
+## Round 16 — wave-14 audit carry-forwards (110131ZAUG26)
 
-### 58. Notification list auth-before-guard
+### 61b. Agent/token list(+create) auth-before-guard
 
-**Polish.** `runNotificationList` still authenticates before list-output validation.
+**Polish.** `runAgentList` / `runAgentCreate` / `runTokenList` still authenticate before local validation. Serialize — share `cmd/handler_test.go`.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/notification.go`, `cmd/notification_handler_test.go` |
-| **Acceptance** | Hermetic bad-output before auth |
+| **Packages / files** | `cmd/agent.go`, `cmd/token.go`, `cmd/handler_test.go` |
+| **Acceptance** | Output/pagination/watch/cursor before client; hermetic bad-output (and watch where applicable) under empty XDG |
 
-### 59. Org member list auth-before-guard
+### 62. Issue mutate auth-before-guard
 
-**Polish.** `runOrgMemberList` still authenticates before list-output validation.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/org_member.go`, `cmd/org_member_handler_test.go` |
-| **Acceptance** | Hermetic bad-output before auth |
-
-### 60. Repo branch/tag list(+create) auth-before-guard
-
-**Polish.** `runRepoBranchList`, `runRepoTagList`, `runRepoTagCreate` still authenticate before local validation.
+**Polish.** Still inverted: `runIssueCreate`, `runIssueAssign`, `runIssueStateMutation` (close/reopen), `runIssueLabel`.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/repo_branch.go`, `cmd/repo_tag.go`, `cmd/repo_refs_handler_test.go` |
-| **Acceptance** | Hermetic bad-output before auth |
+| **Packages / files** | `cmd/issue.go`, `cmd/issue_handler_test.go` |
+| **Acceptance** | `validateMutationOutput` before client; hermetic bad-output |
 
-### 61. Broader auth-before-guard sweep (remaining)
+### 63. Milestone create/edit/delete auth-before-guard
 
-**Polish.** Still inverted after wave 13: `runRepoList`, org invitation list/pending, `runTokenList` / `runAgentList`/`Create` (serialize — share `handler_test.go`), issue mutate + milestone create/edit/delete, `runSSHKeyList`, `runProjectAdminRecoveryScan`, `runOAuthClientsCreate`. Watch-capable lists outside 56a–c likely still run `validateWatchOutput` after `newAPIClient` — fold watch/pagination ahead of auth when touching them.
+**Polish.** `runIssueMilestoneCreate` / `Edit` / `Delete` still authenticate before mutation-output validation.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/*.go` handlers with `validate*Output` / `validateWatchOutput` after `newAPIClient` |
-| **Acceptance** | Client-independent errors under empty `XDG_CONFIG_HOME`; prefer hermetic tests when adding guards |
+| **Packages / files** | `cmd/issue_milestone.go`, `cmd/issue_milestone_test.go` |
+| **Acceptance** | Mutation-output before client; hermetic bad-output |
+
+### 64. OAuth clients create + repo tag delete auth-before-guard
+
+**Polish.** `runOAuthClientsCreate` authenticates before local flag checks and lacks `validateMutationOutput`. `runRepoTagDelete` still authenticates before `validateMutationOutput` (list/create fixed in #60).
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/oauth_clients.go`, `cmd/oauth_clients_handler_test.go`, `cmd/repo_tag.go`, `cmd/repo_refs_handler_test.go` |
+| **Acceptance** | Local validation before client; hermetic bad-output |
