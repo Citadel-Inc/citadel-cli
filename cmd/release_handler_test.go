@@ -202,6 +202,23 @@ func TestReleaseCreate_MissingTag_Hermetic(t *testing.T) {
 	}
 }
 
+func TestReleaseCreate_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var out strings.Builder
+	if err := rootForOut(cmd.ReleaseCmd, &out,
+		"create", "-R", "acme/demo",
+		"--tag", "v1.0.0",
+		"--dry-run",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	want := "Would POST /namespaces/acme%2Fdemo/releases tag=v1.0.0 (skipped; --dry-run)\n"
+	if out.String() != want {
+		t.Fatalf("dry-run output = %q, want %q", out.String(), want)
+	}
+}
+
 func TestReleaseEdit_NoChange(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		t.Error("should not call server when nothing to update")
@@ -234,6 +251,23 @@ func TestReleaseEdit_BadOutput_Hermetic(t *testing.T) {
 	).Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestReleaseEdit_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var out strings.Builder
+	if err := rootForOut(cmd.ReleaseCmd, &out,
+		"edit", "v1.0.0", "-R", "acme/demo",
+		"--name", "renamed",
+		"--dry-run",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	want := "Would PATCH /namespaces/acme%2Fdemo/releases/v1.0.0 (skipped; --dry-run)\n"
+	if out.String() != want {
+		t.Fatalf("dry-run output = %q, want %q", out.String(), want)
 	}
 }
 
@@ -457,6 +491,24 @@ func TestReleaseAssetUpload_BadOutput_Hermetic(t *testing.T) {
 	).Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestReleaseAssetUpload_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	filePath := t.TempDir() + "/artifact.bin"
+	var out strings.Builder
+	if err := rootForOut(cmd.ReleaseCmd, &out,
+		"asset", "upload", "v1.0.0", filePath,
+		"-R", "acme/demo",
+		"--dry-run",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	want := "Would POST /namespaces/acme%2Fdemo/releases/v1.0.0/assets file=" + filePath + " (skipped; --dry-run)\n"
+	if out.String() != want {
+		t.Fatalf("dry-run output = %q, want %q", out.String(), want)
 	}
 }
 
