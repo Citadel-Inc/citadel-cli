@@ -23,7 +23,7 @@ func TestRepoDeployTokenCreateBadOutputHermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.RepoCmd, "deploy-token", "create", "-R", "myorg/myrepo", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), `--output: unknown format "toml"`) {
+	if err == nil || !strings.Contains(err.Error(), "--output for create supports json or default human summary only") {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
