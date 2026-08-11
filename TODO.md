@@ -6,6 +6,21 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110300ZAUG26 (fenced wave 18)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 75 | Namespace transfer revoke (+ delete) auth-before-guard | Dry-run/confirm before client; OutOrStdout; hermetics |
+| 76 | Dry-run hermetics (oauth revoke, gist delete, ns rename) | Empty-XDG; full oauth dry-run message assert |
+| 77 | Agent delete/rotate auth-before-guard | Dry-run skips lookup; confirm before client; hermetic preview |
+| 78 | Token revoke dry-run before auth | + empty-XDG dry-run test |
+| 79 | SSH key delete dry-run before auth | + hermetic |
+| 80 | Repo delete dry-run/confirm before auth | OutOrStdout; hermetic message assert |
+| 81 | Deploy-token revoke dry-run before auth | + hermetics |
+| — | Should-fix closeout | OutOrStdout on repo/agent/ns dry-run; oauth full-string assert; ns stdout `t.Cleanup` |
+
+---
+
 ## Shipped 110232ZAUG26 (fenced wave 17)
 
 | # | Item | Notes |
@@ -357,20 +372,71 @@ _(#68–#74 shipped in wave 17; should-fixes closed in-wave.)_
 
 ## Round 19 — wave-17 audit carry-forwards (110232ZAUG26)
 
-### 75. Namespace transfer revoke auth-before-guard
+_(#75–#76 and #77–#81 shipped in wave 18; should-fixes closed in-wave.)_
 
-**Polish.** `runNsTransferRevoke` still constructs the client before dry-run/confirm (wave 17 covered initiate/accept/rename only).
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/namespace.go`, `cmd/namespace_handler_test.go` |
-| **Acceptance** | Dry-run/confirm (+ any local output guards) before `newAPIClient`; empty-XDG hermetic |
+## Round 20 — wave-18 audit carry-forwards (110300ZAUG26)
 
-### 76. Dry-run hermetics for mutate-before-auth verbs
+### 82. Org member remove/set-permissions confirm-before-client
 
-**Polish.** OAuth revoke, gist delete, and namespace rename already dry-run before client; no empty-XDG tests lock that ordering.
+**Polish.** `runOrgMemberRemove` builds the client before `confirmSlug`; set-permissions is client-first with no local output guard.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/oauth_clients_handler_test.go`, `cmd/gist_test.go`, `cmd/namespace_handler_test.go` |
-| **Acceptance** | Empty-XDG `--dry-run` hermetics prove success without auth/config noise |
+| **Packages / files** | `cmd/org_member.go`, `cmd/org_member_handler_test.go` |
+| **Acceptance** | Confirm (and any output guards) before `newAPIClient`; empty-XDG hermetics |
+
+### 83. PR collab output guards
+
+**Polish.** `pr_collab` diff/comment/reviewer/review verbs lack `validateGetOutput` / `validateListOutput` / `validateMutationOutput` before client.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/pr_collab.go`, `cmd/pr_handler_test.go` |
+| **Acceptance** | Output validation before `newAPIClient` on collab get/list/mutate; bad-output hermetics |
+
+### 84. Auth provider unlink normalize+confirm before client
+
+**Polish.** `runAuthProviderUnlink` constructs the client before `normalizeAuthProviderID` + confirm.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/auth_provider.go`, `cmd/auth_provider_test.go` |
+| **Acceptance** | Normalize + confirm before `newAPIClient`; empty-XDG hermetic |
+
+### 85. OAuth revoke OutOrStdout + shared stdout capture helper
+
+**Polish.** Revoke dry-run still uses `fmt.Printf`; hermetic hijacks `os.Stdout` with an ad-hoc pipe.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/oauth_clients.go`, `cmd/oauth_clients_handler_test.go` (optional shared helper under `cmd/`) |
+| **Acceptance** | Dry-run via `cmd.OutOrStdout()`; hermetic uses `rootForOut` (or one shared capture helper) |
+
+### 86. Retire weak duplicate DryRun handler tests
+
+**Polish.** `TestRepoDelete_DryRun`, `TestNsDelete_DryRun`, `TestNsTransferRevoke_DryRun`, `TestOAuthRevoke_DryRun` in `handler_test.go` are mock-server / no-message duplicates of dedicated hermetics.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/handler_test.go` |
+| **Acceptance** | Remove or tighten to assert preview strings; no false confidence left |
+
+### 87. Agent rotate-token empty-XDG hermetic
+
+**Polish.** Confirm-before-client landed; no hermetic proves client is attempted only after confirm.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/handler_test.go` |
+| **Acceptance** | Empty-XDG `--yes` rotate expects auth/config error (no hang on confirm) |
+
+### 88. Rename `TestTokenRevoke_DryRun` → `_Hermetic`
+
+**Polish.** Behavior is empty-XDG hermetic; name still pre-wave.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/misc_coverage_test.go` |
+| **Acceptance** | Name matches wave hermetic convention |
