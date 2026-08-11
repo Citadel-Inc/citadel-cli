@@ -92,9 +92,12 @@ func runRepoCommitList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	c, err := newAPIClient(cmd)
+	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
+	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
 	}
 	pos := ""
 	if len(args) > 0 {
@@ -104,12 +107,10 @@ func runRepoCommitList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	limit, cursor, all, err := readPagination(cmd)
+
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
-	}
-	if all && output == "json" {
-		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
 	}
 	ref, _ := cmd.Flags().GetString("ref")
 	pathFilter, _ := cmd.Flags().GetString("path")
