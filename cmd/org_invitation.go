@@ -243,12 +243,19 @@ func normalizePermissionSlice(raw []string) []string {
 }
 
 func runOrgInvRevoke(cmd *cobra.Command, args []string) error {
+	orgSlug := strings.TrimSpace(args[0])
+	if orgSlug == "" {
+		return fmt.Errorf("organization slug is required")
+	}
+	id := strings.TrimSpace(args[1])
+	if id == "" {
+		return fmt.Errorf("invitation ID is required")
+	}
+
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	orgSlug := strings.TrimSpace(args[0])
-	id := strings.TrimSpace(args[1])
 	path := "/orgs/" + url.PathEscape(orgSlug) + "/invitations/" + url.PathEscape(id)
 	if err := c.Delete(cmd.Context(), path); err != nil {
 		return err
