@@ -141,7 +141,7 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 	if err := c.Get(cmd.Context(), path, &ir); err != nil {
 		return upgradeUnauthorized(err)
 	}
-	printImpactTree(ir)
+	printImpactTree(cmd, ir)
 	return nil
 }
 
@@ -175,7 +175,8 @@ type impactNode struct {
 //	    file-1.go, file-2.go, file-3.go, file-4.go
 //
 // `--json` skips this and prints the raw response.
-func printImpactTree(ir impactResp) {
+func printImpactTree(cmd *cobra.Command, ir impactResp) {
+	out := cmd.OutOrStdout()
 	header := "rename-impact for " + ir.Symbol.Name
 	if ir.Symbol.Kind != "" {
 		header += " (" + ir.Symbol.Kind + ")"
@@ -183,22 +184,22 @@ func printImpactTree(ir impactResp) {
 	if ir.Symbol.Path != "" {
 		header += " at " + ir.Symbol.Path
 	}
-	fmt.Println(header)
+	fmt.Fprintln(out, header)
 
-	fmt.Printf("  direct callers (%d):\n", len(ir.DirectCallers))
+	fmt.Fprintf(out, "  direct callers (%d):\n", len(ir.DirectCallers))
 	for _, n := range ir.DirectCallers {
-		fmt.Printf("    - %s\n", formatCaller(n))
+		fmt.Fprintf(out, "    - %s\n", formatCaller(n))
 	}
-	fmt.Printf("  transitive callers (%d):\n", len(ir.TransitiveCallers))
+	fmt.Fprintf(out, "  transitive callers (%d):\n", len(ir.TransitiveCallers))
 	for _, n := range ir.TransitiveCallers {
-		fmt.Printf("    - %s\n", formatCaller(n))
+		fmt.Fprintf(out, "    - %s\n", formatCaller(n))
 	}
-	fmt.Printf("  affected files (%d):\n", len(ir.AffectedFiles))
+	fmt.Fprintf(out, "  affected files (%d):\n", len(ir.AffectedFiles))
 	if len(ir.AffectedFiles) > 0 {
-		fmt.Printf("    %s\n", strings.Join(ir.AffectedFiles, ", "))
+		fmt.Fprintf(out, "    %s\n", strings.Join(ir.AffectedFiles, ", "))
 	}
 	if ir.Truncated {
-		fmt.Println("  (truncated — narrow depth or scope to see the full set)")
+		fmt.Fprintln(out, "  (truncated — narrow depth or scope to see the full set)")
 	}
 }
 
