@@ -195,11 +195,14 @@ func TestGistDelete_BadOutput_Hermetic(t *testing.T) {
 }
 
 func TestGistDelete_YAMLOutput_DryRunHermetic(t *testing.T) {
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
 	output, err := executeGistTestCommand(t, "gist", "delete", "g1", "--output", "yaml", "--dry-run")
 	if err != nil {
 		t.Fatalf("gist delete YAML dry-run: %v", err)
 	}
-	if !strings.Contains(output, "Would DELETE /gists/g1 (skipped; --dry-run)") {
+	if output != "Would DELETE /gists/g1 (skipped; --dry-run)\n" {
 		t.Fatalf("gist delete YAML dry-run output = %q", output)
 	}
 }
@@ -231,11 +234,14 @@ func TestGistEdit_DryRun_Hermetic(t *testing.T) {
 }
 
 func TestGistDelete_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
 	output, err := executeGistTestCommand(t, "gist", "delete", "g1", "--dry-run")
 	if err != nil {
 		t.Fatalf("gist delete dry-run: %v", err)
 	}
-	if !strings.Contains(output, "Would DELETE /gists/g1 (skipped; --dry-run)") {
+	if output != "Would DELETE /gists/g1 (skipped; --dry-run)\n" {
 		t.Fatalf("gist delete dry-run output = %q", output)
 	}
 }
