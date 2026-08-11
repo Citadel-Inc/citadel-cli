@@ -6,6 +6,20 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110430ZAUG26 (fenced wave 23)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 102 | Namespace OutOrStdout + transfer decline guard | Human empty/hint/success via writers; decline `validateMutationOutput` before client |
+| 103 | Token list OutOrStdout + issue secret capture | Empty/pagination writers; EmptyHuman/PaginationHint + issue cleartext assert |
+| 104 | KG impact OutOrStdout + empty-symbol guard | `printImpactTree` writers; empty symbol before auth; hermetic + human capture |
+| 105 | Org invitation revoke path-before-auth | Trim slug/id before client; empty-id/slug hermetics + happy capture |
+| 106 | Audit empty + repo create/delete OutOrStdout | Empty list + mutation success via writers; stdout capture |
+| 107 | Search + repo-topics bad-output hermetics | Empty-XDG hermetics; topics exact empty assert |
+| — | Should-fix closeout | Hermetic API-env clears (ns/org/audit/repo); exact org/repo asserts; kg writer discard + broader human assert |
+
+---
+
 ## Shipped 110347ZAUG26 (fenced wave 22)
 
 | # | Item | Notes |
@@ -454,4 +468,10 @@ _(#98–#101 shipped in wave 22; should-fixes closed in-wave.)_
 
 ## Round 24 — wave-22 audit carry-forwards (110347ZAUG26)
 
-_(No open carry-forwards — should-fixes closed in-wave.)_
+_(#102–#107 shipped in wave 23; should-fixes closed in-wave.)_
+
+---
+
+## Round 25 — wave-23 audit carry-forwards (110430ZAUG26)
+
+_(No open carry-forwards — should-fixes closed in-wave. Optional: relocate `TestTokenList_BadOutput_Hermetic` from `handler_test.go` into `more_handler_test.go` when that hot file is owned.)_
