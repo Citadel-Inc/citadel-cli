@@ -260,6 +260,9 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 	nameRaw, _ := cmd.Flags().GetString("name")
 	name := strings.TrimSpace(nameRaw)
+	if name == "" {
+		return errors.New("--name cannot be empty")
+	}
 	redirects, _ := cmd.Flags().GetStringSlice("redirect-uri")
 	orgSlug, _ := cmd.Flags().GetString("org")
 	isPublic, _ := cmd.Flags().GetBool("public")
