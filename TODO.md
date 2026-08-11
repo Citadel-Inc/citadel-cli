@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110448ZAUG26 (fenced wave 25)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 113 | Repo browse bad-output / missing-path hermetics | Tree/blob/raw local guards; `setRepoBrowseHermeticEnv` |
+| 114 | Notification list EmptyHuman + PaginationHint | Exact stdout via `rootForOut`; list BadOutput exact |
+| 115 | KG impact `--depth` range before client | `Changed("depth")` ∈ {1,2,3}; hermetics for 0/4/-1 |
+| — | Audit exact asserts (commit/refs/label) | Full-string missing-repo + list bad-output |
+| — | Relocate token BadOutput hermetic | → `more_handler_test.go` + exact assert |
+| — | Should-fix closeout | Notification get BadOutput + env clear; token exact; browse MissingPath dedupe; kg `CITADEL_REPO` clear |
+
+---
+
 ## Shipped 110440ZAUG26 (fenced wave 24)
 
 | # | Item | Notes |
@@ -493,16 +506,20 @@ _(#108–#112 shipped in wave 24; should-fixes closed in-wave.)_
 
 ## Round 26 — wave-24 audit carry-forwards (110440ZAUG26)
 
+_(#113–#115 + audit exact asserts + token relocate shipped in wave 25; should-fixes closed in-wave.)_
+
+---
+
+## Round 27 — wave-25 audit carry-forwards (110448ZAUG26)
+
 ### Optional tightenings (audit)
 
-- Exact error asserts on commit/refs missing-repo hermetics (`repository required` full string).
-- Exact `--output: unknown format "…"` asserts on label/commit/refs list bad-output hermetics (profile fence already exact).
+- Notification list: reject invalid `--cursor` before `newAPIClient` (today bad cursor reaches auth — blocks a clean BadCursor hermetic).
+- `assertRepoRefBadOutput` list-branch `args[1]=="list"` heuristic is brittle if call-site arg order changes.
 
 ### Next polish candidates
 
 | # | Item | Notes |
 | --- | --- | --- |
-| 113 | Repo browse bad-output / missing-path hermetics | `repo_browse_handler_test.go` — tree/blob/raw local guards; clear API env |
-| 114 | Notification list EmptyHuman + PaginationHint | Exact stdout via `rootForOut`; optional BadCursor hermetic |
-| 115 | KG impact `--depth` range before client | Guard 1–3 (or documented range) before `newAPIClient` |
-| — | Relocate token bad-output hermetic | `TestTokenList_BadOutput_Hermetic` → `more_handler_test.go` when that hot file is owned |
+| 116 | Notification list cursor guard before auth | Local invalid-cursor error + BadCursor hermetic |
+| — | Harden `assertRepoRefBadOutput` want-mode | Prefer explicit want string / mode arg over `args[1]=="list"` |
