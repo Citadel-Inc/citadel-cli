@@ -45,6 +45,18 @@ var repoTagDeleteCmd = &cobra.Command{
 }
 
 func runRepoTagList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	limit, cursor, all, err := readPagination(cmd)
+	if err != nil {
+		return err
+	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -56,17 +68,6 @@ func runRepoTagList(cmd *cobra.Command, args []string) error {
 	ns, slug, err := resolveRepoFromPosOrFlag(cmd, pos)
 	if err != nil {
 		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateListOutput(output); err != nil {
-		return err
-	}
-	limit, cursor, all, err := readPagination(cmd)
-	if err != nil {
-		return err
-	}
-	if all && output == "json" {
-		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
 	}
 
 	var yamlAccum []repoRefRow
@@ -159,6 +160,11 @@ func runRepoTagList(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoTagCreate(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
+
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -169,10 +175,6 @@ func runRepoTagCreate(cmd *cobra.Command, args []string) error {
 	}
 	ref, _ := cmd.Flags().GetString("ref")
 	message, _ := cmd.Flags().GetString("message")
-	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "create"); err != nil {
-		return err
-	}
 	var payload struct {
 		Name      string `json:"name"`
 		SHA       string `json:"sha"`

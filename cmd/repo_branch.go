@@ -43,6 +43,18 @@ var repoBranchSetDefaultCmd = &cobra.Command{
 }
 
 func runRepoBranchList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	limit, cursor, all, err := readPagination(cmd)
+	if err != nil {
+		return err
+	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -54,17 +66,6 @@ func runRepoBranchList(cmd *cobra.Command, args []string) error {
 	ns, slug, err := resolveRepoFromPosOrFlag(cmd, pos)
 	if err != nil {
 		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateListOutput(output); err != nil {
-		return err
-	}
-	limit, cursor, all, err := readPagination(cmd)
-	if err != nil {
-		return err
-	}
-	if all && output == "json" {
-		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
 	}
 
 	var yamlAccum []repoRefRow
