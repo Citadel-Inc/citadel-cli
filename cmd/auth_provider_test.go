@@ -153,6 +153,17 @@ func TestAuthProviderList_JSON_Unauthenticated(t *testing.T) {
 	}
 }
 
+func TestAuthProviderList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+
+	err := rootFor("provider", "list", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
+		t.Fatalf("list error = %v, want unknown output format", err)
+	}
+}
+
 func TestAuthProviderLink_JSON(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/auth/link-provider" {
