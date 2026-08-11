@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110123ZAUG26 (fenced wave 13)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 54 | Release list/asset-list auth-before-guard | `validateListOutput` before client + hermetic |
+| 55 | Repo commit list auth-before-guard | `validateListOutput` before client + hermetic |
+| 56a | Deploy-token list/create/revoke | Output (+ watch/pagination) before client; hermetic list/create/revoke/watch |
+| 56b | OAuth clients list + UUID guards | List/watch + show/rotate/revoke UUID before client; hermetic |
+| 56c | Namespace list/members/transfers | List + watch/pagination before client; hermetic |
+| — | Watch-output should-fix closeout | `validateWatchOutput` (+ pagination/cursor) before auth on 56a–c |
+
+---
+
 ## Shipped 102354ZAUG26 (fenced wave 12)
 
 | # | Item | Notes |
@@ -261,29 +274,53 @@ _(#49–#53 shipped in wave 12; should-fixes closed in-wave.)_
 
 ## Round 14 — wave-12 audit carry-forwards (102354ZAUG26)
 
-### 54. Release list/asset-list auth-before-guard
+_(#54–#55 and #56a–c shipped in wave 13; watch should-fixes closed in-wave.)_
 
-**Polish.** `runReleaseList` / `runReleaseAssetList` still call `newAPIClient` before `validateListOutput`.
+---
+
+## Round 15 — wave-13 audit carry-forwards (110123ZAUG26)
+
+### 57. Label list auth-before-guard
+
+**Polish.** `runLabelList` still authenticates before `validateListOutput`.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/release.go`, `cmd/release_handler_test.go` |
+| **Packages / files** | `cmd/label.go`, `cmd/label_handler_test.go` |
 | **Acceptance** | Hermetic bad-output before auth |
 
-### 55. Repo commit list auth-before-guard
+### 58. Notification list auth-before-guard
 
-**Polish.** `runRepoCommitList` still authenticates before list-output validation.
+**Polish.** `runNotificationList` still authenticates before list-output validation.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/repo_commit.go`, `cmd/repo_commit_handler_test.go` |
+| **Packages / files** | `cmd/notification.go`, `cmd/notification_handler_test.go` |
 | **Acceptance** | Hermetic bad-output before auth |
 
-### 56. Broader auth-before-guard sweep (remaining cmd handlers)
+### 59. Org member list auth-before-guard
 
-**Polish.** Many list/mutate handlers outside wave-12 fences still authenticate before local validation. Sweep by package when touching them.
+**Polish.** `runOrgMemberList` still authenticates before list-output validation.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/*.go` handlers with `validate*Output` after `newAPIClient` |
+| **Packages / files** | `cmd/org_member.go`, `cmd/org_member_handler_test.go` |
+| **Acceptance** | Hermetic bad-output before auth |
+
+### 60. Repo branch/tag list(+create) auth-before-guard
+
+**Polish.** `runRepoBranchList`, `runRepoTagList`, `runRepoTagCreate` still authenticate before local validation.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/repo_branch.go`, `cmd/repo_tag.go`, `cmd/repo_refs_handler_test.go` |
+| **Acceptance** | Hermetic bad-output before auth |
+
+### 61. Broader auth-before-guard sweep (remaining)
+
+**Polish.** Still inverted after wave 13: `runRepoList`, org invitation list/pending, `runTokenList` / `runAgentList`/`Create` (serialize — share `handler_test.go`), issue mutate + milestone create/edit/delete, `runSSHKeyList`, `runProjectAdminRecoveryScan`, `runOAuthClientsCreate`. Watch-capable lists outside 56a–c likely still run `validateWatchOutput` after `newAPIClient` — fold watch/pagination ahead of auth when touching them.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/*.go` handlers with `validate*Output` / `validateWatchOutput` after `newAPIClient` |
 | **Acceptance** | Client-independent errors under empty `XDG_CONFIG_HOME`; prefer hermetic tests when adding guards |
