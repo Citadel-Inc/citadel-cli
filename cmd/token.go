@@ -85,17 +85,6 @@ func findOrCreateAgent(ctx context.Context, c *apiclient.Client, name string) (u
 }
 
 func runTokenList(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	agentName, _ := cmd.Flags().GetString("agent")
-
-	a, err := findAgentByName(cmd.Context(), c, agentName)
-	if err != nil {
-		return err
-	}
-
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
@@ -110,14 +99,24 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
 	}
-	if watchFlag(cmd) {
-		if err := validateDescCursor(cursor); err != nil {
-			return fmt.Errorf("invalid --cursor: %w", err)
-		}
-		return runTokenListWatch(cmd, c, a.ID.String(), limit, cursor, all)
-	}
+
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	agentName, _ := cmd.Flags().GetString("agent")
+
+	a, err := findAgentByName(cmd.Context(), c, agentName)
+	if err != nil {
+		return err
+	}
+
+	if watchFlag(cmd) {
+		return runTokenListWatch(cmd, c, a.ID.String(), limit, cursor, all)
 	}
 
 	var yamlAccum []token
