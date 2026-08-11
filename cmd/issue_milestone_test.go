@@ -133,6 +133,15 @@ func TestIssueMilestoneCreate_Happy(t *testing.T) {
 	}
 }
 
+func TestIssueMilestoneCreate_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "milestone", "create", "-R", "acme/demo", "--title", "v1.0", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output for create supports json or default human summary only") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestIssueMilestoneEdit_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut || !issuePathMatches(r, "/namespaces/acme%2Fdemo/milestones/11111111-1111-1111-1111-111111111111", "/namespaces/acme/demo/milestones/11111111-1111-1111-1111-111111111111") {
@@ -167,6 +176,15 @@ func TestIssueMilestoneEdit_Happy(t *testing.T) {
 	}
 }
 
+func TestIssueMilestoneEdit_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "milestone", "edit", "-R", "acme/demo", "11111111-1111-1111-1111-111111111111", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output for edit supports json or default human summary only") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestIssueMilestoneDelete_JSON(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete || !issuePathMatches(r, "/namespaces/acme%2Fdemo/milestones/11111111-1111-1111-1111-111111111111", "/namespaces/acme/demo/milestones/11111111-1111-1111-1111-111111111111") {
@@ -181,6 +199,15 @@ func TestIssueMilestoneDelete_JSON(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), `"status": "ok"`) {
 		t.Fatalf("unexpected output: %s", out.String())
+	}
+}
+
+func TestIssueMilestoneDelete_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "milestone", "delete", "-R", "acme/demo", "11111111-1111-1111-1111-111111111111", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output for delete supports json or default human summary only") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
