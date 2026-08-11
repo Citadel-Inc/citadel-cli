@@ -6,6 +6,21 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110232ZAUG26 (fenced wave 17)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 68 | SSH key add auth-before-guard | Key/output via `validateMutationOutput` before client; hermetic |
+| 69 | Notification unread/prefs output-before-auth | `validateGetOutput` before client; hermetics |
+| 70 | Repo create auth-before-guard | Namespace/slug/visibility + mutation output before client; hermetics |
+| 71 | KG extended list output/pagination-before-auth | All six verbs before client; broadened hermetics |
+| 72 | Namespace transfer/rename output-before-auth | Initiate/accept/rename mutation output before client; hermetics |
+| 73 | OAuth rotate/revoke + gist delete | Output before client; gist keeps yaml allowlist |
+| 74 | PR list bad-output hermetic | Empty-XDG `TestPRList_BadOutput_Hermetic` |
+| — | Should-fix closeout | Shared SSH helper; full mutation error wording; repo local-flag hermetics; gist yaml restore |
+
+---
+
 ## Shipped 110218ZAUG26 (fenced wave 16)
 
 | # | Item | Notes |
@@ -336,65 +351,26 @@ _(#65–#67 shipped in wave 16; release/label delete-mutate guards + should-fix 
 
 ## Round 18 — wave-16 audit carry-forwards (110218ZAUG26)
 
-### 68. SSH key add auth-before-guard
+_(#68–#74 shipped in wave 17; should-fixes closed in-wave.)_
 
-**Polish.** `runSSHKeyAdd` builds the client before key-material and output validation.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/ssh_key.go`, `cmd/ssh_key_handler_test.go` |
-| **Acceptance** | Key/output guards before `newAPIClient`; empty-XDG hermetic |
+## Round 19 — wave-17 audit carry-forwards (110232ZAUG26)
 
-### 69. Notification unread/prefs output-before-auth
+### 75. Namespace transfer revoke auth-before-guard
 
-**Polish.** `runNotificationUnreadCount` / `runNotificationPrefsGet` lack pre-auth `validateGetOutput`.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/notification.go`, `cmd/notification_handler_test.go` |
-| **Acceptance** | Output validated before client; hermetics under empty XDG |
-
-### 70. Repo create auth-before-guard
-
-**Polish.** `runRepoCreate` constructs the client before namespace/slug/output local checks.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/repo.go`, list/create handler tests as appropriate |
-| **Acceptance** | Local flags + mutation/get output before client; hermetic |
-
-### 71. KG extended list output/pagination-before-auth
-
-**Polish.** `kg_extended` search/symbols/files/walk/fulltext/diff call `newAPIClient` before query/pagination/output guards.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/kg_extended.go`, `cmd/kg_extended_test.go` |
-| **Acceptance** | List/output/pagination before client across verbs; hermetics |
-
-### 72. Namespace transfer/rename output-before-auth
-
-**Polish.** Transfer initiate/accept and rename validate output after client construction.
+**Polish.** `runNsTransferRevoke` still constructs the client before dry-run/confirm (wave 17 covered initiate/accept/rename only).
 
 | | |
 | --- | --- |
 | **Packages / files** | `cmd/namespace.go`, `cmd/namespace_handler_test.go` |
-| **Acceptance** | Mutation/get output (+ confirm where local) before client; hermetics |
+| **Acceptance** | Dry-run/confirm (+ any local output guards) before `newAPIClient`; empty-XDG hermetic |
 
-### 73. OAuth rotate/revoke + gist delete output-before-auth
+### 76. Dry-run hermetics for mutate-before-auth verbs
 
-**Polish.** Rotate/revoke UUID guards exist; output still post-client. Gist delete emits after DELETE.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/oauth_clients.go`, `cmd/oauth_clients_handler_test.go`, `cmd/gist.go`, gist tests |
-| **Acceptance** | `validateMutationOutput` before client; hermetics |
-
-### 74. PR list bad-output hermetic
-
-**Polish.** `runPRList` already guards before client; no empty-XDG hermetic.
+**Polish.** OAuth revoke, gist delete, and namespace rename already dry-run before client; no empty-XDG tests lock that ordering.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/pr_handler_test.go` |
-| **Acceptance** | `TestPRList_BadOutput_Hermetic` (or equivalent) under empty XDG |
+| **Packages / files** | `cmd/oauth_clients_handler_test.go`, `cmd/gist_test.go`, `cmd/namespace_handler_test.go` |
+| **Acceptance** | Empty-XDG `--dry-run` hermetics prove success without auth/config noise |
