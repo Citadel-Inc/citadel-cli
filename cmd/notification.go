@@ -293,6 +293,9 @@ func runNotificationReadAll(cmd *cobra.Command, _ []string) error {
 // ── unread-count ──────────────────────────────────────────────────────────────
 
 func runNotificationUnreadCount(cmd *cobra.Command, _ []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -312,6 +315,9 @@ func runNotificationUnreadCount(cmd *cobra.Command, _ []string) error {
 // ── prefs get ─────────────────────────────────────────────────────────────────
 
 func runNotificationPrefsGet(cmd *cobra.Command, _ []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
