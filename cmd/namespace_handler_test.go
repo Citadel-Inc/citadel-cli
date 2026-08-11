@@ -19,6 +19,18 @@ func TestNamespaceTransferListPending_BadOutput_Hermetic(t *testing.T) {
 	assertNamespaceBadOutput(t, "transfer", "list-pending")
 }
 
+func TestNamespaceList_WatchJSON_Hermetic(t *testing.T) {
+	assertNamespaceWatchJSON(t, "list")
+}
+
+func TestNamespaceMembers_WatchJSON_Hermetic(t *testing.T) {
+	assertNamespaceWatchJSON(t, "members", "acme")
+}
+
+func TestNamespaceTransferListPending_WatchJSON_Hermetic(t *testing.T) {
+	assertNamespaceWatchJSON(t, "transfer", "list-pending")
+}
+
 func assertNamespaceBadOutput(t *testing.T, args ...string) {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
@@ -26,5 +38,15 @@ func assertNamespaceBadOutput(t *testing.T, args ...string) {
 	err := rootFor(cmd.NamespaceCmd, append(args, "--output", "toml")...).Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func assertNamespaceWatchJSON(t *testing.T, args ...string) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.NamespaceCmd, append(args, "--watch", "--output", "json")...).Execute()
+	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
+		t.Fatalf("want watch/output validation error, got %v", err)
 	}
 }
