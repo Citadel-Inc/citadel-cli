@@ -71,6 +71,15 @@ func TestLabelList_Empty(t *testing.T) {
 	}
 }
 
+func TestLabelList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.LabelCmd, "list", "-R", "acme/demo", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 // ── create ───────────────────────────────────────────────────────────────────
 
 func TestLabelCreate_Happy(t *testing.T) {
