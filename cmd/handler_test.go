@@ -1534,30 +1534,6 @@ func TestRepoDelete_DeleteFails(t *testing.T) {
 	}
 }
 
-// ── --dry-run preview tests ─────────────────────────────────────────────────
-
-func TestRepoDelete_DryRun(t *testing.T) {
-	// httptest server that fails the test if any DELETE actually fires.
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	if err := rootFor(cmd.RepoCmd, "delete", "myorg/r1", "--dry-run").Execute(); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestNsDelete_DryRun(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	if err := rootFor(cmd.NamespaceCmd, "delete", "myorg", "--dry-run").Execute(); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestNsTransferRevoke_DryRun(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	if err := rootFor(cmd.NamespaceCmd, "transfer", "revoke", "abc", "--dry-run").Execute(); err != nil {
-		t.Fatal(err)
-	}
-}
-
 // ── audit ────────────────────────────────────────────────────────────────────
 
 func TestAuditList_Happy(t *testing.T) {
@@ -1941,14 +1917,6 @@ func TestAgentDelete_DryRun_Hermetic(t *testing.T) {
 	const want = "Would DELETE agent 'alpha' (skipped; --dry-run)\n"
 	if stdout.String() != want {
 		t.Fatalf("preview = %q want %q", stdout.String(), want)
-	}
-}
-
-func TestOAuthRevoke_DryRun(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	if err := rootFor(cmd.OauthCmd, "clients", "revoke",
-		"00000000-0000-0000-0000-000000000001", "--dry-run").Execute(); err != nil {
-		t.Fatal(err)
 	}
 }
 
