@@ -276,10 +276,6 @@ func runReleaseCreate(cmd *cobra.Command, _ []string) error {
 	if tag == "" {
 		return fmt.Errorf("--tag required")
 	}
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -303,6 +299,10 @@ func runReleaseCreate(cmd *cobra.Command, _ []string) error {
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would POST %s tag=%s (skipped; --dry-run)\n", releaseBasePath(nsPath), tag)
 		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	var created releaseRow
 	if err := c.Post(cmd.Context(), releaseBasePath(nsPath), req, &created); err != nil {
@@ -353,10 +353,6 @@ func runReleaseEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("nothing to update: pass --name, --body, --draft, or --prerelease")
 	}
 
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -365,6 +361,10 @@ func runReleaseEdit(cmd *cobra.Command, args []string) error {
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would PATCH %s (skipped; --dry-run)\n", path)
 		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	var updated releaseRow
 	if err := c.Patch(cmd.Context(), path, req, &updated); err != nil {
@@ -487,10 +487,6 @@ func runReleaseAssetUpload(cmd *cobra.Command, args []string) error {
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -499,6 +495,10 @@ func runReleaseAssetUpload(cmd *cobra.Command, args []string) error {
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would POST %s file=%s (skipped; --dry-run)\n", path, filePath)
 		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 
 	file, err := os.Open(filePath)
