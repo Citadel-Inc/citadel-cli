@@ -377,17 +377,17 @@ func runReleaseEdit(cmd *cobra.Command, args []string) error {
 }
 
 func runReleaseDelete(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "delete"); err != nil {
 		return err
 	}
 	tag := strings.TrimSpace(args[0])
 	if tag == "" {
 		return fmt.Errorf("tag required")
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
 	}
 	path := releaseBasePath(nsPath) + "/" + url.PathEscape(tag)
 	if dryRunFlag(cmd) {
@@ -399,13 +399,16 @@ func runReleaseDelete(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	if err := c.Delete(cmd.Context(), path); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {
 			return fmt.Errorf("release %s not found in %s", tag, nsPath)
 		}
 		return err
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if strings.EqualFold(output, "json") {
 		return emitJSON(cmd, map[string]any{
 			"status":         "ok",
@@ -577,12 +580,8 @@ func runReleaseAssetDownload(cmd *cobra.Command, args []string) error {
 }
 
 func runReleaseAssetDelete(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "delete"); err != nil {
 		return err
 	}
 	tag := strings.TrimSpace(args[0])
@@ -593,6 +592,10 @@ func runReleaseAssetDelete(cmd *cobra.Command, args []string) error {
 	if assetID == "" {
 		return fmt.Errorf("asset ID required")
 	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
 	path := releaseAssetPath(nsPath, tag) + "/" + url.PathEscape(assetID)
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE %s (skipped; --dry-run)\n", path)
@@ -601,10 +604,13 @@ func runReleaseAssetDelete(cmd *cobra.Command, args []string) error {
 	if err := confirmTypedValue(yesFlag(cmd), "delete release asset", assetID); err != nil {
 		return err
 	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	if err := c.Delete(cmd.Context(), path); err != nil {
 		return err
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if output == "json" {
 		return emitJSON(cmd, map[string]any{
 			"status":         "ok",
