@@ -204,6 +204,16 @@ func TestGistDelete_YAMLOutput_DryRunHermetic(t *testing.T) {
 	}
 }
 
+func TestGistDelete_DryRun_Hermetic(t *testing.T) {
+	output, err := executeGistTestCommand(t, "gist", "delete", "g1", "--dry-run")
+	if err != nil {
+		t.Fatalf("gist delete dry-run: %v", err)
+	}
+	if !strings.Contains(output, "Would DELETE /gists/g1 (skipped; --dry-run)") {
+		t.Fatalf("gist delete dry-run output = %q", output)
+	}
+}
+
 type gistStreamingBuffer struct {
 	mu         sync.Mutex
 	buffer     bytes.Buffer
