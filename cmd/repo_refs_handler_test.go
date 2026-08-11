@@ -30,6 +30,15 @@ func TestRepoBranchList_BadOutput_Hermetic(t *testing.T) {
 	assertRepoRefBadOutput(t, "--output: unknown format", "branch", "list", "acme/demo")
 }
 
+func TestRepoBranchList_AllJSON_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd, "branch", "list", "acme/demo", "--all", "--output", "json").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--all cannot be used with --output json") {
+		t.Fatalf("want all/json validation error, got %v", err)
+	}
+}
+
 func TestRepoBranchDelete_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /namespaces/acme/repos/demo/refs/branches": func(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +116,15 @@ func TestRepoTagList_Happy(t *testing.T) {
 
 func TestRepoTagList_BadOutput_Hermetic(t *testing.T) {
 	assertRepoRefBadOutput(t, "--output: unknown format", "tag", "list", "acme/demo")
+}
+
+func TestRepoTagList_AllJSON_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd, "tag", "list", "acme/demo", "--all", "--output", "json").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--all cannot be used with --output json") {
+		t.Fatalf("want all/json validation error, got %v", err)
+	}
 }
 
 func TestRepoTagCreate_Happy(t *testing.T) {
