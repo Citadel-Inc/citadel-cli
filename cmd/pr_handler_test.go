@@ -472,6 +472,15 @@ func TestPRCommentList_Happy(t *testing.T) {
 	}
 }
 
+func TestPRCommentList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.PrCmd, "comment", "list", "-R", testNSPath, "7", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestPRCommentAdd_Happy(t *testing.T) {
 	added := false
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -494,6 +503,16 @@ func TestPRCommentAdd_Happy(t *testing.T) {
 	}
 	if !added {
 		t.Fatal("expected POST /comments to be called")
+	}
+}
+
+func TestPRCommentAdd_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.PrCmd, "comment", "add", "-R", testNSPath, "7",
+		"--body", "LGTM", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output for comment add") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
@@ -522,6 +541,15 @@ func TestPRReviewerList_Happy(t *testing.T) {
 	}
 }
 
+func TestPRReviewerList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.PrCmd, "reviewer", "list", "-R", testNSPath, "7", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestPRReviewerAdd_Happy(t *testing.T) {
 	added := false
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -542,6 +570,16 @@ func TestPRReviewerAdd_Happy(t *testing.T) {
 	}
 	if !added {
 		t.Fatal("expected POST /reviewers to be called")
+	}
+}
+
+func TestPRReviewerAdd_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.PrCmd, "reviewer", "add", "-R", testNSPath, "7",
+		"--reviewer", testPRUUID, "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output for reviewer add") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
@@ -581,6 +619,16 @@ func TestPRReview_Approve(t *testing.T) {
 	}
 	if !reviewed {
 		t.Fatal("expected PUT /reviews/me to be called")
+	}
+}
+
+func TestPRReview_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.PrCmd, "review", "-R", testNSPath, "7",
+		"--approve", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output for review") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
