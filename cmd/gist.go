@@ -414,6 +414,10 @@ func runGistDelete(cmd *cobra.Command, args []string) error {
 	if id == "" {
 		return fmt.Errorf("gist id required")
 	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "delete"); err != nil {
+		return err
+	}
 	path := gistPath(id)
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE %s (skipped; --dry-run)\n", path)
@@ -434,7 +438,6 @@ func runGistDelete(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	switch output {
 	case "json":
 		return emitJSON(cmd, map[string]any{"deleted": true, "id": id})
