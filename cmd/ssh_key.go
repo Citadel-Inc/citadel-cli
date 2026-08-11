@@ -115,14 +115,17 @@ func runSSHKeyList(cmd *cobra.Command, _ []string) error {
 }
 
 func runSSHKeyAdd(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	pubFlag, _ := cmd.Flags().GetString("public-key")
 	keyFile, _ := cmd.Flags().GetString("key-file")
 	label, _ := cmd.Flags().GetString("label")
 	label = strings.TrimSpace(label)
+
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	switch output {
+	case "", "json":
+	default:
+		return fmt.Errorf("--output for add supports json or default human summary only; got %q", output)
+	}
 
 	material, source, err := resolveSSHPublicKeyMaterial(pubFlag, keyFile)
 	if err != nil {
@@ -132,18 +135,16 @@ func runSSHKeyAdd(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+
 	body := map[string]string{
 		"public_key": strings.TrimSpace(material),
 	}
 	if label != "" {
 		body["label"] = label
-	}
-
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	switch output {
-	case "", "json":
-	default:
-		return fmt.Errorf("--output for add supports json or default human summary only; got %q", output)
 	}
 
 	var created sshKeyRow
