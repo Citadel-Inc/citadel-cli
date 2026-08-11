@@ -269,6 +269,18 @@ func TestReleaseDelete_Happy(t *testing.T) {
 	}
 }
 
+func TestReleaseDelete_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.ReleaseCmd,
+		"delete", "v1.0.0", "-R", "acme/demo",
+		"--output", "toml", "--yes",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), `--output for delete supports json or default human summary only; got "toml"`) {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestReleaseDelete_DryRun(t *testing.T) {
 	withServer(t, func(_ http.ResponseWriter, _ *http.Request) {
 		t.Error("dry-run must not call the server")
@@ -387,6 +399,18 @@ func TestReleaseAssetCRUD_RoundTrip(t *testing.T) {
 
 	if err := rootFor(cmd.ReleaseCmd, "asset", "delete", "v1.0.0", assetID, "-R", "acme/demo", "--yes").Execute(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestReleaseAssetDelete_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.ReleaseCmd,
+		"asset", "delete", "v1.0.0", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"-R", "acme/demo", "--output", "toml", "--yes",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), `--output for delete supports json or default human summary only; got "toml"`) {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
