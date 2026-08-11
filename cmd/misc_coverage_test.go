@@ -664,6 +664,7 @@ func TestTokenRevoke_DryRun_Hermetic(t *testing.T) {
 
 func TestTokenIssue_InvalidExpires_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	var sb strings.Builder
 	err := rootForOut(cmd.TokenCmd, &sb, "issue", "--agent", "mybot", "--expires", "not-a-duration").Execute()

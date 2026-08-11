@@ -30,6 +30,8 @@ func TestRepoDeployTokenCreateBadOutputHermetic(t *testing.T) {
 
 func TestRepoDeployTokenCreate_InvalidExpires_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 
 	err := rootFor(cmd.RepoCmd, "deploy-token", "create", "-R", "myorg/myrepo", "--expires", "not-a-duration").Execute()
 	if err == nil || !strings.Contains(err.Error(), "invalid --expires") {

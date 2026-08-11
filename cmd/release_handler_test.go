@@ -204,6 +204,8 @@ func TestReleaseCreate_MissingTag_Hermetic(t *testing.T) {
 
 func TestReleaseCreate_DryRun_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 
 	var out strings.Builder
 	if err := rootForOut(cmd.ReleaseCmd, &out,
@@ -256,6 +258,8 @@ func TestReleaseEdit_BadOutput_Hermetic(t *testing.T) {
 
 func TestReleaseEdit_DryRun_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 
 	var out strings.Builder
 	if err := rootForOut(cmd.ReleaseCmd, &out,
@@ -496,6 +500,8 @@ func TestReleaseAssetUpload_BadOutput_Hermetic(t *testing.T) {
 
 func TestReleaseAssetUpload_DryRun_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 
 	filePath := t.TempDir() + "/artifact.bin"
 	var out strings.Builder
