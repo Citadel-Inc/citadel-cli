@@ -153,7 +153,7 @@ func emitOrgInvitationRows(cmd *cobra.Command, output string, rows []orgInvitati
 		return emitYAML(cmd, rows)
 	default:
 		if len(rows) == 0 {
-			fmt.Println(emptyHuman)
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), emptyHuman)
 			return nil
 		}
 		w := newTabWriter(cmd)
@@ -199,7 +199,7 @@ func runOrgInvCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
+	if err := validateMutationOutput(output, "create"); err != nil {
 		return err
 	}
 
@@ -278,7 +278,7 @@ func runOrgInvAccept(cmd *cobra.Command, args []string) error {
 	}
 
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
+	if err := validateMutationOutput(output, "accept"); err != nil {
 		return err
 	}
 
