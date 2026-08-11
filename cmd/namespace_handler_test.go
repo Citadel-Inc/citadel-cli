@@ -1,0 +1,30 @@
+package cmd_test
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/Rethunk-Tech/citadel-cli/cmd"
+)
+
+func TestNamespaceList_BadOutput_Hermetic(t *testing.T) {
+	assertNamespaceBadOutput(t, "list")
+}
+
+func TestNamespaceMembers_BadOutput_Hermetic(t *testing.T) {
+	assertNamespaceBadOutput(t, "members", "acme")
+}
+
+func TestNamespaceTransferListPending_BadOutput_Hermetic(t *testing.T) {
+	assertNamespaceBadOutput(t, "transfer", "list-pending")
+}
+
+func assertNamespaceBadOutput(t *testing.T, args ...string) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.NamespaceCmd, append(args, "--output", "toml")...).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
