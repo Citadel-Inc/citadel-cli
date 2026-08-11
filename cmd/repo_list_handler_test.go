@@ -16,6 +16,33 @@ func TestRepoCreate_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestRepoCreate_EmptyNamespace_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd, "create", "--namespace", "", "--slug", "repo").Execute()
+	if err == nil || !strings.Contains(err.Error(), "namespace cannot be empty") {
+		t.Fatalf("want namespace validation error, got %v", err)
+	}
+}
+
+func TestRepoCreate_EmptySlug_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd, "create", "--namespace", "acme", "--slug", "").Execute()
+	if err == nil || !strings.Contains(err.Error(), "slug cannot be empty") {
+		t.Fatalf("want slug validation error, got %v", err)
+	}
+}
+
+func TestRepoCreate_BadVisibility_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd, "create", "--namespace", "acme", "--slug", "repo", "--visibility", "internal").Execute()
+	if err == nil || !strings.Contains(err.Error(), "visibility must be public or private") {
+		t.Fatalf("want visibility validation error, got %v", err)
+	}
+}
+
 func TestRepoList_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
