@@ -126,13 +126,13 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		return errors.New("--watch cannot be combined with --dcr")
 	}
 
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	orgSlug, _ := cmd.Flags().GetString("org")
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	limit, cursor, all, err := readPagination(cmd)
@@ -315,11 +315,11 @@ func runOAuthClientsShow(cmd *cobra.Command, args []string) error {
 	if err := validateGetOutput(outputFlag(cmd)); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
+	id, err := requireUUID(args[0])
 	if err != nil {
 		return err
 	}
-	id, err := requireUUID(args[0])
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -346,11 +346,11 @@ func runOAuthClientsShow(cmd *cobra.Command, args []string) error {
 }
 
 func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
+	id, err := requireUUID(args[0])
 	if err != nil {
 		return err
 	}
-	id, err := requireUUID(args[0])
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -384,11 +384,11 @@ func runOAuthClientsRotateSecret(cmd *cobra.Command, args []string) error {
 }
 
 func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
+	id, err := requireUUID(args[0])
 	if err != nil {
 		return err
 	}
-	id, err := requireUUID(args[0])
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
