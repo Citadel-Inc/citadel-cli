@@ -415,8 +415,10 @@ func runGistDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("gist id required")
 	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateMutationOutput(output, "delete"); err != nil {
-		return err
+	switch output {
+	case "", "json", "yaml":
+	default:
+		return fmt.Errorf("--output for delete supports json, yaml, or default human summary only; got %q", output)
 	}
 	path := gistPath(id)
 	if dryRunFlag(cmd) {
