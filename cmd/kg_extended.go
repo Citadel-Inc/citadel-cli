@@ -69,6 +69,9 @@ func resolveKgNamespace(cmd *cobra.Command, positional string) (ns, repo string,
 }
 
 func kgWritePayload(cmd *cobra.Command, payload any) error {
+	if err := validateKgPayloadOutput(cmd); err != nil {
+		return err
+	}
 	out := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	switch out {
 	case "", "json":
@@ -78,6 +81,30 @@ func kgWritePayload(cmd *cobra.Command, payload any) error {
 	default:
 		return fmt.Errorf("--output supports json or yaml for kg queries; got %q", out)
 	}
+}
+
+func validateKgPayloadOutput(cmd *cobra.Command) error {
+	out := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	switch out {
+	case "", "json", "yaml":
+		return nil
+	default:
+		return fmt.Errorf("--output supports json or yaml for kg queries; got %q", out)
+	}
+}
+
+func validateKgPagesOutput(cmd *cobra.Command, all bool) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if output == "csv" {
+		return fmt.Errorf("--output supports json, yaml, ndjson, or table for kg queries; got %q", output)
+	}
+	return nil
 }
 
 func kgFetchPages(fetch func(cursor string) (any, error), cursor string, all bool) ([]any, error) {
@@ -159,10 +186,10 @@ func kgPayloadRows(payload any, preferred ...string) []any {
 }
 
 func kgWritePages(cmd *cobra.Command, pages []any, all bool, rowKeys ...string) error {
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if all && output == "json" {
-		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	if err := validateKgPagesOutput(cmd, all); err != nil {
+		return err
 	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if !all {
 		if output == "table" {
 			return kgWriteTable(cmd, pages, rowKeys...)
@@ -251,10 +278,6 @@ func kgCell(row map[string]any, keys ...string) string {
 }
 
 func runKgSearch(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	q := url.Values{}
 	q.Set("scope", "cross-namespace")
 
@@ -282,6 +305,13 @@ func runKgSearch(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := validateKgPagesOutput(cmd, all); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	pages, err := kgFetchPages(func(pageCursor string) (any, error) {
 		var payload any
 		path := "/api/kg/search?" + kgQueryWithPagination(q, limit, pageCursor)
@@ -297,10 +327,6 @@ func runKgSearch(cmd *cobra.Command, args []string) error {
 }
 
 func runKgSymbols(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	qstr, _ := cmd.Flags().GetString("q")
 	qstr = strings.TrimSpace(qstr)
 	if qstr == "" {
@@ -332,6 +358,13 @@ func runKgSymbols(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := validateKgPagesOutput(cmd, all); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	pages, err := kgFetchPages(func(pageCursor string) (any, error) {
 		var payload any
 		path := "/api/namespaces/" + url.PathEscape(ns) + "/kg/symbols?" + kgQueryWithPagination(q, limit, pageCursor)
@@ -347,10 +380,6 @@ func runKgSymbols(cmd *cobra.Command, args []string) error {
 }
 
 func runKgFiles(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -373,6 +402,13 @@ func runKgFiles(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := validateKgPagesOutput(cmd, all); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	pages, err := kgFetchPages(func(pageCursor string) (any, error) {
 		var payload any
 		path := "/api/namespaces/" + url.PathEscape(ns) + "/kg/files?" + kgQueryWithPagination(q, limit, pageCursor)
@@ -388,10 +424,6 @@ func runKgFiles(cmd *cobra.Command, args []string) error {
 }
 
 func runKgWalk(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	seed, _ := cmd.Flags().GetString("seed-id")
 	seed = strings.TrimSpace(seed)
 	if seed == "" {
@@ -416,6 +448,13 @@ func runKgWalk(cmd *cobra.Command, args []string) error {
 	if s := strings.TrimSpace(mustFlag(cmd, "direction")); s != "" {
 		q.Set("direction", s)
 	}
+	if err := validateKgPayloadOutput(cmd); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	path := "/api/namespaces/" + url.PathEscape(ns) + "/kg/walk?" + q.Encode()
 	var payload any
 	if err := c.Get(cmd.Context(), path, &payload); err != nil {
@@ -425,10 +464,6 @@ func runKgWalk(cmd *cobra.Command, args []string) error {
 }
 
 func runKgFulltext(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	qstr, _ := cmd.Flags().GetString("q")
 	qstr = strings.TrimSpace(qstr)
 	if qstr == "" {
@@ -460,6 +495,13 @@ func runKgFulltext(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := validateKgPagesOutput(cmd, all); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	pages, err := kgFetchPages(func(pageCursor string) (any, error) {
 		var payload any
 		path := "/api/namespaces/" + url.PathEscape(ns) + "/kg/fulltext?" + kgQueryWithPagination(q, limit, pageCursor)
@@ -475,10 +517,6 @@ func runKgFulltext(cmd *cobra.Command, args []string) error {
 }
 
 func runKgDiff(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -496,6 +534,13 @@ func runKgDiff(cmd *cobra.Command, args []string) error {
 	}
 	if s := strings.TrimSpace(mustFlag(cmd, "to-ref")); s != "" {
 		q.Set("to_ref", s)
+	}
+	if err := validateKgPayloadOutput(cmd); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	path := "/api/namespaces/" + url.PathEscape(ns) + "/kg/diff?" + q.Encode()
 	var payload any
