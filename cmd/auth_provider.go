@@ -148,11 +148,11 @@ func runAuthProviderList(cmd *cobra.Command, _ []string) error {
 }
 
 func runAuthProviderLink(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
+	provider, err := normalizeAuthProviderID(args[0])
 	if err != nil {
 		return err
 	}
-	provider, err := normalizeAuthProviderID(args[0])
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
