@@ -1,8 +1,6 @@
 package cmd_test
 
 import (
-	"io"
-	"os"
 	"strings"
 	"testing"
 
@@ -94,24 +92,12 @@ func TestOAuthClientsRevoke_DryRun_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	const clientID = "550e8400-e29b-41d4-a716-446655440000"
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("create stdout pipe: %v", err)
-	}
-	defer reader.Close()
-	originalStdout := os.Stdout
-	os.Stdout = writer
-	err = rootFor(cmd.OauthCmd, "clients", "revoke", clientID, "--dry-run").Execute()
-	_ = writer.Close()
-	os.Stdout = originalStdout
+	var stdout strings.Builder
+	err := rootForOut(cmd.OauthCmd, &stdout, "clients", "revoke", clientID, "--dry-run").Execute()
 	if err != nil {
 		t.Fatalf("oauth clients revoke dry-run: %v", err)
 	}
-	output, readErr := io.ReadAll(reader)
-	if readErr != nil {
-		t.Fatalf("read stdout: %v", readErr)
-	}
-	if string(output) != "Would DELETE /oauth/clients/"+clientID+" (skipped; --dry-run)\n" {
-		t.Fatalf("oauth clients revoke dry-run output = %q", output)
+	if stdout.String() != "Would DELETE /oauth/clients/"+clientID+" (skipped; --dry-run)\n" {
+		t.Fatalf("oauth clients revoke dry-run output = %q", stdout.String())
 	}
 }
