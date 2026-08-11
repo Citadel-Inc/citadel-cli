@@ -166,6 +166,17 @@ func TestRepoCommitList_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestRepoCommitList_AllJSON_Hermetic(t *testing.T) {
+	setRepoCommitHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"commit", "list", "acme/demo", "--all", "--output", "json",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--all cannot be used with --output json") {
+		t.Fatalf("want --all JSON validation error, got %v", err)
+	}
+}
+
 func TestRepoCommitList_MissingRepo_Hermetic(t *testing.T) {
 	setRepoCommitHermeticEnv(t)
 
