@@ -627,11 +627,11 @@ func completeReleaseAssetIDs(cmd *cobra.Command, args []string, _ string) ([]str
 	if len(args) != 1 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	c, err := newAPIClient(cmd)
+	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	nsPath, err := resolveIssueNamespacePath(cmd)
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
