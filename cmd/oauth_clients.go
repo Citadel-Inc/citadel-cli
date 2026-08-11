@@ -307,12 +307,12 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 		return emitJSON(cmd, created)
 	}
 
-	fmt.Fprintf(os.Stderr, "Created OAuth client %q\n", created.Name)
-	fmt.Fprintf(os.Stderr, "  id:         %s\n", created.ID)
-	fmt.Fprintf(os.Stderr, "  client_id:  %s\n", created.ClientID)
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Created OAuth client %q\n", created.Name)
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  id:         %s\n", created.ID)
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  client_id:  %s\n", created.ClientID)
 	if created.ClientSecret != "" {
-		fmt.Println(created.ClientSecret)
-		fmt.Fprintf(os.Stderr, "(client_secret printed once above — store it securely)\n")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), created.ClientSecret)
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "(client_secret printed once above — store it securely)")
 	}
 	return nil
 }
