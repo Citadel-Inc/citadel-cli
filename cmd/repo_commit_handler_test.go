@@ -161,7 +161,7 @@ func TestRepoCommitList_BadOutput_Hermetic(t *testing.T) {
 		"commit", "list", "acme/demo",
 		"--output", "toml",
 	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -183,7 +183,7 @@ func TestRepoCommitList_MissingRepo_Hermetic(t *testing.T) {
 	err := rootFor(cmd.RepoCmd,
 		"commit", "list", "--no-cwd-repo",
 	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "repository required") {
+	if err == nil || err.Error() != "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
 		t.Fatalf("want repository path error, got %v", err)
 	}
 }
@@ -253,7 +253,7 @@ func TestRepoCommitGet_BadOutput_Hermetic(t *testing.T) {
 		"commit", "get", "-R", "acme/demo", "abc1234567890def",
 		"--output", "toml",
 	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -264,7 +264,7 @@ func TestRepoCommitGet_MissingRepo_Hermetic(t *testing.T) {
 	err := rootFor(cmd.RepoCmd,
 		"commit", "get", "deadbeef", "--no-cwd-repo",
 	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "repository required") {
+	if err == nil || err.Error() != "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
 		t.Fatalf("want repository path error, got %v", err)
 	}
 }
