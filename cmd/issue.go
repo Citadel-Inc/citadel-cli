@@ -603,6 +603,9 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 	}
 	title, _ := cmd.Flags().GetString("title")
 	title = strings.TrimSpace(title)
+	if title == "" {
+		return fmt.Errorf("title cannot be empty")
+	}
 	body, err := readIssueBody(cmd, "body")
 	if err != nil {
 		return err
