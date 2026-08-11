@@ -44,3 +44,18 @@ func TestKgImpact_EmptySymbol_Hermetic(t *testing.T) {
 		t.Fatalf("want empty-symbol validation error, got %v", err)
 	}
 }
+
+func TestKgImpact_DepthRange_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	for _, depth := range []string{"0", "4", "-1"} {
+		t.Run(depth, func(t *testing.T) {
+			err := rootFor(cmd.KgCmd, "impact", "myorg", "01234567-89ab-cdef-0123-456789abcdef", "--depth", depth).Execute()
+			if err == nil || err.Error() != "--depth must be between 1 and 3" {
+				t.Fatalf("want depth validation error, got %v", err)
+			}
+		})
+	}
+}
