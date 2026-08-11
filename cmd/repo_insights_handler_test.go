@@ -10,6 +10,14 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
 )
 
+func setRepoInsightsHermeticEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+}
+
 // ── insights ──────────────────────────────────────────────────────────────────
 
 func makeInsightsFull() map[string]any {
@@ -116,6 +124,29 @@ func TestRepoInsights_NotFound(t *testing.T) {
 	err := rootFor(cmd.RepoCmd, "insights", "acme/missing").Execute()
 	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("expected not found error, got: %v", err)
+	}
+}
+
+func TestRepoInsights_BadOutput_Hermetic(t *testing.T) {
+	setRepoInsightsHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"insights", "acme/demo",
+		"--output", "xml",
+	).Execute()
+	if err == nil || err.Error() != `--output: unknown format "xml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoInsights_MissingRepo_Hermetic(t *testing.T) {
+	setRepoInsightsHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"insights", "--no-cwd-repo",
+	).Execute()
+	if err == nil || err.Error() != "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want repository path error, got %v", err)
 	}
 }
 
