@@ -17,6 +17,22 @@ func TestOAuthClientsList_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestOAuthClientsList_EmptyHuman(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /oauth/clients": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"clients": []map[string]any{}})
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.OauthCmd, &stdout, "clients", "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != "No OAuth clients.\n" {
+		t.Fatalf("empty list output = %q", stdout.String())
+	}
+}
+
 func TestOAuthClientsCreate_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 

@@ -198,7 +198,7 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 			case "yaml":
 				return emitYAML(cmd, []oauthClient{})
 			default:
-				fmt.Println("No OAuth clients.")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No OAuth clients.")
 				return nil
 			}
 		}
@@ -238,7 +238,7 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 
 		if !all {
 			if isHumanListOutput(output) && next != "" {
-				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
 			}
 			return nil
 		}
