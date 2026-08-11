@@ -105,16 +105,27 @@ func splitRepoArg(arg string) (ns, slug string, err error) {
 }
 
 func runRepoCreate(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
+	ns, _ := cmd.Flags().GetString("namespace")
+	ns = strings.TrimSpace(ns)
+	if ns == "" {
+		return fmt.Errorf("namespace cannot be empty")
+	}
+	slug, _ := cmd.Flags().GetString("slug")
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return fmt.Errorf("slug cannot be empty")
+	}
+	visibility, _ := cmd.Flags().GetString("visibility")
+	visibility = strings.TrimSpace(strings.ToLower(visibility))
+	if visibility != "public" && visibility != "private" {
+		return fmt.Errorf("visibility must be public or private")
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "create"); err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
-	ns, _ := cmd.Flags().GetString("namespace")
-	slug, _ := cmd.Flags().GetString("slug")
 
 	desc, _ := cmd.Flags().GetString("description")
-	visibility, _ := cmd.Flags().GetString("visibility")
 	defaultBranch, _ := cmd.Flags().GetString("default-branch")
 	initReadme, _ := cmd.Flags().GetBool("init-with-readme")
 
@@ -134,6 +145,11 @@ func runRepoCreate(cmd *cobra.Command, _ []string) error {
 	}
 	if defaultBranch != "" {
 		reqBody.DefaultBranch = &defaultBranch
+	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 
 	var row repoRow
