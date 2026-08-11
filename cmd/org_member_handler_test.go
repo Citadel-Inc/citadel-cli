@@ -184,6 +184,15 @@ func TestOrgMemberSetPermissions_ClearAll(t *testing.T) {
 	}
 }
 
+func TestOrgMemberSetPermissions_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.OrgCmd, "member", "set-permissions", "myorg", "alice", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "supports json or default human summary only") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestOrgMemberSetPermissions_CannotModifyOwner(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"PATCH /orgs/myorg/members/" + testOwnerUUID: func(w http.ResponseWriter, _ *http.Request) {
@@ -229,6 +238,15 @@ func TestOrgMemberRemove_ByUUID(t *testing.T) {
 	}
 	if !deleted {
 		t.Fatal("expected DELETE to be called")
+	}
+}
+
+func TestOrgMemberRemove_Yes_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.OrgCmd, "member", "remove", "myorg", "alice", "--yes").Execute()
+	if err == nil || (!strings.Contains(err.Error(), "auth") && !strings.Contains(err.Error(), "config")) {
+		t.Fatalf("want auth/config error after confirmation, got %v", err)
 	}
 }
 
