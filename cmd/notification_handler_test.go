@@ -207,6 +207,15 @@ func TestNotificationUnreadCount_JSON(t *testing.T) {
 	}
 }
 
+func TestNotificationUnreadCount_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.NotificationCmd, "unread-count", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 // ── notification prefs get ────────────────────────────────────────────────────
 
 func prefsBody() map[string]any {
@@ -246,6 +255,15 @@ func TestNotificationPrefsGet_JSON(t *testing.T) {
 	}
 	if out["email_digest_cadence"] != "daily" {
 		t.Fatalf("expected daily cadence, got %v", out["email_digest_cadence"])
+	}
+}
+
+func TestNotificationPrefsGet_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.NotificationCmd, "prefs", "get", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
