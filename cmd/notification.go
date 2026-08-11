@@ -132,23 +132,23 @@ func init() {
 // ── list ──────────────────────────────────────────────────────────────────────
 
 func runNotificationList(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
+	output := outputFlag(cmd)
+	if err := validateListOutput(output); err != nil {
 		return err
 	}
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
-	if err := validateListOutput(output); err != nil {
-		return err
-	}
-	unreadOnly, _ := cmd.Flags().GetBool("unread")
-
 	if all && output == "json" {
 		return fmt.Errorf("--all with --output json is not supported; use --output ndjson for streaming JSON")
 	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	unreadOnly, _ := cmd.Flags().GetBool("unread")
 
 	var yamlAccum []notifItem
 	csvHdr := false
