@@ -62,6 +62,18 @@ func TestIssueList_NoAuth(t *testing.T) {
 	}
 }
 
+func TestIssueList_BadCursor_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "list", "-R", "acme/demo", "--cursor", "not-base64!!!").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
+		t.Fatalf("want cursor validation error, got %v", err)
+	}
+}
+
 func TestIssueView_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7", "/namespaces/acme/demo/issues/7") {
