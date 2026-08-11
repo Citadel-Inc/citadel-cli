@@ -240,10 +240,6 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
@@ -254,14 +250,15 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
 	}
-	if watchFlag(cmd) {
-		if err := validateDescCursor(cursor); err != nil {
-			return fmt.Errorf("invalid --cursor: %w", err)
-		}
-		return runNsListWatch(cmd, c, limit, cursor, all)
-	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	if watchFlag(cmd) {
+		return runNsListWatch(cmd, c, limit, cursor, all)
 	}
 
 	var yamlAccum []nsOrgRow
@@ -390,11 +387,6 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	slug := args[0]
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
@@ -405,14 +397,16 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
 	}
-	if watchFlag(cmd) {
-		if err := validateMemberCursor(cursor); err != nil {
-			return fmt.Errorf("invalid --cursor: %w", err)
-		}
-		return runNsMembersWatch(cmd, c, slug, limit, cursor, all)
-	}
 	if err := validateMemberCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	slug := args[0]
+	if watchFlag(cmd) {
+		return runNsMembersWatch(cmd, c, slug, limit, cursor, all)
 	}
 
 	var yamlAccum []nsMemberRow
@@ -545,10 +539,6 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
@@ -559,14 +549,15 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
 	}
-	if watchFlag(cmd) {
-		if err := validateDescCursor(cursor); err != nil {
-			return fmt.Errorf("invalid --cursor: %w", err)
-		}
-		return runNsTransferListPendingWatch(cmd, c, limit, cursor, all)
-	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	if watchFlag(cmd) {
+		return runNsTransferListPendingWatch(cmd, c, limit, cursor, all)
 	}
 
 	var yamlAccum []nsTransferRow
