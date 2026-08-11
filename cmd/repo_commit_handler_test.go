@@ -146,6 +146,18 @@ func TestRepoCommitList_NoAuth(t *testing.T) {
 	}
 }
 
+func TestRepoCommitList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd,
+		"commit", "list", "acme/demo",
+		"--output", "toml",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 // ── get ───────────────────────────────────────────────────────────────────────
 
 func TestRepoCommitGet_Happy(t *testing.T) {
