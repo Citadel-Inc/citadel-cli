@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110218ZAUG26 (fenced wave 16)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 65 | Issue reopen bad-output hermetic | Empty-XDG `TestIssueReopen_BadOutput_Hermetic` |
+| 66 | Agent/token list hermetic depth | `_Hermetic` rename; `--all`+json; watch yaml/csv hermetics |
+| 67 | Issue mutate hermetic assert strings | Full `--output for <verb> supports json…` wording |
+| — | Release delete/asset-delete auth-before-guard | Mutation-output + empty args before client; hermetics |
+| — | Label create/edit/delete auth-before-guard | Mutation-output before client; hermetics |
+| — | Should-fix closeout | Label delete confirm before `newAPIClient` |
+
+---
+
 ## Shipped 110204ZAUG26 (fenced wave 15)
 
 | # | Item | Notes |
@@ -317,29 +330,71 @@ _(#61b–#64 shipped in wave 15; should-fixes closed in-wave.)_
 
 ## Round 17 — wave-15 audit carry-forwards (110204ZAUG26)
 
-### 65. Issue reopen bad-output hermetic
+_(#65–#67 shipped in wave 16; release/label delete-mutate guards + should-fix closed in-wave.)_
 
-**Polish.** Close hermetic covers `runIssueStateMutation`; reopen shares the path but has no dedicated empty-XDG bad-output test.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/issue_handler_test.go` |
-| **Acceptance** | `TestIssueReopen_BadOutput_Hermetic` (or equivalent) under empty XDG |
+## Round 18 — wave-16 audit carry-forwards (110218ZAUG26)
 
-### 66. Agent/token list hermetic depth
+### 68. SSH key add auth-before-guard
 
-**Polish.** Agent/token bad-output tests omit `_Hermetic` suffix used elsewhere; no `--all --output json` hermetic; watch hermetics only cover `--watch --output json` (not yaml/csv/default branches).
+**Polish.** `runSSHKeyAdd` builds the client before key-material and output validation.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/handler_test.go` |
-| **Acceptance** | Naming aligned; `--all`+json and additional watch-output hermetics under empty XDG |
+| **Packages / files** | `cmd/ssh_key.go`, `cmd/ssh_key_handler_test.go` |
+| **Acceptance** | Key/output guards before `newAPIClient`; empty-XDG hermetic |
 
-### 67. Tighten issue mutate hermetic assert strings
+### 69. Notification unread/prefs output-before-auth
 
-**Polish.** Issue mutate hermetics assert substring `supports json or default human summary`; siblings pin the full canonical wording from `deploy_token` / milestone create tests.
+**Polish.** `runNotificationUnreadCount` / `runNotificationPrefsGet` lack pre-auth `validateGetOutput`.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/issue_handler_test.go` |
-| **Acceptance** | Assert full mutation-output error string for create/assign/close/label hermetics |
+| **Packages / files** | `cmd/notification.go`, `cmd/notification_handler_test.go` |
+| **Acceptance** | Output validated before client; hermetics under empty XDG |
+
+### 70. Repo create auth-before-guard
+
+**Polish.** `runRepoCreate` constructs the client before namespace/slug/output local checks.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/repo.go`, list/create handler tests as appropriate |
+| **Acceptance** | Local flags + mutation/get output before client; hermetic |
+
+### 71. KG extended list output/pagination-before-auth
+
+**Polish.** `kg_extended` search/symbols/files/walk/fulltext/diff call `newAPIClient` before query/pagination/output guards.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/kg_extended.go`, `cmd/kg_extended_test.go` |
+| **Acceptance** | List/output/pagination before client across verbs; hermetics |
+
+### 72. Namespace transfer/rename output-before-auth
+
+**Polish.** Transfer initiate/accept and rename validate output after client construction.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/namespace.go`, `cmd/namespace_handler_test.go` |
+| **Acceptance** | Mutation/get output (+ confirm where local) before client; hermetics |
+
+### 73. OAuth rotate/revoke + gist delete output-before-auth
+
+**Polish.** Rotate/revoke UUID guards exist; output still post-client. Gist delete emits after DELETE.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/oauth_clients.go`, `cmd/oauth_clients_handler_test.go`, `cmd/gist.go`, gist tests |
+| **Acceptance** | `validateMutationOutput` before client; hermetics |
+
+### 74. PR list bad-output hermetic
+
+**Polish.** `runPRList` already guards before client; no empty-XDG hermetic.
+
+| | |
+| --- | --- |
+| **Packages / files** | `cmd/pr_handler_test.go` |
+| **Acceptance** | `TestPRList_BadOutput_Hermetic` (or equivalent) under empty XDG |
