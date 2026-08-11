@@ -133,6 +133,9 @@ func TestAgentList_PaginationHint(t *testing.T) {
 	if err := rootForOut(cmd.AgentCmd, &sb, "list").Execute(); err != nil {
 		t.Fatal(err)
 	}
+	if !strings.Contains(sb.String(), "(use --cursor Y3Vyc29yNA== for more, or --all to fetch everything)") {
+		t.Fatalf("expected pagination hint, got %q", sb.String())
+	}
 }
 
 func TestAgentList_TableWithModelHint(t *testing.T) {

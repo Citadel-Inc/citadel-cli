@@ -202,7 +202,7 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 			case "yaml":
 				return emitYAML(cmd, []agentRow{})
 			default:
-				fmt.Println("No agents found.")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No agents found.")
 				return nil
 			}
 		}
@@ -242,7 +242,7 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 
 		if !all {
 			if isHumanListOutput(output) && next != "" {
-				fmt.Println("(use --cursor " + next + " for more, or --all to fetch everything)")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
 			}
 			return nil
 		}
