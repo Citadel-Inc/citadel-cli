@@ -451,6 +451,9 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 	default:
 		return fmt.Errorf("--state must be open, closed, or all")
 	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 	labels, _ := cmd.Flags().GetStringSlice("label")
 	assignees, _ := cmd.Flags().GetStringSlice("assignee")
 	labels = normalizeStringSlice(labels)
