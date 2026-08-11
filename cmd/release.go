@@ -159,16 +159,16 @@ func releaseAssetPath(nsPath, tag string) string {
 }
 
 func runReleaseList(cmd *cobra.Command, _ []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateListOutput(output); err != nil {
 		return err
 	}
 	q := url.Values{}
@@ -418,6 +418,10 @@ func runReleaseDelete(cmd *cobra.Command, args []string) error {
 }
 
 func runReleaseAssetList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -429,10 +433,6 @@ func runReleaseAssetList(cmd *cobra.Command, args []string) error {
 	tag := strings.TrimSpace(args[0])
 	if tag == "" {
 		return fmt.Errorf("tag required")
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateListOutput(output); err != nil {
-		return err
 	}
 
 	var payload struct {
