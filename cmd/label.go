@@ -223,6 +223,10 @@ func runLabelCreate(cmd *cobra.Command, _ []string) error {
 	if slug == "" {
 		return fmt.Errorf("slug is empty — provide --slug explicitly")
 	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
 	desc, _ := cmd.Flags().GetString("description")
 	payload := map[string]any{
 		"slug":         slug,
@@ -241,7 +245,6 @@ func runLabelCreate(cmd *cobra.Command, _ []string) error {
 		}
 		return err
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if output == "json" {
 		return emitJSON(cmd, created)
 	}
@@ -264,6 +267,10 @@ func runLabelEdit(cmd *cobra.Command, args []string) error {
 	descChanged := cmd.Flags().Lookup("description") != nil && cmd.Flags().Lookup("description").Changed
 	if !nameChanged && !colorChanged && !descChanged {
 		return fmt.Errorf("set at least one of --name, --color, --description")
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "edit"); err != nil {
+		return err
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -320,7 +327,6 @@ func runLabelEdit(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if output == "json" {
 		return emitJSON(cmd, updated)
 	}
@@ -336,6 +342,10 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 	targetSlug := strings.TrimSpace(args[0])
 	if targetSlug == "" {
 		return fmt.Errorf("label slug required")
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "delete"); err != nil {
+		return err
 	}
 	path := labelBasePath(nsPath) + "/" + url.PathEscape(targetSlug)
 	if dryRunFlag(cmd) {
@@ -360,7 +370,6 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if output == "json" {
 		return emitJSON(cmd, map[string]any{
 			"status":         "ok",
