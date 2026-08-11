@@ -252,6 +252,59 @@ func TestTokenList_Empty(t *testing.T) {
 	}
 }
 
+func TestTokenList_EmptyHuman(t *testing.T) {
+	const agentID = "00000000-0000-0000-0000-00000000000a"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{
+				{"id": agentID, "name": "mybot", "owner_user_id": "u1"},
+			}))
+		},
+		"GET /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, tokensJSON([]map[string]any{}))
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.TokenCmd, &stdout, "list", "--agent", "mybot").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != "No tokens for agent 'mybot'\n" {
+		t.Fatalf("empty token list output = %q", stdout.String())
+	}
+}
+
+func TestTokenList_PaginationHint(t *testing.T) {
+	const agentID = "00000000-0000-0000-0000-00000000000a"
+	const nextCursor = "dG9rZW5jdXJzb3I"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{
+				{"id": agentID, "name": "mybot", "owner_user_id": "u1"},
+			}))
+		},
+		"GET /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"tokens": []map[string]any{{
+					"id":         "00000000-0000-0000-0000-000000000011",
+					"agent_id":   agentID,
+					"created_at": "2026-01-01T00:00:00Z",
+				}},
+				"next_cursor": nextCursor,
+			})
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.TokenCmd, &stdout, "list", "--agent", "mybot").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	wantHint := "(use --cursor " + nextCursor + " for more, or --all to fetch everything)"
+	if !strings.Contains(stdout.String(), wantHint) {
+		t.Fatalf("expected pagination hint, got %q", stdout.String())
+	}
+}
+
 func TestTokenList_OutputJSON(t *testing.T) {
 	const agentID = "00000000-0000-0000-0000-00000000000a"
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -350,6 +403,33 @@ func TestAgentCreate_Forbidden(t *testing.T) {
 	err := rootFor(cmd.AgentCmd, "create", "blocked").Execute()
 	if err == nil || !strings.Contains(err.Error(), "insufficient permission") {
 		t.Fatalf("want 'insufficient permission' error, got %v", err)
+	}
+}
+
+func TestTokenIssue_HumanSecretOutput(t *testing.T) {
+	const agentID = "00000000-0000-0000-0000-00000000000a"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, agentsJSON([]map[string]any{
+				{"id": agentID, "name": "mybot", "owner_user_id": "u1"},
+			}))
+		},
+		"POST /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 201, map[string]any{
+				"id":              "00000000-0000-0000-0000-000000000011",
+				"agent_id":        agentID,
+				"cleartext_token": "secret-tok",
+				"created_at":      "2026-01-01T00:00:00Z",
+			})
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.TokenCmd, &stdout, "issue", "--agent", "mybot").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != "secret-tok\n" {
+		t.Fatalf("token secret output = %q", stdout.String())
 	}
 }
 
