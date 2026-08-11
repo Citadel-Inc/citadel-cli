@@ -89,12 +89,15 @@ func runNsProfileGet(cmd *cobra.Command, args []string) error {
 	if err := validateGetOutput(outputFlag(cmd)); err != nil {
 		return err
 	}
+	slug := strings.TrimSpace(args[0])
+	if slug == "" {
+		return fmt.Errorf("namespace slug required")
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	slug := args[0]
 
 	var profile nsProfile
 	if err := c.Get(cmd.Context(), "/api/namespaces/"+url.PathEscape(slug)+"/profile", &profile); err != nil {
