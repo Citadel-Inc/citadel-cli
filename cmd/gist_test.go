@@ -189,8 +189,18 @@ func TestGistList_NegativeLimit(t *testing.T) {
 
 func TestGistDelete_BadOutput_Hermetic(t *testing.T) {
 	_, err := executeGistTestCommand(t, "gist", "delete", "g1", "--output", "toml")
-	if err == nil || !strings.Contains(err.Error(), "--output for delete supports json or default human summary only") {
+	if err == nil || err.Error() != `--output for delete supports json, yaml, or default human summary only; got "toml"` {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestGistDelete_YAMLOutput_DryRunHermetic(t *testing.T) {
+	output, err := executeGistTestCommand(t, "gist", "delete", "g1", "--output", "yaml", "--dry-run")
+	if err != nil {
+		t.Fatalf("gist delete YAML dry-run: %v", err)
+	}
+	if !strings.Contains(output, "Would DELETE /gists/g1 (skipped; --dry-run)") {
+		t.Fatalf("gist delete YAML dry-run output = %q", output)
 	}
 }
 
