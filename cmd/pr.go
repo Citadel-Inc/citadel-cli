@@ -256,10 +256,6 @@ func prToListRow(pr prRow) prListRow {
 // ── runners ───────────────────────────────────────────────────────────────────
 
 func runPRList(cmd *cobra.Command, _ []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
@@ -273,6 +269,10 @@ func runPRList(cmd *cobra.Command, _ []string) error {
 	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
 	}
 	state, _ := cmd.Flags().GetString("state")
 	state = strings.TrimSpace(strings.ToLower(state))
