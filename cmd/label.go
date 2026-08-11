@@ -347,20 +347,18 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 	if err := validateMutationOutput(output, "delete"); err != nil {
 		return err
 	}
-	path := labelBasePath(nsPath) + "/" + url.PathEscape(targetSlug)
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE label '%s' from %s (skipped; --dry-run)\n", targetSlug, nsPath)
 		return nil
+	}
+	if err := confirmTypedValue(yesFlag(cmd), "delete label", targetSlug); err != nil {
+		return err
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	if !yesFlag(cmd) {
-		if err := confirmTypedValue(false, "delete label", targetSlug); err != nil {
-			return err
-		}
-	}
+	path := labelBasePath(nsPath) + "/" + url.PathEscape(targetSlug)
 	if err := c.Delete(cmd.Context(), path); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {
 			return fmt.Errorf("label '%s' not found in %s", targetSlug, nsPath)
