@@ -127,6 +127,8 @@ func TestOAuthClientsRevoke_BadOutput_Hermetic(t *testing.T) {
 
 func TestOAuthClientsRevoke_DryRun_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 
 	const clientID = "550e8400-e29b-41d4-a716-446655440000"
 	var stdout strings.Builder
