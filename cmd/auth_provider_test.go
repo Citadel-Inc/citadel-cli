@@ -227,8 +227,8 @@ func TestAuthProviderUnlink_Yes_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 
 	err := rootFor("provider", "unlink", "github", "--yes").Execute()
-	if err == nil {
-		t.Fatal("expected auth/config error before unlink request")
+	if err == nil || (!strings.Contains(err.Error(), "auth") && !strings.Contains(err.Error(), "config")) {
+		t.Fatalf("want auth/config error before unlink request, got %v", err)
 	}
 }
 
