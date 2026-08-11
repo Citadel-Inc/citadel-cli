@@ -25,6 +25,15 @@ func TestOAuthClientsCreate_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestOAuthClientsCreate_EmptyName_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.OauthCmd, "clients", "create", "--name", "   ", "--redirect-uri", "https://example.com/callback").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--name cannot be empty") {
+		t.Fatalf("want empty-name validation error, got %v", err)
+	}
+}
+
 func TestOAuthClientsList_WatchJSON_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
