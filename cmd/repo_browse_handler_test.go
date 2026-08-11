@@ -11,6 +11,14 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
 )
 
+func setRepoBrowseHermeticEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+}
+
 // ── browse tree ───────────────────────────────────────────────────────────────
 
 func makeBrowseTree(ref, path string, entries []map[string]any) map[string]any {
@@ -97,6 +105,25 @@ func TestRepoBrowseTree_WithRefAndPath(t *testing.T) {
 	}
 }
 
+func TestRepoBrowseTree_BadOutput_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "browse", "tree", "acme/demo",
+		"--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoBrowseTree_MissingRepo_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "browse", "tree", "--no-cwd-repo").Execute()
+	if err == nil || err.Error() != "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want repository path error, got %v", err)
+	}
+}
+
 // ── browse blob ───────────────────────────────────────────────────────────────
 
 func TestRepoBrowseBlob_Happy(t *testing.T) {
@@ -162,6 +189,35 @@ func TestRepoBrowseBlob_MissingPath(t *testing.T) {
 	}
 }
 
+func TestRepoBrowseBlob_BadOutput_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "browse", "blob", "acme/demo",
+		"--path", "README.md", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoBrowseBlob_MissingPath_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "browse", "blob", "acme/demo").Execute()
+	if err == nil || err.Error() != "--path is required for blob" {
+		t.Fatalf("want path required error, got %v", err)
+	}
+}
+
+func TestRepoBrowseBlob_MissingRepo_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "browse", "blob", "--no-cwd-repo",
+		"--path", "README.md").Execute()
+	if err == nil || err.Error() != "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want repository path error, got %v", err)
+	}
+}
+
 func TestRepoBrowseBlob_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/namespaces/acme/repos/demo/blob": func(w http.ResponseWriter, _ *http.Request) {
@@ -219,5 +275,24 @@ func TestRepoBrowseRaw_FileOutput(t *testing.T) {
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("output file bytes differ: got %d bytes, want %d", len(got), len(want))
+	}
+}
+
+func TestRepoBrowseRaw_MissingPath_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "browse", "raw", "-R", "acme/demo", "").Execute()
+	if err == nil || err.Error() != "file path required" {
+		t.Fatalf("want file path error, got %v", err)
+	}
+}
+
+func TestRepoBrowseRaw_MissingRepo_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "browse", "raw", "README.md",
+		"--no-cwd-repo").Execute()
+	if err == nil || err.Error() != "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want repository path error, got %v", err)
 	}
 }
