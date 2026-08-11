@@ -435,6 +435,15 @@ func TestIssueReopen_Happy(t *testing.T) {
 	}
 }
 
+func TestIssueReopen_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "reopen", "-R", "acme/demo", "7", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output for reopen supports json or default human summary only") {
+		t.Fatalf("want mutation output validation error, got %v", err)
+	}
+}
+
 func TestIssueLabel_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7/labels", "/namespaces/acme/demo/issues/7/labels") {
