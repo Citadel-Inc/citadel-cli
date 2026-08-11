@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110506ZAUG26 (fenced wave 26)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 116 | Notification list cursor guard before auth | `validateDescCursor` before client; exact BadCursor hermetic |
+| 117 | Issue list cursor + BadOutput hermetics | Cursor before client; exact BadCursor/BadOutput |
+| 118 | PR list cursor guard before auth | Cursor before client; exact BadCursor + BadOutput env clear |
+| 119 | Namespace get slug trim + hermetics | Empty-slug before client; exact BadOutput/EmptySlug |
+| — | Harden `assertRepoRefBadOutput` exact mode | Explicit `exact bool`; tag create/delete full-string |
+| — | Should-fix closeout | Exact BadCursor on notif/issue/PR; PR BadOutput env+exact; tag mutation exact |
+
+---
+
 ## Shipped 110448ZAUG26 (fenced wave 25)
 
 | # | Item | Notes |
@@ -512,14 +525,23 @@ _(#113–#115 + audit exact asserts + token relocate shipped in wave 25; should-
 
 ## Round 27 — wave-25 audit carry-forwards (110448ZAUG26)
 
+_(#116 + `assertRepoRefBadOutput` exact mode shipped in wave 26; should-fixes closed in-wave.)_
+
+---
+
+## Round 28 — wave-26 audit carry-forwards (110506ZAUG26)
+
 ### Optional tightenings (audit)
 
-- Notification list: reject invalid `--cursor` before `newAPIClient` (today bad cursor reaches auth — blocks a clean BadCursor hermetic).
-- `assertRepoRefBadOutput` list-branch `args[1]=="list"` heuristic is brittle if call-site arg order changes.
+- Namespace get: HTTP hermetic that trimmed slug `" myorg "` hits `GET /namespaces/myorg`.
+- Issue/PR list: validate cursor (and output) before `resolveIssueNamespacePath` so bad-cursor fails without git/env resolution.
 
 ### Next polish candidates
 
 | # | Item | Notes |
 | --- | --- | --- |
-| 116 | Notification list cursor guard before auth | Local invalid-cursor error + BadCursor hermetic |
-| — | Harden `assertRepoRefBadOutput` want-mode | Prefer explicit want string / mode arg over `args[1]=="list"` |
+| 120 | Token list BadCursor hermetic | Handler already validates; add empty-XDG exact assert |
+| 121 | Repo insights BadOutput (+ MissingRepo) hermetics | Empty-XDG exact output; `--no-cwd-repo` path error |
+| 122 | Audit sessions list BadOutput hermetic | Mirror show’s empty-XDG exact assert |
+| 123 | Auth provider list BadOutput hermetic | `validateListOutput` already before client |
+| 124 | Namespace members slug trim | Mirror `runNsGet` trim + empty-slug before client |
