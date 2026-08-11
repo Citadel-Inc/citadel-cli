@@ -223,10 +223,6 @@ func runRepoCommitGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	// args is 1 or 2: optional <ns>/<repo> then <sha>
 	var ns, slug, sha string
 	switch len(args) {
@@ -246,6 +242,10 @@ func runRepoCommitGet(cmd *cobra.Command, args []string) error {
 		sha = strings.TrimSpace(args[1])
 	}
 
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	filePath, _ := cmd.Flags().GetString("path")
 
 	// If --path is given, fetch the per-file unified diff
