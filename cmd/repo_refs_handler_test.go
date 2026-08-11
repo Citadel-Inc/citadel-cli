@@ -30,6 +30,10 @@ func TestRepoBranchList_BadOutput_Hermetic(t *testing.T) {
 	assertRepoRefBadOutput(t, "--output: unknown format", "branch", "list", "acme/demo")
 }
 
+func TestRepoBranchList_MissingRepo_Hermetic(t *testing.T) {
+	assertRepoRefListMissingRepo(t, "branch", "list")
+}
+
 func TestRepoBranchList_AllJSON_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -118,6 +122,10 @@ func TestRepoTagList_BadOutput_Hermetic(t *testing.T) {
 	assertRepoRefBadOutput(t, "--output: unknown format", "tag", "list", "acme/demo")
 }
 
+func TestRepoTagList_MissingRepo_Hermetic(t *testing.T) {
+	assertRepoRefListMissingRepo(t, "tag", "list")
+}
+
 func TestRepoTagList_AllJSON_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -157,10 +165,24 @@ func TestRepoTagCreate_Conflict(t *testing.T) {
 func assertRepoRefBadOutput(t *testing.T, want string, args ...string) {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
 
 	err := rootFor(cmd.RepoCmd, append(args, "--output", "toml")...).Execute()
 	if err == nil || !strings.Contains(err.Error(), want) {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func assertRepoRefListMissingRepo(t *testing.T, args ...string) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+
+	err := rootFor(cmd.RepoCmd, append(args, "--no-cwd-repo")...).Execute()
+	if err == nil || !strings.Contains(err.Error(), "repository required") {
+		t.Fatalf("want repository path error, got %v", err)
 	}
 }
 
