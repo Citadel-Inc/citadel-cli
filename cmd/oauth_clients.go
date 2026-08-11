@@ -258,10 +258,6 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 }
 
 func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nameRaw, _ := cmd.Flags().GetString("name")
 	name := strings.TrimSpace(nameRaw)
 	redirects, _ := cmd.Flags().GetStringSlice("redirect-uri")
@@ -269,10 +265,19 @@ func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {
 	isPublic, _ := cmd.Flags().GetBool("public")
 	desc, _ := cmd.Flags().GetString("description")
 	scopes, _ := cmd.Flags().GetStringSlice("scope")
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+
+	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
 
 	if len(redirects) == 0 {
 		return errors.New("at least one --redirect-uri is required")
+	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 
 	payload := map[string]any{
