@@ -7,6 +7,15 @@ import (
 	"github.com/Rethunk-Tech/citadel-cli/cmd"
 )
 
+func TestRepoCreate_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd, "create", "--namespace", "acme", "--slug", "repo", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), `--output for create supports json or default human summary only; got "toml"`) {
+		t.Fatalf("want create output validation error, got %v", err)
+	}
+}
+
 func TestRepoList_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
