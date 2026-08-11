@@ -160,7 +160,7 @@ func runRepoCreate(cmd *cobra.Command, _ []string) error {
 	if output == "json" {
 		return emitJSON(cmd, row)
 	}
-	fmt.Printf("Created %s/%s (%s)\n", row.ParentSlug, row.Slug, row.Visibility)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created %s/%s (%s)\n", row.ParentSlug, row.Slug, row.Visibility)
 	return nil
 }
 
@@ -348,7 +348,7 @@ func runRepoDelete(cmd *cobra.Command, args []string) error {
 	if err := c.Delete(cmd.Context(), "/namespaces/"+url.PathEscape(ns)+"/"+url.PathEscape(slug)); err != nil {
 		return err
 	}
-	fmt.Printf("Deleted %s/%s\n", ns, slug)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Deleted %s/%s\n", ns, slug)
 	return nil
 }
 
