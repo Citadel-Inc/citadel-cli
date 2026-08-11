@@ -69,8 +69,8 @@ func TestIssueList_BadCursor_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.IssueCmd, "list", "-R", "acme/demo", "--cursor", "not-base64!!!").Execute()
-	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
-		t.Fatalf("want cursor validation error, got %v", err)
+	if err == nil || err.Error() != "invalid --cursor: invalid_cursor: desc" {
+		t.Fatalf("want exact cursor validation error, got %v", err)
 	}
 }
 
