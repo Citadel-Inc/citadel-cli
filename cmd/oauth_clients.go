@@ -403,7 +403,7 @@ func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
 	}
 
 	if dryRunFlag(cmd) {
-		fmt.Printf("Would DELETE /oauth/clients/%s (skipped; --dry-run)\n", id)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /oauth/clients/%s (skipped; --dry-run)\n", id)
 		return nil
 	}
 	if err := confirmTypedValue(yesFlag(cmd), "revoke OAuth client", id); err != nil {
