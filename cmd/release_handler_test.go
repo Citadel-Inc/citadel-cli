@@ -572,6 +572,7 @@ func TestReleasePathGuards_Hermetic(t *testing.T) {
 		{name: "list", args: []string{"list", "-R", "/"}},
 		{name: "latest", args: []string{"latest", "-R", "/"}},
 		{name: "view", args: []string{"view", "v1.0.0", "-R", "/"}},
+		{name: "asset list", args: []string{"asset", "list", "v1.0.0", "-R", "/"}},
 		{name: "asset download", args: []string{"asset", "download", "v1.0.0", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "-R", "/"}},
 	}
 	for _, tt := range tests {
