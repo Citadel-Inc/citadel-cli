@@ -143,6 +143,9 @@ func runNotificationList(cmd *cobra.Command, _ []string) error {
 	if all && output == "json" {
 		return fmt.Errorf("--all with --output json is not supported; use --output ndjson for streaming JSON")
 	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 
 	c, err := newAPIClient(cmd)
 	if err != nil {
