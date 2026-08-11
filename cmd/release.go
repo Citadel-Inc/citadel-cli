@@ -515,10 +515,6 @@ func runReleaseAssetUpload(cmd *cobra.Command, args []string) error {
 }
 
 func runReleaseAssetDownload(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -530,6 +526,10 @@ func runReleaseAssetDownload(cmd *cobra.Command, args []string) error {
 	}
 	if assetID == "" {
 		return fmt.Errorf("asset ID required")
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	outputFile, _ := cmd.Flags().GetString("output-file")
 	var asset releaseAssetRow
