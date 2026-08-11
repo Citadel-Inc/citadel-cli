@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110440ZAUG26 (fenced wave 24)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 108 | Label list path-before-client | `resolveIssueNamespacePath` before client; missing-repo hermetic |
+| 109 | Branch + tag list path-before-client | Path after pagination; missing-repo + shared hermetic env helper |
+| 110 | Commit list/get path+pagination-before-client | List/get path before client; missing-repo + AllJSON hermetics |
+| 111 | Milestone delete dry-run before auth | Dry-run preview without client; exact stdout hermetic |
+| 112 | Namespace profile trim + bad-output hermetic | Empty slug before client; exact bad-output/empty-slug hermetics |
+| — | Should-fix closeout | Clear `CITADEL_REPO` on commit/refs hermetics; label mutation env clears; commit AllJSON |
+
+---
+
 ## Shipped 110430ZAUG26 (fenced wave 23)
 
 | # | Item | Notes |
@@ -474,4 +487,22 @@ _(#102–#107 shipped in wave 23; should-fixes closed in-wave.)_
 
 ## Round 25 — wave-23 audit carry-forwards (110430ZAUG26)
 
-_(No open carry-forwards — should-fixes closed in-wave. Optional: relocate `TestTokenList_BadOutput_Hermetic` from `handler_test.go` into `more_handler_test.go` when that hot file is owned.)_
+_(#108–#112 shipped in wave 24; should-fixes closed in-wave.)_
+
+---
+
+## Round 26 — wave-24 audit carry-forwards (110440ZAUG26)
+
+### Optional tightenings (audit)
+
+- Exact error asserts on commit/refs missing-repo hermetics (`repository required` full string).
+- Exact `--output: unknown format "…"` asserts on label/commit/refs list bad-output hermetics (profile fence already exact).
+
+### Next polish candidates
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 113 | Repo browse bad-output / missing-path hermetics | `repo_browse_handler_test.go` — tree/blob/raw local guards; clear API env |
+| 114 | Notification list EmptyHuman + PaginationHint | Exact stdout via `rootForOut`; optional BadCursor hermetic |
+| 115 | KG impact `--depth` range before client | Guard 1–3 (or documented range) before `newAPIClient` |
+| — | Relocate token bad-output hermetic | `TestTokenList_BadOutput_Hermetic` → `more_handler_test.go` when that hot file is owned |
