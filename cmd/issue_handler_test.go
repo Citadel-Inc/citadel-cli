@@ -143,6 +143,15 @@ func TestIssueCreate_Happy(t *testing.T) {
 	}
 }
 
+func TestIssueCreate_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "create", "-R", "acme/demo", "--title", "Ship it", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "supports json or default human summary") {
+		t.Fatalf("want mutation output validation error, got %v", err)
+	}
+}
+
 func TestIssueCommentAdd_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7/comments", "/namespaces/acme/demo/issues/7/comments") {
@@ -264,6 +273,15 @@ func TestIssueAssign_Clear(t *testing.T) {
 	}
 }
 
+func TestIssueAssign_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "assign", "-R", "acme/demo", "7", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "supports json or default human summary") {
+		t.Fatalf("want mutation output validation error, got %v", err)
+	}
+}
+
 func TestIssueCommentList_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7/comments", "/namespaces/acme/demo/issues/7/comments") {
@@ -369,6 +387,15 @@ func TestIssueClose_Happy(t *testing.T) {
 	}
 }
 
+func TestIssueClose_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "close", "-R", "acme/demo", "7", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "supports json or default human summary") {
+		t.Fatalf("want mutation output validation error, got %v", err)
+	}
+}
+
 func TestIssueClose_Forbidden(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
@@ -418,6 +445,15 @@ func TestIssueLabel_Happy(t *testing.T) {
 	})
 	if err := rootFor(cmd.IssueCmd, "label", "-R", "acme/demo", "7", "--add", "bug", "--remove", "triage").Execute(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestIssueLabel_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.IssueCmd, "label", "-R", "acme/demo", "7", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "supports json or default human summary") {
+		t.Fatalf("want mutation output validation error, got %v", err)
 	}
 }
 
