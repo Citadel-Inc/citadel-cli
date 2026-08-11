@@ -27,7 +27,7 @@ func TestRepoBranchList_Happy(t *testing.T) {
 }
 
 func TestRepoBranchList_BadOutput_Hermetic(t *testing.T) {
-	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, "branch", "list", "acme/demo")
+	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, true, "branch", "list", "acme/demo")
 }
 
 func TestRepoBranchList_MissingRepo_Hermetic(t *testing.T) {
@@ -119,7 +119,7 @@ func TestRepoTagList_Happy(t *testing.T) {
 }
 
 func TestRepoTagList_BadOutput_Hermetic(t *testing.T) {
-	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, "tag", "list", "acme/demo")
+	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, true, "tag", "list", "acme/demo")
 }
 
 func TestRepoTagList_MissingRepo_Hermetic(t *testing.T) {
@@ -147,7 +147,7 @@ func TestRepoTagCreate_Happy(t *testing.T) {
 }
 
 func TestRepoTagCreate_BadOutput_Hermetic(t *testing.T) {
-	assertRepoRefBadOutput(t, "supports json or default human summary", "tag", "create", "acme/demo", "v1.0.0", "--ref", "main")
+	assertRepoRefBadOutput(t, "supports json or default human summary", false, "tag", "create", "acme/demo", "v1.0.0", "--ref", "main")
 }
 
 func TestRepoTagCreate_Conflict(t *testing.T) {
@@ -162,7 +162,7 @@ func TestRepoTagCreate_Conflict(t *testing.T) {
 	}
 }
 
-func assertRepoRefBadOutput(t *testing.T, want string, args ...string) {
+func assertRepoRefBadOutput(t *testing.T, want string, exact bool, args ...string) {
 	t.Helper()
 	setRepoRefHermeticEnv(t)
 
@@ -170,7 +170,7 @@ func assertRepoRefBadOutput(t *testing.T, want string, args ...string) {
 	if err == nil {
 		t.Fatalf("want output validation error, got %v", err)
 	}
-	if len(args) > 1 && args[1] == "list" {
+	if exact {
 		if err.Error() != want {
 			t.Fatalf("want output validation error %q, got %v", want, err)
 		}
@@ -214,7 +214,7 @@ func TestRepoTagDelete_Happy(t *testing.T) {
 }
 
 func TestRepoTagDelete_BadOutput_Hermetic(t *testing.T) {
-	assertRepoRefBadOutput(t, "supports json or default human summary", "tag", "delete", "acme/demo", "v1.0.0")
+	assertRepoRefBadOutput(t, "supports json or default human summary", false, "tag", "delete", "acme/demo", "v1.0.0")
 }
 
 func TestRepoTagDelete_NotFound(t *testing.T) {
