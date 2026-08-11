@@ -372,14 +372,14 @@ func runDeployTokenRevoke(cmd *cobra.Command, namespacePath, tokenID string) err
 	if err := validateMutationOutput(output, "revoke"); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	path := deployTokenAPIPath(namespacePath) + "/" + url.PathEscape(tokenID)
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE %s (skipped; --dry-run)\n", path)
 		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	if err := c.Delete(cmd.Context(), path); err != nil {
 		return decorateDeployTokenError(err, namespacePath, "revoke", tokenID)
