@@ -124,9 +124,12 @@ func TestPRList_NotFound(t *testing.T) {
 
 func TestPRList_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.PrCmd, "list", "-R", testNSPath, "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -138,7 +141,7 @@ func TestPRList_BadCursor_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.PrCmd, "list", "-R", testNSPath, "--cursor", "not-base64!!!").Execute()
-	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
+	if err == nil || err.Error() != "invalid --cursor: invalid_cursor: desc" {
 		t.Fatalf("want cursor validation error, got %v", err)
 	}
 }
