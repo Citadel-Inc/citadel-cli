@@ -650,7 +650,7 @@ func TestOAuthClientsList_AllYAMLTwoPages(t *testing.T) {
 
 // ── token revoke: --dry-run branch ───────────────────────────────────────────
 
-func TestTokenRevoke_DryRun(t *testing.T) {
+func TestTokenRevoke_DryRun_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	var sb strings.Builder
 	if err := rootForOut(cmd.TokenCmd, &sb, "revoke", "test-token-uuid", "--dry-run").Execute(); err != nil {
