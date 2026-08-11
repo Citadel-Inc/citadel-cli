@@ -96,15 +96,15 @@ type orgInvitationRow struct {
 }
 
 func runOrgInvPending(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
 
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	var payload struct {
 		Invitations []orgInvitationRow `json:"invitations"`
 	}
@@ -116,16 +116,16 @@ func runOrgInvPending(cmd *cobra.Command, _ []string) error {
 }
 
 func runOrgInvList(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
 	orgSlug := strings.TrimSpace(args[0])
 
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	var payload struct {
 		Invitations []orgInvitationRow `json:"invitations"`
 	}
