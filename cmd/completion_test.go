@@ -33,6 +33,7 @@ func TestCompletion_AllShells(t *testing.T) {
 
 func TestCompletion_RejectsUnknownShell(t *testing.T) {
 	root := &cobra.Command{Use: "citadel-cli"}
+	addTestRootGroups(root)
 	root.AddCommand(cmd.CompletionCmd)
 	root.SetArgs([]string{"completion", "tcsh"})
 	root.SilenceErrors = true

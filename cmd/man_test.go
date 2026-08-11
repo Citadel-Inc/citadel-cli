@@ -61,6 +61,7 @@ func TestMan_GeneratesPages(t *testing.T) {
 
 func TestMan_RejectsMissingArg(t *testing.T) {
 	root := &cobra.Command{Use: "citadel-cli"}
+	addTestRootGroups(root)
 	root.AddCommand(cmd.ManCmd)
 	root.SetArgs([]string{"man"})
 	root.SilenceErrors = true

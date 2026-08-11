@@ -546,7 +546,7 @@ func runReleaseAssetDownload(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var dst io.Writer = cmd.OutOrStdout()
+	var dst = cmd.OutOrStdout()
 	var file *os.File
 	if outputFile != "" && outputFile != "-" {
 		file, err = os.Create(outputFile)

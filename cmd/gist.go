@@ -474,7 +474,7 @@ func runGistRaw(cmd *cobra.Command, args []string) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	outputFile, _ := cmd.Flags().GetString("output-file")
-	var dst io.Writer = cmd.OutOrStdout()
+	var dst = cmd.OutOrStdout()
 	var file *os.File
 	if outputFile != "" && outputFile != "-" {
 		file, err = os.OpenFile(outputFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
