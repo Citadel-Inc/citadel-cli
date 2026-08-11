@@ -224,7 +224,7 @@ func runPRCommentList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateListOutput(output); err != nil {
+	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	onlyInline, _ := cmd.Flags().GetBool("inline")
@@ -419,7 +419,7 @@ func runPRReviewerList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateListOutput(output); err != nil {
+	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	c, err := newAPIClient(cmd)
