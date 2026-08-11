@@ -264,14 +264,14 @@ func runTokenIssue(cmd *cobra.Command, _ []string) error {
 }
 
 func runTokenRevoke(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	tokenID := args[0]
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /agent-tokens/%s (skipped; --dry-run)\n", tokenID)
 		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	if err := c.Delete(cmd.Context(), "/agent-tokens/"+url.PathEscape(tokenID)); err != nil {
 		return err
