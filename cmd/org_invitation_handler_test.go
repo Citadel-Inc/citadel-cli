@@ -67,8 +67,19 @@ func TestOrgInvRevoke_EmptyID_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 
 	err := rootFor(cmd.OrgCmd, "invitation", "revoke", "acme", " ").Execute()
-	if err == nil || !strings.Contains(err.Error(), "invitation ID is required") {
+	if err == nil || err.Error() != "invitation ID is required" {
 		t.Fatalf("want invitation ID required error, got %v", err)
+	}
+}
+
+func TestOrgInvRevoke_EmptyOrgSlug_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	err := rootFor(cmd.OrgCmd, "invitation", "revoke", " \t", "inv-123").Execute()
+	if err == nil || err.Error() != "organization slug is required" {
+		t.Fatalf("want organization slug required error, got %v", err)
 	}
 }
 
@@ -91,6 +102,8 @@ func TestOrgInvRevoke_HappyOutput(t *testing.T) {
 func assertOrgInvitationBadOutput(t *testing.T, args ...string) {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 
 	err := rootFor(cmd.OrgCmd, append([]string{"invitation"}, append(args, "--output", "toml")...)...).Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
