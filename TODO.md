@@ -6,6 +6,21 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110522ZAUG26 (fenced wave 27)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 120 | Token list BadCursor hermetic | Empty-XDG exact `invalid_cursor: desc` |
+| 121 | Repo insights BadOutput + MissingRepo hermetics | Exact get BadOutput; `--no-cwd-repo` path error |
+| 122 | Audit sessions list BadOutput hermetic | Empty-XDG `toml` + `--ns` exact assert |
+| 123 | Auth provider list BadOutput hermetic | Empty-XDG exact list BadOutput |
+| 124 | Namespace members slug trim | Trim + empty before client; empty-slug hermetic |
+| — | Namespace get trimmed-slug HTTP | `" myorg "` → `GET /namespaces/myorg` |
+| — | Issue/PR list flags before path | Output/pagination/cursor (issue: state) before `resolveIssueNamespacePath`; no-repo BadCursor hermetics |
+| — | Should-fix closeout | None (audit clean) |
+
+---
+
 ## Shipped 110506ZAUG26 (fenced wave 26)
 
 | # | Item | Notes |
@@ -531,17 +546,20 @@ _(#116 + `assertRepoRefBadOutput` exact mode shipped in wave 26; should-fixes cl
 
 ## Round 28 — wave-26 audit carry-forwards (110506ZAUG26)
 
+_(#120–#124 + Round 28 optional tightenings shipped in wave 27; should-fixes none.)_
+
+---
+
+## Round 29 — wave-27 audit carry-forwards (110522ZAUG26)
+
 ### Optional tightenings (audit)
 
-- Namespace get: HTTP hermetic that trimmed slug `" myorg "` hits `GET /namespaces/myorg`.
-- Issue/PR list: validate cursor (and output) before `resolveIssueNamespacePath` so bad-cursor fails without git/env resolution.
+- Repo insights: `validateGetOutput` before `resolveRepoFromPosOrFlag` (parity with commit list; tests already pass via positional).
+- Namespace members: HTTP hermetic that trimmed slug `" myorg "` hits `GET /orgs/myorg/members`.
+- Issue/PR list: no-repo BadOutput hermetics mirroring no-repo BadCursor (output already before path).
 
 ### Next polish candidates
 
 | # | Item | Notes |
 | --- | --- | --- |
-| 120 | Token list BadCursor hermetic | Handler already validates; add empty-XDG exact assert |
-| 121 | Repo insights BadOutput (+ MissingRepo) hermetics | Empty-XDG exact output; `--no-cwd-repo` path error |
-| 122 | Audit sessions list BadOutput hermetic | Mirror show’s empty-XDG exact assert |
-| 123 | Auth provider list BadOutput hermetic | `validateListOutput` already before client |
-| 124 | Namespace members slug trim | Mirror `runNsGet` trim + empty-slug before client |
+| 125 | Completion unknown-shell test root groups | `TestCompletion_RejectsUnknownShell` panics without `addTestRootGroups` on test root (`GroupID: meta`) |
