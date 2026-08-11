@@ -39,9 +39,13 @@ func TestRepoTopicList_Empty(t *testing.T) {
 	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "list", "acme/demo").Execute(); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "(no topics)") {
-		t.Fatalf("expected '(no topics)', got: %s", buf.String())
+	if got := buf.String(); got != "(no topics)\n" {
+		t.Fatalf("empty topic list output = %q", got)
 	}
+}
+
+func TestRepoTopicList_BadOutput_Hermetic(t *testing.T) {
+	assertRepoTopicBadOutput(t, "list", "acme/demo")
 }
 
 func TestRepoTopicList_JSON(t *testing.T) {
@@ -87,9 +91,13 @@ func TestRepoTopicSet_Clear(t *testing.T) {
 	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "set", "acme/demo").Execute(); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "cleared") {
-		t.Fatalf("expected 'cleared', got: %s", buf.String())
+	if got := buf.String(); got != "Topics cleared.\n" {
+		t.Fatalf("clear topics output = %q", got)
 	}
+}
+
+func TestRepoTopicSet_BadOutput_Hermetic(t *testing.T) {
+	assertRepoTopicBadOutput(t, "set", "acme/demo")
 }
 
 func TestRepoTopicSet_JSON(t *testing.T) {
@@ -138,9 +146,13 @@ func TestRepoTopicPopular_Empty(t *testing.T) {
 	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "popular").Execute(); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "(no topics found)") {
-		t.Fatalf("expected '(no topics found)', got: %s", buf.String())
+	if got := buf.String(); got != "(no topics found)\n" {
+		t.Fatalf("empty popular topics output = %q", got)
 	}
+}
+
+func TestRepoTopicPopular_BadOutput_Hermetic(t *testing.T) {
+	assertRepoTopicBadOutput(t, "popular")
 }
 
 func TestRepoTopicPopular_JSON(t *testing.T) {
@@ -161,5 +173,17 @@ func TestRepoTopicPopular_JSON(t *testing.T) {
 	}
 	if len(out) != 1 {
 		t.Fatalf("expected 1 topic, got %d", len(out))
+	}
+}
+
+func assertRepoTopicBadOutput(t *testing.T, args ...string) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	err := rootFor(cmd.RepoCmd, append([]string{"topic"}, append(args, "--output", "toml")...)...).Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
