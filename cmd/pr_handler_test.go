@@ -146,6 +146,18 @@ func TestPRList_BadCursor_Hermetic(t *testing.T) {
 	}
 }
 
+func TestPRList_BadCursor_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.PrCmd, "list", "--cursor", "not-base64!!!").Execute()
+	if err == nil || err.Error() != "invalid --cursor: invalid_cursor: desc" {
+		t.Fatalf("want exact cursor validation error, got %v", err)
+	}
+}
+
 // ── pr view ───────────────────────────────────────────────────────────────────
 
 func TestPRView_Happy(t *testing.T) {
