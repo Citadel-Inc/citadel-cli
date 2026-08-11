@@ -333,8 +333,12 @@ func TestAgentRotateToken_Happy(t *testing.T) {
 			})
 		},
 	}))
-	if err := rootFor(cmd.AgentCmd, "rotate-token", "alpha", "--yes").Execute(); err != nil {
+	var sb strings.Builder
+	if err := rootForOut(cmd.AgentCmd, &sb, "rotate-token", "alpha", "--yes").Execute(); err != nil {
 		t.Fatal(err)
+	}
+	if got := sb.String(); got != "sb_at_xxx\n" {
+		t.Fatalf("rotate token output = %q, want %q", got, "sb_at_xxx\n")
 	}
 }
 

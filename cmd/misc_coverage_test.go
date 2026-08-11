@@ -520,9 +520,12 @@ func TestAgentRotateToken_Success(t *testing.T) {
 			})
 		},
 	}))
-	// runAgentRotateToken uses fmt.Println for token (not cmd.OutOrStdout); verify no error.
-	if err := rootFor(cmd.AgentCmd, "rotate-token", "bot", "--yes").Execute(); err != nil {
+	var sb strings.Builder
+	if err := rootForOut(cmd.AgentCmd, &sb, "rotate-token", "bot", "--yes").Execute(); err != nil {
 		t.Fatal(err)
+	}
+	if got := sb.String(); got != "cit_newtoken123\n" {
+		t.Fatalf("rotate token output = %q, want %q", got, "cit_newtoken123\n")
 	}
 }
 
