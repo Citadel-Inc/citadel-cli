@@ -214,6 +214,33 @@ func TestAgentList_NoAuth(t *testing.T) {
 	}
 }
 
+func TestAgentList_BadOutput(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.AgentCmd, "list", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestAgentList_WatchBadOutput(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.AgentCmd, "list", "--watch", "--output", "json").Execute()
+	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
+		t.Fatalf("want watch output validation error, got %v", err)
+	}
+}
+
+func TestAgentCreate_BadOutput(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.AgentCmd, "create", "alpha", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output for create supports json or default human summary only") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestAgentGet_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
@@ -599,6 +626,24 @@ func TestTokenList_MissingAgent(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{}))
 	if err := rootFor(cmd.TokenCmd, "list").Execute(); err == nil || !strings.Contains(err.Error(), `"agent"`) {
 		t.Fatalf("want agent required, got %v", err)
+	}
+}
+
+func TestTokenList_BadOutput(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestTokenList_WatchBadOutput(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--watch", "--output", "json").Execute()
+	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
+		t.Fatalf("want watch output validation error, got %v", err)
 	}
 }
 
