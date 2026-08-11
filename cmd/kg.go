@@ -71,6 +71,9 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("symbol cannot be empty")
 	}
 	depth, _ := cmd.Flags().GetInt("depth")
+	if cmd.Flags().Changed("depth") && (depth < 1 || depth > 3) {
+		return fmt.Errorf("--depth must be between 1 and 3")
+	}
 	rawJSON := jsonFlag(cmd)
 
 	repoFlag, _ := cmd.Flags().GetString("repo")
