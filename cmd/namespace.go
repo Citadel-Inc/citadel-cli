@@ -236,12 +236,12 @@ type nsTransferRow struct {
 // ── handlers ─────────────────────────────────────────────────────────────────
 
 func runNsList(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	limit, cursor, all, err := readPagination(cmd)
@@ -386,12 +386,12 @@ func runNsGet(cmd *cobra.Command, args []string) error {
 }
 
 func runNsMembers(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	slug := args[0]
@@ -541,12 +541,12 @@ func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
 }
 
 func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	limit, cursor, all, err := readPagination(cmd)
