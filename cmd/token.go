@@ -221,26 +221,20 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 }
 
 func runTokenIssue(cmd *cobra.Command, _ []string) error {
+	expiresIn, err := parseExpiresFlag(cmd)
+	if err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
 	agentName, _ := cmd.Flags().GetString("agent")
 	scopes, _ := cmd.Flags().GetStringSlice("scopes")
-	expiresStr, _ := cmd.Flags().GetString("expires")
 
 	agentID, err := findOrCreateAgent(cmd.Context(), c, agentName)
 	if err != nil {
 		return err
-	}
-
-	var expiresIn *int64
-	if expiresStr != "" {
-		d, err := time.ParseDuration(expiresStr)
-		if err == nil {
-			sec := int64(d.Seconds())
-			expiresIn = &sec
-		}
 	}
 
 	body := struct {
@@ -259,7 +253,7 @@ func runTokenIssue(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Print the token (once, no debug noise)
-	fmt.Println(tok.CleartextToken)
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), tok.CleartextToken)
 	return nil
 }
 
