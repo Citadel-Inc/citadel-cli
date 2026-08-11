@@ -29,6 +29,13 @@ func commitsPage(items []map[string]any, nextCursor string) map[string]any {
 	return map[string]any{"commits": items, "next_cursor": nextCursor, "ref": "main"}
 }
 
+func setRepoCommitHermeticEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+}
+
 // ── list ─────────────────────────────────────────────────────────────────────
 
 func TestRepoCommitList_Happy(t *testing.T) {
@@ -147,7 +154,7 @@ func TestRepoCommitList_NoAuth(t *testing.T) {
 }
 
 func TestRepoCommitList_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoCommitHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd,
 		"commit", "list", "acme/demo",
@@ -155,6 +162,17 @@ func TestRepoCommitList_BadOutput_Hermetic(t *testing.T) {
 	).Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoCommitList_MissingRepo_Hermetic(t *testing.T) {
+	setRepoCommitHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"commit", "list", "--no-cwd-repo",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "repository required") {
+		t.Fatalf("want repository path error, got %v", err)
 	}
 }
 
@@ -217,7 +235,7 @@ func TestRepoCommitGet_JSON(t *testing.T) {
 }
 
 func TestRepoCommitGet_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoCommitHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd,
 		"commit", "get", "-R", "acme/demo", "abc1234567890def",
@@ -225,6 +243,17 @@ func TestRepoCommitGet_BadOutput_Hermetic(t *testing.T) {
 	).Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoCommitGet_MissingRepo_Hermetic(t *testing.T) {
+	setRepoCommitHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"commit", "get", "deadbeef", "--no-cwd-repo",
+	).Execute()
+	if err == nil || !strings.Contains(err.Error(), "repository required") {
+		t.Fatalf("want repository path error, got %v", err)
 	}
 }
 
