@@ -26,6 +26,10 @@ func TestRepoBranchList_Happy(t *testing.T) {
 	}
 }
 
+func TestRepoBranchList_BadOutput_Hermetic(t *testing.T) {
+	assertRepoRefBadOutput(t, "--output: unknown format", "branch", "list", "acme/demo")
+}
+
 func TestRepoBranchDelete_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /namespaces/acme/repos/demo/refs/branches": func(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +105,10 @@ func TestRepoTagList_Happy(t *testing.T) {
 	}
 }
 
+func TestRepoTagList_BadOutput_Hermetic(t *testing.T) {
+	assertRepoRefBadOutput(t, "--output: unknown format", "tag", "list", "acme/demo")
+}
+
 func TestRepoTagCreate_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST /namespaces/acme/repos/demo/refs/tags": func(w http.ResponseWriter, _ *http.Request) {
@@ -112,6 +120,10 @@ func TestRepoTagCreate_Happy(t *testing.T) {
 	}
 }
 
+func TestRepoTagCreate_BadOutput_Hermetic(t *testing.T) {
+	assertRepoRefBadOutput(t, "supports json or default human summary", "tag", "create", "acme/demo", "v1.0.0", "--ref", "main")
+}
+
 func TestRepoTagCreate_Conflict(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST /namespaces/acme/repos/demo/refs/tags": func(w http.ResponseWriter, _ *http.Request) {
@@ -121,6 +133,16 @@ func TestRepoTagCreate_Conflict(t *testing.T) {
 	err := rootFor(cmd.RepoCmd, "tag", "create", "acme/demo", "v1.0.0", "--ref", "main").Execute()
 	if err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("want tag-exists error, got %v", err)
+	}
+}
+
+func assertRepoRefBadOutput(t *testing.T, want string, args ...string) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd, append(args, "--output", "toml")...).Execute()
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
