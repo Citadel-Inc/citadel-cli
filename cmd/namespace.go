@@ -693,7 +693,7 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 	transferID := args[0]
 
 	if dryRunFlag(cmd) {
-		fmt.Printf("Would DELETE /transfers/%s (skipped; --dry-run)\n", transferID)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /transfers/%s (skipped; --dry-run)\n", transferID)
 		return nil
 	}
 	if err := confirmSlug(yesFlag(cmd), "revoke transfer", transferID); err != nil {
@@ -707,14 +707,14 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 	if err := c.Delete(cmd.Context(), "/transfers/"+url.PathEscape(transferID)); err != nil {
 		return err
 	}
-	fmt.Printf("Transfer %s revoked.\n", transferID)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Transfer %s revoked.\n", transferID)
 	return nil
 }
 
 func runNsDelete(cmd *cobra.Command, args []string) error {
 	slug := strings.TrimSpace(args[0])
 	if dryRunFlag(cmd) {
-		fmt.Printf("Would DELETE /namespaces/%s (skipped; --dry-run)\n", slug)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /namespaces/%s (skipped; --dry-run)\n", slug)
 		return nil
 	}
 	if err := confirmSlug(yesFlag(cmd), "delete namespace", slug); err != nil {
@@ -751,7 +751,7 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	fmt.Printf("Deleted namespace %s\n", slug)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Deleted namespace %s\n", slug)
 	return nil
 }
 

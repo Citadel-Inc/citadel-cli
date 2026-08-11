@@ -126,6 +126,9 @@ func executeNamespaceCommand(t *testing.T, args ...string) (string, error) {
 	if err != nil {
 		t.Fatalf("create stdout pipe: %v", err)
 	}
+	t.Cleanup(func() {
+		os.Stdout = originalStdout
+	})
 	var commandOutput bytes.Buffer
 	root := rootForOut(cmd.NamespaceCmd, &commandOutput, args...)
 	os.Stdout = writer
@@ -133,7 +136,6 @@ func executeNamespaceCommand(t *testing.T, args ...string) (string, error) {
 	if err := writer.Close(); err != nil {
 		t.Fatalf("close stdout pipe: %v", err)
 	}
-	os.Stdout = originalStdout
 
 	output, err := io.ReadAll(reader)
 	if err != nil {
