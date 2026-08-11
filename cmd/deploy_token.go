@@ -176,10 +176,6 @@ func runDeployTokenList(cmd *cobra.Command, namespacePath string) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	limit, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
@@ -190,14 +186,15 @@ func runDeployTokenList(cmd *cobra.Command, namespacePath string) error {
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
 	}
-	if watchFlag(cmd) {
-		if err := validateDescCursor(cursor); err != nil {
-			return fmt.Errorf("invalid --cursor: %w", err)
-		}
-		return runDeployTokenListWatch(cmd, c, namespacePath, limit, cursor, all)
-	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	if watchFlag(cmd) {
+		return runDeployTokenListWatch(cmd, c, namespacePath, limit, cursor, all)
 	}
 
 	var yamlAccum []deployTokenRow
