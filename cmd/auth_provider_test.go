@@ -220,3 +220,25 @@ func TestAuthProviderUnlink_JSON(t *testing.T) {
 		t.Fatalf("unexpected output: %s", out.String())
 	}
 }
+
+func TestAuthProviderUnlink_Yes_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	err := rootFor("provider", "unlink", "github", "--yes").Execute()
+	if err == nil {
+		t.Fatal("expected auth/config error before unlink request")
+	}
+}
+
+func TestAuthProviderUnlink_BadProvider_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+
+	err := rootFor("provider", "unlink", "").Execute()
+	if err == nil || err.Error() != "provider required" {
+		t.Fatalf("unlink error = %v, want provider required", err)
+	}
+}
