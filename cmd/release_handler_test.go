@@ -577,7 +577,7 @@ func TestReleasePathGuards_Hermetic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := rootFor(cmd.ReleaseCmd, tt.args...).Execute()
-			if err == nil || !strings.Contains(err.Error(), "namespace path required") {
+			if err == nil || err.Error() != "namespace path required" {
 				t.Fatalf("want namespace-path validation error, got %v", err)
 			}
 		})
