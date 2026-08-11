@@ -35,7 +35,7 @@ func TestRepoBranchList_MissingRepo_Hermetic(t *testing.T) {
 }
 
 func TestRepoBranchList_AllJSON_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoRefHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, "branch", "list", "acme/demo", "--all", "--output", "json").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--all cannot be used with --output json") {
@@ -127,7 +127,7 @@ func TestRepoTagList_MissingRepo_Hermetic(t *testing.T) {
 }
 
 func TestRepoTagList_AllJSON_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setRepoRefHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, "tag", "list", "acme/demo", "--all", "--output", "json").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--all cannot be used with --output json") {
@@ -164,9 +164,7 @@ func TestRepoTagCreate_Conflict(t *testing.T) {
 
 func assertRepoRefBadOutput(t *testing.T, want string, args ...string) {
 	t.Helper()
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	t.Setenv("CITADEL_ACCESS_TOKEN", "")
-	t.Setenv("CITADEL_SERVER", "")
+	setRepoRefHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, append(args, "--output", "toml")...).Execute()
 	if err == nil || !strings.Contains(err.Error(), want) {
@@ -176,14 +174,20 @@ func assertRepoRefBadOutput(t *testing.T, want string, args ...string) {
 
 func assertRepoRefListMissingRepo(t *testing.T, args ...string) {
 	t.Helper()
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	t.Setenv("CITADEL_ACCESS_TOKEN", "")
-	t.Setenv("CITADEL_SERVER", "")
+	setRepoRefHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, append(args, "--no-cwd-repo")...).Execute()
 	if err == nil || !strings.Contains(err.Error(), "repository required") {
 		t.Fatalf("want repository path error, got %v", err)
 	}
+}
+
+func setRepoRefHermeticEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 }
 
 func TestRepoTagDelete_Happy(t *testing.T) {
