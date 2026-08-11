@@ -126,6 +126,26 @@ func TestKgWritePagesAllRejectsJSON(t *testing.T) {
 	}
 }
 
+func TestKgSearchBadOutputHermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var output strings.Builder
+	err := kgRootForOut(&output, "search", "needle", "--output", "bogus").Execute()
+	if err == nil || !strings.Contains(err.Error(), `--output: unknown format "bogus"`) {
+		t.Fatalf("error = %v, want local output validation", err)
+	}
+}
+
+func TestKgSearchAllJSONHermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var output strings.Builder
+	err := kgRootForOut(&output, "search", "needle", "--all", "--output", "json").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--all cannot be used with --output json") {
+		t.Fatalf("error = %v, want local --all/output validation", err)
+	}
+}
+
 func TestKgSearch_AllPagination(t *testing.T) {
 	runKgAllPaginationTest(t,
 		"/api/kg/search",
