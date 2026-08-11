@@ -25,7 +25,7 @@ func TestNamespaceTransferListPending_BadOutput_Hermetic(t *testing.T) {
 }
 
 func TestNamespaceTransferInitiate_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setNamespaceHermeticEnv(t)
 
 	err := rootFor(cmd.NamespaceCmd, "transfer", "initiate", "acme", "--to", "newowner", "--output", "toml").Execute()
 	if err == nil || err.Error() != `--output for transfer supports json or default human summary only; got "toml"` {
