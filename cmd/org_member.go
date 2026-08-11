@@ -293,16 +293,21 @@ func runOrgMemberList(cmd *cobra.Command, args []string) error {
 }
 
 func runOrgMemberSetPermissions(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	orgSlug := strings.TrimSpace(args[0])
 	member := strings.TrimSpace(args[1])
 	rawPerms, _ := cmd.Flags().GetStringSlice("permission")
 	perms := normalizePermissionSlice(rawPerms)
 	if perms == nil {
 		perms = []string{}
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "set-permissions"); err != nil {
+		return err
+	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 
 	userID, err := resolveMemberToUUID(cmd, c, orgSlug, member)
@@ -315,6 +320,15 @@ func runOrgMemberSetPermissions(cmd *cobra.Command, args []string) error {
 		return orgMemberFriendlyError(err)
 	}
 
+	if output == "json" {
+		return emitJSON(cmd, map[string]any{
+			"status":      "ok",
+			"org_slug":    orgSlug,
+			"member":      member,
+			"permissions": perms,
+		})
+	}
+
 	if len(perms) == 0 {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "All permissions cleared for member %s in org %s.\n", member, orgSlug)
 	} else {
@@ -325,14 +339,15 @@ func runOrgMemberSetPermissions(cmd *cobra.Command, args []string) error {
 }
 
 func runOrgMemberRemove(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	orgSlug := strings.TrimSpace(args[0])
 	member := strings.TrimSpace(args[1])
 
 	if err := confirmSlug(yesFlag(cmd), "member removal", member); err != nil {
+		return err
+	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 
@@ -358,6 +373,7 @@ func init() {
 	addPaginationFlags(orgMemberListCmd)
 	addOutputFlag(orgMemberListCmd)
 	addYesFlag(orgMemberRemoveCmd)
+	addOutputFlag(orgMemberSetPermissionsCmd)
 	orgMemberSetPermissionsCmd.Flags().StringSlice("permission", nil, "Permission atom (repeat or comma-separated; omit to clear all grants)")
 
 	orgMemberListCmd.ValidArgsFunction = completeOrgNamespaceSlugs
