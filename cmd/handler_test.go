@@ -673,15 +673,6 @@ func TestTokenList_MissingAgent(t *testing.T) {
 	}
 }
 
-func TestTokenList_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
-		t.Fatalf("want output validation error, got %v", err)
-	}
-}
-
 func TestTokenList_AllJSON_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 

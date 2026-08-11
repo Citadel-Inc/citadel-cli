@@ -305,6 +305,15 @@ func TestTokenList_PaginationHint(t *testing.T) {
 	}
 }
 
+func TestTokenList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.TokenCmd, "list", "--agent", "alpha", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestTokenList_OutputJSON(t *testing.T) {
 	const agentID = "00000000-0000-0000-0000-00000000000a"
 	withServer(t, route(t, map[string]http.HandlerFunc{
