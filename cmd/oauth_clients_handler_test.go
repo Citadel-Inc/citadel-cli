@@ -111,7 +111,7 @@ func TestOAuthClientsRevoke_DryRun_Hermetic(t *testing.T) {
 	if readErr != nil {
 		t.Fatalf("read stdout: %v", readErr)
 	}
-	if !strings.Contains(string(output), "Would DELETE /oauth/clients/"+clientID) {
+	if string(output) != "Would DELETE /oauth/clients/"+clientID+" (skipped; --dry-run)\n" {
 		t.Fatalf("oauth clients revoke dry-run output = %q", output)
 	}
 }
