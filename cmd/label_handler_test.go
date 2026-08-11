@@ -149,6 +149,16 @@ func TestLabelCreate_BadColor(t *testing.T) {
 	}
 }
 
+func TestLabelCreate_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.LabelCmd, "create", "-R", "acme/demo",
+		"--name", "Bug", "--color", "d73a4a", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), `--output for create supports json or default human summary only; got "toml"`) {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 // ── edit ─────────────────────────────────────────────────────────────────────
 
 func TestLabelEdit_Happy(t *testing.T) {
@@ -196,6 +206,16 @@ func TestLabelEdit_NotFound(t *testing.T) {
 	err := rootFor(cmd.LabelCmd, "edit", "-R", "acme/demo", "missing", "--name", "X").Execute()
 	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("want not-found error, got %v", err)
+	}
+}
+
+func TestLabelEdit_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.LabelCmd, "edit", "-R", "acme/demo", "bug",
+		"--name", "Bug", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), `--output for edit supports json or default human summary only; got "toml"`) {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
@@ -258,6 +278,16 @@ func TestLabelDelete_DryRun(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "Would DELETE") {
 		t.Fatalf("unexpected output: %s", out.String())
+	}
+}
+
+func TestLabelDelete_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.LabelCmd, "delete", "-R", "acme/demo", "bug",
+		"--yes", "--output", "toml").Execute()
+	if err == nil || !strings.Contains(err.Error(), `--output for delete supports json or default human summary only; got "toml"`) {
+		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
