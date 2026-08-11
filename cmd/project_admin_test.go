@@ -125,6 +125,23 @@ func TestProjectAdminRecoveryScan_Yes(t *testing.T) {
 	}
 }
 
+func TestProjectAdminRecoveryScan_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout bytes.Buffer
+	cmd := newProjectAdminRecoveryScanTestCommand(&stdout)
+	if err := cmd.Flags().Set("yes", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Flags().Set("output", "toml"); err != nil {
+		t.Fatal(err)
+	}
+	err := runProjectAdminRecoveryScan(cmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestProjectAdminRecoveryScan_Forbidden(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/api/projectgraph/admin/recovery-scan" {

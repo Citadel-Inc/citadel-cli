@@ -335,6 +335,14 @@ func runProjectAdminRecoveryScan(cmd *cobra.Command, _ []string) error {
 	if err := confirmTypedValue(yesFlag(cmd), "run project graph recovery scan", "recovery-scan"); err != nil {
 		return err
 	}
+	outMode := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if jsonFlag(cmd) {
+		outMode = "json"
+	}
+	if err := validateGetOutput(outMode); err != nil {
+		return err
+	}
+
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -346,13 +354,6 @@ func runProjectAdminRecoveryScan(cmd *cobra.Command, _ []string) error {
 		return upgradeUnauthorized(err)
 	}
 
-	outMode := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if jsonFlag(cmd) {
-		outMode = "json"
-	}
-	if err := validateGetOutput(outMode); err != nil {
-		return err
-	}
 	switch outMode {
 	case "json":
 		return emitJSON(cmd, out)
