@@ -316,11 +316,11 @@ func runDeployTokenCreate(cmd *cobra.Command, namespacePath string) error {
 	if err := validateMutationOutput(output, "create"); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
+	expiresIn, err := parseExpiresFlag(cmd)
 	if err != nil {
 		return err
 	}
-	expiresIn, err := parseExpiresFlag(cmd)
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
