@@ -1932,15 +1932,10 @@ func TestAuditShow_tableExercisesOptionalFields(t *testing.T) {
 	}
 }
 
-func TestAgentDelete_DryRun(t *testing.T) {
-	const agentID = "00000000-0000-0000-0000-00000000000a"
-	// Server sees the GET /agents lookup but no DELETE — the dry-run skip
-	// happens after the find-by-name resolution.
-	withServer(t, route(t, map[string]http.HandlerFunc{
-		"GET /agents": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, agentsJSON([]map[string]any{{"id": agentID, "name": "alpha", "owner_user_id": "u1"}}))
-		},
-	}))
+func TestAgentDelete_DryRun_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "http://127.0.0.1:1")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	if err := rootFor(cmd.AgentCmd, "delete", "alpha", "--dry-run").Execute(); err != nil {
 		t.Fatal(err)
 	}
