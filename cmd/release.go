@@ -163,11 +163,11 @@ func runReleaseList(cmd *cobra.Command, _ []string) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
+	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
 	}
-	nsPath, err := resolveIssueNamespacePath(cmd)
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -245,11 +245,11 @@ func getReleaseAtPath(cmd *cobra.Command, suffix, tagForErr string) error {
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
+	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
 	}
-	nsPath, err := resolveIssueNamespacePath(cmd)
+	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
