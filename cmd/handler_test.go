@@ -341,8 +341,8 @@ func TestAgentRotateToken_Happy(t *testing.T) {
 func TestAgentRotateToken_Yes_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	err := rootFor(cmd.AgentCmd, "rotate-token", "alpha", "--yes").Execute()
-	if err == nil {
-		t.Fatal("expected authentication/configuration error")
+	if err == nil || (!strings.Contains(err.Error(), "auth") && !strings.Contains(err.Error(), "config")) {
+		t.Fatalf("want auth/config error after confirmation, got %v", err)
 	}
 }
 
