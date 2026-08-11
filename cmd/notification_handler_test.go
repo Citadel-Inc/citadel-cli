@@ -53,6 +53,44 @@ func TestNotificationList_Empty(t *testing.T) {
 	}
 }
 
+func TestNotificationList_EmptyHuman(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/me/notifications": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, notifJSON([]map[string]any{}, ""))
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.NotificationCmd, &stdout, "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != "No notifications.\n" {
+		t.Fatalf("empty notification list output = %q", stdout.String())
+	}
+}
+
+func TestNotificationList_PaginationHint(t *testing.T) {
+	const nextCursor = "dG9tZWN1cnNvcg"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/me/notifications": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, notifJSON([]map[string]any{
+				makeNotif("notif-1", "issue.comment", "Hello"),
+			}, nextCursor))
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.NotificationCmd, &stdout, "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	want := "ID       KIND           STATUS  NAMESPACE  SUMMARY\n" +
+		"notif-1  issue.comment  unread  -          Hello\n" +
+		"(use --cursor " + nextCursor + " for more, or --all to fetch everything)\n"
+	if stdout.String() != want {
+		t.Fatalf("notification pagination output = %q, want %q", stdout.String(), want)
+	}
+}
+
 func TestNotificationList_JSON(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -115,12 +153,19 @@ func TestNotificationList_NoAuth(t *testing.T) {
 	}
 }
 
-func TestNotificationList_BadOutput_Hermetic(t *testing.T) {
+func setNotificationHermeticEnv(t *testing.T) {
+	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+}
+
+func TestNotificationList_BadOutput_Hermetic(t *testing.T) {
+	setNotificationHermeticEnv(t)
 
 	err := rootFor(cmd.NotificationCmd, "list", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
-		t.Fatalf("want output validation error, got %v", err)
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
+		t.Fatalf("want exact output validation error, got %v", err)
 	}
 }
 
