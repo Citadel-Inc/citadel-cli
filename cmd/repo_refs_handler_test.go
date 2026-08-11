@@ -27,7 +27,7 @@ func TestRepoBranchList_Happy(t *testing.T) {
 }
 
 func TestRepoBranchList_BadOutput_Hermetic(t *testing.T) {
-	assertRepoRefBadOutput(t, "--output: unknown format", "branch", "list", "acme/demo")
+	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, "branch", "list", "acme/demo")
 }
 
 func TestRepoBranchList_MissingRepo_Hermetic(t *testing.T) {
@@ -119,7 +119,7 @@ func TestRepoTagList_Happy(t *testing.T) {
 }
 
 func TestRepoTagList_BadOutput_Hermetic(t *testing.T) {
-	assertRepoRefBadOutput(t, "--output: unknown format", "tag", "list", "acme/demo")
+	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, "tag", "list", "acme/demo")
 }
 
 func TestRepoTagList_MissingRepo_Hermetic(t *testing.T) {
@@ -167,8 +167,17 @@ func assertRepoRefBadOutput(t *testing.T, want string, args ...string) {
 	setRepoRefHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, append(args, "--output", "toml")...).Execute()
-	if err == nil || !strings.Contains(err.Error(), want) {
+	if err == nil {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+	if len(args) > 1 && args[1] == "list" {
+		if err.Error() != want {
+			t.Fatalf("want output validation error %q, got %v", want, err)
+		}
+		return
+	}
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("want output validation error containing %q, got %v", want, err)
 	}
 }
 
@@ -177,7 +186,7 @@ func assertRepoRefListMissingRepo(t *testing.T, args ...string) {
 	setRepoRefHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, append(args, "--no-cwd-repo")...).Execute()
-	if err == nil || !strings.Contains(err.Error(), "repository required") {
+	if err == nil || err.Error() != "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
 		t.Fatalf("want repository path error, got %v", err)
 	}
 }
