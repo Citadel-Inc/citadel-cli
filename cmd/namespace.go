@@ -676,16 +676,25 @@ func runNsTransferAccept(cmd *cobra.Command, args []string) error {
 }
 
 func runNsTransferDecline(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	transferID := args[0]
+
+	if err := validateMutationOutput(output, "transfer"); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	transferID := args[0]
 
-	if err := c.Post(cmd.Context(), "/transfers/"+url.PathEscape(transferID)+"/decline", nil, nil); err != nil {
+	var result map[string]any
+	if err := c.Post(cmd.Context(), "/transfers/"+url.PathEscape(transferID)+"/decline", nil, &result); err != nil {
 		return err
 	}
-	fmt.Printf("Transfer %s declined.\n", transferID)
+	if output == "json" {
+		return emitJSON(cmd, result)
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Transfer %s declined.\n", transferID)
 	return nil
 }
 
