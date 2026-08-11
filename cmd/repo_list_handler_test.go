@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"net/http"
 	"strings"
 	"testing"
 
@@ -13,6 +14,28 @@ func TestRepoCreate_BadOutput_Hermetic(t *testing.T) {
 	err := rootFor(cmd.RepoCmd, "create", "--namespace", "acme", "--slug", "repo", "--output", "toml").Execute()
 	if err == nil || !strings.Contains(err.Error(), `--output for create supports json or default human summary only; got "toml"`) {
 		t.Fatalf("want create output validation error, got %v", err)
+	}
+}
+
+func TestRepoCreate_HumanOutput(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /namespaces/acme/repos": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, http.StatusCreated, map[string]any{
+				"parent_slug": "acme",
+				"slug":        "repo",
+				"visibility":  "private",
+			})
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &stdout,
+		"create", "--namespace", "acme", "--slug", "repo",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); got != "Created acme/repo (private)\n" {
+		t.Fatalf("stdout = %q, want %q", got, "Created acme/repo (private)\n")
 	}
 }
 
@@ -67,6 +90,24 @@ func TestRepoList_BadCursor_Hermetic(t *testing.T) {
 	err := rootFor(cmd.RepoCmd, "list", "--namespace", "acme", "--cursor", "not-base64!!!").Execute()
 	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
 		t.Fatalf("want cursor validation error, got %v", err)
+	}
+}
+
+func TestRepoDelete_HumanOutput(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /namespaces/acme/repo": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.RepoCmd, &stdout,
+		"delete", "acme/repo", "--yes",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); got != "Deleted acme/repo\n" {
+		t.Fatalf("stdout = %q, want %q", got, "Deleted acme/repo\n")
 	}
 }
 

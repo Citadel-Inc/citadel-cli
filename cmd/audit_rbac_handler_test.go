@@ -30,6 +30,25 @@ func TestAuditRBAC_ListHappy(t *testing.T) {
 	}
 }
 
+func TestAuditList_EmptyHuman(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, http.StatusOK, map[string]any{
+				"events":      []any{},
+				"next_cursor": "",
+			})
+		},
+	}))
+
+	var stdout strings.Builder
+	if err := rootForOut(cmd.AuditCmd, &stdout, "list").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); got != "No audit events found.\n" {
+		t.Fatalf("stdout = %q, want %q", got, "No audit events found.\n")
+	}
+}
+
 func TestAuditRBAC_ListNamespaceFilter(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /audit/events": func(w http.ResponseWriter, r *http.Request) {
