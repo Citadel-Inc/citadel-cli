@@ -66,6 +66,15 @@ func TestOrgMemberList_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestOrgMemberList_BadCursor_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.OrgCmd, "member", "list", "myorg", "--cursor", "not-base64!!!").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
+		t.Fatalf("want cursor validation error, got %v", err)
+	}
+}
+
 func TestOrgMemberList_JSON(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
