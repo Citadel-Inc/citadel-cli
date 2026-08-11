@@ -187,22 +187,22 @@ func printImpactTree(cmd *cobra.Command, ir impactResp) {
 	if ir.Symbol.Path != "" {
 		header += " at " + ir.Symbol.Path
 	}
-	fmt.Fprintln(out, header)
+	_, _ = fmt.Fprintln(out, header)
 
-	fmt.Fprintf(out, "  direct callers (%d):\n", len(ir.DirectCallers))
+	_, _ = fmt.Fprintf(out, "  direct callers (%d):\n", len(ir.DirectCallers))
 	for _, n := range ir.DirectCallers {
-		fmt.Fprintf(out, "    - %s\n", formatCaller(n))
+		_, _ = fmt.Fprintf(out, "    - %s\n", formatCaller(n))
 	}
-	fmt.Fprintf(out, "  transitive callers (%d):\n", len(ir.TransitiveCallers))
+	_, _ = fmt.Fprintf(out, "  transitive callers (%d):\n", len(ir.TransitiveCallers))
 	for _, n := range ir.TransitiveCallers {
-		fmt.Fprintf(out, "    - %s\n", formatCaller(n))
+		_, _ = fmt.Fprintf(out, "    - %s\n", formatCaller(n))
 	}
-	fmt.Fprintf(out, "  affected files (%d):\n", len(ir.AffectedFiles))
+	_, _ = fmt.Fprintf(out, "  affected files (%d):\n", len(ir.AffectedFiles))
 	if len(ir.AffectedFiles) > 0 {
-		fmt.Fprintf(out, "    %s\n", strings.Join(ir.AffectedFiles, ", "))
+		_, _ = fmt.Fprintf(out, "    %s\n", strings.Join(ir.AffectedFiles, ", "))
 	}
 	if ir.Truncated {
-		fmt.Fprintln(out, "  (truncated — narrow depth or scope to see the full set)")
+		_, _ = fmt.Fprintln(out, "  (truncated — narrow depth or scope to see the full set)")
 	}
 }
 
