@@ -483,14 +483,14 @@ func runIssueMilestoneDelete(cmd *cobra.Command, args []string) error {
 	if err := validateMutationOutput(output, "delete"); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	path := milestoneBasePath(nsPath) + "/" + url.PathEscape(id)
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE %s (skipped; --dry-run)\n", path)
 		return nil
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
 	}
 	if !yesFlag(cmd) {
 		var row milestoneRow
