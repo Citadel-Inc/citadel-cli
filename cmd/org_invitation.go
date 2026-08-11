@@ -173,10 +173,6 @@ func emitOrgInvitationRows(cmd *cobra.Command, output string, rows []orgInvitati
 }
 
 func runOrgInvCreate(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	orgSlug := strings.TrimSpace(args[0])
 	email, _ := cmd.Flags().GetString("email")
 	email = strings.TrimSpace(email)
@@ -202,6 +198,15 @@ func runOrgInvCreate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	body := map[string]any{
 		"permissions": perms,
 	}
@@ -212,7 +217,6 @@ func runOrgInvCreate(cmd *cobra.Command, args []string) error {
 		body["slug"] = inviteeSlug
 	}
 
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	path := "/orgs/" + url.PathEscape(orgSlug) + "/invitations"
 	var created orgInvitationRow
 	if err := c.Post(cmd.Context(), path, body, &created); err != nil {
@@ -254,10 +258,6 @@ func runOrgInvRevoke(cmd *cobra.Command, args []string) error {
 }
 
 func runOrgInvAccept(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	tokFile, _ := cmd.Flags().GetString("token-file")
 	tokFile = strings.TrimSpace(tokFile)
 	var token string
@@ -278,6 +278,14 @@ func runOrgInvAccept(cmd *cobra.Command, args []string) error {
 	}
 
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	path := "/invitations/" + url.PathEscape(token) + "/accept"
 	var result map[string]any
 	if err := c.Post(cmd.Context(), path, nil, &result); err != nil {
