@@ -426,10 +426,6 @@ func renderIssueDetailTable(cmd *cobra.Command, payload issueDetailPayload) erro
 }
 
 func runIssueList(cmd *cobra.Command, _ []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
 		return err
@@ -453,6 +449,10 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
 	}
 	labels, _ := cmd.Flags().GetStringSlice("label")
 	assignees, _ := cmd.Flags().GetStringSlice("assignee")
