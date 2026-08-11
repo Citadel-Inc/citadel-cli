@@ -6,6 +6,21 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110316ZAUG26 (fenced wave 19)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 82 | Org member remove/set-permissions auth-before-guard | Confirm before client; set-permissions mutation output + json; hermetics |
+| 83 | PR collab output guards | List/mutate `--output` before client; diff/check left alone; bad-output hermetics |
+| 84 | Auth provider unlink normalize+confirm before client | Empty-XDG hermetics |
+| 85 | OAuth revoke OutOrStdout | Dry-run via command writer; hermetic uses `rootForOut` |
+| 86 | Retire weak DryRun handler stubs | Removed mock-server no-message duplicates |
+| 87 | Agent rotate-token empty-XDG hermetic | `--yes` expects auth/config error |
+| 88 | Rename token revoke dry-run hermetic | `TestTokenRevoke_DryRun_Hermetic` |
+| — | Should-fix closeout | Collab lists use `validateGetOutput`; comment-add output before body; tighten rotate/unlink hermetic asserts |
+
+---
+
 ## Shipped 110300ZAUG26 (fenced wave 18)
 
 | # | Item | Notes |
@@ -378,65 +393,17 @@ _(#75–#76 and #77–#81 shipped in wave 18; should-fixes closed in-wave.)_
 
 ## Round 20 — wave-18 audit carry-forwards (110300ZAUG26)
 
-### 82. Org member remove/set-permissions confirm-before-client
+_(#82–#88 shipped in wave 19; should-fixes closed in-wave.)_
 
-**Polish.** `runOrgMemberRemove` builds the client before `confirmSlug`; set-permissions is client-first with no local output guard.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/org_member.go`, `cmd/org_member_handler_test.go` |
-| **Acceptance** | Confirm (and any output guards) before `newAPIClient`; empty-XDG hermetics |
+## Round 21 — wave-19 audit carry-forwards (110316ZAUG26)
 
-### 83. PR collab output guards
+### 89. Auth provider link normalize before client
 
-**Polish.** `pr_collab` diff/comment/reviewer/review verbs lack `validateGetOutput` / `validateListOutput` / `validateMutationOutput` before client.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/pr_collab.go`, `cmd/pr_handler_test.go` |
-| **Acceptance** | Output validation before `newAPIClient` on collab get/list/mutate; bad-output hermetics |
-
-### 84. Auth provider unlink normalize+confirm before client
-
-**Polish.** `runAuthProviderUnlink` constructs the client before `normalizeAuthProviderID` + confirm.
+**Polish.** `runAuthProviderLink` still builds `newAPIClient` before `normalizeAuthProviderID`. Wave 19 scoped unlink only.
 
 | | |
 | --- | --- |
 | **Packages / files** | `cmd/auth_provider.go`, `cmd/auth_provider_test.go` |
-| **Acceptance** | Normalize + confirm before `newAPIClient`; empty-XDG hermetic |
-
-### 85. OAuth revoke OutOrStdout + shared stdout capture helper
-
-**Polish.** Revoke dry-run still uses `fmt.Printf`; hermetic hijacks `os.Stdout` with an ad-hoc pipe.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/oauth_clients.go`, `cmd/oauth_clients_handler_test.go` (optional shared helper under `cmd/`) |
-| **Acceptance** | Dry-run via `cmd.OutOrStdout()`; hermetic uses `rootForOut` (or one shared capture helper) |
-
-### 86. Retire weak duplicate DryRun handler tests
-
-**Polish.** `TestRepoDelete_DryRun`, `TestNsDelete_DryRun`, `TestNsTransferRevoke_DryRun`, `TestOAuthRevoke_DryRun` in `handler_test.go` are mock-server / no-message duplicates of dedicated hermetics.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/handler_test.go` |
-| **Acceptance** | Remove or tighten to assert preview strings; no false confidence left |
-
-### 87. Agent rotate-token empty-XDG hermetic
-
-**Polish.** Confirm-before-client landed; no hermetic proves client is attempted only after confirm.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/handler_test.go` |
-| **Acceptance** | Empty-XDG `--yes` rotate expects auth/config error (no hang on confirm) |
-
-### 88. Rename `TestTokenRevoke_DryRun` → `_Hermetic`
-
-**Polish.** Behavior is empty-XDG hermetic; name still pre-wave.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/misc_coverage_test.go` |
-| **Acceptance** | Name matches wave hermetic convention |
+| **Acceptance** | Normalize before `newAPIClient`; empty-XDG hermetic for bad/empty provider |
