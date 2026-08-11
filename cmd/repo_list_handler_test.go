@@ -24,3 +24,12 @@ func TestRepoList_WatchJSON_Hermetic(t *testing.T) {
 		t.Fatalf("want watch/output validation error, got %v", err)
 	}
 }
+
+func TestRepoList_BadCursor_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := rootFor(cmd.RepoCmd, "list", "--namespace", "acme", "--cursor", "not-base64!!!").Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
+		t.Fatalf("want cursor validation error, got %v", err)
+	}
+}
