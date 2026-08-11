@@ -147,7 +147,7 @@ func TestRepoTagCreate_Happy(t *testing.T) {
 }
 
 func TestRepoTagCreate_BadOutput_Hermetic(t *testing.T) {
-	assertRepoRefBadOutput(t, "supports json or default human summary", false, "tag", "create", "acme/demo", "v1.0.0", "--ref", "main")
+	assertRepoRefBadOutput(t, `--output for create supports json or default human summary only; got "toml"`, true, "tag", "create", "acme/demo", "v1.0.0", "--ref", "main")
 }
 
 func TestRepoTagCreate_Conflict(t *testing.T) {
@@ -214,7 +214,7 @@ func TestRepoTagDelete_Happy(t *testing.T) {
 }
 
 func TestRepoTagDelete_BadOutput_Hermetic(t *testing.T) {
-	assertRepoRefBadOutput(t, "supports json or default human summary", false, "tag", "delete", "acme/demo", "v1.0.0")
+	assertRepoRefBadOutput(t, `--output for delete supports json or default human summary only; got "toml"`, true, "tag", "delete", "acme/demo", "v1.0.0")
 }
 
 func TestRepoTagDelete_NotFound(t *testing.T) {
