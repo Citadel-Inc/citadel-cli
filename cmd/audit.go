@@ -160,7 +160,7 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 			case "yaml":
 				return emitYAML(cmd, []auditEventPayload{})
 			default:
-				fmt.Println("No audit events found.")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No audit events found.")
 				return nil
 			}
 		}
