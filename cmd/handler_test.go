@@ -927,8 +927,12 @@ func TestOAuthCreate_Happy(t *testing.T) {
 			})
 		},
 	}))
-	if err := rootFor(cmd.OauthCmd, "clients", "create", "--name", "App", "--redirect-uri", "https://x").Execute(); err != nil {
+	var stdout strings.Builder
+	if err := rootForOut(cmd.OauthCmd, &stdout, "clients", "create", "--name", "App", "--redirect-uri", "https://x").Execute(); err != nil {
 		t.Fatal(err)
+	}
+	if got := stdout.String(); got != "shh\n" {
+		t.Fatalf("create secret output = %q, want %q", got, "shh\n")
 	}
 }
 
@@ -987,8 +991,12 @@ func TestOAuthRotateSecret_Happy(t *testing.T) {
 			writeJSON(t, w, 200, map[string]any{"id": id, "client_secret": "new-secret"})
 		},
 	}))
-	if err := rootFor(cmd.OauthCmd, "clients", "rotate-secret", id).Execute(); err != nil {
+	var stdout strings.Builder
+	if err := rootForOut(cmd.OauthCmd, &stdout, "clients", "rotate-secret", id).Execute(); err != nil {
 		t.Fatal(err)
+	}
+	if got := stdout.String(); got != "new-secret\n" {
+		t.Fatalf("rotate secret output = %q, want %q", got, "new-secret\n")
 	}
 }
 
