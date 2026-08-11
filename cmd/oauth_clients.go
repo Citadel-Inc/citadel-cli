@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -421,7 +420,7 @@ func runOAuthClientsRevoke(cmd *cobra.Command, args []string) error {
 	if output == "json" {
 		return emitJSON(cmd, map[string]string{"status": "revoked", "id": id})
 	}
-	fmt.Fprintf(os.Stderr, "OAuth client %s revoked.\n", id)
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "OAuth client %s revoked.\n", id)
 	return nil
 }
 
