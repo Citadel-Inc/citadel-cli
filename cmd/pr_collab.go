@@ -327,6 +327,10 @@ func runPRCommentAdd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "comment add"); err != nil {
+		return err
+	}
 	body, err := readIssueBody(cmd, "body")
 	if err != nil {
 		return err
@@ -354,10 +358,6 @@ func runPRCommentAdd(cmd *cobra.Command, args []string) error {
 		}
 	} else if cmd.Flags().Changed("diff-side") {
 		return fmt.Errorf("--diff-side requires --diff-file")
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateMutationOutput(output, "comment add"); err != nil {
-		return err
 	}
 
 	c, err := newAPIClient(cmd)
