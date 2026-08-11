@@ -171,13 +171,13 @@ func runNamespaceDeployTokenList(cmd *cobra.Command, args []string) error {
 }
 
 func runDeployTokenList(cmd *cobra.Command, namespacePath string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	limit, cursor, all, err := readPagination(cmd)
@@ -314,13 +314,13 @@ func runNamespaceDeployTokenCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runDeployTokenCreate(cmd *cobra.Command, namespacePath string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	output := outputFlag(cmd)
 	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	expiresIn, err := parseExpiresFlag(cmd)
@@ -369,14 +369,14 @@ func runNamespaceDeployTokenRevoke(cmd *cobra.Command, args []string) error {
 }
 
 func runDeployTokenRevoke(cmd *cobra.Command, namespacePath, tokenID string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	tokenID = strings.TrimSpace(tokenID)
 	output := outputFlag(cmd)
 	if err := validateMutationOutput(output, "revoke"); err != nil {
+		return err
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
 		return err
 	}
 	path := deployTokenAPIPath(namespacePath) + "/" + url.PathEscape(tokenID)
