@@ -49,6 +49,7 @@ func TestKgImpact_DepthRange_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	for _, depth := range []string{"0", "4", "-1"} {
 		t.Run(depth, func(t *testing.T) {
