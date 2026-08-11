@@ -6,6 +6,18 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 110347ZAUG26 (fenced wave 22)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 98 | Release asset list path-before-client | Namespace + tag before client; path-guards hermetic |
+| 99 | Release asset ID completion path-before-client | `resolveIssueNamespacePath` before client |
+| 100 | Agent / OAuth list OutOrStdout | Empty + cursor hint via writers; EmptyHuman + PaginationHint asserts |
+| 101 | OAuth rotate-secret clipboard stdout capture | `rootForOut` + exact `sek\n` |
+| — | Should-fix closeout | OAuth pagination hint test; agent empty-list capture; agent delete OutOrStdout + happy assert |
+
+---
+
 ## Shipped 110340ZAUG26 (fenced wave 21)
 
 | # | Item | Notes |
@@ -436,38 +448,10 @@ _(#93, #95–#97 shipped in wave 21; should-fixes closed in-wave.)_
 
 ## Round 23 — wave-21 audit carry-forwards (110340ZAUG26)
 
-### 98. Release asset list path-before-client
+_(#98–#101 shipped in wave 22; should-fixes closed in-wave.)_
 
-**Polish.** Wave 21 fixed list/view/latest/download; `runReleaseAssetList` still calls `newAPIClient` before `resolveIssueNamespacePath`.
+---
 
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/release.go`, `cmd/release_handler_test.go` |
-| **Acceptance** | Namespace resolve (+ tag empty guard) before client; empty-XDG hermetic for path failure |
+## Round 24 — wave-22 audit carry-forwards (110347ZAUG26)
 
-### 99. Release asset ID completion path-before-client
-
-**Polish.** `completeReleaseAssetIDs` still builds the client before namespace resolve.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/release.go`, completion golden/tests if present |
-| **Acceptance** | `resolveIssueNamespacePath` before `newAPIClient` in the completion helper |
-
-### 100. Agent / OAuth list OutOrStdout
-
-**Polish.** Empty-list and cursor-hint paths still use bare `fmt.Println` after secret paths moved to command writers.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/agent.go`, `cmd/oauth_clients.go`, list tests |
-| **Acceptance** | List human messages via `cmd.OutOrStdout()`; captureable with `rootForOut` |
-
-### 101. OAuth rotate-secret clipboard test stdout capture
-
-**Polish.** `TestOAuthRotateSecret_WithClipboard` still uses `rootFor` and ignores secret stdout after wave-21 writer routing.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/handler_test.go:TestOAuthRotateSecret_WithClipboard` |
-| **Acceptance** | `rootForOut` + exact secret assert alongside clipboard stub success |
+_(No open carry-forwards — should-fixes closed in-wave.)_
