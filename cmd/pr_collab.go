@@ -223,6 +223,10 @@ func runPRCommentList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
 	onlyInline, _ := cmd.Flags().GetBool("inline")
 	onlyGeneral, _ := cmd.Flags().GetBool("general")
 	if onlyInline && onlyGeneral {
@@ -254,6 +258,13 @@ func runPRCommentList(cmd *cobra.Command, args []string) error {
 			}
 		}
 		comments = filtered
+	}
+	payload.Comments = comments
+	switch output {
+	case "json":
+		return emitJSON(cmd, payload)
+	case "yaml":
+		return emitYAML(cmd, payload)
 	}
 
 	if len(comments) == 0 {
@@ -344,6 +355,10 @@ func runPRCommentAdd(cmd *cobra.Command, args []string) error {
 	} else if cmd.Flags().Changed("diff-side") {
 		return fmt.Errorf("--diff-side requires --diff-file")
 	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "comment add"); err != nil {
+		return err
+	}
 
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -387,6 +402,9 @@ func runPRCommentAdd(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
+	if output == "json" {
+		return emitJSON(cmd, map[string]string{"status": "comment_added", "id": created.ID})
+	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Added comment %s to %s#%d.\n", created.ID, nsPath, num)
 	return nil
 }
@@ -398,6 +416,10 @@ func runPRReviewerList(cmd *cobra.Command, args []string) error {
 	}
 	num, err := parsePRNumber(args[0])
 	if err != nil {
+		return err
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
 		return err
 	}
 	c, err := newAPIClient(cmd)
@@ -414,6 +436,12 @@ func runPRReviewerList(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("PR %s#%d not found", nsPath, num)
 		}
 		return err
+	}
+	switch output {
+	case "json":
+		return emitJSON(cmd, payload)
+	case "yaml":
+		return emitYAML(cmd, payload)
 	}
 	if len(payload.Reviewers) == 0 {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No reviewers on PR %s#%d.\n", nsPath, num)
@@ -442,6 +470,10 @@ func runPRReviewerAdd(cmd *cobra.Command, args []string) error {
 	if reviewerID == "" {
 		return fmt.Errorf("--reviewer <user-uuid> is required")
 	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "reviewer add"); err != nil {
+		return err
+	}
 
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -466,6 +498,9 @@ func runPRReviewerAdd(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
+	if output == "json" {
+		return emitJSON(cmd, map[string]string{"status": "reviewer_added", "reviewer_id": reviewerID})
+	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Added reviewer %s to PR %s#%d.\n", reviewerID, nsPath, num)
 	return nil
 }
@@ -489,6 +524,10 @@ func runPRReview(cmd *cobra.Command, args []string) error {
 	}
 	if approve && requestChanges {
 		return fmt.Errorf("--approve and --request-changes are mutually exclusive")
+	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "review"); err != nil {
+		return err
 	}
 
 	c, err := newAPIClient(cmd)
@@ -521,8 +560,18 @@ func runPRReview(cmd *cobra.Command, args []string) error {
 			}
 			return prFriendlyError(err)
 		}
+		if output == "json" {
+			result := map[string]any{"status": status}
+			if comment != "" {
+				result["comment_added"] = true
+			}
+			return emitJSON(cmd, result)
+		}
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Review submitted for PR %s#%d: %s.\n", nsPath, num, status)
 	} else {
+		if output == "json" {
+			return emitJSON(cmd, map[string]string{"status": "comment_added"})
+		}
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Comment added to PR %s#%d.\n", nsPath, num)
 	}
 	return nil
@@ -577,7 +626,10 @@ func init() {
 		prCommentListCmd, prCommentAddCmd,
 		prReviewerListCmd, prReviewerAddCmd,
 		prReviewCmd)
-	addOutputFlag(prCheckCmd)
+	addOutputFlag(prCheckCmd,
+		prCommentListCmd, prCommentAddCmd,
+		prReviewerListCmd, prReviewerAddCmd,
+		prReviewCmd)
 
 	prDiffCmd.Flags().String("file", "", "Narrow diff to a single file path (emits raw unified text)")
 
