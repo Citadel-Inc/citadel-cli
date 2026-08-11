@@ -507,18 +507,21 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 }
 
 func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
-	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	orgSlug := args[0]
 	to, _ := cmd.Flags().GetString("to")
 
+	if err := validateMutationOutput(output, "transfer"); err != nil {
+		return err
+	}
 	if err := confirmSlug(yesFlag(cmd), "transfer", orgSlug); err != nil {
 		return err
 	}
 
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
 	var result map[string]any
 	if err := c.Post(cmd.Context(), "/orgs/"+url.PathEscape(orgSlug)+"/transfer", map[string]string{"to_username": to}, &result); err != nil {
 		return err
@@ -650,13 +653,16 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 }
 
 func runNsTransferAccept(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	transferID := args[0]
+
+	if err := validateMutationOutput(output, "transfer"); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
-	transferID := args[0]
-
 	var result map[string]any
 	if err := c.Post(cmd.Context(), "/transfers/"+url.PathEscape(transferID)+"/accept", nil, &result); err != nil {
 		return err
@@ -756,18 +762,21 @@ func runNsRename(cmd *cobra.Command, args []string) error {
 	if newSlug == "" {
 		return fmt.Errorf("--new-slug is required")
 	}
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "rename"); err != nil {
+		return err
+	}
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would rename %s → %s (skipped; --dry-run)\n", slug, newSlug)
 		return nil
+	}
+	if err := confirmSlug(yesFlag(cmd), "rename namespace", slug); err != nil {
+		return err
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	if err := confirmSlug(yesFlag(cmd), "rename namespace", slug); err != nil {
-		return err
-	}
-	output := outputFlag(cmd)
 	var result map[string]any
 	if err := c.Post(cmd.Context(), "/namespaces/"+url.PathEscape(slug)+"/rename", map[string]string{
 		"new_slug": newSlug,
