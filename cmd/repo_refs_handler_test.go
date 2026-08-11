@@ -178,6 +178,10 @@ func TestRepoTagDelete_Happy(t *testing.T) {
 	}
 }
 
+func TestRepoTagDelete_BadOutput_Hermetic(t *testing.T) {
+	assertRepoRefBadOutput(t, "supports json or default human summary", "tag", "delete", "acme/demo", "v1.0.0")
+}
+
 func TestRepoTagDelete_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /namespaces/acme/repos/demo/refs/tags": func(w http.ResponseWriter, _ *http.Request) {
