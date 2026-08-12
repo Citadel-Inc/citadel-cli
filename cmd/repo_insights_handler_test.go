@@ -139,6 +139,18 @@ func TestRepoInsights_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestRepoInsights_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setRepoInsightsHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"insights", "--no-cwd-repo",
+		"--output", "xml",
+	).Execute()
+	if err == nil || err.Error() != `--output: unknown format "xml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestRepoInsights_MissingRepo_Hermetic(t *testing.T) {
 	setRepoInsightsHermeticEnv(t)
 
