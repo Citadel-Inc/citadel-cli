@@ -60,7 +60,8 @@ Use --path to list a subdirectory.`,
   citadel-cli repo browse tree acme/myrepo --ref main --path cmd
 
   # Output as JSON
-  citadel-cli repo browse tree acme/myrepo --output json`,
+  citadel-cli repo browse tree acme/myrepo --output json
+  citadel-cli repo browse tree acme/myrepo --output yaml`,
 	RunE: runRepoBrowseTree,
 }
 
@@ -79,7 +80,8 @@ Use --output json to get the full metadata envelope (sha, size, binary, content)
   citadel-cli repo browse blob acme/myrepo --path src/main.go --ref feature/x
 
   # Get metadata as JSON
-  citadel-cli repo browse blob acme/myrepo --path go.mod --output json`,
+  citadel-cli repo browse blob acme/myrepo --path go.mod --output json
+  citadel-cli repo browse blob acme/myrepo --path go.mod --output yaml`,
 	RunE: runRepoBrowseBlob,
 }
 
