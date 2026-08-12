@@ -71,6 +71,30 @@ func TestNamespaceGet_TrimmedSlug_HTTP(t *testing.T) {
 	}
 }
 
+func TestNamespaceMembers_TrimmedSlug_HTTP(t *testing.T) {
+	setNamespaceHermeticEnv(t)
+
+	var method, path string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method = r.Method
+		path = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"members":[],"next_cursor":""}`)
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+	t.Setenv("CITADEL_SERVER", server.URL)
+
+	var output bytes.Buffer
+	err := rootForOut(cmd.NamespaceCmd, &output, "members", " myorg ").Execute()
+	if err != nil {
+		t.Fatalf("namespace members trimmed slug: %v", err)
+	}
+	if method != http.MethodGet || path != "/orgs/myorg/members" {
+		t.Fatalf("request = %s %s, want GET /orgs/myorg/members", method, path)
+	}
+}
+
 func TestNamespaceTransferListPending_BadOutput_Hermetic(t *testing.T) {
 	assertNamespaceBadOutput(t, "transfer", "list-pending")
 }
