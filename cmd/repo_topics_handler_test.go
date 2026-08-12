@@ -162,6 +162,33 @@ func TestRepoTopicSet_BadOutput_Hermetic(t *testing.T) {
 	assertRepoTopicBadOutput(t, "set", "acme/demo")
 }
 
+func TestRepoTopicSet_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd,
+		"topic", "set", "--no-cwd-repo",
+		"--output", "xml",
+	).Execute()
+	if err == nil || err.Error() != `--output: unknown format "xml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoTopicSet_MissingRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd, "topic", "set", "--no-cwd-repo").Execute()
+	if err == nil || err.Error() != "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want repository path error, got %v", err)
+	}
+}
+
 func TestRepoTopicSet_JSON(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
