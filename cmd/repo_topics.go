@@ -33,9 +33,9 @@ var repoTopicCmd = &cobra.Command{
 var repoTopicListCmd = &cobra.Command{
 	Use:   "list [<namespace>/<repo>]",
 	Short: "List the topics attached to a repository",
-	Example: `  citadel-cli repo topic list acme/myrepo
-  citadel-cli repo topic list acme/myrepo --output json
-  citadel-cli repo topic list acme/myrepo --output yaml`,
+	Example: `  citadel-cli repo topic list acme/demo
+  citadel-cli repo topic list acme/demo --output json
+  citadel-cli repo topic list acme/demo --output yaml`,
 	RunE: runRepoTopicList,
 }
 
@@ -46,14 +46,14 @@ var repoTopicSetCmd = &cobra.Command{
 The operation is a full replace — existing topics not in the new list are removed.
 Pass no topics to clear all topics from the repository.`,
 	Example: `  # Set topics
-  citadel-cli repo topic set acme/myrepo go cli devtools
+  citadel-cli repo topic set acme/demo go cli devtools
 
   # Clear all topics
-  citadel-cli repo topic set acme/myrepo
+  citadel-cli repo topic set acme/demo
 
-  # Output result as JSON
-  citadel-cli repo topic set acme/myrepo go cli --output json
-  citadel-cli repo topic set acme/myrepo go cli --output yaml`,
+  # Machine-readable output
+  citadel-cli repo topic set acme/demo go cli --output json
+  citadel-cli repo topic set acme/demo go cli --output yaml`,
 	RunE: runRepoTopicSet,
 }
 
