@@ -1131,6 +1131,7 @@ citadel-cli repo browse tree acme/demo --ref main --path cmd
 
 # Machine-readable output
 citadel-cli repo browse tree acme/demo --output json
+citadel-cli repo browse tree acme/demo --output yaml
 ```
 
 The tree output shows an icon (`📄` file, `📁` directory), the entry name, size, and abbreviated SHA.
@@ -1149,6 +1150,7 @@ citadel-cli repo browse blob acme/demo --path assets/logo.png
 
 # Full metadata as JSON (sha, size, binary, encoding, content)
 citadel-cli repo browse blob acme/demo --path go.mod --output json
+citadel-cli repo browse blob acme/demo --path go.mod --output yaml
 ```
 
 ### Download raw bytes
