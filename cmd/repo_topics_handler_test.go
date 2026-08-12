@@ -64,6 +64,25 @@ func TestRepoTopicList_JSON(t *testing.T) {
 	}
 }
 
+func TestRepoTopicList_YAML(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/topics": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"topics": []string{"go"}})
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "list", "acme/demo", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &out); err == nil {
+		t.Fatalf("expected YAML, got JSON: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "topics:") {
+		t.Fatalf("expected topics key in YAML, got: %s", buf.String())
+	}
+}
+
 // ── topic set ─────────────────────────────────────────────────────────────────
 
 func TestRepoTopicSet_Happy(t *testing.T) {
@@ -113,6 +132,25 @@ func TestRepoTopicSet_JSON(t *testing.T) {
 	var out map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &out); err != nil {
 		t.Fatalf("not valid JSON: %v\nbody: %s", err, buf.String())
+	}
+}
+
+func TestRepoTopicSet_YAML(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"PUT /api/namespaces/acme/repos/demo/topics": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"topics": []string{"go"}})
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "set", "acme/demo", "go", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &out); err == nil {
+		t.Fatalf("expected YAML, got JSON: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "topics:") {
+		t.Fatalf("expected topics key in YAML, got: %s", buf.String())
 	}
 }
 
@@ -173,6 +211,27 @@ func TestRepoTopicPopular_JSON(t *testing.T) {
 	}
 	if len(out) != 1 {
 		t.Fatalf("expected 1 topic, got %d", len(out))
+	}
+}
+
+func TestRepoTopicPopular_YAML(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/topics/popular": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, []map[string]any{
+				{"topic": "go", "count": 42},
+			})
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "popular", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &out); err == nil {
+		t.Fatalf("expected YAML, got JSON: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "topics:") {
+		t.Fatalf("expected topics key in YAML, got: %s", buf.String())
 	}
 }
 
