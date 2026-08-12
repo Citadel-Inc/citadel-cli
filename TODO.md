@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 122348ZAUG26 (fenced wave 29)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 126 | Insights yaml emit | `runRepoInsights` json/yaml/human; `TestRepoInsights_YAML`; docs example |
+| — | Topics yaml emit | list/set/popular `emitYAML`; popular YAML is a top-level sequence |
+| — | Browse yaml emit | tree/blob `emitYAML`; raw unchanged |
+| 127 | Issue/PR no-repo `--no-cwd-repo` | `addIssuePathFlag` + `resolveIssueNamespacePath`; BadOutput_NoRepo hermetics |
+| 128 | Issue/PR MissingRepo hermetics | Exact namespace-path error with `--no-cwd-repo` |
+| — | Should-fix closeout | Topic padded `--output` trim; topic/browse output-before-path; topic list + browse BadOutput_NoRepo; issue-path flag contracts; label MissingRepo `--no-cwd-repo` |
+
+---
+
 ## Shipped 122313ZAUG26 (fenced wave 28)
 
 | # | Item | Notes |
@@ -570,16 +583,22 @@ _(Round 29 optional tightenings + #125 already-on-HEAD shipped in wave 28; shoul
 
 ## Round 30 — wave-28 audit carry-forwards (122313ZAUG26)
 
+_(#126–#128 + topics/browse yaml siblings shipped in wave 29; should-fixes closed in-wave.)_
+
+---
+
+## Round 31 — wave-29 audit carry-forwards (122348ZAUG26)
+
 ### Optional tightenings (audit)
 
-- Repo insights: non-table branch always `emitJSON`; `--output yaml` never reaches `emitYAML`.
-- Issue/PR list BadOutput_NoRepo: add `--no-cwd-repo` (insights pattern) so a Citadel-parsable CWD origin cannot hide an output-before-resolve regression.
-- Issue/PR list: MissingRepo hermetic (valid output, no `-R`) beside BadOutput_NoRepo.
+- Docs: `--output yaml` examples for `repo topic` and `repo browse` (insights already has one).
+- Command `Example` strings on insights/topics/browse still json-only.
+- Issue close/reopen/edit/assign: MissingRepo + BadOutput_NoRepo hermetics (list already covered).
+- Topic set: MissingRepo / BadOutput_NoRepo hermetics (list covered).
 
 ### Next polish candidates
 
 | # | Item | Notes |
 | --- | --- | --- |
-| 126 | Insights yaml emit | `runRepoInsights` yaml → `emitYAML` (or document json-only) |
-| 127 | Issue/PR no-repo `--no-cwd-repo` | Strengthen BadOutput_NoRepo hermetics |
-| 128 | Issue/PR MissingRepo hermetics | Valid output + no repo → path error |
+| 129 | Topic/browse yaml docs examples | `docs/cli.md` beside existing json lines |
+| 130 | Issue mutate no-repo hermetics | close/reopen/edit/assign MissingRepo + BadOutput_NoRepo |
