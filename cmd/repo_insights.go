@@ -72,7 +72,7 @@ languages, recent contributors, latest releases, commit activity, and license.`,
 // ── handler ───────────────────────────────────────────────────────────────────
 
 func runRepoInsights(cmd *cobra.Command, args []string) error {
-	output, _ := cmd.Flags().GetString("output")
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
