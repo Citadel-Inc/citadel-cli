@@ -72,6 +72,11 @@ languages, recent contributors, latest releases, commit activity, and license.`,
 // ── handler ───────────────────────────────────────────────────────────────────
 
 func runRepoInsights(cmd *cobra.Command, args []string) error {
+	output, _ := cmd.Flags().GetString("output")
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+
 	posArg := ""
 	if len(args) > 0 {
 		posArg = args[0]
@@ -80,11 +85,6 @@ func runRepoInsights(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
-	if err := validateGetOutput(output); err != nil {
-		return err
-	}
-
 	client, err := newAPIClient(cmd)
 	if err != nil {
 		return err
