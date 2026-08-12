@@ -191,6 +191,7 @@ type issueCloseRef struct {
 func addIssuePathFlag(cmds ...*cobra.Command) {
 	for _, c := range cmds {
 		c.Flags().StringP("repo", "R", "", "Issue namespace path (e.g. org/repo or org/team/project)")
+		c.Flags().Bool("no-cwd-repo", false, "Disable CWD git-remote inference (require -R or "+citadelRepoEnv+")")
 	}
 }
 
@@ -215,6 +216,10 @@ func resolveIssueNamespacePath(cmd *cobra.Command) (string, error) {
 	}
 	if ev := strings.TrimSpace(os.Getenv(citadelRepoEnv)); ev != "" {
 		return normalizeNamespacePath(ev)
+	}
+	noCWD, _ := cmd.Flags().GetBool("no-cwd-repo")
+	if noCWD {
+		return "", fmt.Errorf("namespace path required: pass -R <ns/path>, set %s, or omit --no-cwd-repo to infer from git", citadelRepoEnv)
 	}
 
 	path, wdErr := os.Getwd()
