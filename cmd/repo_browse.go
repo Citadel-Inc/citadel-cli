@@ -105,16 +105,17 @@ Binary files are refused on a terminal unless --output-file is used.`,
 // ── handlers ─────────────────────────────────────────────────────────────────
 
 func runRepoBrowseTree(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+
 	posArg := ""
 	if len(args) > 0 {
 		posArg = args[0]
 	}
 	ns, slug, err := resolveRepoFromPosOrFlag(cmd, posArg)
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 
@@ -196,16 +197,17 @@ func formatFileSize(n int64) string {
 }
 
 func runRepoBrowseBlob(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+
 	posArg := ""
 	if len(args) > 0 {
 		posArg = args[0]
 	}
 	ns, slug, err := resolveRepoFromPosOrFlag(cmd, posArg)
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 
