@@ -1173,6 +1173,7 @@ View and manage the topics attached to a repository. Topics are free-form labels
 ```bash
 citadel-cli repo topic list acme/demo
 citadel-cli repo topic list acme/demo --output json
+citadel-cli repo topic list acme/demo --output yaml
 ```
 
 ### Set topics
@@ -1188,6 +1189,7 @@ citadel-cli repo topic set acme/demo
 
 # Output result as JSON
 citadel-cli repo topic set acme/demo go cli --output json
+citadel-cli repo topic set acme/demo go cli --output yaml
 ```
 
 ### Popular topics
@@ -1198,6 +1200,7 @@ List the most popular topics across all repositories on the platform.
 citadel-cli repo topic popular
 citadel-cli repo topic popular --limit 20
 citadel-cli repo topic popular --output json
+citadel-cli repo topic popular --output yaml
 ```
 
 ## Repository insights
