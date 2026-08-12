@@ -1205,6 +1205,7 @@ View aggregate statistics for a repository: topics, open issue/milestone counts,
 ```bash
 citadel-cli repo insights acme/demo
 citadel-cli repo insights acme/demo --output json
+citadel-cli repo insights acme/demo --output yaml
 ```
 
 Human output sections: **Topics**, **Stars/Pins**, **Counts** (table), **License**, **Languages** (top 5 by bytes), **Latest release**, **Recent contributors (30d)**, and **Activity sparkline** (52-week rolling window, oldest→newest).

@@ -134,6 +134,29 @@ func TestRepoInsights_JSON(t *testing.T) {
 	}
 }
 
+func TestRepoInsights_YAML(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/insights": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, makeInsightsFull())
+		},
+	}))
+	for _, format := range []string{"yaml", "YAML"} {
+		t.Run(format, func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := rootForOut(cmd.RepoCmd, &buf, "insights", "acme/demo", "--output", format).Execute(); err != nil {
+				t.Fatal(err)
+			}
+			out := strings.TrimSpace(buf.String())
+			if strings.HasPrefix(out, "{") {
+				t.Fatalf("expected YAML output, got JSON object: %s", out)
+			}
+			if !strings.Contains(out, "star_count:") {
+				t.Fatalf("expected star_count YAML field, got: %s", out)
+			}
+		})
+	}
+}
+
 func TestRepoInsights_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/namespaces/acme/repos/missing/insights": func(w http.ResponseWriter, _ *http.Request) {
