@@ -23,10 +23,6 @@ type popularTopic struct {
 	Count int    `json:"count"`
 }
 
-type popularTopicsResponse struct {
-	Topics []popularTopic `json:"topics"`
-}
-
 // ── command tree ─────────────────────────────────────────────────────────────
 
 var repoTopicCmd = &cobra.Command{
@@ -228,7 +224,7 @@ func runRepoTopicPopular(cmd *cobra.Command, args []string) error {
 		if err := json.Unmarshal(raw, &rows); err != nil {
 			return fmt.Errorf("unexpected response from server: %w", err)
 		}
-		return emitYAML(cmd, popularTopicsResponse{Topics: rows})
+		return emitYAML(cmd, rows)
 	}
 
 	var rows []popularTopic

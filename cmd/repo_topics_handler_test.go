@@ -226,12 +226,16 @@ func TestRepoTopicPopular_YAML(t *testing.T) {
 	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "popular", "--output", "yaml").Execute(); err != nil {
 		t.Fatal(err)
 	}
-	var out map[string]any
-	if err := json.Unmarshal(buf.Bytes(), &out); err == nil {
-		t.Fatalf("expected YAML, got JSON: %s", buf.String())
+	out := strings.TrimSpace(buf.String())
+	var object map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &object); err == nil {
+		t.Fatalf("expected YAML sequence, got JSON object: %s", out)
 	}
-	if !strings.Contains(buf.String(), "topics:") {
-		t.Fatalf("expected topics key in YAML, got: %s", buf.String())
+	if strings.Contains(out, "topics:") {
+		t.Fatalf("expected unwrapped YAML sequence, got: %s", out)
+	}
+	if !strings.HasPrefix(out, "- ") || !strings.Contains(out, "topic: go") {
+		t.Fatalf("expected YAML sequence, got: %s", out)
 	}
 }
 
