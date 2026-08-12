@@ -1187,7 +1187,7 @@ citadel-cli repo topic set acme/demo go cli devtools
 # Clear all topics
 citadel-cli repo topic set acme/demo
 
-# Output result as JSON
+# Machine-readable output
 citadel-cli repo topic set acme/demo go cli --output json
 citadel-cli repo topic set acme/demo go cli --output yaml
 ```
