@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -112,7 +113,7 @@ func runRepoBrowseTree(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
@@ -151,8 +152,11 @@ func runRepoBrowseTree(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" && output != "table" {
+	switch output {
+	case "json":
 		return emitJSON(cmd, resp)
+	case "yaml":
+		return emitYAML(cmd, resp)
 	}
 
 	renderTreeEntries(cmd, resp)
@@ -200,7 +204,7 @@ func runRepoBrowseBlob(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
@@ -237,8 +241,11 @@ func runRepoBrowseBlob(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" && output != "table" {
+	switch output {
+	case "json":
 		return emitJSON(cmd, resp)
+	case "yaml":
+		return emitYAML(cmd, resp)
 	}
 
 	if resp.Binary {
