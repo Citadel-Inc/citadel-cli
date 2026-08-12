@@ -132,6 +132,18 @@ func TestRepoBrowseTree_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestRepoBrowseTree_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"browse", "tree", "--no-cwd-repo",
+		"--output", "toml",
+	).Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestRepoBrowseTree_MissingRepo_Hermetic(t *testing.T) {
 	setRepoBrowseHermeticEnv(t)
 
@@ -221,6 +233,18 @@ func TestRepoBrowseBlob_BadOutput_Hermetic(t *testing.T) {
 
 	err := rootFor(cmd.RepoCmd, "browse", "blob", "acme/demo",
 		"--path", "README.md", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoBrowseBlob_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"browse", "blob", "--no-cwd-repo",
+		"--output", "toml",
+	).Execute()
 	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
