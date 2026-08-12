@@ -140,9 +140,22 @@ func TestPRList_BadOutput_NoRepo_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
 
-	err := rootFor(cmd.PrCmd, "list", "--output", "toml").Execute()
+	err := rootFor(cmd.PrCmd, "list", "--no-cwd-repo", "--output", "toml").Execute()
 	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
 		t.Fatalf("want exact output validation error, got %v", err)
+	}
+}
+
+func TestPRList_MissingRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.PrCmd, "list", "--no-cwd-repo").Execute()
+	const want = "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git"
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact namespace path error %q, got %v", want, err)
 	}
 }
 
