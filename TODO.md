@@ -6,6 +6,18 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 122356ZAUG26 (fenced wave 30)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 129 | Topic/browse yaml docs examples | `docs/cli.md` yaml beside json (tree/blob/list/set/popular) |
+| — | Insights/topics/browse cobra yaml Example | `--help` yaml after json; raw omitted |
+| 130 | Issue mutate no-repo hermetics | close/reopen/edit/assign output-before-path; BadOutput_NoRepo + MissingRepo |
+| — | Topic set no-repo hermetics | xml BadOutput + MissingRepo with `--no-cwd-repo` |
+| — | Should-fix closeout | Example slugs `acme/demo`; topic-set json/yaml comment; blob binary Example; `assertRepoTopicBadOutput` clears `CITADEL_REPO` |
+
+---
+
 ## Shipped 122348ZAUG26 (fenced wave 29)
 
 | # | Item | Notes |
@@ -589,16 +601,22 @@ _(#126–#128 + topics/browse yaml siblings shipped in wave 29; should-fixes clo
 
 ## Round 31 — wave-29 audit carry-forwards (122348ZAUG26)
 
+_(#129–#130 + cobra yaml Examples shipped in wave 30; should-fixes closed in-wave.)_
+
+---
+
+## Round 32 — wave-30 audit carry-forwards (122356ZAUG26)
+
 ### Optional tightenings (audit)
 
-- Docs: `--output yaml` examples for `repo topic` and `repo browse` (insights already has one).
-- Command `Example` strings on insights/topics/browse still json-only.
-- Issue close/reopen/edit/assign: MissingRepo + BadOutput_NoRepo hermetics (list already covered).
-- Topic set: MissingRepo / BadOutput_NoRepo hermetics (list covered).
+- Issue create / comment add+edit / label / close-refs: `validateMutationOutput`/`validateGetOutput` still after `resolveIssueNamespacePath`; add BadOutput_NoRepo + MissingRepo hermetics.
+- Label create/edit/delete: mutation output after path (same pattern).
+- Exact `err.Error()` on older Contains hermetics (`TestIssueCreate_BadOutput_Hermetic`, `TestIssueCloseRefs_BadOutput_Hermetic`, `assertRepoTopicBadOutput`).
+- `addOutputFlag` help lists json/yaml/ndjson/csv/table on mutation verbs that only allow json/default.
 
 ### Next polish candidates
 
 | # | Item | Notes |
 | --- | --- | --- |
-| 129 | Topic/browse yaml docs examples | `docs/cli.md` beside existing json lines |
-| 130 | Issue mutate no-repo hermetics | close/reopen/edit/assign MissingRepo + BadOutput_NoRepo |
+| 131 | Issue create/comment/label/close-refs output-before-path | Guards + NoRepo hermetics |
+| 132 | Label mutate output-before-path | create/edit/delete + NoRepo hermetics |
