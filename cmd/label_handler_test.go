@@ -90,10 +90,9 @@ func TestLabelList_BadOutput_Hermetic(t *testing.T) {
 
 func TestLabelList_MissingRepo_Hermetic(t *testing.T) {
 	setLabelHermeticEnv(t)
-	t.Chdir(t.TempDir())
 
-	err := rootFor(cmd.LabelCmd, "list").Execute()
-	if err == nil || !strings.Contains(err.Error(), "namespace path required") {
+	err := rootFor(cmd.LabelCmd, "list", "--no-cwd-repo").Execute()
+	if err == nil || err.Error() != "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
 		t.Fatalf("want namespace path error, got %v", err)
 	}
 }
