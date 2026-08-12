@@ -71,6 +71,11 @@ var repoTopicPopularCmd = &cobra.Command{
 // ── handlers ─────────────────────────────────────────────────────────────────
 
 func runRepoTopicList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+
 	posArg := ""
 	if len(args) > 0 {
 		posArg = args[0]
@@ -79,12 +84,6 @@ func runRepoTopicList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
-	if err := validateGetOutput(output); err != nil {
-		return err
-	}
-	output = strings.ToLower(output)
-
 	client, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -122,15 +121,15 @@ func runRepoTopicList(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoTopicSet(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+
 	ns, slug, topics, err := resolveTopicSetArgs(cmd, args)
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
-	if err := validateGetOutput(output); err != nil {
-		return err
-	}
-	output = strings.ToLower(output)
 
 	client, err := newAPIClient(cmd)
 	if err != nil {
@@ -192,11 +191,10 @@ func resolveTopicSetArgs(cmd *cobra.Command, args []string) (ns, slug string, to
 }
 
 func runRepoTopicPopular(cmd *cobra.Command, args []string) error {
-	output := outputFlag(cmd)
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
-	output = strings.ToLower(output)
 	limit, _ := cmd.Flags().GetInt("limit")
 
 	client, err := newAPIClient(cmd)
