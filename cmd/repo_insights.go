@@ -104,12 +104,15 @@ func runRepoInsights(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" && output != "table" {
+	switch output {
+	case "json":
 		return emitJSON(cmd, resp)
+	case "yaml":
+		return emitYAML(cmd, resp)
+	default:
+		renderInsights(cmd, resp)
+		return nil
 	}
-
-	renderInsights(cmd, resp)
-	return nil
 }
 
 func renderInsights(cmd *cobra.Command, r insightsResponse) {
