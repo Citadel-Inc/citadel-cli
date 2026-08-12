@@ -650,16 +650,12 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 }
 
 func runIssueEdit(cmd *cobra.Command, args []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "edit"); err != nil {
 		return err
 	}
 	num, err := parseIssueNumber(args[0])
 	if err != nil {
-		return err
-	}
-	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "edit"); err != nil {
 		return err
 	}
 	payload := map[string]any{}
@@ -692,6 +688,10 @@ func runIssueEdit(cmd *cobra.Command, args []string) error {
 	if len(payload) == 0 {
 		return fmt.Errorf("set at least one of --title, --body, --state, --milestone")
 	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -711,22 +711,22 @@ func runIssueEdit(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueAssign(cmd *cobra.Command, args []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "assign"); err != nil {
 		return err
 	}
 	num, err := parseIssueNumber(args[0])
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "assign"); err != nil {
-		return err
-	}
 	set, _ := cmd.Flags().GetStringSlice("set")
 	set = normalizeStringSlice(set)
 	if set == nil {
 		set = []string{}
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -894,16 +894,16 @@ func runIssueCommentEdit(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueStateMutation(cmd *cobra.Command, args []string, state string, verb string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, verb); err != nil {
 		return err
 	}
 	num, err := parseIssueNumber(args[0])
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, verb); err != nil {
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	c, err := newAPIClient(cmd)
