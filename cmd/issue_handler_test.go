@@ -304,6 +304,32 @@ func TestIssueEdit_NoFlags(t *testing.T) {
 	}
 }
 
+func TestIssueEdit_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "edit", "--no-cwd-repo", "7", "--output", "toml", "--title", "x").Execute()
+	const want = `--output for edit supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestIssueEdit_MissingRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "edit", "--no-cwd-repo", "7", "--title", "x").Execute()
+	const want = "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git"
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact namespace path error %q, got %v", want, err)
+	}
+}
+
 func TestIssueAssign_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7/assignees", "/namespaces/acme/demo/issues/7/assignees") {
@@ -349,8 +375,35 @@ func TestIssueAssign_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.IssueCmd, "assign", "-R", "acme/demo", "7", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for assign supports json or default human summary only") {
-		t.Fatalf("want mutation output validation error, got %v", err)
+	const want = `--output for assign supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestIssueAssign_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "assign", "--no-cwd-repo", "7", "--output", "toml").Execute()
+	const want = `--output for assign supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestIssueAssign_MissingRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "assign", "--no-cwd-repo", "7").Execute()
+	const want = "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git"
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact namespace path error %q, got %v", want, err)
 	}
 }
 
@@ -463,8 +516,35 @@ func TestIssueClose_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.IssueCmd, "close", "-R", "acme/demo", "7", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for close supports json or default human summary only") {
-		t.Fatalf("want mutation output validation error, got %v", err)
+	const want = `--output for close supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestIssueClose_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "close", "--no-cwd-repo", "7", "--output", "toml").Execute()
+	const want = `--output for close supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestIssueClose_MissingRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "close", "--no-cwd-repo", "7").Execute()
+	const want = "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git"
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact namespace path error %q, got %v", want, err)
 	}
 }
 
@@ -502,8 +582,35 @@ func TestIssueReopen_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	err := rootFor(cmd.IssueCmd, "reopen", "-R", "acme/demo", "7", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for reopen supports json or default human summary only") {
-		t.Fatalf("want mutation output validation error, got %v", err)
+	const want = `--output for reopen supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestIssueReopen_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "reopen", "--no-cwd-repo", "7", "--output", "toml").Execute()
+	const want = `--output for reopen supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestIssueReopen_MissingRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "reopen", "--no-cwd-repo", "7").Execute()
+	const want = "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git"
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact namespace path error %q, got %v", want, err)
 	}
 }
 
