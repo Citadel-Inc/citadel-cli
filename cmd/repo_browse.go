@@ -54,14 +54,14 @@ Defaults to the root directory of the repository's default branch.
 Use --ref to target a specific branch, tag, or commit SHA.
 Use --path to list a subdirectory.`,
 	Example: `  # List the root of the default branch
-  citadel-cli repo browse tree acme/myrepo
+  citadel-cli repo browse tree acme/demo
 
   # List a subdirectory on a specific branch
-  citadel-cli repo browse tree acme/myrepo --ref main --path cmd
+  citadel-cli repo browse tree acme/demo --ref main --path cmd
 
   # Output as JSON
-  citadel-cli repo browse tree acme/myrepo --output json
-  citadel-cli repo browse tree acme/myrepo --output yaml`,
+  citadel-cli repo browse tree acme/demo --output json
+  citadel-cli repo browse tree acme/demo --output yaml`,
 	RunE: runRepoBrowseTree,
 }
 
@@ -74,14 +74,15 @@ In human mode, the file content is printed directly to stdout (suitable for
 piping). Binary files print an informational line instead of raw bytes.
 Use --output json to get the full metadata envelope (sha, size, binary, content).`,
 	Example: `  # Read a file on the default branch
-  citadel-cli repo browse blob acme/myrepo --path README.md
+  citadel-cli repo browse blob acme/demo --path README.md
+  citadel-cli repo browse blob acme/demo --path assets/logo.png
 
   # Read a file on a specific branch
-  citadel-cli repo browse blob acme/myrepo --path src/main.go --ref feature/x
+  citadel-cli repo browse blob acme/demo --path src/main.go --ref feature/x
 
   # Get metadata as JSON
-  citadel-cli repo browse blob acme/myrepo --path go.mod --output json
-  citadel-cli repo browse blob acme/myrepo --path go.mod --output yaml`,
+  citadel-cli repo browse blob acme/demo --path go.mod --output json
+  citadel-cli repo browse blob acme/demo --path go.mod --output yaml`,
 	RunE: runRepoBrowseBlob,
 }
 
@@ -93,13 +94,13 @@ var repoBrowseRawCmd = &cobra.Command{
 Use --ref to target a specific branch, tag, or commit SHA.
 Binary files are refused on a terminal unless --output-file is used.`,
 	Example: `  # Stream a file from the repo selected by -R
-  citadel-cli repo browse raw README.md -R acme/myrepo
+  citadel-cli repo browse raw README.md -R acme/demo
 
   # Stream a file from a specific branch
-  citadel-cli repo browse raw acme/myrepo src/main.go --ref feature/x
+  citadel-cli repo browse raw acme/demo src/main.go --ref feature/x
 
   # Save binary content to a file
-  citadel-cli repo browse raw acme/myrepo image.png --output-file image.png`,
+  citadel-cli repo browse raw acme/demo image.png --output-file image.png`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: runRepoBrowseRaw,
 }

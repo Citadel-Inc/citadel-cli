@@ -64,9 +64,9 @@ var repoInsightsCmd = &cobra.Command{
 	Short: "Show aggregate insights for a repository",
 	Long: `Display a summary of repository health metrics including topics, issue counts,
 languages, recent contributors, latest releases, commit activity, and license.`,
-	Example: `  citadel-cli repo insights acme/myrepo
-  citadel-cli repo insights acme/myrepo --output json
-  citadel-cli repo insights acme/myrepo --output yaml`,
+	Example: `  citadel-cli repo insights acme/demo
+  citadel-cli repo insights acme/demo --output json
+  citadel-cli repo insights acme/demo --output yaml`,
 	RunE: runRepoInsights,
 }
 
