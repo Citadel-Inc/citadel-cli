@@ -23,6 +23,10 @@ type popularTopic struct {
 	Count int    `json:"count"`
 }
 
+type popularTopicsResponse struct {
+	Topics []popularTopic `json:"topics"`
+}
+
 // ── command tree ─────────────────────────────────────────────────────────────
 
 var repoTopicCmd = &cobra.Command{
@@ -75,10 +79,11 @@ func runRepoTopicList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
+	output = strings.ToLower(output)
 
 	client, err := newAPIClient(cmd)
 	if err != nil {
@@ -99,8 +104,11 @@ func runRepoTopicList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" && output != "table" {
+	switch output {
+	case "json":
 		return emitJSON(cmd, resp)
+	case "yaml":
+		return emitYAML(cmd, resp)
 	}
 
 	if len(resp.Topics) == 0 {
@@ -118,10 +126,11 @@ func runRepoTopicSet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
+	output = strings.ToLower(output)
 
 	client, err := newAPIClient(cmd)
 	if err != nil {
@@ -146,8 +155,11 @@ func runRepoTopicSet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" && output != "table" {
+	switch output {
+	case "json":
 		return emitJSON(cmd, resp)
+	case "yaml":
+		return emitYAML(cmd, resp)
 	}
 
 	if len(resp.Topics) == 0 {
@@ -180,10 +192,11 @@ func resolveTopicSetArgs(cmd *cobra.Command, args []string) (ns, slug string, to
 }
 
 func runRepoTopicPopular(cmd *cobra.Command, args []string) error {
-	output, _ := cmd.Flags().GetString("output")
+	output := outputFlag(cmd)
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
+	output = strings.ToLower(output)
 	limit, _ := cmd.Flags().GetInt("limit")
 
 	client, err := newAPIClient(cmd)
@@ -209,9 +222,15 @@ func runRepoTopicPopular(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" && output != "table" {
-		_, err := cmd.OutOrStdout().Write(raw)
-		return err
+	switch output {
+	case "json":
+		return emitJSON(cmd, raw)
+	case "yaml":
+		var rows []popularTopic
+		if err := json.Unmarshal(raw, &rows); err != nil {
+			return fmt.Errorf("unexpected response from server: %w", err)
+		}
+		return emitYAML(cmd, popularTopicsResponse{Topics: rows})
 	}
 
 	var rows []popularTopic
