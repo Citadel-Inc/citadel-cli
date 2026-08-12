@@ -72,6 +72,23 @@ func TestRepoBrowseTree_JSON(t *testing.T) {
 	}
 }
 
+func TestRepoBrowseTree_YAML(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/tree": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, makeBrowseTree("main", "", []map[string]any{
+				makeTreeEntry("main.go", "blob", 512, "abc1234567890def"),
+			}))
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "browse", "tree", "acme/demo", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.HasPrefix(strings.TrimSpace(buf.String()), "{") {
+		t.Fatalf("expected YAML output, got JSON object: %s", buf.String())
+	}
+}
+
 func TestRepoBrowseTree_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/namespaces/acme/repos/demo/tree": func(w http.ResponseWriter, _ *http.Request) {
@@ -178,6 +195,24 @@ func TestRepoBrowseBlob_JSON(t *testing.T) {
 	var out map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &out); err != nil {
 		t.Fatalf("not valid JSON: %v\nbody: %s", err, buf.String())
+	}
+}
+
+func TestRepoBrowseBlob_YAML(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/blob": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"sha": "abc1234567890def", "size": 5, "binary": false,
+				"encoding": "utf-8", "content": "hello",
+			})
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "browse", "blob", "acme/demo", "--path", "f.txt", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.HasPrefix(strings.TrimSpace(buf.String()), "{") {
+		t.Fatalf("expected YAML output, got JSON object: %s", buf.String())
 	}
 }
 
