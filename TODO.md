@@ -6,6 +6,18 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 122313ZAUG26 (fenced wave 28)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| — | Repo insights output-before-path | `validateGetOutput` then `resolveRepoFromPosOrFlag`; no-repo xml hermetic |
+| — | Namespace members trimmed-slug HTTP | `" myorg "` → `GET /orgs/myorg/members` |
+| — | Issue/PR list no-repo BadOutput | Exact toml hermetics without `-R` |
+| 125 | Completion unknown-shell test root groups | Already on `9709e90`; no wave-28 edit |
+| — | Should-fix closeout | Normalize insights `--output` (`outputFlag` + ToLower) before emit; `TABLE` human render test |
+
+---
+
 ## Shipped 110522ZAUG26 (fenced wave 27)
 
 | # | Item | Notes |
@@ -552,14 +564,22 @@ _(#120–#124 + Round 28 optional tightenings shipped in wave 27; should-fixes n
 
 ## Round 29 — wave-27 audit carry-forwards (110522ZAUG26)
 
+_(Round 29 optional tightenings + #125 already-on-HEAD shipped in wave 28; should-fix insights `--output` normalize closed in-wave.)_
+
+---
+
+## Round 30 — wave-28 audit carry-forwards (122313ZAUG26)
+
 ### Optional tightenings (audit)
 
-- Repo insights: `validateGetOutput` before `resolveRepoFromPosOrFlag` (parity with commit list; tests already pass via positional).
-- Namespace members: HTTP hermetic that trimmed slug `" myorg "` hits `GET /orgs/myorg/members`.
-- Issue/PR list: no-repo BadOutput hermetics mirroring no-repo BadCursor (output already before path).
+- Repo insights: non-table branch always `emitJSON`; `--output yaml` never reaches `emitYAML`.
+- Issue/PR list BadOutput_NoRepo: add `--no-cwd-repo` (insights pattern) so a Citadel-parsable CWD origin cannot hide an output-before-resolve regression.
+- Issue/PR list: MissingRepo hermetic (valid output, no `-R`) beside BadOutput_NoRepo.
 
 ### Next polish candidates
 
 | # | Item | Notes |
 | --- | --- | --- |
-| 125 | Completion unknown-shell test root groups | `TestCompletion_RejectsUnknownShell` panics without `addTestRootGroups` on test root (`GroupID: meta`) |
+| 126 | Insights yaml emit | `runRepoInsights` yaml → `emitYAML` (or document json-only) |
+| 127 | Issue/PR no-repo `--no-cwd-repo` | Strengthen BadOutput_NoRepo hermetics |
+| 128 | Issue/PR MissingRepo hermetics | Valid output + no repo → path error |
