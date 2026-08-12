@@ -34,7 +34,8 @@ var repoTopicListCmd = &cobra.Command{
 	Use:   "list [<namespace>/<repo>]",
 	Short: "List the topics attached to a repository",
 	Example: `  citadel-cli repo topic list acme/myrepo
-  citadel-cli repo topic list acme/myrepo --output json`,
+  citadel-cli repo topic list acme/myrepo --output json
+  citadel-cli repo topic list acme/myrepo --output yaml`,
 	RunE: runRepoTopicList,
 }
 
@@ -51,7 +52,8 @@ Pass no topics to clear all topics from the repository.`,
   citadel-cli repo topic set acme/myrepo
 
   # Output result as JSON
-  citadel-cli repo topic set acme/myrepo go cli --output json`,
+  citadel-cli repo topic set acme/myrepo go cli --output json
+  citadel-cli repo topic set acme/myrepo go cli --output yaml`,
 	RunE: runRepoTopicSet,
 }
 
@@ -60,7 +62,8 @@ var repoTopicPopularCmd = &cobra.Command{
 	Short: "List the most popular topics across all repositories",
 	Example: `  citadel-cli repo topic popular
   citadel-cli repo topic popular --limit 20
-  citadel-cli repo topic popular --output json`,
+  citadel-cli repo topic popular --output json
+  citadel-cli repo topic popular --output yaml`,
 	RunE: runRepoTopicPopular,
 }
 
