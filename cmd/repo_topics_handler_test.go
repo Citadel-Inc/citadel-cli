@@ -314,6 +314,7 @@ func assertRepoTopicBadOutput(t *testing.T, args ...string) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.RepoCmd, append([]string{"topic"}, append(args, "--output", "toml")...)...).Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
