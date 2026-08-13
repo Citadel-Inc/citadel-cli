@@ -262,10 +262,6 @@ func runIssueMilestoneList(cmd *cobra.Command, _ []string) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
-		return err
-	}
 	state, _ := cmd.Flags().GetString("state")
 	state = strings.TrimSpace(strings.ToLower(state))
 	if state == "" {
@@ -275,6 +271,10 @@ func runIssueMilestoneList(cmd *cobra.Command, _ []string) error {
 	case "open", "closed", "all":
 	default:
 		return fmt.Errorf("--state must be open, closed, or all")
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
+		return err
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
