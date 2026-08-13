@@ -535,6 +535,10 @@ func runNamespaceWebhookGet(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoWebhookEdit(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	namespacePath, id, err := parseRepoWebhookIDArgs(cmd, args)
 	if err != nil {
 		return err
@@ -609,6 +613,10 @@ func runWebhookGet(cmd *cobra.Command, namespacePath, rawID string) error {
 }
 
 func runRepoWebhookDelete(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	namespacePath, id, err := parseRepoWebhookIDArgs(cmd, args)
 	if err != nil {
 		return err
@@ -772,6 +780,10 @@ func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
 }
 
 func runRepoWebhookDeliveryGet(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	namespacePath, id, err := parseRepoWebhookDeliveryIDArgs(cmd, args)
 	if err != nil {
 		return err
@@ -810,6 +822,10 @@ func runWebhookDeliveryGet(cmd *cobra.Command, namespacePath, rawID string) erro
 }
 
 func runRepoWebhookDeliveryRedeliver(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	namespacePath, id, err := parseRepoWebhookDeliveryIDArgs(cmd, args)
 	if err != nil {
 		return err
