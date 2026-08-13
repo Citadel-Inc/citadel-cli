@@ -321,6 +321,10 @@ func runRepoGet(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoDelete(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "delete"); err != nil {
+		return err
+	}
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
