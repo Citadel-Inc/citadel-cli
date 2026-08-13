@@ -158,12 +158,12 @@ func runRepoBranchList(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoBranchDelete(cmd *cobra.Command, args []string) error {
-	ns, slug, name, err := parseRepoScopedNameArgs(cmd, args)
-	if err != nil {
-		return err
-	}
 	output := outputFlag(cmd)
 	if err := validateMutationOutput(output, "delete"); err != nil {
+		return err
+	}
+	ns, slug, name, err := parseRepoScopedNameArgs(cmd, args)
+	if err != nil {
 		return err
 	}
 	path := "/namespaces/" + url.PathEscape(ns) + "/repos/" + url.PathEscape(slug) + "/refs/branches?name=" + url.QueryEscape(name)
@@ -192,12 +192,12 @@ func runRepoBranchDelete(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoBranchSetDefault(cmd *cobra.Command, args []string) error {
-	ns, slug, name, err := parseRepoScopedNameArgs(cmd, args)
-	if err != nil {
-		return err
-	}
 	output := outputFlag(cmd)
 	if err := validateMutationOutput(output, "set-default"); err != nil {
+		return err
+	}
+	ns, slug, name, err := parseRepoScopedNameArgs(cmd, args)
+	if err != nil {
 		return err
 	}
 	path := "/namespaces/" + url.PathEscape(ns) + "/repos/" + url.PathEscape(slug) + "/default-branch"
