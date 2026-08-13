@@ -195,6 +195,9 @@ func runRepoTopicPopular(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	limit, _ := cmd.Flags().GetInt("limit")
+	if cmd.Flags().Changed("limit") && limit < 1 {
+		return fmt.Errorf("--limit must be at least 1")
+	}
 
 	client, err := newAPIClient(cmd)
 	if err != nil {
