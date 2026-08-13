@@ -42,7 +42,10 @@ var projectPinChainCmd = &cobra.Command{
 }
 
 func runProjectPinChain(cmd *cobra.Command, args []string) error {
-	slug := strings.TrimSpace(args[0])
+	slug, err := requireProjectPath(args[0])
+	if err != nil {
+		return err
+	}
 	path := projectgraphPath(slug, "pin-chain")
 	return projectGET(cmd, path)
 }
@@ -64,7 +67,10 @@ func runProjectWalk(cmd *cobra.Command, args []string) error {
 	}
 	maxDepth, _ := cmd.Flags().GetInt("max-depth")
 
-	slug := strings.TrimSpace(args[0])
+	slug, err := requireProjectPath(args[0])
+	if err != nil {
+		return err
+	}
 	q := url.Values{}
 	q.Set("kind", kind)
 	if cmd.Flags().Changed("max-depth") && maxDepth > 0 {
@@ -93,7 +99,10 @@ func runProjectNeighbors(cmd *cobra.Command, args []string) error {
 	if kind == "" {
 		return fmt.Errorf("--kind is required")
 	}
-	slug := strings.TrimSpace(args[0])
+	slug, err := requireProjectPath(args[0])
+	if err != nil {
+		return err
+	}
 	q := url.Values{}
 	q.Set("kind", kind)
 	if ns, _ := cmd.Flags().GetString("ns"); strings.TrimSpace(ns) != "" {
@@ -125,7 +134,10 @@ var projectStatusRollupCmd = &cobra.Command{
 	Short: "GET aggregated status rollup",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		slug := strings.TrimSpace(args[0])
+		slug, err := requireProjectPath(args[0])
+		if err != nil {
+			return err
+		}
 		path := projectgraphPath(slug, "status-rollup")
 		return projectGET(cmd, path)
 	},
@@ -136,7 +148,10 @@ var projectStatusDrilldownCmd = &cobra.Command{
 	Short: "GET status rollup drilldown",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		slug := strings.TrimSpace(args[0])
+		slug, err := requireProjectPath(args[0])
+		if err != nil {
+			return err
+		}
 		path := projectgraphPath(slug, "status-rollup/drilldown")
 		return projectGET(cmd, path)
 	},
@@ -157,6 +172,10 @@ var projectEdgeAddCmd = &cobra.Command{
 }
 
 func runProjectEdgeAdd(cmd *cobra.Command, args []string) error {
+	slug, err := requireProjectPath(args[0])
+	if err != nil {
+		return err
+	}
 	outMode := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if jsonFlag(cmd) {
 		outMode = "json"
@@ -165,7 +184,6 @@ func runProjectEdgeAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	slug := strings.TrimSpace(args[0])
 	fromNS, err := cmd.Flags().GetString("from-namespace-id")
 	if err != nil {
 		return err
@@ -244,7 +262,10 @@ var projectEdgeDeleteCmd = &cobra.Command{
 }
 
 func runProjectEdgeDelete(cmd *cobra.Command, args []string) error {
-	slug := strings.TrimSpace(args[0])
+	slug, err := requireProjectPath(args[0])
+	if err != nil {
+		return err
+	}
 	edgeID := strings.TrimSpace(args[1])
 	if _, err := uuid.Parse(edgeID); err != nil {
 		return fmt.Errorf("edge-id must be a UUID")
@@ -272,7 +293,10 @@ var projectEdgeRestoreCmd = &cobra.Command{
 }
 
 func runProjectEdgeRestore(cmd *cobra.Command, args []string) error {
-	slug := strings.TrimSpace(args[0])
+	slug, err := requireProjectPath(args[0])
+	if err != nil {
+		return err
+	}
 	edgeID := strings.TrimSpace(args[1])
 	if _, err := uuid.Parse(edgeID); err != nil {
 		return fmt.Errorf("edge-id must be a UUID")
@@ -302,7 +326,10 @@ var projectReindexCmd = &cobra.Command{
 }
 
 func runProjectReindex(cmd *cobra.Command, args []string) error {
-	slug := strings.TrimSpace(args[0])
+	slug, err := requireProjectPath(args[0])
+	if err != nil {
+		return err
+	}
 	if err := confirmSlug(yesFlag(cmd), "reindex project graph", slug); err != nil {
 		return err
 	}
@@ -368,6 +395,14 @@ func runProjectAdminRecoveryScan(cmd *cobra.Command, _ []string) error {
 }
 
 // projectgraphPath builds /api/projectgraph/<escaped slug>/<suffix>.
+func requireProjectPath(arg string) (string, error) {
+	slug := strings.TrimSpace(arg)
+	if slug == "" {
+		return "", fmt.Errorf("namespace path cannot be empty")
+	}
+	return slug, nil
+}
+
 func projectgraphPath(slug, suffix string) string {
 	slug = strings.Trim(slug, "/")
 	parts := strings.Split(slug, "/")
