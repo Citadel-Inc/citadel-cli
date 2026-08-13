@@ -543,13 +543,11 @@ func init() {
 
 	projectWalkCmd.Flags().String("kind", "", "Graph kind (required)")
 	projectWalkCmd.Flags().Int("max-depth", 0, "Optional positive walk depth")
-	_ = projectWalkCmd.MarkFlagRequired("kind")
 
 	projectNeighborsCmd.Flags().String("kind", "", "Neighbor kind filter (required)")
 	projectNeighborsCmd.Flags().String("ns", "", "Override target namespace (optional)")
 	projectNeighborsCmd.Flags().String("direction", "", "Edge direction filter")
 	projectNeighborsCmd.Flags().Bool("include-deleted", false, "Include tombstoned edges")
-	_ = projectNeighborsCmd.MarkFlagRequired("kind")
 
 	projectEdgeAddCmd.Flags().String("from-namespace-id", "", "From namespace UUID")
 	projectEdgeAddCmd.Flags().String("from-kind", "", "From namespace kind")
