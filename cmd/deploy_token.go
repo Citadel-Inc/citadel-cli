@@ -349,9 +349,6 @@ func runNamespaceDeployTokenCreate(cmd *cobra.Command, args []string) error {
 func runDeployTokenCreate(cmd *cobra.Command, namespacePath string) error {
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "create"); err != nil {
-		return err
-	}
 	expiresIn, err := parseExpiresFlag(cmd)
 	if err != nil {
 		return err
@@ -414,9 +411,6 @@ func runDeployTokenRevoke(cmd *cobra.Command, namespacePath, tokenID string) err
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	tokenID = strings.TrimSpace(tokenID)
 	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "revoke"); err != nil {
-		return err
-	}
 	path := deployTokenAPIPath(namespacePath) + "/" + url.PathEscape(tokenID)
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE %s (skipped; --dry-run)\n", path)
