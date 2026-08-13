@@ -6,6 +6,18 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 130214ZAUG26 (fenced wave 29)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 146 | PR collab + view output-before-path | check/comment/reviewer/review/view; BadOutput_NoRepo exact |
+| 147 | Milestone output-before-path | all five handlers; BadOutput_NoRepo exact |
+| 148 | Deploy-token repo wrappers output-before-path | list/create/revoke; pagination/watch/cursor before path |
+| 149 | Branch delete/set-default output-before-path | mutation output before `parseRepoScopedNameArgs` |
+| — | Should-fix closeout | Exact `-R` BadOutput + env clears; branch list NoRepo hermetic |
+
+---
+
 ## Shipped 130046ZAUG26 (fenced wave 28)
 
 | # | Item | Notes |
@@ -33,6 +45,9 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 | 143 | Notification residual Contains | `TestNotificationList_NoAuth` and remaining Contains asserts |
 | 144 | Deduplicate project edge guard tests | `handler_test.go` withServer+Contains vs `project_handler_test.go` hermetics |
 | 145 | Label mutate MissingRepo hermetics | create/edit/delete `--no-cwd-repo` siblings of list |
+| 150 | Tag list BadOutput_NoRepo hermetic | Mirror branch list; `assertRepoRefBadOutput` without `acme/demo` |
+| 151 | Namespace deploy-token BadOutput hermetics | list/create/revoke positional-ns; exact strings |
+| 152 | Milestone `--state` before path | `runIssueMilestoneList` validates state after `resolveIssueNamespacePath` |
 
 ---
 
