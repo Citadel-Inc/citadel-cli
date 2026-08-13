@@ -33,6 +33,21 @@ func addOutputFlag(cmds ...*cobra.Command) {
 	}
 }
 
+func completeGetOutputFormats(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+	outputFormatCompletions := []string{"json", "yaml", "table"}
+	out := make([]string, len(outputFormatCompletions))
+	copy(out, outputFormatCompletions)
+	return out, cobra.ShellCompDirectiveNoFileComp
+}
+
+// addGetOutputFlag registers the `--output` flag on single-resource commands.
+func addGetOutputFlag(cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.Flags().String("output", "", "Output format: json, yaml, or table (default human table)")
+		_ = c.RegisterFlagCompletionFunc("output", completeGetOutputFormats)
+	}
+}
+
 func completeMutationOutputFormats(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
 }
