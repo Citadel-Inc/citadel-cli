@@ -246,6 +246,18 @@ func TestPRView_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestPRView_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.PrCmd, "view", "7", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want exact output validation error, got %v", err)
+	}
+}
+
 // ── pr create ─────────────────────────────────────────────────────────────────
 
 func TestPRCreate_Happy(t *testing.T) {
@@ -496,6 +508,18 @@ func TestPRCheck_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestPRCheck_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.PrCmd, "check", "7", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want exact output validation error, got %v", err)
+	}
+}
+
 // ── pr comment ────────────────────────────────────────────────────────────────
 
 func TestPRCommentList_Happy(t *testing.T) {
@@ -530,6 +554,18 @@ func TestPRCommentList_BadOutput_Hermetic(t *testing.T) {
 	err := rootFor(cmd.PrCmd, "comment", "list", "-R", testNSPath, "7", "--output", "toml").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestPRCommentList_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.PrCmd, "comment", "list", "7", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want exact output validation error, got %v", err)
 	}
 }
 
@@ -568,6 +604,19 @@ func TestPRCommentAdd_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestPRCommentAdd_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.PrCmd, "comment", "add", "7",
+		"--body", "LGTM", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for comment add supports json or default human summary only; got "toml"` {
+		t.Fatalf("want exact output validation error, got %v", err)
+	}
+}
+
 // ── pr reviewer ───────────────────────────────────────────────────────────────
 
 func TestPRReviewerList_Happy(t *testing.T) {
@@ -602,6 +651,18 @@ func TestPRReviewerList_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestPRReviewerList_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.PrCmd, "reviewer", "list", "7", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want exact output validation error, got %v", err)
+	}
+}
+
 func TestPRReviewerAdd_Happy(t *testing.T) {
 	added := false
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -632,6 +693,19 @@ func TestPRReviewerAdd_BadOutput_Hermetic(t *testing.T) {
 		"--reviewer", testPRUUID, "--output", "toml").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output for reviewer add") {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestPRReviewerAdd_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.PrCmd, "reviewer", "add", "7",
+		"--reviewer", testPRUUID, "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for reviewer add supports json or default human summary only; got "toml"` {
+		t.Fatalf("want exact output validation error, got %v", err)
 	}
 }
 
@@ -681,6 +755,19 @@ func TestPRReview_BadOutput_Hermetic(t *testing.T) {
 		"--approve", "--output", "toml").Execute()
 	if err == nil || !strings.Contains(err.Error(), "--output for review") {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestPRReview_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.PrCmd, "review", "7",
+		"--approve", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for review supports json or default human summary only; got "toml"` {
+		t.Fatalf("want exact output validation error, got %v", err)
 	}
 }
 
