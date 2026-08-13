@@ -106,7 +106,7 @@ func assertOrgInvitationBadOutput(t *testing.T, args ...string) {
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 
 	err := rootFor(cmd.OrgCmd, append([]string{"invitation"}, append(args, "--output", "toml")...)...).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
