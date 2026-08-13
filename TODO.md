@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 131903ZAUG26 (fenced wave 33)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 157 | Mutation `--output` completion golden | `TestCompleteMutationOutputFormats_Golden` json-only |
+| 158 | Get-verb `--output` help vs `validateGetOutput` | `addGetOutputFlag` + `completeGetOutputFormats`; release create/edit |
+| 159 | Broader mutation Usage spot-checks | Five mutation cmds + list control |
+| 160 | Agent list/create exact BadOutput | `agent_handler_test.go`; dropped handler Contains |
+| 161 | Drop duplicate deploy-token mutation validate | Inner create/revoke no longer re-check |
+| — | Should-fix closeout | Package `getOutputFormatCompletions`; get-output completion golden |
+
+---
+
 ## Shipped 130333ZAUG26 (fenced wave 32)
 
 | # | Item | Notes |
@@ -77,11 +90,12 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 | # | Item | Notes |
 | --- | --- | --- |
-| 157 | Mutation `--output` completion golden | Mirror `TestCompleteOutputFormats_GoldenList` for `completeMutationOutputFormats` (json-only) |
-| 158 | Get-verb `--output` help vs `validateGetOutput` | `addOutputFlag` still advertises ndjson/csv on get-style verbs (e.g. release create/edit) |
-| 159 | Broader mutation Usage spot-checks | `TestMutationOutputFlagUsage` only repo delete vs list |
-| 160 | Agent list/create exact BadOutput | `handler_test.go` still `strings.Contains` |
-| 161 | Drop duplicate deploy-token mutation validate | Wrapper + inner `validateMutationOutput` on create/revoke |
+| 162 | Exact release BadOutput | create/edit/view still `Contains`; get-format full-string |
+| 163 | `addGetOutputFlag` on release latest/view | `validateGetOutput` but list-style flag |
+| 164 | `addGetOutputFlag` on release asset upload | Same mismatch as #158 |
+| 165 | Get-flag on gist create/edit + agent get | `validateGetOutput` + `addOutputFlag` |
+| 166 | Mutation usage: completion + revoke | Flag completion wiring; add `repoDeployTokenRevokeCmd` |
+| 167 | List completion golden values | `TestCompleteOutputFormats_GoldenList` is len-only |
 
 ---
 
