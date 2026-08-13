@@ -6,19 +6,6 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
-## Open
-
-| # | Item | Notes |
-| --- | --- | --- |
-| 162 | Exact release BadOutput | create/edit/view still `Contains`; get-format full-string |
-| 163 | `addGetOutputFlag` on release latest/view | `validateGetOutput` but list-style flag |
-| 164 | `addGetOutputFlag` on release asset upload | Same mismatch as #158 |
-| 165 | Get-flag on gist create/edit + agent get | `validateGetOutput` + `addOutputFlag` |
-| 166 | Mutation usage: completion + revoke | Flag completion wiring; add `repoDeployTokenRevokeCmd` |
-| 167 | List completion golden values | `TestCompleteOutputFormats_GoldenList` is len-only |
-
----
-
 ## Blocked on server SSE
 
 ### 3. Audit event tail / `--watch`
@@ -55,16 +42,6 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 | **Packages / files** | optional `rethunk-tech/tap` formula (out of tree), `docs/cli.md` Distribution |
 | **Traps** | Do not force tap early; keep docs demand-gated |
 | **Acceptance** | Formula installs current release binary; docs link the tap when published |
-
-### 16. Replace Phase 0 placeholder LICENSE
-
-**Feature.** Root `LICENSE` still says terms may change; releases publish under that text.
-
-| | |
-| --- | --- |
-| **Packages / files** | `LICENSE`, `NOTICE`, README license badge/blurb if any |
-| **Traps** | Legal decision — not an agent fiat; keep NOTICE attributions intact |
-| **Acceptance** | Chosen license text committed; README/HUMANS link matches; no "Phase 0 placeholder" language remains |
 
 ### 21. Optional migrate MCP client to official go-sdk
 
