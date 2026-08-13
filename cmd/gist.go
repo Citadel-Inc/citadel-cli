@@ -549,7 +549,8 @@ func renderGistWriteResult(cmd *cobra.Command, output, label string, result gist
 func init() {
 	GistCmd.AddCommand(gistListCmd, gistViewCmd, gistCreateCmd, gistEditCmd, gistDeleteCmd, gistRawCmd)
 
-	addOutputFlag(gistListCmd, gistViewCmd, gistCreateCmd, gistEditCmd, gistDeleteCmd)
+	addOutputFlag(gistListCmd, gistDeleteCmd)
+	addGetOutputFlag(gistViewCmd, gistCreateCmd, gistEditCmd)
 	addYesFlag(gistDeleteCmd)
 	addDryRunFlag(gistCreateCmd, gistEditCmd, gistDeleteCmd)
 
