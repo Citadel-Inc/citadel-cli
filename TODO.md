@@ -6,19 +6,6 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
-## Shipped 130008ZAUG26 (fenced wave 28)
-
-| # | Item | Notes |
-| --- | --- | --- |
-| 126 | Repo clone path-before-git/auth | `splitRepoArg` before `ensureGitOnPath` / `newAPIClient`; invalid-path hermetic |
-| 127 | Project empty namespace path | `requireProjectPath` before client/`--kind`; pin-chain/walk/neighbors hermetics |
-| 128 | Search exact empty-XDG hermetics | Bad output, short query, invalid scope, limit -1/26 |
-| 129 | MCP empty tool/URI/prompt before dial | Local guards + hermetics; `parseArgPairs` still before `dialMCP` |
-| 130 | Issue/PR BadOutput NoRepo argv | List + mutate tests omit `--no-cwd-repo`; MissingRepo keeps the flag |
-| — | Should-fix closeout | Path before `--kind` on walk/neighbors; mutate BadOutput argv |
-
----
-
 ## Open
 
 | # | Item | Notes |
