@@ -258,12 +258,12 @@ func lookupMilestoneIDs(cmd *cobra.Command, nsPath string) ([]string, cobra.Shel
 }
 
 func runIssueMilestoneList(cmd *cobra.Command, _ []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
-		return err
-	}
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	state, _ := cmd.Flags().GetString("state")
@@ -328,16 +328,16 @@ func runIssueMilestoneList(cmd *cobra.Command, _ []string) error {
 }
 
 func runIssueMilestoneView(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
 	}
 	id, err := parseMilestoneID(args[0])
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	c, err := newAPIClient(cmd)
@@ -362,12 +362,12 @@ func runIssueMilestoneView(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueMilestoneCreate(cmd *cobra.Command, _ []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
-		return err
-	}
 	output := outputFlag(cmd)
 	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	title, _ := cmd.Flags().GetString("title")
@@ -406,16 +406,16 @@ func runIssueMilestoneCreate(cmd *cobra.Command, _ []string) error {
 }
 
 func runIssueMilestoneEdit(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "edit"); err != nil {
+		return err
+	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
 	}
 	id, err := parseMilestoneID(args[0])
 	if err != nil {
-		return err
-	}
-	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "edit"); err != nil {
 		return err
 	}
 	payload := map[string]any{}
@@ -471,16 +471,16 @@ func runIssueMilestoneEdit(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueMilestoneDelete(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "delete"); err != nil {
+		return err
+	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
 	}
 	id, err := parseMilestoneID(args[0])
 	if err != nil {
-		return err
-	}
-	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "delete"); err != nil {
 		return err
 	}
 	path := milestoneBasePath(nsPath) + "/" + url.PathEscape(id)
