@@ -160,13 +160,10 @@ func TestAPI_PutWithInputStdin(t *testing.T) {
 }
 
 func TestAPI_EmptyInput(t *testing.T) {
-	var requests int
-	withServer(t, route(t, map[string]http.HandlerFunc{
-		"POST /foo": func(w http.ResponseWriter, _ *http.Request) {
-			requests++
-			writeJSON(t, w, http.StatusCreated, map[string]any{"ok": true})
-		},
-	}))
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	root := rootFor(cmd.APICmd, "-X", "POST", "/foo", "--input", "-")
 	root.SetIn(strings.NewReader(""))
@@ -174,37 +171,28 @@ func TestAPI_EmptyInput(t *testing.T) {
 	if err == nil {
 		t.Fatal("want error for empty JSON input")
 	}
-	if !strings.Contains(err.Error(), "--input") {
-		t.Fatalf("error = %q, want --input", err)
-	}
-	if requests != 0 {
-		t.Fatalf("requests = %d, want 0", requests)
+	if err.Error() != `--input: invalid JSON: unexpected end of JSON input` {
+		t.Fatalf("error = %q, want invalid JSON error", err)
 	}
 }
 
 func TestAPI_InvalidJSONInput(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
 	inputPath := filepath.Join(t.TempDir(), "invalid.json")
 	if err := os.WriteFile(inputPath, []byte(`{"title":`), 0600); err != nil {
 		t.Fatal(err)
 	}
 
-	var requests int
-	withServer(t, route(t, map[string]http.HandlerFunc{
-		"POST /foo": func(w http.ResponseWriter, _ *http.Request) {
-			requests++
-			writeJSON(t, w, http.StatusCreated, map[string]any{"ok": true})
-		},
-	}))
-
 	err := rootFor(cmd.APICmd, "-X", "POST", "/foo", "--input", inputPath).Execute()
 	if err == nil {
 		t.Fatal("want error for invalid JSON input")
 	}
-	if !strings.Contains(err.Error(), "--input") {
-		t.Fatalf("error = %q, want --input", err)
-	}
-	if requests != 0 {
-		t.Fatalf("requests = %d, want 0", requests)
+	if err.Error() != `--input: invalid JSON: unexpected end of JSON input` {
+		t.Fatalf("error = %q, want invalid JSON error", err)
 	}
 }
 
