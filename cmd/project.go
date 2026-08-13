@@ -60,6 +60,10 @@ var projectWalkCmd = &cobra.Command{
 }
 
 func runProjectWalk(cmd *cobra.Command, args []string) error {
+	slug, err := requireProjectPath(args[0])
+	if err != nil {
+		return err
+	}
 	kind, _ := cmd.Flags().GetString("kind")
 	kind = strings.TrimSpace(kind)
 	if kind == "" {
@@ -67,10 +71,6 @@ func runProjectWalk(cmd *cobra.Command, args []string) error {
 	}
 	maxDepth, _ := cmd.Flags().GetInt("max-depth")
 
-	slug, err := requireProjectPath(args[0])
-	if err != nil {
-		return err
-	}
 	q := url.Values{}
 	q.Set("kind", kind)
 	if cmd.Flags().Changed("max-depth") && maxDepth > 0 {
@@ -94,14 +94,14 @@ var projectNeighborsCmd = &cobra.Command{
 }
 
 func runProjectNeighbors(cmd *cobra.Command, args []string) error {
+	slug, err := requireProjectPath(args[0])
+	if err != nil {
+		return err
+	}
 	kind, _ := cmd.Flags().GetString("kind")
 	kind = strings.TrimSpace(kind)
 	if kind == "" {
 		return fmt.Errorf("--kind is required")
-	}
-	slug, err := requireProjectPath(args[0])
-	if err != nil {
-		return err
 	}
 	q := url.Values{}
 	q.Set("kind", kind)
