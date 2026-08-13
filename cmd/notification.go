@@ -393,8 +393,11 @@ func runNotificationPrefsSet(cmd *cobra.Command, _ []string) error {
 	}
 
 	output := outputFlag(cmd)
-	if output == "json" {
+	switch output {
+	case "json":
 		return emitJSON(cmd, updated)
+	case "yaml":
+		return emitYAML(cmd, updated)
 	}
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Notification preferences updated.")
 	return nil

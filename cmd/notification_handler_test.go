@@ -347,6 +347,23 @@ func TestNotificationPrefsSet_Happy(t *testing.T) {
 	}
 }
 
+func TestNotificationPrefsSet_YAML(t *testing.T) {
+	var stdout strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"PATCH /api/me/notification-prefs": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, prefsBody())
+		},
+	}))
+	if err := rootForOut(cmd.NotificationCmd, &stdout,
+		"prefs", "set", "--email-digest", "weekly", "--output", "yaml",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "email_digest_cadence: daily") {
+		t.Fatalf("YAML output missing cadence key, got %q", stdout.String())
+	}
+}
+
 func TestNotificationPrefsSet_KindOverrides(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"PATCH /api/me/notification-prefs": func(w http.ResponseWriter, r *http.Request) {
