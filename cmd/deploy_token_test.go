@@ -99,6 +99,45 @@ func TestRepoDeployTokenRevoke_BadOutput_NoRepo_Hermetic(t *testing.T) {
 	}
 }
 
+func TestNamespaceDeployTokenListBadOutputHermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.NamespaceCmd, "deploy-token", "list", "myorg", "--output", "toml").Execute()
+	want := `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
+	}
+}
+
+func TestNamespaceDeployTokenCreateBadOutputHermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.NamespaceCmd, "deploy-token", "create", "myorg", "--output", "toml").Execute()
+	want := `--output for create supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
+	}
+}
+
+func TestNamespaceDeployTokenRevokeBadOutputHermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.NamespaceCmd, "deploy-token", "revoke", "myorg", "tok-3", "--output", "toml").Execute()
+	want := `--output for revoke supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
+	}
+}
+
 func TestRepoDeployTokenListWatchBadOutputHermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
