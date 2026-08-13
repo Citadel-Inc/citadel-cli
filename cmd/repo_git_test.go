@@ -111,6 +111,24 @@ func TestRepoClone_InvalidPathFailsBeforeAuthAndGit(t *testing.T) {
 	}
 }
 
+func TestRepoClone_WhitespaceOnlyArg_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	oldLookPath := execLookPath
+	execLookPath = func(string) (string, error) { return "", exec.ErrNotFound }
+	defer func() { execLookPath = oldLookPath }()
+
+	root := repoTestRoot(t)
+	root.SetArgs([]string{"repo", "clone", " "})
+	err := root.ExecuteContext(context.Background())
+	if err == nil || err.Error() != "argument must be <namespace>/<repo>" {
+		t.Fatalf("err=%v", err)
+	}
+}
+
 func TestRepoPush_CreateFlagCreatesMissingRepoThenPushesOrigin(t *testing.T) {
 	logPath, cleanup := patchGitExec(t)
 	defer cleanup()
