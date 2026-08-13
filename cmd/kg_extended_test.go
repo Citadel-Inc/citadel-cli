@@ -234,15 +234,15 @@ func TestKgCursorValidationHermetic(t *testing.T) {
 		},
 		{
 			name: "symbols",
-			args: []string{"symbols", "--q", "needle", "--cursor", "not-base64!!!"},
+			args: []string{"symbols", "--q", "needle", "--cursor", "not-base64!!!", "--no-cwd-repo"},
 		},
 		{
 			name: "files",
-			args: []string{"files", "--cursor", "not-base64!!!"},
+			args: []string{"files", "--cursor", "not-base64!!!", "--no-cwd-repo"},
 		},
 		{
 			name: "fulltext",
-			args: []string{"fulltext", "--q", "needle", "--cursor", "not-base64!!!"},
+			args: []string{"fulltext", "--q", "needle", "--cursor", "not-base64!!!", "--no-cwd-repo"},
 		},
 	}
 	for _, tt := range tests {
