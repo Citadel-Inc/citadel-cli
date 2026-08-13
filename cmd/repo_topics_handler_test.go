@@ -263,6 +263,28 @@ func TestRepoTopicPopular_BadOutput_Hermetic(t *testing.T) {
 	assertRepoTopicBadOutput(t, "popular")
 }
 
+func TestRepoTopicPopular_InvalidLimit_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	for _, tt := range []struct {
+		name  string
+		limit string
+	}{
+		{name: "negative", limit: "-1"},
+		{name: "zero", limit: "0"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := rootFor(cmd.RepoCmd, "topic", "popular", "--limit", tt.limit).Execute()
+			if err == nil || err.Error() != "--limit must be at least 1" {
+				t.Fatalf("want limit validation error, got %v", err)
+			}
+		})
+	}
+}
+
 func TestRepoTopicPopular_JSON(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
