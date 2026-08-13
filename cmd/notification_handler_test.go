@@ -158,6 +158,7 @@ func setNotificationHermeticEnv(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 }
 
 func TestNotificationList_BadOutput_Hermetic(t *testing.T) {
@@ -179,11 +180,11 @@ func TestNotificationList_BadCursor_Hermetic(t *testing.T) {
 }
 
 func TestNotificationList_AllJSON_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setNotificationHermeticEnv(t)
 
 	err := rootFor(cmd.NotificationCmd, "list", "--all", "--output", "json").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--all with --output json") {
-		t.Fatalf("want all/json validation error, got %v", err)
+	if err == nil || err.Error() != "--all with --output json is not supported; use --output ndjson for streaming JSON" {
+		t.Fatalf("want exact all/json validation error, got %v", err)
 	}
 }
 
