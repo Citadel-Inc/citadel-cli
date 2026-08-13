@@ -15,6 +15,30 @@ func prepareAgentMutationEnv(t *testing.T) {
 	t.Setenv("CITADEL_REPO", "")
 }
 
+func TestAgentList_BadOutput_Hermetic(t *testing.T) {
+	prepareAgentMutationEnv(t)
+	err := rootFor(cmd.AgentCmd, "list", "--output", "toml").Execute()
+	if err == nil {
+		t.Fatal("expected bad output error, got nil")
+	}
+	want := `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`
+	if err.Error() != want {
+		t.Fatalf("expected %q, got %q", want, err)
+	}
+}
+
+func TestAgentCreate_BadOutput_Hermetic(t *testing.T) {
+	prepareAgentMutationEnv(t)
+	err := rootFor(cmd.AgentCmd, "create", "alpha", "--output", "toml").Execute()
+	if err == nil {
+		t.Fatal("expected bad output error, got nil")
+	}
+	want := `--output for create supports json or default human summary only; got "toml"`
+	if err.Error() != want {
+		t.Fatalf("expected %q, got %q", want, err)
+	}
+}
+
 func TestAgentDelete_BadOutput_Hermetic(t *testing.T) {
 	prepareAgentMutationEnv(t)
 	err := rootFor(cmd.AgentCmd, "delete", "alpha", "--yes", "--output", "toml").Execute()
