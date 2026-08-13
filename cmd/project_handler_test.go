@@ -152,6 +152,23 @@ func TestProjectEdgeAdd_InvalidFromNamespaceIDHermetic(t *testing.T) {
 	}
 }
 
+func TestProjectEdgeAdd_InvalidToNamespaceIDHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(
+		cmd.ProjectCmd,
+		"edge", "add", "ns",
+		"--from-namespace-id", "00000000-0000-0000-0000-000000000001",
+		"--from-kind", "namespace",
+		"--to-namespace-id", "not-a-uuid",
+		"--to-kind", "repo",
+		"--edge-type", "contains",
+	).Execute()
+	if err == nil || err.Error() != "--to-namespace-id must be a UUID" {
+		t.Fatalf("error = %v, want --to-namespace-id must be a UUID", err)
+	}
+}
+
 func TestProjectEdgeAdd_FromKindRequiredHermetic(t *testing.T) {
 	setHermeticProjectEnv(t)
 
