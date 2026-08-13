@@ -165,10 +165,27 @@ func TestIssueView_NotFound(t *testing.T) {
 
 func TestIssueView_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.IssueCmd, "view", "-R", "acme/demo", "7", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
-		t.Fatalf("want output validation error, got %v", err)
+	const want = `--output: unknown format "toml" (use json|yaml|table)`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestIssueView_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "view", "7", "--output", "toml").Execute()
+	const want = `--output: unknown format "toml" (use json|yaml|table)`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
 	}
 }
 
@@ -442,6 +459,9 @@ func TestIssueAssign_Clear(t *testing.T) {
 
 func TestIssueAssign_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.IssueCmd, "assign", "-R", "acme/demo", "7", "--output", "toml").Execute()
 	const want = `--output for assign supports json or default human summary only; got "toml"`
@@ -591,6 +611,32 @@ func TestIssueCommentEdit_EmptyBody(t *testing.T) {
 	}
 }
 
+func TestIssueCommentEdit_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "comment", "edit", "-R", "acme/demo", "some-id", "--output", "toml").Execute()
+	const want = `--output for edit supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestIssueCommentEdit_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.IssueCmd, "comment", "edit", "some-id", "--output", "toml").Execute()
+	const want = `--output for edit supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
 func TestIssueCommentEdit_MissingRepo_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
@@ -626,6 +672,9 @@ func TestIssueClose_Happy(t *testing.T) {
 
 func TestIssueClose_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.IssueCmd, "close", "-R", "acme/demo", "7", "--output", "toml").Execute()
 	const want = `--output for close supports json or default human summary only; got "toml"`
@@ -692,6 +741,9 @@ func TestIssueReopen_Happy(t *testing.T) {
 
 func TestIssueReopen_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.IssueCmd, "reopen", "-R", "acme/demo", "7", "--output", "toml").Execute()
 	const want = `--output for reopen supports json or default human summary only; got "toml"`
