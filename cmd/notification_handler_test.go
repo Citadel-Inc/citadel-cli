@@ -148,7 +148,7 @@ func TestNotificationList_NoAuth(t *testing.T) {
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	t.Setenv("CITADEL_SERVER", "http://nope")
 	err := rootFor(cmd.NotificationCmd, "list").Execute()
-	if err == nil || !strings.Contains(err.Error(), "not authenticated") {
+	if err == nil || err.Error() != "not authenticated; run 'citadel-cli auth login' first" {
 		t.Fatalf("want not-authenticated, got %v", err)
 	}
 }
@@ -221,7 +221,7 @@ func TestNotificationRead_NotFound(t *testing.T) {
 		},
 	}))
 	err := rootFor(cmd.NotificationCmd, "read", "missing-id").Execute()
-	if err == nil || !strings.Contains(err.Error(), "not found") {
+	if err == nil || err.Error() != `notification "missing-id" not found` {
 		t.Fatalf("want not-found error, got %v", err)
 	}
 }
