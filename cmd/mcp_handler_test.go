@@ -31,6 +31,10 @@ func TestMcpCall_BadArg_Hermetic(t *testing.T) {
 	requireMcpError(t, `bad --arg "noeq" (expected key=value)`, "call", "lookup", "--arg", "noeq")
 }
 
+func TestMcpPromptsGet_BadArg_Hermetic(t *testing.T) {
+	requireMcpError(t, `bad --arg "noeq" (expected key=value)`, "prompts", "get", "summarize", "--arg", "noeq")
+}
+
 func TestMcpCall_EmptyTool_Hermetic(t *testing.T) {
 	requireMcpError(t, "tool name cannot be empty", "call", " \t")
 }
