@@ -90,7 +90,7 @@ func TestIssueMilestoneList_BadState_NoRepo_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
 
-	err := rootFor(cmd.IssueCmd, "milestone", "list", "--state", "bogus").Execute()
+	err := rootFor(cmd.IssueCmd, "milestone", "list", "--state", "bogus", "--no-cwd-repo").Execute()
 	want := `--state must be open, closed, or all`
 	if err == nil || err.Error() != want {
 		t.Fatalf("want %q, got %v", want, err)
