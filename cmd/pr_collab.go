@@ -173,16 +173,16 @@ func runPRDiff(cmd *cobra.Command, args []string) error {
 }
 
 func runPRCheck(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
 	}
 	num, err := parsePRNumber(args[0])
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	c, err := newAPIClient(cmd)
@@ -215,16 +215,16 @@ func runPRCheck(cmd *cobra.Command, args []string) error {
 }
 
 func runPRCommentList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
 	}
 	num, err := parsePRNumber(args[0])
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	onlyInline, _ := cmd.Flags().GetBool("inline")
@@ -319,16 +319,16 @@ func runPRCommentList(cmd *cobra.Command, args []string) error {
 }
 
 func runPRCommentAdd(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "comment add"); err != nil {
+		return err
+	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
 	}
 	num, err := parsePRNumber(args[0])
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateMutationOutput(output, "comment add"); err != nil {
 		return err
 	}
 	body, err := readIssueBody(cmd, "body")
@@ -410,16 +410,16 @@ func runPRCommentAdd(cmd *cobra.Command, args []string) error {
 }
 
 func runPRReviewerList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
 	}
 	num, err := parsePRNumber(args[0])
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	c, err := newAPIClient(cmd)
@@ -457,6 +457,10 @@ func runPRReviewerList(cmd *cobra.Command, args []string) error {
 }
 
 func runPRReviewerAdd(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "reviewer add"); err != nil {
+		return err
+	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -470,11 +474,6 @@ func runPRReviewerAdd(cmd *cobra.Command, args []string) error {
 	if reviewerID == "" {
 		return fmt.Errorf("--reviewer <user-uuid> is required")
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateMutationOutput(output, "reviewer add"); err != nil {
-		return err
-	}
-
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -506,6 +505,10 @@ func runPRReviewerAdd(cmd *cobra.Command, args []string) error {
 }
 
 func runPRReview(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "review"); err != nil {
+		return err
+	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
@@ -525,11 +528,6 @@ func runPRReview(cmd *cobra.Command, args []string) error {
 	if approve && requestChanges {
 		return fmt.Errorf("--approve and --request-changes are mutually exclusive")
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateMutationOutput(output, "review"); err != nil {
-		return err
-	}
-
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
