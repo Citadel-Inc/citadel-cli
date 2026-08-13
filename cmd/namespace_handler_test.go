@@ -135,6 +135,15 @@ func TestNamespaceRename_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestNamespaceDelete_BadOutput_Hermetic(t *testing.T) {
+	setNamespaceHermeticEnv(t)
+
+	err := rootFor(cmd.NamespaceCmd, "delete", "acme", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for delete supports json or default human summary only; got "toml"` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
 func TestNamespaceList_EmptyHuman(t *testing.T) {
 	output, err := executeNamespaceHTTPCommand(t, `{"orgs":[],"next_cursor":""}`, "list")
 	if err != nil {
