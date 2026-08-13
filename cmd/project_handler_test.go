@@ -24,6 +24,24 @@ func TestProjectPinChain_BadOutputHermetic(t *testing.T) {
 	}
 }
 
+func TestProjectWalk_EmptyPathHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(cmd.ProjectCmd, "walk", " \t").Execute()
+	if err == nil || err.Error() != "namespace path cannot be empty" {
+		t.Fatalf("error = %v, want namespace path cannot be empty", err)
+	}
+}
+
+func TestProjectNeighbors_EmptyPathHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(cmd.ProjectCmd, "neighbors", " \t", "--kind", "foo").Execute()
+	if err == nil || err.Error() != "namespace path cannot be empty" {
+		t.Fatalf("error = %v, want namespace path cannot be empty", err)
+	}
+}
+
 func setHermeticProjectEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
