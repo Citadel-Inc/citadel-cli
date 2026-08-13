@@ -155,6 +155,24 @@ func parseExpiresFlag(cmd *cobra.Command) (*int64, error) {
 }
 
 func runRepoDeployTokenList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	limit, cursor, all, err := readPagination(cmd)
+	if err != nil {
+		return err
+	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -295,6 +313,11 @@ func runDeployTokenList(cmd *cobra.Command, namespacePath string) error {
 }
 
 func runRepoDeployTokenCreate(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
+
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -354,6 +377,11 @@ func runDeployTokenCreate(cmd *cobra.Command, namespacePath string) error {
 }
 
 func runRepoDeployTokenRevoke(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "revoke"); err != nil {
+		return err
+	}
+
 	namespacePath, tokenID, err := parseRepoDeployTokenIDArgs(cmd, args)
 	if err != nil {
 		return err
