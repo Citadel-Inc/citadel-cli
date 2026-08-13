@@ -159,7 +159,7 @@ func runRepoDeployTokenList(cmd *cobra.Command, args []string) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
-	limit, cursor, all, err := readPagination(cmd)
+	_, cursor, all, err := readPagination(cmd)
 	if err != nil {
 		return err
 	}
