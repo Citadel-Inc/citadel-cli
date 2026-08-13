@@ -69,6 +69,64 @@ func TestProjectReindex_EmptyPathHermetic(t *testing.T) {
 	}
 }
 
+func TestProjectStatusRollup_EmptyPathHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(cmd.ProjectCmd, "status", "rollup", " \t").Execute()
+	if err == nil || err.Error() != "namespace path cannot be empty" {
+		t.Fatalf("error = %v, want namespace path cannot be empty", err)
+	}
+}
+
+func TestProjectStatusDrilldown_EmptyPathHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(cmd.ProjectCmd, "status", "drilldown", " \t").Execute()
+	if err == nil || err.Error() != "namespace path cannot be empty" {
+		t.Fatalf("error = %v, want namespace path cannot be empty", err)
+	}
+}
+
+func TestProjectEdgeAdd_EmptyPathHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(
+		cmd.ProjectCmd,
+		"edge", "add", " \t",
+		"--from-namespace-id", "not-a-uuid",
+		"--from-kind", "namespace",
+		"--to-kind", "repo",
+		"--edge-type", "contains",
+	).Execute()
+	if err == nil || err.Error() != "namespace path cannot be empty" {
+		t.Fatalf("error = %v, want namespace path cannot be empty", err)
+	}
+}
+
+func TestProjectEdgeDelete_EmptyPathHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(
+		cmd.ProjectCmd,
+		"edge", "delete", " \t", "00000000-0000-0000-0000-000000000001",
+	).Execute()
+	if err == nil || err.Error() != "namespace path cannot be empty" {
+		t.Fatalf("error = %v, want namespace path cannot be empty", err)
+	}
+}
+
+func TestProjectEdgeRestore_EmptyPathHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(
+		cmd.ProjectCmd,
+		"edge", "restore", " \t", "00000000-0000-0000-0000-000000000001",
+	).Execute()
+	if err == nil || err.Error() != "namespace path cannot be empty" {
+		t.Fatalf("error = %v, want namespace path cannot be empty", err)
+	}
+}
+
 func TestProjectWalk_BadOutputHermetic(t *testing.T) {
 	setHermeticProjectEnv(t)
 
