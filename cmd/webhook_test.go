@@ -66,6 +66,49 @@ func TestRepoWebhookList_JSON(t *testing.T) {
 	}
 }
 
+func TestRepoWebhookList_BadOutput_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "list", "acme/demo", "--output", "toml",
+	).Execute()
+	const want = `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestRepoWebhookList_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "list", "--output", "toml",
+	).Execute()
+	const want = `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
+func TestRepoWebhookList_MissingRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd, "webhook", "list", "--no-cwd-repo").Execute()
+	const want = "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git"
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact namespace path error %q, got %v", want, err)
+	}
+}
+
 func TestRepoWebhookCreate_HumanShowsReturnedSecret(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || !issuePathMatches(r, "/api/namespaces/acme%2Fdemo/webhooks", "/api/namespaces/acme/demo/webhooks") {
@@ -147,6 +190,24 @@ func TestRepoWebhookCreate_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestRepoWebhookCreate_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "create",
+		"--url", "https://example.test/inbox",
+		"--events", "issue.opened",
+		"--output", "toml",
+	).Execute()
+	const want = `--output: unknown format "toml" (use json|yaml|table)`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
+	}
+}
+
 func TestRepoWebhookGet_JSONFiltersFromList(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || !issuePathMatches(r, "/api/namespaces/acme%2Fdemo/webhooks", "/api/namespaces/acme/demo/webhooks") {
@@ -191,6 +252,21 @@ func TestRepoWebhookGet_JSONFiltersFromList(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "11111111-1111-1111-1111-111111111111") || !strings.Contains(out.String(), `"id": "22222222-2222-2222-2222-222222222222"`) {
 		t.Fatalf("unexpected output: %s", out.String())
+	}
+}
+
+func TestRepoWebhookGet_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd,
+		"webhook", "get", testWebhookID, "--output", "toml",
+	).Execute()
+	const want = `--output: unknown format "toml" (use json|yaml|table)`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want exact output validation error %q, got %v", want, err)
 	}
 }
 
