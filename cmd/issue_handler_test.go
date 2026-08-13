@@ -105,7 +105,7 @@ func TestIssueList_BadOutput_NoRepo_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
 
-	err := rootFor(cmd.IssueCmd, "list", "--no-cwd-repo", "--output", "toml").Execute()
+	err := rootFor(cmd.IssueCmd, "list", "--output", "toml").Execute()
 	const want = `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`
 	if err == nil || err.Error() != want {
 		t.Fatalf("want exact output validation error %q, got %v", want, err)
