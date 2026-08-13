@@ -83,6 +83,10 @@ Examples:
 }
 
 func runRepoClone(cmd *cobra.Command, args []string) error {
+	ns, slug, err := splitRepoArg(strings.TrimSpace(args[0]))
+	if err != nil {
+		return err
+	}
 	if err := ensureGitOnPath(); err != nil {
 		return err
 	}
@@ -91,10 +95,6 @@ func runRepoClone(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	c, err := newAPIClient(cmd)
-	if err != nil {
-		return err
-	}
-	ns, slug, err := splitRepoArg(strings.TrimSpace(args[0]))
 	if err != nil {
 		return err
 	}
