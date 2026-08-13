@@ -130,18 +130,29 @@ func TestReleaseView_BadOutput_Hermetic(t *testing.T) {
 		"view", "v1.0.0", "-R", "acme/demo",
 		"--output", "toml",
 	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
-func TestReleaseCreateEdit_OutputUsage(t *testing.T) {
+func TestReleaseGetOutputUsage(t *testing.T) {
 	const want = "Output format: json, yaml, or table (default human table)"
-	for _, name := range []string{"create", "edit"} {
+	for _, name := range []string{"latest", "view", "create", "edit", "asset upload"} {
 		t.Run(name, func(t *testing.T) {
 			var releaseCmdName string
-			for _, releaseCmd := range cmd.ReleaseCmd.Commands() {
-				if releaseCmd.Name() == name {
+			searchCmds := cmd.ReleaseCmd.Commands()
+			leafName := name
+			if name == "asset upload" {
+				leafName = "upload"
+				for _, assetCmd := range cmd.ReleaseCmd.Commands() {
+					if assetCmd.Name() == "asset" {
+						searchCmds = assetCmd.Commands()
+						break
+					}
+				}
+			}
+			for _, releaseCmd := range searchCmds {
+				if releaseCmd.Name() == leafName {
 					releaseCmdName = releaseCmd.Name()
 					flag := releaseCmd.Flags().Lookup("output")
 					if flag == nil {
@@ -211,7 +222,7 @@ func TestReleaseCreate_BadOutput_Hermetic(t *testing.T) {
 		"--tag", "v1.0.0",
 		"--output", "toml",
 	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -276,7 +287,7 @@ func TestReleaseEdit_BadOutput_Hermetic(t *testing.T) {
 		"--name", "renamed",
 		"--output", "toml",
 	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -518,7 +529,7 @@ func TestReleaseAssetUpload_BadOutput_Hermetic(t *testing.T) {
 		"asset", "upload", "v1.0.0", "artifact.bin", "-R", "acme/demo",
 		"--output", "toml",
 	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -568,7 +579,7 @@ func TestReleaseList_BadOutput_Hermetic(t *testing.T) {
 		"list", "-R", "acme/demo",
 		"--output", "toml",
 	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -580,7 +591,7 @@ func TestReleaseAssetList_BadOutput_Hermetic(t *testing.T) {
 		"asset", "list", "v1.0.0", "-R", "acme/demo",
 		"--output", "toml",
 	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
