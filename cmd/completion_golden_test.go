@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -253,8 +254,10 @@ func TestCompleteOutputFormats_GoldenList(t *testing.T) {
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
 	}
-	if len(got) != 5 {
-		t.Fatalf("want 5 formats, got %d: %v", len(got), got)
+	// Fixed golden order — shell completion lists must not silently reorder.
+	want := []string{"json", "yaml", "ndjson", "csv", "table"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
 	}
 }
 
