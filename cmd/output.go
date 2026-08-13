@@ -33,6 +33,18 @@ func addOutputFlag(cmds ...*cobra.Command) {
 	}
 }
 
+func completeMutationOutputFormats(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+	return []string{"json"}, cobra.ShellCompDirectiveNoFileComp
+}
+
+// addMutationOutputFlag registers the mutation-only `--output` flag.
+func addMutationOutputFlag(cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.Flags().String("output", "", "Output format: json or default human summary")
+		_ = c.RegisterFlagCompletionFunc("output", completeMutationOutputFormats)
+	}
+}
+
 // addYesFlag registers the standard `--yes` flag on each command.
 func addYesFlag(cmds ...*cobra.Command) {
 	for _, c := range cmds {
