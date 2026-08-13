@@ -39,7 +39,7 @@ func mergeCitadelHosts() map[string]struct{} {
 	if raw == "" {
 		return out
 	}
-	for _, part := range strings.Split(raw, ",") {
+	for part := range strings.SplitSeq(raw, ",") {
 		h := strings.ToLower(strings.TrimSpace(part))
 		if h != "" {
 			out[h] = struct{}{}

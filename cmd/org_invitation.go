@@ -232,7 +232,7 @@ func runOrgInvCreate(cmd *cobra.Command, args []string) error {
 func normalizePermissionSlice(raw []string) []string {
 	var out []string
 	for _, chunk := range raw {
-		for _, p := range strings.Split(chunk, ",") {
+		for p := range strings.SplitSeq(chunk, ",") {
 			p = strings.TrimSpace(p)
 			if p != "" {
 				out = append(out, p)

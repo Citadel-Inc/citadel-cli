@@ -179,7 +179,7 @@ func (c *Client) Delete(ctx context.Context, path string) error {
 // The caller must close resp.Body. Non-success statuses return *HTTPError with
 // the body drained.
 func (c *Client) GetEventStream(ctx context.Context, path string, lastEventID string) (*http.Response, error) {
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := range 2 {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.server+path, nil)
 		if err != nil {
 			return nil, fmt.Errorf("build request: %w", err)
@@ -228,7 +228,7 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 		}
 		bodyBytes = b
 	}
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := range 2 {
 		var rdr io.Reader
 		if bodyBytes != nil {
 			rdr = bytes.NewReader(bodyBytes)

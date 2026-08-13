@@ -83,7 +83,7 @@ func derivePostgresURL(supabaseURL, _ string) string {
 // applied migration.  Returns 0 when parsing fails.
 func countApplied(output string) int {
 	n := 0
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		if strings.Contains(line, "Applying migration") {
 			n++
 		}

@@ -2,6 +2,7 @@ package cmd_test
 
 import (
 	"bytes"
+	"slices"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -876,8 +877,8 @@ func commandNamePath(c *cobra.Command) []string {
 		reversed = append(reversed, cur.Name())
 	}
 	path := make([]string, 0, len(reversed))
-	for i := len(reversed) - 1; i >= 0; i-- {
-		path = append(path, reversed[i])
+	for _, r := range slices.Backward(reversed) {
+		path = append(path, r)
 	}
 	return path
 }

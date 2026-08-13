@@ -741,8 +741,7 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if err := c.Delete(cmd.Context(), "/namespaces/"+url.PathEscape(slug)); err != nil {
-		var he *apiclient.HTTPError
-		if errors.As(err, &he) {
+		if he, ok := errors.AsType[*apiclient.HTTPError](err); ok {
 			switch he.StatusCode {
 			case http.StatusConflict:
 				var body struct {

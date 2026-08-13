@@ -573,10 +573,7 @@ func pollDeviceTokenWithInterval(ctx context.Context, citadelBaseURL string, dev
 		if remaining <= 0 {
 			return pkceTokenResponse{}, errors.New("device authorization expired while waiting for approval")
 		}
-		wait := interval
-		if wait > remaining {
-			wait = remaining
-		}
+		wait := min(interval, remaining)
 		timer := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():

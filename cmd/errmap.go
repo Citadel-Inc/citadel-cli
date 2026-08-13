@@ -35,8 +35,7 @@ func FriendlyError(err error) error {
 		return deepest
 	}
 
-	var me *mcpclient.Error
-	if errors.As(err, &me) {
+	if me, ok := errors.AsType[*mcpclient.Error](err); ok {
 		return mcpErrorToCLI(me)
 	}
 
@@ -48,16 +47,14 @@ func FriendlyError(err error) error {
 		}
 	}
 
-	var dnsErr *net.DNSError
-	if errors.As(err, &dnsErr) {
+	if _, ok := errors.AsType[*net.DNSError](err); ok {
 		return &CLIError{
 			Kind:    KindNetwork,
 			Message: "cannot reach Citadel server: hostname lookup failed — check your internet connection or override the server with --server <url> (or the CITADEL_SERVER env var)",
 			Hint:    serverStatusHint,
 		}
 	}
-	var netErr *net.OpError
-	if errors.As(err, &netErr) {
+	if _, ok := errors.AsType[*net.OpError](err); ok {
 		return &CLIError{
 			Kind:    KindNetwork,
 			Message: "cannot reach Citadel server: connection failed — is the server URL reachable from this host? Override with --server / CITADEL_SERVER",
@@ -72,8 +69,7 @@ func FriendlyError(err error) error {
 		}
 	}
 
-	var he *apiclient.HTTPError
-	if errors.As(err, &he) {
+	if he, ok := errors.AsType[*apiclient.HTTPError](err); ok {
 		if ce := httpErrorToCLI(he); ce != nil {
 			return ce
 		}

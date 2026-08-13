@@ -987,7 +987,7 @@ func normaliseCLIEventKinds(raw []string) []string {
 	out := make([]string, 0, len(raw))
 	seen := map[string]struct{}{}
 	for _, item := range raw {
-		for _, part := range strings.Split(item, ",") {
+		for part := range strings.SplitSeq(item, ",") {
 			v := strings.TrimSpace(strings.ToLower(part))
 			if v == "" {
 				continue

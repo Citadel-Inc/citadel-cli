@@ -276,7 +276,7 @@ func runAuditShow(cmd *cobra.Command, args []string) error {
 		if len(pretty) > 0 {
 			buf := &bytes.Buffer{}
 			if err := json.Indent(buf, pretty, "", "  "); err == nil {
-				for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
+				for line := range strings.SplitSeq(strings.TrimRight(buf.String(), "\n"), "\n") {
 					_, _ = fmt.Fprintf(w, "  %s\n", line)
 				}
 			} else {

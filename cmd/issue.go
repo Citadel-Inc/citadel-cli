@@ -261,7 +261,7 @@ func parseIssueNumber(arg string) (int64, error) {
 func normalizeStringSlice(raw []string) []string {
 	var out []string
 	for _, chunk := range raw {
-		for _, part := range strings.Split(chunk, ",") {
+		for part := range strings.SplitSeq(chunk, ",") {
 			part = strings.TrimSpace(part)
 			if part != "" {
 				out = append(out, part)

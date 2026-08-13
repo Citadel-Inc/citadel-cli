@@ -936,8 +936,6 @@ func makeComment(id, authorID, body string, diffFile *string, threadID *string) 
 	return m
 }
 
-func strPtr(s string) *string { return &s }
-
 func TestPRCommentList_InlineFilter(t *testing.T) {
 	var buf strings.Builder
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -945,7 +943,7 @@ func TestPRCommentList_InlineFilter(t *testing.T) {
 			writeJSON(t, w, 200, map[string]any{
 				"comments": []map[string]any{
 					makeComment("c1", "user-aaa", "general comment", nil, nil),
-					makeComment("c2", "user-bbb", "inline nit", strPtr("foo.go"), nil),
+					makeComment("c2", "user-bbb", "inline nit", new("foo.go"), nil),
 				},
 			})
 		},
@@ -969,7 +967,7 @@ func TestPRCommentList_GeneralFilter(t *testing.T) {
 			writeJSON(t, w, 200, map[string]any{
 				"comments": []map[string]any{
 					makeComment("c1", "user-aaa", "general comment", nil, nil),
-					makeComment("c2", "user-bbb", "inline nit", strPtr("foo.go"), nil),
+					makeComment("c2", "user-bbb", "inline nit", new("foo.go"), nil),
 				},
 			})
 		},
@@ -1002,8 +1000,8 @@ func TestPRCommentList_ThreadGrouping(t *testing.T) {
 			writeJSON(t, w, 200, map[string]any{
 				"comments": []map[string]any{
 					makeComment("c1", "user-aaa", "general top", nil, nil),
-					makeComment("c2", "user-bbb", "first in thread", strPtr("foo.go"), strPtr(tid)),
-					makeComment("c3", "user-ccc", "reply in thread", nil, strPtr(tid)),
+					makeComment("c2", "user-bbb", "first in thread", new("foo.go"), new(tid)),
+					makeComment("c3", "user-ccc", "reply in thread", nil, new(tid)),
 				},
 			})
 		},

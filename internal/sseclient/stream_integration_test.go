@@ -167,8 +167,7 @@ func TestStream_Next_SSE_errorEvent(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := apiclient.New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, apiclient.Options{})
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	s := Open(ctx, c, "/s")
 	defer func() { _ = s.Close() }()

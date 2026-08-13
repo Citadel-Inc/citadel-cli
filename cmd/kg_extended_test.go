@@ -43,7 +43,7 @@ func TestKgFetchPagesAndNDJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	var rows []map[string]any
-	for _, line := range strings.Split(strings.TrimSpace(cmd.OutOrStdout().(*bytes.Buffer).String()), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(cmd.OutOrStdout().(*bytes.Buffer).String()), "\n") {
 		var row map[string]any
 		if err := json.Unmarshal([]byte(line), &row); err != nil {
 			t.Fatal(err)

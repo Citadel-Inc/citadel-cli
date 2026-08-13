@@ -50,7 +50,7 @@ func TestLiveOAuthLogin_fullBrowser_optIn(t *testing.T) {
 	t.Cleanup(func() { _ = pw.Stop() })
 
 	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless: playwright.Bool(true),
+		Headless: new(true),
 	})
 	if err != nil {
 		t.Fatalf("launch chromium: %v", err)
@@ -68,7 +68,7 @@ func TestLiveOAuthLogin_fullBrowser_optIn(t *testing.T) {
 		t.Helper()
 		opts := playwright.BrowserNewContextOptions{}
 		if storageState != "" {
-			opts.StorageStatePath = playwright.String(storageState)
+			opts.StorageStatePath = new(storageState)
 		}
 		ctx, err := browser.NewContext(opts)
 		if err != nil {
@@ -213,7 +213,7 @@ func completeLiveOAuthWithJWT(ctx playwright.BrowserContext, page playwright.Pag
 	}
 
 	authz, err := req.Get(target, playwright.APIRequestContextGetOptions{
-		MaxRedirects: playwright.Int(0),
+		MaxRedirects: new(0),
 		Timeout:      playwright.Float(60000),
 	})
 	if err != nil {

@@ -332,7 +332,7 @@ func renderCommitDetail(out io.Writer, d commitDetail) error {
 		_, _ = fmt.Fprintf(out, "GPG:    %s (%s)\n", kind, verified)
 	}
 	_, _ = fmt.Fprintln(out)
-	for _, line := range strings.Split(strings.TrimRight(d.Message, "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimRight(d.Message, "\n"), "\n") {
 		_, _ = fmt.Fprintf(out, "    %s\n", line)
 	}
 	if len(d.Files) > 0 {

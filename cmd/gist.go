@@ -173,10 +173,10 @@ func parseGistFiles(values []string) (map[string]string, error) {
 		if !ok || path == "" {
 			return nil, fmt.Errorf("--file must use path=content")
 		}
-		if strings.HasPrefix(content, "@") {
-			data, err := os.ReadFile(strings.TrimPrefix(content, "@"))
+		if filePath, isRef := strings.CutPrefix(content, "@"); isRef {
+			data, err := os.ReadFile(filePath)
 			if err != nil {
-				return nil, fmt.Errorf("read %s: %w", strings.TrimPrefix(content, "@"), err)
+				return nil, fmt.Errorf("read %s: %w", filePath, err)
 			}
 			content = string(data)
 		}

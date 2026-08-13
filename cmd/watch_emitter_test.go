@@ -88,7 +88,7 @@ func TestNdjsonWatchEmitter_Handle(t *testing.T) {
 		t.Fatal(err)
 	}
 	var lines [][]byte
-	for _, line := range bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
+	for line := range bytes.SplitSeq(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
 		if len(line) > 0 {
 			lines = append(lines, line)
 		}
@@ -181,7 +181,6 @@ func TestTableWatchEmitter_allKinds_smoke(t *testing.T) {
 		{watchAgentTokens, watchTableCtx{}, "init", `{"id":"00000000-0000-0000-0000-000000000022","agent_id":"00000000-0000-0000-0000-000000000001","created_at":"2026-01-01T00:00:00Z"}`},
 	}
 	for i, tc := range cases {
-		tc := tc
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			buf.Reset()
 			cmd.SetOut(buf)

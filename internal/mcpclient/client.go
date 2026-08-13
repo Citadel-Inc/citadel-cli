@@ -253,7 +253,7 @@ func (c *Client) call(ctx context.Context, method string, params any, out any) (
 	if err != nil {
 		return "", fmt.Errorf("marshal %s: %w", method, err)
 	}
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for attempt := range maxAttempts {
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.ServerURL, bytes.NewReader(bodyBytes))
 		if err != nil {
 			return "", fmt.Errorf("new request: %w", err)

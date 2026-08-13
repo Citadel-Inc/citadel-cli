@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -53,10 +54,8 @@ func executeGistTestCommand(t *testing.T, args ...string) (string, error) {
 
 func TestGistRegistered(t *testing.T) {
 	root := NewRootCmd()
-	for _, command := range root.Commands() {
-		if command == GistCmd {
-			return
-		}
+	if slices.Contains(root.Commands(), GistCmd) {
+		return
 	}
 	t.Fatal("gist command is not registered on root")
 }

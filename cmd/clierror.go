@@ -74,8 +74,7 @@ func KindToExitCode(k CLIErrorKind) int {
 func DeepestCLIError(err error) (*CLIError, bool) {
 	var last *CLIError
 	for e := err; e != nil; e = errors.Unwrap(e) {
-		var c *CLIError
-		if errors.As(e, &c) {
+		if c, ok := errors.AsType[*CLIError](e); ok {
 			last = c
 		}
 	}
@@ -94,8 +93,7 @@ func pickDisplayMessage(execErr, friendly error) string {
 // ResolveCLIExit classifies the error from cobra after FriendlyError mapping.
 // friendly should be FriendlyError(execErr).
 func ResolveCLIExit(execErr, friendly error) (*CLIError, int) {
-	var fe *CLIError
-	if errors.As(friendly, &fe) {
+	if fe, ok := errors.AsType[*CLIError](friendly); ok {
 		out := *fe
 		out.Message = pickDisplayMessage(execErr, friendly)
 		return &out, KindToExitCode(out.Kind)

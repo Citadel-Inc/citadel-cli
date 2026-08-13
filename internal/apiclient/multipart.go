@@ -35,7 +35,7 @@ func newMultipartUploadBody(field, filename string, src io.Reader) (io.ReadClose
 // downloads without the JSON client's short request deadline.
 func (c *Client) GetStream(ctx context.Context, path string) (*http.Response, error) {
 	target, sameOrigin := c.streamTarget(path)
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := range 2 {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 		if err != nil {
 			return nil, fmt.Errorf("build request: %w", err)

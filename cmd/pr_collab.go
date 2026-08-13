@@ -381,8 +381,7 @@ func runPRCommentAdd(cmd *cobra.Command, args []string) error {
 
 	var created prComment
 	if err := c.Post(cmd.Context(), path, reqBody, &created); err != nil {
-		var he *apiclient.HTTPError
-		if errors.As(err, &he) {
+		if he, ok := errors.AsType[*apiclient.HTTPError](err); ok {
 			var errBody struct {
 				Error string `json:"error"`
 			}
@@ -484,8 +483,7 @@ func runPRReviewerAdd(cmd *cobra.Command, args []string) error {
 		if apiclient.IsStatus(err, http.StatusNotFound) {
 			return fmt.Errorf("PR %s#%d not found", nsPath, num)
 		}
-		var he *apiclient.HTTPError
-		if errors.As(err, &he) {
+		if he, ok := errors.AsType[*apiclient.HTTPError](err); ok {
 			var body struct {
 				Error string `json:"error"`
 			}

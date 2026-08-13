@@ -85,11 +85,11 @@ func runAPI(cmd *cobra.Command, args []string) error {
 	if len(fields) > 0 {
 		fieldsBody := make(map[string]any, len(fields))
 		for _, f := range fields {
-			idx := strings.IndexByte(f, '=')
-			if idx < 0 {
+			before, after, ok := strings.Cut(f, "=")
+			if !ok {
 				return fmt.Errorf("invalid field %q: must be key=value", f)
 			}
-			fieldsBody[f[:idx]] = f[idx+1:]
+			fieldsBody[before] = after
 		}
 		body = fieldsBody
 	}
