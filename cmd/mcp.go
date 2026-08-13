@@ -113,7 +113,10 @@ func runMcpTools(cmd *cobra.Command, _ []string) error {
 }
 
 func runMcpCall(cmd *cobra.Command, args []string) error {
-	toolName := args[0]
+	toolName := strings.TrimSpace(args[0])
+	if toolName == "" {
+		return errors.New("tool name cannot be empty")
+	}
 	rawJSON := jsonFlag(cmd)
 	argPairs, _ := cmd.Flags().GetStringSlice("arg")
 	stringArgPairs, _ := cmd.Flags().GetStringSlice("arg-string")
@@ -196,7 +199,10 @@ func runMcpResourcesList(cmd *cobra.Command, _ []string) error {
 }
 
 func runMcpResourcesRead(cmd *cobra.Command, args []string) error {
-	uri := args[0]
+	uri := strings.TrimSpace(args[0])
+	if uri == "" {
+		return errors.New("resource URI cannot be empty")
+	}
 	rawJSON := jsonFlag(cmd)
 	c, err := dialMCP(cmd)
 	if err != nil {
@@ -242,7 +248,10 @@ func runMcpPromptsList(cmd *cobra.Command, _ []string) error {
 }
 
 func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
-	name := args[0]
+	name := strings.TrimSpace(args[0])
+	if name == "" {
+		return errors.New("prompt name cannot be empty")
+	}
 	rawJSON := jsonFlag(cmd)
 	argPairs, _ := cmd.Flags().GetStringSlice("arg")
 	stringArgPairs, _ := cmd.Flags().GetStringSlice("arg-string")
