@@ -624,10 +624,8 @@ func init() {
 		prCommentListCmd, prCommentAddCmd,
 		prReviewerListCmd, prReviewerAddCmd,
 		prReviewCmd)
-	addOutputFlag(prCheckCmd,
-		prCommentListCmd, prCommentAddCmd,
-		prReviewerListCmd, prReviewerAddCmd,
-		prReviewCmd)
+	addOutputFlag(prCheckCmd, prCommentListCmd, prReviewerListCmd)
+	addMutationOutputFlag(prCommentAddCmd, prReviewerAddCmd, prReviewCmd)
 
 	prDiffCmd.Flags().String("file", "", "Narrow diff to a single file path (emits raw unified text)")
 

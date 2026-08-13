@@ -244,7 +244,8 @@ func init() {
 	SSHKeyCmd.AddCommand(sshKeyAddCmd)
 	SSHKeyCmd.AddCommand(sshKeyDeleteCmd)
 
-	addOutputFlag(sshKeyListCmd, sshKeyAddCmd)
+	addOutputFlag(sshKeyListCmd)
+	addMutationOutputFlag(sshKeyAddCmd)
 	addDryRunFlag(sshKeyDeleteCmd)
 	sshKeyAddCmd.Flags().String("public-key", "", "Public key string (single line)")
 	sshKeyAddCmd.Flags().String("key-file", "", "Path to a .pub file; use - for stdin")

@@ -234,7 +234,8 @@ func init() {
 	repoBranchCmd.AddCommand(repoBranchDeleteCmd)
 	repoBranchCmd.AddCommand(repoBranchSetDefaultCmd)
 
-	addOutputFlag(repoBranchListCmd, repoBranchDeleteCmd, repoBranchSetDefaultCmd)
+	addOutputFlag(repoBranchListCmd)
+	addMutationOutputFlag(repoBranchDeleteCmd, repoBranchSetDefaultCmd)
 	addPaginationFlags(repoBranchListCmd)
 	addRepoFlag(repoBranchListCmd, repoBranchDeleteCmd, repoBranchSetDefaultCmd)
 	addDryRunFlag(repoBranchDeleteCmd, repoBranchSetDefaultCmd)

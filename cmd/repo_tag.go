@@ -255,7 +255,8 @@ func init() {
 	repoTagCmd.AddCommand(repoTagCreateCmd)
 	repoTagCmd.AddCommand(repoTagDeleteCmd)
 
-	addOutputFlag(repoTagListCmd, repoTagCreateCmd, repoTagDeleteCmd)
+	addOutputFlag(repoTagListCmd)
+	addMutationOutputFlag(repoTagCreateCmd, repoTagDeleteCmd)
 	addPaginationFlags(repoTagListCmd)
 	addRepoFlag(repoTagListCmd, repoTagCreateCmd, repoTagDeleteCmd)
 	addDryRunFlag(repoTagDeleteCmd)
