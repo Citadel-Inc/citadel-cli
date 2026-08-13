@@ -47,10 +47,14 @@ func TestIssueMilestoneList_JSON(t *testing.T) {
 
 func TestIssueMilestoneList_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.IssueCmd, "milestone", "list", "-R", "acme/demo", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
-		t.Fatalf("want output validation error, got %v", err)
+	want := `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
 	}
 }
 
@@ -105,10 +109,14 @@ func TestIssueMilestoneView_NotFound(t *testing.T) {
 
 func TestIssueMilestoneView_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.IssueCmd, "milestone", "view", "-R", "acme/demo", "11111111-1111-1111-1111-111111111111", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
-		t.Fatalf("want output validation error, got %v", err)
+	want := `--output: unknown format "toml" (use json|yaml|table)`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
 	}
 }
 
@@ -161,10 +169,14 @@ func TestIssueMilestoneCreate_Happy(t *testing.T) {
 
 func TestIssueMilestoneCreate_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.IssueCmd, "milestone", "create", "-R", "acme/demo", "--title", "v1.0", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for create supports json or default human summary only") {
-		t.Fatalf("want output validation error, got %v", err)
+	want := `--output for create supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
 	}
 }
 
@@ -217,10 +229,14 @@ func TestIssueMilestoneEdit_Happy(t *testing.T) {
 
 func TestIssueMilestoneEdit_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.IssueCmd, "milestone", "edit", "-R", "acme/demo", "11111111-1111-1111-1111-111111111111", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for edit supports json or default human summary only") {
-		t.Fatalf("want output validation error, got %v", err)
+	want := `--output for edit supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
 	}
 }
 
@@ -273,10 +289,12 @@ func TestIssueMilestoneDelete_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.IssueCmd, "milestone", "delete", "-R", "acme/demo", "11111111-1111-1111-1111-111111111111", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for delete supports json or default human summary only") {
-		t.Fatalf("want output validation error, got %v", err)
+	want := `--output for delete supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
 	}
 }
 
