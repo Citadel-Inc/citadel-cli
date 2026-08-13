@@ -6,24 +6,33 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 130046ZAUG26 (fenced wave 28)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 132 | Label mutate output-before-path | create/edit/delete `validateMutationOutput` before path; BadOutput_NoRepo exact |
+| 136 | Clone whitespace-only hermetic | `" "` → exact `argument must be <namespace>/<repo>` |
+| 137 | MCP prompts-get bad `--arg` hermetic | `requireMcpError` same string as `call` |
+| 138 | Agent delete/rotate output-before-client | `validateMutationOutput` before client; `agent_handler_test.go` |
+| 142 | Webhook repo wrappers output-before-path | list/create/get/edit/delete/deliveries; BadOutput_NoRepo + list MissingRepo |
+| — | Should-fix closeout | Remaining webhook verbs hoist; exact legacy BadOutput + env clears |
+
+---
+
 ## Open
 
 | # | Item | Notes |
 | --- | --- | --- |
 | 131 | Issue create/comment/label/close-refs output-before-path | `validateMutationOutput` / `validateGetOutput` before `resolveIssueNamespacePath`; BadOutput_NoRepo + MissingRepo hermetics |
-| 132 | Label mutate output-before-path | create/edit/delete + NoRepo hermetics |
 | 133 | Exact older BadOutput hermetics | `TestIssueCreate_BadOutput_Hermetic`, `TestIssueCloseRefs_BadOutput_Hermetic`, `assertRepoTopicBadOutput` |
 | 134 | Mutation `--output` flag help | `addOutputFlag` lists json/yaml/ndjson/csv/table on verbs that only allow json/default |
 | 135 | Project empty-path hermetics for remaining verbs | status rollup/drilldown, edge add/delete/restore |
-| 136 | Clone whitespace-only hermetic | `" "` → exact `argument must be <namespace>/<repo>` (trim already in `runRepoClone`) |
-| 137 | MCP prompts-get bad `--arg` hermetic | `parseArgPairs` shared; only `call` covered today |
-| 138 | Agent delete/rotate output-before-client | `validateMutationOutput` before `newAPIClient`; BadOutput hermetics |
 | 139 | Namespace delete output-before-client | Mirror rename `validateMutationOutput`; BadOutput hermetic |
 | 140 | Repo delete output-before-client | Mirror create `validateMutationOutput`; BadOutput hermetic |
 | 141 | KG paginated cursor + MissingRepo | `validateDescCursor` before client on symbols/files/search/fulltext; hermetics |
-| 142 | Webhook repo wrappers output-before-path | `validateListOutput`/`validateGetOutput` before `resolveRepoFromPosOrFlag`; BadOutput_NoRepo |
 | 143 | Notification residual Contains | `TestNotificationList_NoAuth` and remaining Contains asserts |
 | 144 | Deduplicate project edge guard tests | `handler_test.go` withServer+Contains vs `project_handler_test.go` hermetics |
+| 145 | Label mutate MissingRepo hermetics | create/edit/delete `--no-cwd-repo` siblings of list |
 
 ---
 
