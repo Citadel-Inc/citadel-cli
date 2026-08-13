@@ -10,12 +10,23 @@ import (
 )
 
 func TestMutationOutputFlagUsage(t *testing.T) {
-	mutation := repoDeleteCmd.Flags().Lookup("output")
-	if mutation == nil {
-		t.Fatal("repo delete command has no --output flag")
+	mutationCommands := []*cobra.Command{
+		repoDeleteCmd,
+		labelDeleteCmd,
+		agentCreateCmd,
+		releaseDeleteCmd,
+		repoDeployTokenCreateCmd,
 	}
-	if got, want := mutation.Usage, "Output format: json or default human summary"; got != want {
-		t.Fatalf("mutation --output usage = %q, want %q", got, want)
+	for _, command := range mutationCommands {
+		t.Run(command.Use, func(t *testing.T) {
+			mutation := command.Flags().Lookup("output")
+			if mutation == nil {
+				t.Fatalf("%s command has no --output flag", command.Name())
+			}
+			if got, want := mutation.Usage, "Output format: json or default human summary"; got != want {
+				t.Fatalf("mutation --output usage = %q, want %q", got, want)
+			}
+		})
 	}
 
 	list := repoListCmd.Flags().Lookup("output")
