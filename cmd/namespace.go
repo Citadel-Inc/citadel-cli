@@ -728,6 +728,10 @@ func runNsTransferRevoke(cmd *cobra.Command, args []string) error {
 
 func runNsDelete(cmd *cobra.Command, args []string) error {
 	slug := strings.TrimSpace(args[0])
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "delete"); err != nil {
+		return err
+	}
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /namespaces/%s (skipped; --dry-run)\n", slug)
 		return nil
