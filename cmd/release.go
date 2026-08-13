@@ -735,7 +735,8 @@ func init() {
 	)
 
 	addIssuePathFlag(releaseListCmd, releaseLatestCmd, releaseViewCmd, releaseCreateCmd, releaseEditCmd, releaseDeleteCmd)
-	addOutputFlag(releaseListCmd, releaseLatestCmd, releaseViewCmd, releaseCreateCmd, releaseEditCmd)
+	addOutputFlag(releaseListCmd, releaseLatestCmd, releaseViewCmd)
+	addGetOutputFlag(releaseCreateCmd, releaseEditCmd)
 	addMutationOutputFlag(releaseDeleteCmd)
 	addYesFlag(releaseDeleteCmd)
 	addDryRunFlag(releaseCreateCmd, releaseEditCmd, releaseDeleteCmd)
