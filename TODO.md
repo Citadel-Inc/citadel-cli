@@ -6,6 +6,18 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 130029ZAUG26 (fenced wave 28)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| — | Notification read empty-id | Trim + `notification id required` before client |
+| — | Notification prefs-set output | `validateGetOutput` before client; yaml emit; exact all/json + env clears |
+| — | Project walk/neighbors/edge hermetics | Kind, UUID, attrs, reindex empty-path; restore/reindex output before auth |
+| — | API local-guard exact hermetics | Empty-XDG exact method/field/input JSON |
+| — | Topic popular `--limit` | `Changed("limit") && limit < 1` before client |
+
+---
+
 ## Open
 
 | # | Item | Notes |
@@ -14,9 +26,16 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 | 132 | Label mutate output-before-path | create/edit/delete + NoRepo hermetics |
 | 133 | Exact older BadOutput hermetics | `TestIssueCreate_BadOutput_Hermetic`, `TestIssueCloseRefs_BadOutput_Hermetic`, `assertRepoTopicBadOutput` |
 | 134 | Mutation `--output` flag help | `addOutputFlag` lists json/yaml/ndjson/csv/table on verbs that only allow json/default |
-| 135 | Project empty-path hermetics for remaining verbs | status rollup/drilldown, edge add/delete/restore, reindex share `requireProjectPath` |
+| 135 | Project empty-path hermetics for remaining verbs | status rollup/drilldown, edge add/delete/restore (reindex covered) |
 | 136 | Clone whitespace-only hermetic | `" "` → exact `argument must be <namespace>/<repo>` (trim already in `runRepoClone`) |
 | 137 | MCP prompts-get bad `--arg` hermetic | `parseArgPairs` shared; only `call` covered today |
+| 138 | Agent delete/rotate output-before-client | `validateMutationOutput` before `newAPIClient`; BadOutput hermetics |
+| 139 | Namespace delete output-before-client | Mirror rename `validateMutationOutput`; BadOutput hermetic |
+| 140 | Repo delete output-before-client | Mirror create `validateMutationOutput`; BadOutput hermetic |
+| 141 | KG paginated cursor + MissingRepo | `validateDescCursor` before client on symbols/files/search/fulltext; hermetics |
+| 142 | Webhook repo wrappers output-before-path | `validateListOutput`/`validateGetOutput` before `resolveRepoFromPosOrFlag`; BadOutput_NoRepo |
+| 143 | Notification residual Contains | `TestNotificationList_NoAuth` and remaining Contains asserts |
+| 144 | Deduplicate project edge guard tests | `handler_test.go` withServer+Contains vs `project_handler_test.go` hermetics |
 
 ---
 
