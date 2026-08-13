@@ -186,6 +186,16 @@ func TestLabelCreate_BadOutput_NoRepo_Hermetic(t *testing.T) {
 	}
 }
 
+func TestLabelCreate_MissingRepo_Hermetic(t *testing.T) {
+	setLabelHermeticEnv(t)
+
+	err := rootFor(cmd.LabelCmd, "create", "--no-cwd-repo",
+		"--name", "Bug", "--color", "d73a4a").Execute()
+	if err == nil || err.Error() != "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want namespace path error, got %v", err)
+	}
+}
+
 // ── edit ─────────────────────────────────────────────────────────────────────
 
 func TestLabelEdit_Happy(t *testing.T) {
@@ -253,6 +263,15 @@ func TestLabelEdit_BadOutput_NoRepo_Hermetic(t *testing.T) {
 		"--name", "Bug", "--output", "toml").Execute()
 	if err == nil || err.Error() != `--output for edit supports json or default human summary only; got "toml"` {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestLabelEdit_MissingRepo_Hermetic(t *testing.T) {
+	setLabelHermeticEnv(t)
+
+	err := rootFor(cmd.LabelCmd, "edit", "--no-cwd-repo", "bug", "--name", "X").Execute()
+	if err == nil || err.Error() != "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want namespace path error, got %v", err)
 	}
 }
 
@@ -335,6 +354,15 @@ func TestLabelDelete_BadOutput_NoRepo_Hermetic(t *testing.T) {
 		"--yes", "--output", "toml").Execute()
 	if err == nil || err.Error() != `--output for delete supports json or default human summary only; got "toml"` {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestLabelDelete_MissingRepo_Hermetic(t *testing.T) {
+	setLabelHermeticEnv(t)
+
+	err := rootFor(cmd.LabelCmd, "delete", "--no-cwd-repo", "bug", "--yes").Execute()
+	if err == nil || err.Error() != "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want namespace path error, got %v", err)
 	}
 }
 
