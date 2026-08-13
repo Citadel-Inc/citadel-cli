@@ -78,6 +78,73 @@ func TestProjectWalk_BadOutputHermetic(t *testing.T) {
 	}
 }
 
+func TestProjectEdgeAdd_InvalidFromNamespaceIDHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(
+		cmd.ProjectCmd,
+		"edge", "add", "ns",
+		"--from-namespace-id", "not-a-uuid",
+		"--from-kind", "namespace",
+		"--to-kind", "repo",
+		"--edge-type", "contains",
+	).Execute()
+	if err == nil || err.Error() != "--from-namespace-id must be a UUID" {
+		t.Fatalf("error = %v, want --from-namespace-id must be a UUID", err)
+	}
+}
+
+func TestProjectEdgeAdd_FromKindRequiredHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(
+		cmd.ProjectCmd,
+		"edge", "add", "ns",
+		"--from-namespace-id", "00000000-0000-0000-0000-000000000001",
+		"--from-kind", "",
+		"--to-kind", "repo",
+		"--edge-type", "contains",
+	).Execute()
+	if err == nil || err.Error() != "--from-kind is required" {
+		t.Fatalf("error = %v, want --from-kind is required", err)
+	}
+}
+
+func TestProjectEdgeAdd_InvalidAttrsJSONHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(
+		cmd.ProjectCmd,
+		"edge", "add", "ns",
+		"--from-namespace-id", "00000000-0000-0000-0000-000000000001",
+		"--from-kind", "namespace",
+		"--to-kind", "repo",
+		"--edge-type", "contains",
+		"--attrs-json", "{",
+	).Execute()
+	if err == nil || err.Error() != "--attrs-json must be valid JSON" {
+		t.Fatalf("error = %v, want --attrs-json must be valid JSON", err)
+	}
+}
+
+func TestProjectEdgeDelete_InvalidEdgeIDHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(cmd.ProjectCmd, "edge", "delete", "ns", "not-a-uuid").Execute()
+	if err == nil || err.Error() != "edge-id must be a UUID" {
+		t.Fatalf("error = %v, want edge-id must be a UUID", err)
+	}
+}
+
+func TestProjectEdgeRestore_InvalidEdgeIDHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(cmd.ProjectCmd, "edge", "restore", "ns", "not-a-uuid").Execute()
+	if err == nil || err.Error() != "edge-id must be a UUID" {
+		t.Fatalf("error = %v, want edge-id must be a UUID", err)
+	}
+}
+
 func setHermeticProjectEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
