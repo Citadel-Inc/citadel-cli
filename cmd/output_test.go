@@ -16,6 +16,7 @@ func TestMutationOutputFlagUsage(t *testing.T) {
 		agentCreateCmd,
 		releaseDeleteCmd,
 		repoDeployTokenCreateCmd,
+		repoDeployTokenRevokeCmd,
 	}
 	for _, command := range mutationCommands {
 		t.Run(command.Use, func(t *testing.T) {
@@ -25,6 +26,18 @@ func TestMutationOutputFlagUsage(t *testing.T) {
 			}
 			if got, want := mutation.Usage, "Output format: json or default human summary"; got != want {
 				t.Fatalf("mutation --output usage = %q, want %q", got, want)
+			}
+
+			completionFn, ok := command.GetFlagCompletionFunc("output")
+			if !ok {
+				t.Fatalf("%s --output flag has no registered completion func", command.Name())
+			}
+			got, directive := completionFn(command, nil, "")
+			if directive != cobra.ShellCompDirectiveNoFileComp {
+				t.Fatalf("%s --output completion directive = %v, want ShellCompDirectiveNoFileComp", command.Name(), directive)
+			}
+			if len(got) != 1 || got[0] != "json" {
+				t.Fatalf("%s --output completion = %v, want [json]", command.Name(), got)
 			}
 		})
 	}
