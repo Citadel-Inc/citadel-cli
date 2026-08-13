@@ -57,6 +57,10 @@ func TestRepoBranchDelete_Happy(t *testing.T) {
 	}
 }
 
+func TestRepoBranchDelete_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	assertRepoRefBadOutput(t, `--output for delete supports json or default human summary only; got "toml"`, true, "branch", "delete", "main")
+}
+
 func TestRepoBranchDelete_DefaultConflict(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /namespaces/acme/repos/demo/refs/branches": func(w http.ResponseWriter, _ *http.Request) {
@@ -88,6 +92,10 @@ func TestRepoBranchSetDefault_Happy(t *testing.T) {
 	if err := rootFor(cmd.RepoCmd, "branch", "set-default", "acme/demo", "release").Execute(); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestRepoBranchSetDefault_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	assertRepoRefBadOutput(t, `--output for set-default supports json or default human summary only; got "toml"`, true, "branch", "set-default", "main")
 }
 
 func TestRepoBranchSetDefault_DryRun(t *testing.T) {
