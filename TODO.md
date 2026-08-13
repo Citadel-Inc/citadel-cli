@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 130008ZAUG26 (fenced wave 28)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 126 | Repo clone path-before-git/auth | `splitRepoArg` before `ensureGitOnPath` / `newAPIClient`; invalid-path hermetic |
+| 127 | Project empty namespace path | `requireProjectPath` before client/`--kind`; pin-chain/walk/neighbors hermetics |
+| 128 | Search exact empty-XDG hermetics | Bad output, short query, invalid scope, limit -1/26 |
+| 129 | MCP empty tool/URI/prompt before dial | Local guards + hermetics; `parseArgPairs` still before `dialMCP` |
+| 130 | Issue/PR BadOutput NoRepo argv | List + mutate tests omit `--no-cwd-repo`; MissingRepo keeps the flag |
+| — | Should-fix closeout | Path before `--kind` on walk/neighbors; mutate BadOutput argv |
+
+---
+
 ## Open
 
 | # | Item | Notes |
@@ -14,6 +27,9 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 | 132 | Label mutate output-before-path | create/edit/delete + NoRepo hermetics |
 | 133 | Exact older BadOutput hermetics | `TestIssueCreate_BadOutput_Hermetic`, `TestIssueCloseRefs_BadOutput_Hermetic`, `assertRepoTopicBadOutput` |
 | 134 | Mutation `--output` flag help | `addOutputFlag` lists json/yaml/ndjson/csv/table on verbs that only allow json/default |
+| 135 | Project empty-path hermetics for remaining verbs | status rollup/drilldown, edge add/delete/restore, reindex share `requireProjectPath` |
+| 136 | Clone whitespace-only hermetic | `" "` → exact `argument must be <namespace>/<repo>` (trim already in `runRepoClone`) |
+| 137 | MCP prompts-get bad `--arg` hermetic | `parseArgPairs` shared; only `call` covered today |
 
 ---
 
