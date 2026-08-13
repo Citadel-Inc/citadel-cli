@@ -6,6 +6,19 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 130225ZAUG26 (fenced wave 30)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 139 | Namespace delete output-before-client | `validateMutationOutput` before dry-run/client; exact BadOutput hermetic |
+| 140 | Repo delete output-before-path | Mutation output before `resolveRepoFromPosOrFlag`; BadOutput + NoRepo exact |
+| 141 | KG paginated cursor + MissingRepo | `validateDescCursor` before path/client on search/symbols/files/fulltext |
+| 150 | Tag list BadOutput_NoRepo hermetic | Exact list format; `--no-cwd-repo` |
+| 152 | Milestone `--state` before path | State guard before `resolveIssueNamespacePath`; BadState hermetics |
+| — | Should-fix closeout | `CITADEL_REPO` clear; `--no-cwd-repo` on NoRepo/cursor/state hermetics |
+
+---
+
 ## Shipped 130214ZAUG26 (fenced wave 29)
 
 | # | Item | Notes |
@@ -39,15 +52,12 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 | 133 | Exact older BadOutput hermetics | `TestIssueCreate_BadOutput_Hermetic`, `TestIssueCloseRefs_BadOutput_Hermetic`, `assertRepoTopicBadOutput` |
 | 134 | Mutation `--output` flag help | `addOutputFlag` lists json/yaml/ndjson/csv/table on verbs that only allow json/default |
 | 135 | Project empty-path hermetics for remaining verbs | status rollup/drilldown, edge add/delete/restore |
-| 139 | Namespace delete output-before-client | Mirror rename `validateMutationOutput`; BadOutput hermetic |
-| 140 | Repo delete output-before-client | Mirror create `validateMutationOutput`; BadOutput hermetic |
-| 141 | KG paginated cursor + MissingRepo | `validateDescCursor` before client on symbols/files/search/fulltext; hermetics |
 | 143 | Notification residual Contains | `TestNotificationList_NoAuth` and remaining Contains asserts |
 | 144 | Deduplicate project edge guard tests | `handler_test.go` withServer+Contains vs `project_handler_test.go` hermetics |
 | 145 | Label mutate MissingRepo hermetics | create/edit/delete `--no-cwd-repo` siblings of list |
-| 150 | Tag list BadOutput_NoRepo hermetic | Mirror branch list; `assertRepoRefBadOutput` without `acme/demo` |
 | 151 | Namespace deploy-token BadOutput hermetics | list/create/revoke positional-ns; exact strings |
-| 152 | Milestone `--state` before path | `runIssueMilestoneList` validates state after `resolveIssueNamespacePath` |
+| 153 | Namespace delete dry-run + bad `--output` | `--dry-run --output toml` must fail output before Would DELETE |
+| 154 | `setNamespaceHermeticEnv` `CITADEL_REPO` | Four-clear parity; ns delete never reads repo |
 
 ---
 
