@@ -233,6 +233,10 @@ func TestRepoTagDelete_BadOutput_Hermetic(t *testing.T) {
 	assertRepoRefBadOutput(t, `--output for delete supports json or default human summary only; got "toml"`, true, "tag", "delete", "acme/demo", "v1.0.0")
 }
 
+func TestRepoTagDelete_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	assertRepoRefBadOutput(t, `--output for delete supports json or default human summary only; got "toml"`, true, "tag", "delete", "v1.0.0")
+}
+
 func TestRepoTagDelete_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /namespaces/acme/repos/demo/refs/tags": func(w http.ResponseWriter, _ *http.Request) {
