@@ -601,12 +601,12 @@ func runIssueView(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueCreate(cmd *cobra.Command, _ []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
-		return err
-	}
 	output := outputFlag(cmd)
 	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	title, _ := cmd.Flags().GetString("title")
@@ -753,16 +753,16 @@ func runIssueAssign(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueCommentAdd(cmd *cobra.Command, args []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "comment"); err != nil {
 		return err
 	}
 	num, err := parseIssueNumber(args[0])
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "comment"); err != nil {
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	body, err := readIssueBody(cmd, "body")
@@ -793,16 +793,16 @@ func runIssueCommentAdd(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueCommentList(cmd *cobra.Command, args []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
 		return err
 	}
 	num, err := parseIssueNumber(args[0])
 	if err != nil {
 		return err
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateListOutput(output); err != nil {
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	c, err := newAPIClient(cmd)
@@ -853,16 +853,16 @@ func runIssueCommentList(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueCommentEdit(cmd *cobra.Command, args []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "edit"); err != nil {
 		return err
 	}
 	commentID := strings.TrimSpace(args[0])
 	if commentID == "" {
 		return fmt.Errorf("comment ID required")
 	}
-	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "edit"); err != nil {
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	body, err := readIssueBody(cmd, "body")
@@ -935,16 +935,16 @@ func runIssueReopen(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueLabel(cmd *cobra.Command, args []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "label"); err != nil {
 		return err
 	}
 	num, err := parseIssueNumber(args[0])
 	if err != nil {
 		return err
 	}
-	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "label"); err != nil {
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	add, _ := cmd.Flags().GetStringSlice("add")
@@ -981,16 +981,16 @@ func runIssueLabel(cmd *cobra.Command, args []string) error {
 }
 
 func runIssueCloseRefs(cmd *cobra.Command, args []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	num, err := parseIssueNumber(args[0])
 	if err != nil {
 		return err
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	c, err := newAPIClient(cmd)
