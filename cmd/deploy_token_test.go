@@ -12,10 +12,14 @@ import (
 
 func TestRepoDeployTokenListBadOutputHermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.RepoCmd, "deploy-token", "list", "-R", "myorg/myrepo", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
-		t.Fatalf("want output validation error, got %v", err)
+	want := `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
 	}
 }
 
@@ -34,10 +38,14 @@ func TestRepoDeployTokenList_BadOutput_NoRepo_Hermetic(t *testing.T) {
 
 func TestRepoDeployTokenCreateBadOutputHermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.RepoCmd, "deploy-token", "create", "-R", "myorg/myrepo", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for create supports json or default human summary only") {
-		t.Fatalf("want output validation error, got %v", err)
+	want := `--output for create supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
 	}
 }
 
@@ -67,10 +75,14 @@ func TestRepoDeployTokenCreate_InvalidExpires_Hermetic(t *testing.T) {
 
 func TestRepoDeployTokenRevokeBadOutputHermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.RepoCmd, "deploy-token", "revoke", "-R", "myorg/myrepo", "tok-3", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for revoke supports json or default human summary only") {
-		t.Fatalf("want output validation error, got %v", err)
+	want := `--output for revoke supports json or default human summary only; got "toml"`
+	if err == nil || err.Error() != want {
+		t.Fatalf("want %q, got %v", want, err)
 	}
 }
 
