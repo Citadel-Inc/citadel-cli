@@ -30,6 +30,10 @@ func TestRepoBranchList_BadOutput_Hermetic(t *testing.T) {
 	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, true, "branch", "list", "acme/demo")
 }
 
+func TestRepoBranchList_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, true, "branch", "list")
+}
+
 func TestRepoBranchList_MissingRepo_Hermetic(t *testing.T) {
 	assertRepoRefListMissingRepo(t, "branch", "list")
 }
