@@ -6,6 +6,20 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 130333ZAUG26 (fenced wave 32)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 133 | Exact `assertRepoTopicBadOutput` | Get-format full-string; list/set/popular hermetics |
+| 134 | Mutation `--output` flag help | `addMutationOutputFlag`; json-only completer; split mixed registrations |
+| 143 | Notification residual Contains | Exact no-auth + not-found |
+| 144 | Deduplicate project edge guard tests | Dropped handler withServer+Contains; hermetic to-namespace-id |
+| 155 | Deduplicate ns deploy-token list guards | Shared `validateDeployTokenListFlags` before path |
+| 156 | Exact `assertNamespaceBadOutput` | List-format full-string |
+| — | Should-fix closeout | Tag delete output-before-path + BadOutput_NoRepo |
+
+---
+
 ## Shipped 130248ZAUG26 (fenced wave 31)
 
 | # | Item | Notes |
@@ -63,12 +77,11 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 | # | Item | Notes |
 | --- | --- | --- |
-| 133 | Exact `assertRepoTopicBadOutput` | Still `strings.Contains`; list/set/popular hermetics |
-| 134 | Mutation `--output` flag help | `addOutputFlag` lists json/yaml/ndjson/csv/table on verbs that only allow json/default |
-| 143 | Notification residual Contains | `TestNotificationList_NoAuth` and remaining Contains asserts |
-| 144 | Deduplicate project edge guard tests | `handler_test.go` withServer+Contains vs `project_handler_test.go` hermetics |
-| 155 | Deduplicate ns deploy-token list guards | `runNamespaceDeployTokenList` repeats `runDeployTokenList` validation |
-| 156 | Exact `assertNamespaceBadOutput` | Helper still `strings.Contains`; new delete dry-run test is exact |
+| 157 | Mutation `--output` completion golden | Mirror `TestCompleteOutputFormats_GoldenList` for `completeMutationOutputFormats` (json-only) |
+| 158 | Get-verb `--output` help vs `validateGetOutput` | `addOutputFlag` still advertises ndjson/csv on get-style verbs (e.g. release create/edit) |
+| 159 | Broader mutation Usage spot-checks | `TestMutationOutputFlagUsage` only repo delete vs list |
+| 160 | Agent list/create exact BadOutput | `handler_test.go` still `strings.Contains` |
+| 161 | Drop duplicate deploy-token mutation validate | Wrapper + inner `validateMutationOutput` on create/revoke |
 
 ---
 
