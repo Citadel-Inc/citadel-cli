@@ -12,7 +12,7 @@ See [HUMANS.md § Repository layout](HUMANS.md#repository-layout) for the canoni
 
 Generic commit / Git-MCP rules: **`~/.claude/CLAUDE.md`**. Project-specific:
 
-- **Continuous commit + push** authorised for the duration of `citadel-cli` work.
+- **Continuous commit** authorised for the duration of `citadel-cli` work. **Push is not** — it needs an explicit instruction each time, per `~/.claude/rules/workflow.md` § Push. No repo carries a standing push grant.
 - **Specs** MUST pass `mcp__citadel-sdd__spec_lint` before commit. Canonical bullet shape `- [ ]` / `- [x]`. Priority headings (`## P0` / `## P1` / `## P2`) live in `tasks.md` only.
 
 ## Spec lifecycle — use the MCP
@@ -20,7 +20,7 @@ Generic commit / Git-MCP rules: **`~/.claude/CLAUDE.md`**. Project-specific:
 **Hard rule: use `mcp__citadel-sdd__*` tools for all spec lifecycle operations.** Never hand-edit status fields, DTG stamps, or `tasks.md` state lines. The tools enforce lint rules, write correct frontmatter, stamp accurate DTGs, and commit with the right message style.
 
 | What you want | Tool |
-|---|---|
+| --- | --- |
 | Claim (DRAFT/APPROVED → IN_PROGRESS) | `spec_claim` |
 | Approve (DRAFT → APPROVED) | `spec_approve` |
 | Close (IN_PROGRESS → DONE) | `spec_close` |
