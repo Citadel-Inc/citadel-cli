@@ -423,7 +423,8 @@ func init() {
 	AgentCmd.AddCommand(agentDeleteCmd)
 	AgentCmd.AddCommand(agentRotateTokenCmd)
 
-	addOutputFlag(agentCreateCmd, agentListCmd, agentGetCmd, agentDeleteCmd, agentRotateTokenCmd)
+	addOutputFlag(agentListCmd, agentGetCmd)
+	addMutationOutputFlag(agentCreateCmd, agentDeleteCmd, agentRotateTokenCmd)
 	addPaginationFlags(agentListCmd)
 	addWatchFlag(agentListCmd)
 	addYesFlag(agentDeleteCmd, agentRotateTokenCmd)

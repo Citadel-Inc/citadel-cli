@@ -516,8 +516,9 @@ func init() {
 	RepoCmd.AddCommand(repoDeployTokenCmd)
 	NamespaceCmd.AddCommand(namespaceDeployTokenCmd)
 
-	addOutputFlag(repoDeployTokenListCmd, repoDeployTokenCreateCmd, repoDeployTokenRevokeCmd,
-		namespaceDeployTokenListCmd, namespaceDeployTokenCreateCmd, namespaceDeployTokenRevokeCmd)
+	addOutputFlag(repoDeployTokenListCmd, namespaceDeployTokenListCmd)
+	addMutationOutputFlag(repoDeployTokenCreateCmd, repoDeployTokenRevokeCmd,
+		namespaceDeployTokenCreateCmd, namespaceDeployTokenRevokeCmd)
 	addPaginationFlags(repoDeployTokenListCmd, namespaceDeployTokenListCmd)
 	addWatchFlag(repoDeployTokenListCmd, namespaceDeployTokenListCmd)
 	addDryRunFlag(repoDeployTokenRevokeCmd, namespaceDeployTokenRevokeCmd)

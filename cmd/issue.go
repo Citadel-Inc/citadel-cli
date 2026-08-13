@@ -1054,9 +1054,10 @@ func init() {
 		issueCommentAddCmd, issueCommentListCmd, issueCommentEditCmd,
 		issueCloseCmd, issueReopenCmd, issueLabelCmd, issueCloseRefsCmd,
 	)
-	addOutputFlag(
-		issueListCmd, issueViewCmd, issueCreateCmd, issueEditCmd, issueAssignCmd,
-		issueCommentAddCmd, issueCommentListCmd, issueCommentEditCmd,
+	addOutputFlag(issueListCmd, issueViewCmd, issueCommentListCmd)
+	addMutationOutputFlag(
+		issueCreateCmd, issueEditCmd, issueAssignCmd,
+		issueCommentAddCmd, issueCommentEditCmd,
 		issueCloseCmd, issueReopenCmd, issueLabelCmd, issueCloseRefsCmd,
 	)
 	addPaginationFlags(issueListCmd)

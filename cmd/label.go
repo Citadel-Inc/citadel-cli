@@ -444,7 +444,8 @@ func init() {
 	LabelCmd.AddCommand(labelListCmd, labelCreateCmd, labelEditCmd, labelDeleteCmd, labelCloneCmd)
 
 	addIssuePathFlag(labelListCmd, labelCreateCmd, labelEditCmd, labelDeleteCmd)
-	addOutputFlag(labelListCmd, labelCreateCmd, labelEditCmd, labelDeleteCmd)
+	addOutputFlag(labelListCmd)
+	addMutationOutputFlag(labelCreateCmd, labelEditCmd, labelDeleteCmd)
 	addYesFlag(labelDeleteCmd)
 	addDryRunFlag(labelDeleteCmd, labelCloneCmd)
 

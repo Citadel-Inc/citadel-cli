@@ -840,9 +840,9 @@ func init() {
 	nsTransferCmd.AddCommand(nsTransferDeclineCmd)
 	nsTransferCmd.AddCommand(nsTransferRevokeCmd)
 
-	addOutputFlag(nsListCmd, nsGetCmd, nsMembersCmd, nsDeleteCmd, nsRenameCmd,
-		nsTransferInitiateCmd, nsTransferListPendingCmd,
-		nsTransferAcceptCmd, nsTransferDeclineCmd, nsTransferRevokeCmd)
+	addOutputFlag(nsListCmd, nsGetCmd, nsMembersCmd, nsTransferListPendingCmd)
+	addMutationOutputFlag(nsDeleteCmd, nsRenameCmd,
+		nsTransferInitiateCmd, nsTransferAcceptCmd, nsTransferDeclineCmd, nsTransferRevokeCmd)
 	addPaginationFlags(nsListCmd, nsMembersCmd, nsTransferListPendingCmd)
 	addWatchFlag(nsListCmd, nsMembersCmd, nsTransferListPendingCmd)
 	addYesFlag(nsDeleteCmd, nsRenameCmd, nsTransferInitiateCmd, nsTransferRevokeCmd)

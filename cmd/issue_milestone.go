@@ -536,7 +536,8 @@ func init() {
 	)
 
 	addIssuePathFlag(issueMilestoneListCmd, issueMilestoneViewCmd, issueMilestoneCreateCmd, issueMilestoneEditCmd, issueMilestoneDeleteCmd)
-	addOutputFlag(issueMilestoneListCmd, issueMilestoneViewCmd, issueMilestoneCreateCmd, issueMilestoneEditCmd, issueMilestoneDeleteCmd)
+	addOutputFlag(issueMilestoneListCmd, issueMilestoneViewCmd)
+	addMutationOutputFlag(issueMilestoneCreateCmd, issueMilestoneEditCmd, issueMilestoneDeleteCmd)
 	addYesFlag(issueMilestoneDeleteCmd)
 	addDryRunFlag(issueMilestoneDeleteCmd)
 
