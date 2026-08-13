@@ -258,6 +258,26 @@ func TestCompleteOutputFormats_GoldenList(t *testing.T) {
 	}
 }
 
+func TestCompleteMutationOutputFormats_Golden(t *testing.T) {
+	got, d := completeMutationOutputFormats(nil, nil, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(got) != 1 || got[0] != "json" {
+		t.Fatalf("got %q, want [json]", got)
+	}
+}
+
+func TestCompleteGetOutputFormats_Golden(t *testing.T) {
+	got, d := completeGetOutputFormats(nil, nil, "")
+	if d != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("directive %v", d)
+	}
+	if len(got) != 3 || got[0] != "json" || got[1] != "yaml" || got[2] != "table" {
+		t.Fatalf("got %v, want [json yaml table]", got)
+	}
+}
+
 func TestCompleteAgentNames_HappyPath(t *testing.T) {
 	testServerTokenEnv(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/agents" {

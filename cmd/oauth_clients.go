@@ -473,8 +473,8 @@ func init() {
 	oauthClientsCmd.AddCommand(oauthClientsRotateSecretCmd)
 	oauthClientsCmd.AddCommand(oauthClientsRevokeCmd)
 
-	addOutputFlag(oauthClientsListCmd, oauthClientsCreateCmd, oauthClientsShowCmd,
-		oauthClientsRotateSecretCmd, oauthClientsRevokeCmd)
+	addOutputFlag(oauthClientsListCmd, oauthClientsShowCmd)
+	addMutationOutputFlag(oauthClientsCreateCmd, oauthClientsRotateSecretCmd, oauthClientsRevokeCmd)
 	addPaginationFlags(oauthClientsListCmd)
 	addWatchFlag(oauthClientsListCmd)
 	oauthClientsListCmd.Flags().Bool("dcr", false, "Show only dynamically registered clients")

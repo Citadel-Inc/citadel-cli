@@ -90,10 +90,9 @@ func TestLabelList_BadOutput_Hermetic(t *testing.T) {
 
 func TestLabelList_MissingRepo_Hermetic(t *testing.T) {
 	setLabelHermeticEnv(t)
-	t.Chdir(t.TempDir())
 
-	err := rootFor(cmd.LabelCmd, "list").Execute()
-	if err == nil || !strings.Contains(err.Error(), "namespace path required") {
+	err := rootFor(cmd.LabelCmd, "list", "--no-cwd-repo").Execute()
+	if err == nil || err.Error() != "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
 		t.Fatalf("want namespace path error, got %v", err)
 	}
 }
@@ -172,8 +171,28 @@ func TestLabelCreate_BadOutput_Hermetic(t *testing.T) {
 
 	err := rootFor(cmd.LabelCmd, "create", "-R", "acme/demo",
 		"--name", "Bug", "--color", "d73a4a", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), `--output for create supports json or default human summary only; got "toml"`) {
+	if err == nil || err.Error() != `--output for create supports json or default human summary only; got "toml"` {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestLabelCreate_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setLabelHermeticEnv(t)
+
+	err := rootFor(cmd.LabelCmd, "create",
+		"--name", "Bug", "--color", "d73a4a", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for create supports json or default human summary only; got "toml"` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestLabelCreate_MissingRepo_Hermetic(t *testing.T) {
+	setLabelHermeticEnv(t)
+
+	err := rootFor(cmd.LabelCmd, "create", "--no-cwd-repo",
+		"--name", "Bug", "--color", "d73a4a").Execute()
+	if err == nil || err.Error() != "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want namespace path error, got %v", err)
 	}
 }
 
@@ -232,8 +251,27 @@ func TestLabelEdit_BadOutput_Hermetic(t *testing.T) {
 
 	err := rootFor(cmd.LabelCmd, "edit", "-R", "acme/demo", "bug",
 		"--name", "Bug", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), `--output for edit supports json or default human summary only; got "toml"`) {
+	if err == nil || err.Error() != `--output for edit supports json or default human summary only; got "toml"` {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestLabelEdit_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setLabelHermeticEnv(t)
+
+	err := rootFor(cmd.LabelCmd, "edit", "bug",
+		"--name", "Bug", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for edit supports json or default human summary only; got "toml"` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestLabelEdit_MissingRepo_Hermetic(t *testing.T) {
+	setLabelHermeticEnv(t)
+
+	err := rootFor(cmd.LabelCmd, "edit", "--no-cwd-repo", "bug", "--name", "X").Execute()
+	if err == nil || err.Error() != "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want namespace path error, got %v", err)
 	}
 }
 
@@ -304,8 +342,27 @@ func TestLabelDelete_BadOutput_Hermetic(t *testing.T) {
 
 	err := rootFor(cmd.LabelCmd, "delete", "-R", "acme/demo", "bug",
 		"--yes", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), `--output for delete supports json or default human summary only; got "toml"`) {
+	if err == nil || err.Error() != `--output for delete supports json or default human summary only; got "toml"` {
 		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestLabelDelete_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setLabelHermeticEnv(t)
+
+	err := rootFor(cmd.LabelCmd, "delete", "bug",
+		"--yes", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for delete supports json or default human summary only; got "toml"` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestLabelDelete_MissingRepo_Hermetic(t *testing.T) {
+	setLabelHermeticEnv(t)
+
+	err := rootFor(cmd.LabelCmd, "delete", "--no-cwd-repo", "bug", "--yes").Execute()
+	if err == nil || err.Error() != "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want namespace path error, got %v", err)
 	}
 }
 

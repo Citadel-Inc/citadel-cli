@@ -317,7 +317,8 @@ func init() {
 	orgInvitationCmd.AddCommand(orgInvRevokeCmd)
 	orgInvitationCmd.AddCommand(orgInvAcceptCmd)
 
-	addOutputFlag(orgInvPendingCmd, orgInvListCmd, orgInvCreateCmd, orgInvAcceptCmd)
+	addOutputFlag(orgInvPendingCmd, orgInvListCmd)
+	addMutationOutputFlag(orgInvCreateCmd, orgInvAcceptCmd)
 	orgInvCreateCmd.Flags().String("email", "", "Invitee email address")
 	orgInvCreateCmd.Flags().String("slug", "", "Invitee public user namespace slug (alternative to --email)")
 	orgInvCreateCmd.Flags().StringSlice("permission", nil, "Permission atom (repeat flag or comma-separated list)")

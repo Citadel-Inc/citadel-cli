@@ -9,6 +9,35 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func TestMutationOutputFlagUsage(t *testing.T) {
+	mutationCommands := []*cobra.Command{
+		repoDeleteCmd,
+		labelDeleteCmd,
+		agentCreateCmd,
+		releaseDeleteCmd,
+		repoDeployTokenCreateCmd,
+	}
+	for _, command := range mutationCommands {
+		t.Run(command.Use, func(t *testing.T) {
+			mutation := command.Flags().Lookup("output")
+			if mutation == nil {
+				t.Fatalf("%s command has no --output flag", command.Name())
+			}
+			if got, want := mutation.Usage, "Output format: json or default human summary"; got != want {
+				t.Fatalf("mutation --output usage = %q, want %q", got, want)
+			}
+		})
+	}
+
+	list := repoListCmd.Flags().Lookup("output")
+	if list == nil {
+		t.Fatal("repo list command has no --output flag")
+	}
+	if got, want := list.Usage, "Output format: json, yaml, ndjson, csv, or table (default human table)"; got != want {
+		t.Fatalf("list --output usage = %q, want %q", got, want)
+	}
+}
+
 // TestColorEnabledNever asserts the resolved --color=never decision wins
 // regardless of TTY / NO_COLOR.
 func TestColorEnabledNever(t *testing.T) {

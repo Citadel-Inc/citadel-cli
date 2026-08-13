@@ -386,16 +386,16 @@ func runPRList(cmd *cobra.Command, _ []string) error {
 }
 
 func runPRView(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
 	nsPath, err := resolveIssueNamespacePath(cmd)
 	if err != nil {
 		return err
 	}
 	num, err := parsePRNumber(args[0])
 	if err != nil {
-		return err
-	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	c, err := newAPIClient(cmd)

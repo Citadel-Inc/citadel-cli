@@ -148,7 +148,7 @@ func TestNotificationList_NoAuth(t *testing.T) {
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	t.Setenv("CITADEL_SERVER", "http://nope")
 	err := rootFor(cmd.NotificationCmd, "list").Execute()
-	if err == nil || !strings.Contains(err.Error(), "not authenticated") {
+	if err == nil || err.Error() != "not authenticated; run 'citadel-cli auth login' first" {
 		t.Fatalf("want not-authenticated, got %v", err)
 	}
 }
@@ -158,6 +158,7 @@ func setNotificationHermeticEnv(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 }
 
 func TestNotificationList_BadOutput_Hermetic(t *testing.T) {
@@ -179,11 +180,11 @@ func TestNotificationList_BadCursor_Hermetic(t *testing.T) {
 }
 
 func TestNotificationList_AllJSON_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	setNotificationHermeticEnv(t)
 
 	err := rootFor(cmd.NotificationCmd, "list", "--all", "--output", "json").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--all with --output json") {
-		t.Fatalf("want all/json validation error, got %v", err)
+	if err == nil || err.Error() != "--all with --output json is not supported; use --output ndjson for streaming JSON" {
+		t.Fatalf("want exact all/json validation error, got %v", err)
 	}
 }
 
@@ -195,8 +196,21 @@ func TestNotificationRead_Happy(t *testing.T) {
 			writeJSON(t, w, 200, map[string]any{"ok": true})
 		},
 	}))
-	if err := rootFor(cmd.NotificationCmd, "read", "notif-1").Execute(); err != nil {
+	var stdout strings.Builder
+	if err := rootForOut(cmd.NotificationCmd, &stdout, "read", "notif-1").Execute(); err != nil {
 		t.Fatal(err)
+	}
+	if stdout.String() != "Notification notif-1 marked as read.\n" {
+		t.Fatalf("notification read output = %q", stdout.String())
+	}
+}
+
+func TestNotificationRead_EmptyID_Hermetic(t *testing.T) {
+	setNotificationHermeticEnv(t)
+
+	err := rootFor(cmd.NotificationCmd, "read", " \t").Execute()
+	if err == nil || err.Error() != "notification id required" {
+		t.Fatalf("want exact empty-id validation error, got %v", err)
 	}
 }
 
@@ -207,7 +221,7 @@ func TestNotificationRead_NotFound(t *testing.T) {
 		},
 	}))
 	err := rootFor(cmd.NotificationCmd, "read", "missing-id").Execute()
-	if err == nil || !strings.Contains(err.Error(), "not found") {
+	if err == nil || err.Error() != `notification "missing-id" not found` {
 		t.Fatalf("want not-found error, got %v", err)
 	}
 }
@@ -334,6 +348,23 @@ func TestNotificationPrefsSet_Happy(t *testing.T) {
 	}
 }
 
+func TestNotificationPrefsSet_YAML(t *testing.T) {
+	var stdout strings.Builder
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"PATCH /api/me/notification-prefs": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, prefsBody())
+		},
+	}))
+	if err := rootForOut(cmd.NotificationCmd, &stdout,
+		"prefs", "set", "--email-digest", "weekly", "--output", "yaml",
+	).Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "email_digest_cadence: daily") {
+		t.Fatalf("YAML output missing cadence key, got %q", stdout.String())
+	}
+}
+
 func TestNotificationPrefsSet_KindOverrides(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"PATCH /api/me/notification-prefs": func(w http.ResponseWriter, r *http.Request) {
@@ -363,17 +394,28 @@ func TestNotificationPrefsSet_KindOverrides(t *testing.T) {
 }
 
 func TestNotificationPrefsSet_NoFlags(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	setNotificationHermeticEnv(t)
+
 	err := rootFor(cmd.NotificationCmd, "prefs", "set").Execute()
-	if err == nil || !strings.Contains(err.Error(), "at least one") {
-		t.Fatalf("want at-least-one error, got %v", err)
+	if err == nil || err.Error() != "at least one of --email-digest, --enable, or --disable is required" {
+		t.Fatalf("want exact at-least-one error, got %v", err)
 	}
 }
 
 func TestNotificationPrefsSet_InvalidCadence(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	setNotificationHermeticEnv(t)
+
 	err := rootFor(cmd.NotificationCmd, "prefs", "set", "--email-digest", "monthly").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--email-digest") {
-		t.Fatalf("want cadence error, got %v", err)
+	if err == nil || err.Error() != `--email-digest must be never, daily, or weekly; got "monthly"` {
+		t.Fatalf("want exact cadence error, got %v", err)
+	}
+}
+
+func TestNotificationPrefsSet_BadOutput_Hermetic(t *testing.T) {
+	setNotificationHermeticEnv(t)
+
+	err := rootFor(cmd.NotificationCmd, "prefs", "set", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want exact output validation error, got %v", err)
 	}
 }

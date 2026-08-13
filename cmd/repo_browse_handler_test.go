@@ -72,6 +72,23 @@ func TestRepoBrowseTree_JSON(t *testing.T) {
 	}
 }
 
+func TestRepoBrowseTree_YAML(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/tree": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, makeBrowseTree("main", "", []map[string]any{
+				makeTreeEntry("main.go", "blob", 512, "abc1234567890def"),
+			}))
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "browse", "tree", "acme/demo", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.HasPrefix(strings.TrimSpace(buf.String()), "{") {
+		t.Fatalf("expected YAML output, got JSON object: %s", buf.String())
+	}
+}
+
 func TestRepoBrowseTree_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/namespaces/acme/repos/demo/tree": func(w http.ResponseWriter, _ *http.Request) {
@@ -110,6 +127,18 @@ func TestRepoBrowseTree_BadOutput_Hermetic(t *testing.T) {
 
 	err := rootFor(cmd.RepoCmd, "browse", "tree", "acme/demo",
 		"--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoBrowseTree_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"browse", "tree", "--no-cwd-repo",
+		"--output", "toml",
+	).Execute()
 	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
@@ -181,11 +210,41 @@ func TestRepoBrowseBlob_JSON(t *testing.T) {
 	}
 }
 
+func TestRepoBrowseBlob_YAML(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/blob": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{
+				"sha": "abc1234567890def", "size": 5, "binary": false,
+				"encoding": "utf-8", "content": "hello",
+			})
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "browse", "blob", "acme/demo", "--path", "f.txt", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.HasPrefix(strings.TrimSpace(buf.String()), "{") {
+		t.Fatalf("expected YAML output, got JSON object: %s", buf.String())
+	}
+}
+
 func TestRepoBrowseBlob_BadOutput_Hermetic(t *testing.T) {
 	setRepoBrowseHermeticEnv(t)
 
 	err := rootFor(cmd.RepoCmd, "browse", "blob", "acme/demo",
 		"--path", "README.md", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoBrowseBlob_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setRepoBrowseHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"browse", "blob", "--no-cwd-repo",
+		"--output", "toml",
+	).Execute()
 	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}

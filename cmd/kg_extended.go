@@ -308,6 +308,9 @@ func runKgSearch(cmd *cobra.Command, args []string) error {
 	if err := validateKgPagesOutput(cmd, all); err != nil {
 		return err
 	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -333,20 +336,8 @@ func runKgSymbols(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--q is required")
 	}
 
-	pos := ""
-	if len(args) > 0 {
-		pos = args[0]
-	}
-	ns, rslug, err := resolveKgNamespace(cmd, pos)
-	if err != nil {
-		return err
-	}
-
 	q := url.Values{}
 	q.Set("q", qstr)
-	if rslug != "" {
-		q.Set("repo", rslug)
-	}
 	if s := strings.TrimSpace(mustFlag(cmd, "kind")); s != "" {
 		q.Set("kind", s)
 	}
@@ -360,6 +351,20 @@ func runKgSymbols(cmd *cobra.Command, args []string) error {
 	}
 	if err := validateKgPagesOutput(cmd, all); err != nil {
 		return err
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	pos := ""
+	if len(args) > 0 {
+		pos = args[0]
+	}
+	ns, rslug, err := resolveKgNamespace(cmd, pos)
+	if err != nil {
+		return err
+	}
+	if rslug != "" {
+		q.Set("repo", rslug)
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -380,18 +385,7 @@ func runKgSymbols(cmd *cobra.Command, args []string) error {
 }
 
 func runKgFiles(cmd *cobra.Command, args []string) error {
-	pos := ""
-	if len(args) > 0 {
-		pos = args[0]
-	}
-	ns, rslug, err := resolveKgNamespace(cmd, pos)
-	if err != nil {
-		return err
-	}
 	q := url.Values{}
-	if rslug != "" {
-		q.Set("repo", rslug)
-	}
 	if s := strings.TrimSpace(mustFlag(cmd, "path-prefix")); s != "" {
 		q.Set("path_prefix", s)
 	}
@@ -404,6 +398,20 @@ func runKgFiles(cmd *cobra.Command, args []string) error {
 	}
 	if err := validateKgPagesOutput(cmd, all); err != nil {
 		return err
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	pos := ""
+	if len(args) > 0 {
+		pos = args[0]
+	}
+	ns, rslug, err := resolveKgNamespace(cmd, pos)
+	if err != nil {
+		return err
+	}
+	if rslug != "" {
+		q.Set("repo", rslug)
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -469,19 +477,8 @@ func runKgFulltext(cmd *cobra.Command, args []string) error {
 	if qstr == "" {
 		return fmt.Errorf("--q is required")
 	}
-	pos := ""
-	if len(args) > 0 {
-		pos = args[0]
-	}
-	ns, rslug, err := resolveKgNamespace(cmd, pos)
-	if err != nil {
-		return err
-	}
 	q := url.Values{}
 	q.Set("q", qstr)
-	if rslug != "" {
-		q.Set("repo", rslug)
-	}
 	if s := strings.TrimSpace(mustFlag(cmd, "mode")); s != "" {
 		q.Set("mode", s)
 	}
@@ -497,6 +494,20 @@ func runKgFulltext(cmd *cobra.Command, args []string) error {
 	}
 	if err := validateKgPagesOutput(cmd, all); err != nil {
 		return err
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	pos := ""
+	if len(args) > 0 {
+		pos = args[0]
+	}
+	ns, rslug, err := resolveKgNamespace(cmd, pos)
+	if err != nil {
+		return err
+	}
+	if rslug != "" {
+		q.Set("repo", rslug)
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {

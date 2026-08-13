@@ -214,15 +214,6 @@ func TestAgentList_NoAuth(t *testing.T) {
 	}
 }
 
-func TestAgentList_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	err := rootFor(cmd.AgentCmd, "list", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
-		t.Fatalf("want output validation error, got %v", err)
-	}
-}
-
 func TestAgentList_AllJSON_Hermetic(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -257,15 +248,6 @@ func TestAgentList_WatchBadOutputCSV_Hermetic(t *testing.T) {
 	err := rootFor(cmd.AgentCmd, "list", "--watch", "--output", "csv").Execute()
 	if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
 		t.Fatalf("want watch output validation error, got %v", err)
-	}
-}
-
-func TestAgentCreate_BadOutput_Hermetic(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	err := rootFor(cmd.AgentCmd, "create", "alpha", "--output", "toml").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output for create supports json or default human summary only") {
-		t.Fatalf("want output validation error, got %v", err)
 	}
 }
 
@@ -2539,20 +2521,6 @@ func TestProject_EdgeDelete_OK(t *testing.T) {
 	}
 }
 
-func TestProject_EdgeAdd_InvalidAttrsJSON(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	err := rootFor(cmd.ProjectCmd, "edge", "add", "ns",
-		"--from-namespace-id", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-		"--from-kind", "repo",
-		"--to-kind", "repo",
-		"--edge-type", "pins",
-		"--attrs-json", "NOTJSON",
-	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "attrs-json") {
-		t.Fatalf("want attrs-json error, got %v", err)
-	}
-}
-
 func TestProject_EdgeAdd_HumanOK(t *testing.T) {
 	var buf strings.Builder
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -2680,33 +2648,6 @@ func TestSearch_EmptyHuman(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "no results") {
 		t.Fatalf("want empty marker, got %q", buf.String())
-	}
-}
-
-func TestProject_EdgeAdd_InvalidFromUUID(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	err := rootFor(cmd.ProjectCmd, "edge", "add", "ns",
-		"--from-namespace-id", "not-a-uuid",
-		"--from-kind", "repo",
-		"--to-kind", "repo",
-		"--edge-type", "pins",
-	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "UUID") {
-		t.Fatalf("want UUID validation error, got %v", err)
-	}
-}
-
-func TestProject_EdgeAdd_InvalidToNamespaceUUID(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	err := rootFor(cmd.ProjectCmd, "edge", "add", "ns",
-		"--from-namespace-id", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-		"--from-kind", "repo",
-		"--to-namespace-id", "bad",
-		"--to-kind", "repo",
-		"--edge-type", "pins",
-	).Execute()
-	if err == nil || !strings.Contains(err.Error(), "to-namespace-id") {
-		t.Fatalf("want to-namespace-id validation error, got %v", err)
 	}
 }
 

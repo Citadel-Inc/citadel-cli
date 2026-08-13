@@ -258,11 +258,14 @@ func runNotificationList(cmd *cobra.Command, _ []string) error {
 // ── read ──────────────────────────────────────────────────────────────────────
 
 func runNotificationRead(cmd *cobra.Command, args []string) error {
+	id := strings.TrimSpace(args[0])
+	if id == "" {
+		return fmt.Errorf("notification id required")
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	id := strings.TrimSpace(args[0])
 	var resp struct {
 		OK bool `json:"ok"`
 	}
@@ -344,6 +347,9 @@ func runNotificationPrefsGet(cmd *cobra.Command, _ []string) error {
 // ── prefs set ─────────────────────────────────────────────────────────────────
 
 func runNotificationPrefsSet(cmd *cobra.Command, _ []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
 	cadence, _ := cmd.Flags().GetString("email-digest")
 	enableKinds, _ := cmd.Flags().GetStringSlice("enable")
 	disableKinds, _ := cmd.Flags().GetStringSlice("disable")
@@ -387,8 +393,11 @@ func runNotificationPrefsSet(cmd *cobra.Command, _ []string) error {
 	}
 
 	output := outputFlag(cmd)
-	if output == "json" {
+	switch output {
+	case "json":
 		return emitJSON(cmd, updated)
+	case "yaml":
+		return emitYAML(cmd, updated)
 	}
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Notification preferences updated.")
 	return nil

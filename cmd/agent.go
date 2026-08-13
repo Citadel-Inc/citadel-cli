@@ -284,6 +284,10 @@ func runAgentGet(cmd *cobra.Command, args []string) error {
 
 func runAgentDelete(cmd *cobra.Command, args []string) error {
 	name := args[0]
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "delete"); err != nil {
+		return err
+	}
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE agent '%s' (skipped; --dry-run)\n", name)
 		return nil
@@ -311,6 +315,10 @@ func runAgentDelete(cmd *cobra.Command, args []string) error {
 
 func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	name := args[0]
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "rotate-token"); err != nil {
+		return err
+	}
 	if err := confirmSlug(yesFlag(cmd), "rotate token for agent", name); err != nil {
 		return err
 	}
@@ -415,7 +423,8 @@ func init() {
 	AgentCmd.AddCommand(agentDeleteCmd)
 	AgentCmd.AddCommand(agentRotateTokenCmd)
 
-	addOutputFlag(agentCreateCmd, agentListCmd, agentGetCmd, agentDeleteCmd, agentRotateTokenCmd)
+	addOutputFlag(agentListCmd, agentGetCmd)
+	addMutationOutputFlag(agentCreateCmd, agentDeleteCmd, agentRotateTokenCmd)
 	addPaginationFlags(agentListCmd)
 	addWatchFlag(agentListCmd)
 	addYesFlag(agentDeleteCmd, agentRotateTokenCmd)

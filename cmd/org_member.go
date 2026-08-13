@@ -373,7 +373,7 @@ func init() {
 	addPaginationFlags(orgMemberListCmd)
 	addOutputFlag(orgMemberListCmd)
 	addYesFlag(orgMemberRemoveCmd)
-	addOutputFlag(orgMemberSetPermissionsCmd)
+	addMutationOutputFlag(orgMemberSetPermissionsCmd)
 	orgMemberSetPermissionsCmd.Flags().StringSlice("permission", nil, "Permission atom (repeat or comma-separated; omit to clear all grants)")
 
 	orgMemberListCmd.ValidArgsFunction = completeOrgNamespaceSlugs

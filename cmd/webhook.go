@@ -314,6 +314,18 @@ func webhookDeliveryCompletionKey(namespacePath string) string {
 }
 
 func runRepoWebhookList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	_, cursor, _, err := readPagination(cmd)
+	if err != nil {
+		return err
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -447,6 +459,10 @@ func runWebhookList(cmd *cobra.Command, namespacePath string) error {
 }
 
 func runRepoWebhookCreate(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -503,6 +519,10 @@ func runWebhookCreate(cmd *cobra.Command, namespacePath string, allowDescendants
 }
 
 func runRepoWebhookGet(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	namespacePath, id, err := parseRepoWebhookIDArgs(cmd, args)
 	if err != nil {
 		return err
@@ -515,6 +535,10 @@ func runNamespaceWebhookGet(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoWebhookEdit(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	namespacePath, id, err := parseRepoWebhookIDArgs(cmd, args)
 	if err != nil {
 		return err
@@ -589,6 +613,10 @@ func runWebhookGet(cmd *cobra.Command, namespacePath, rawID string) error {
 }
 
 func runRepoWebhookDelete(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	namespacePath, id, err := parseRepoWebhookIDArgs(cmd, args)
 	if err != nil {
 		return err
@@ -601,6 +629,10 @@ func runNamespaceWebhookDelete(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoWebhookDeliveryList(cmd *cobra.Command, args []string) error {
+	if err := validateListOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -748,6 +780,10 @@ func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
 }
 
 func runRepoWebhookDeliveryGet(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	namespacePath, id, err := parseRepoWebhookDeliveryIDArgs(cmd, args)
 	if err != nil {
 		return err
@@ -786,6 +822,10 @@ func runWebhookDeliveryGet(cmd *cobra.Command, namespacePath, rawID string) erro
 }
 
 func runRepoWebhookDeliveryRedeliver(cmd *cobra.Command, args []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
+
 	namespacePath, id, err := parseRepoWebhookDeliveryIDArgs(cmd, args)
 	if err != nil {
 		return err

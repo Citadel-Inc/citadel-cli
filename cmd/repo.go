@@ -321,6 +321,10 @@ func runRepoGet(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoDelete(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateMutationOutput(output, "delete"); err != nil {
+		return err
+	}
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -381,7 +385,8 @@ func init() {
 	RepoCmd.AddCommand(repoTopicCmd)
 	RepoCmd.AddCommand(repoInsightsCmd)
 
-	addOutputFlag(repoCreateCmd, repoListCmd, repoGetCmd, repoDeleteCmd)
+	addOutputFlag(repoListCmd, repoGetCmd)
+	addMutationOutputFlag(repoCreateCmd, repoDeleteCmd)
 	addPaginationFlags(repoListCmd)
 	addWatchFlag(repoListCmd)
 	addRepoFlag(repoGetCmd, repoDeleteCmd)

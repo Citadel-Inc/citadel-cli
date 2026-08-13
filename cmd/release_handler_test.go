@@ -135,6 +135,31 @@ func TestReleaseView_BadOutput_Hermetic(t *testing.T) {
 	}
 }
 
+func TestReleaseCreateEdit_OutputUsage(t *testing.T) {
+	const want = "Output format: json, yaml, or table (default human table)"
+	for _, name := range []string{"create", "edit"} {
+		t.Run(name, func(t *testing.T) {
+			var releaseCmdName string
+			for _, releaseCmd := range cmd.ReleaseCmd.Commands() {
+				if releaseCmd.Name() == name {
+					releaseCmdName = releaseCmd.Name()
+					flag := releaseCmd.Flags().Lookup("output")
+					if flag == nil {
+						t.Fatal("missing --output flag")
+					}
+					if flag.Usage != want {
+						t.Fatalf("--output usage = %q, want %q", flag.Usage, want)
+					}
+					break
+				}
+			}
+			if releaseCmdName == "" {
+				t.Fatalf("missing release %s command", name)
+			}
+		})
+	}
+}
+
 func TestReleaseCreate_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

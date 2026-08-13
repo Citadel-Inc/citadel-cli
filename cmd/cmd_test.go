@@ -132,7 +132,7 @@ func TestIssueSubcommands(t *testing.T) {
 
 func TestIssueListFlags(t *testing.T) {
 	c := findSubcmd(t, cmd.IssueCmd, "list")
-	for _, flag := range []string{"repo", "state", "label", "assignee", "limit", "cursor", "all", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "state", "label", "assignee", "limit", "cursor", "all", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel issue list: missing flag --%s", flag)
 		}
@@ -141,7 +141,7 @@ func TestIssueListFlags(t *testing.T) {
 
 func TestIssueViewFlags(t *testing.T) {
 	c := findSubcmd(t, cmd.IssueCmd, "view")
-	for _, flag := range []string{"repo", "web", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "web", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel issue view: missing flag --%s", flag)
 		}
@@ -150,9 +150,54 @@ func TestIssueViewFlags(t *testing.T) {
 
 func TestIssueCreateFlags(t *testing.T) {
 	c := findSubcmd(t, cmd.IssueCmd, "create")
-	for _, flag := range []string{"repo", "title", "body", "label", "milestone", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "title", "body", "label", "milestone", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel issue create: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestIssueCloseFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.IssueCmd, "close")
+	for _, flag := range []string{"repo", "no-cwd-repo", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel issue close: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestIssueReopenFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.IssueCmd, "reopen")
+	for _, flag := range []string{"repo", "no-cwd-repo", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel issue reopen: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestIssueEditFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.IssueCmd, "edit")
+	for _, flag := range []string{"repo", "no-cwd-repo", "title", "body", "state", "milestone", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel issue edit: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestIssueAssignFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.IssueCmd, "assign")
+	for _, flag := range []string{"repo", "no-cwd-repo", "set", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel issue assign: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestIssueCloseRefsFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.IssueCmd, "close-refs")
+	for _, flag := range []string{"repo", "no-cwd-repo", "output"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel issue close-refs: missing flag --%s", flag)
 		}
 	}
 }
@@ -169,7 +214,7 @@ func TestIssueMilestoneSubcommands(t *testing.T) {
 func TestIssueMilestoneListFlags(t *testing.T) {
 	milestone := findSubcmd(t, cmd.IssueCmd, "milestone")
 	c := findSubcmd(t, milestone, "list")
-	for _, flag := range []string{"repo", "state", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "state", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel issue milestone list: missing flag --%s", flag)
 		}
@@ -179,7 +224,7 @@ func TestIssueMilestoneListFlags(t *testing.T) {
 func TestIssueMilestoneViewFlags(t *testing.T) {
 	milestone := findSubcmd(t, cmd.IssueCmd, "milestone")
 	c := findSubcmd(t, milestone, "view")
-	for _, flag := range []string{"repo", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel issue milestone view: missing flag --%s", flag)
 		}
@@ -189,7 +234,7 @@ func TestIssueMilestoneViewFlags(t *testing.T) {
 func TestIssueMilestoneCreateFlags(t *testing.T) {
 	milestone := findSubcmd(t, cmd.IssueCmd, "milestone")
 	c := findSubcmd(t, milestone, "create")
-	for _, flag := range []string{"repo", "title", "description", "due-on", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "title", "description", "due-on", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel issue milestone create: missing flag --%s", flag)
 		}
@@ -199,7 +244,7 @@ func TestIssueMilestoneCreateFlags(t *testing.T) {
 func TestIssueMilestoneEditFlags(t *testing.T) {
 	milestone := findSubcmd(t, cmd.IssueCmd, "milestone")
 	c := findSubcmd(t, milestone, "edit")
-	for _, flag := range []string{"repo", "title", "description", "due-on", "state", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "title", "description", "due-on", "state", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel issue milestone edit: missing flag --%s", flag)
 		}
@@ -209,7 +254,7 @@ func TestIssueMilestoneEditFlags(t *testing.T) {
 func TestIssueMilestoneDeleteFlags(t *testing.T) {
 	milestone := findSubcmd(t, cmd.IssueCmd, "milestone")
 	c := findSubcmd(t, milestone, "delete")
-	for _, flag := range []string{"repo", "yes", "dry-run", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "yes", "dry-run", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel issue milestone delete: missing flag --%s", flag)
 		}
@@ -219,7 +264,7 @@ func TestIssueMilestoneDeleteFlags(t *testing.T) {
 func TestIssueCommentAddFlags(t *testing.T) {
 	commentCmd := findSubcmd(t, cmd.IssueCmd, "comment")
 	c := findSubcmd(t, commentCmd, "add")
-	for _, flag := range []string{"repo", "body", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "body", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel issue comment add: missing flag --%s", flag)
 		}
@@ -228,7 +273,7 @@ func TestIssueCommentAddFlags(t *testing.T) {
 
 func TestIssueLabelFlags(t *testing.T) {
 	c := findSubcmd(t, cmd.IssueCmd, "label")
-	for _, flag := range []string{"repo", "add", "remove", "output"} {
+	for _, flag := range []string{"repo", "no-cwd-repo", "add", "remove", "output"} {
 		if !hasFlag(c, flag) {
 			t.Errorf("citadel issue label: missing flag --%s", flag)
 		}

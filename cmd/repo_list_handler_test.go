@@ -13,6 +13,7 @@ func setRepoHermeticEnv(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 }
 
 func TestRepoCreate_BadOutput_Hermetic(t *testing.T) {
@@ -127,5 +128,23 @@ func TestRepoDelete_DryRunHermetic(t *testing.T) {
 	}
 	if got := out.String(); got != "Would DELETE /namespaces/myorg/myrepo (skipped; --dry-run)\n" {
 		t.Fatalf("dry-run output = %q, want %q", got, "Would DELETE /namespaces/myorg/myrepo (skipped; --dry-run)\n")
+	}
+}
+
+func TestRepoDelete_BadOutput_Hermetic(t *testing.T) {
+	setRepoHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "delete", "acme/repo", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for delete supports json or default human summary only; got "toml"` {
+		t.Fatalf("want delete output validation error, got %v", err)
+	}
+}
+
+func TestRepoDelete_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setRepoHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "delete", "--no-cwd-repo", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for delete supports json or default human summary only; got "toml"` {
+		t.Fatalf("want delete output validation error without repo, got %v", err)
 	}
 }

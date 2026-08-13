@@ -80,6 +80,25 @@ func TestRepoInsights_Happy(t *testing.T) {
 	}
 }
 
+func TestRepoInsights_OutputTableCase(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/insights": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, makeInsightsFull())
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "insights", "acme/demo", "--output", "TABLE").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := strings.TrimSpace(buf.String())
+	if !strings.Contains(out, "Stars") {
+		t.Fatalf("expected human output to contain Stars, got: %s", out)
+	}
+	if strings.HasPrefix(out, "{") {
+		t.Fatalf("expected human output, got JSON object: %s", out)
+	}
+}
+
 func TestRepoInsights_EmptyRepo(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -115,6 +134,29 @@ func TestRepoInsights_JSON(t *testing.T) {
 	}
 }
 
+func TestRepoInsights_YAML(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/insights": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, makeInsightsFull())
+		},
+	}))
+	for _, format := range []string{"yaml", "YAML"} {
+		t.Run(format, func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := rootForOut(cmd.RepoCmd, &buf, "insights", "acme/demo", "--output", format).Execute(); err != nil {
+				t.Fatal(err)
+			}
+			out := strings.TrimSpace(buf.String())
+			if strings.HasPrefix(out, "{") {
+				t.Fatalf("expected YAML output, got JSON object: %s", out)
+			}
+			if !strings.Contains(out, "star_count:") {
+				t.Fatalf("expected star_count YAML field, got: %s", out)
+			}
+		})
+	}
+}
+
 func TestRepoInsights_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/namespaces/acme/repos/missing/insights": func(w http.ResponseWriter, _ *http.Request) {
@@ -132,6 +174,18 @@ func TestRepoInsights_BadOutput_Hermetic(t *testing.T) {
 
 	err := rootFor(cmd.RepoCmd,
 		"insights", "acme/demo",
+		"--output", "xml",
+	).Execute()
+	if err == nil || err.Error() != `--output: unknown format "xml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoInsights_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setRepoInsightsHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd,
+		"insights", "--no-cwd-repo",
 		"--output", "xml",
 	).Execute()
 	if err == nil || err.Error() != `--output: unknown format "xml" (use json|yaml|table)` {

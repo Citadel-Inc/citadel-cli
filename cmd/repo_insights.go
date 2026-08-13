@@ -64,14 +64,20 @@ var repoInsightsCmd = &cobra.Command{
 	Short: "Show aggregate insights for a repository",
 	Long: `Display a summary of repository health metrics including topics, issue counts,
 languages, recent contributors, latest releases, commit activity, and license.`,
-	Example: `  citadel-cli repo insights acme/myrepo
-  citadel-cli repo insights acme/myrepo --output json`,
+	Example: `  citadel-cli repo insights acme/demo
+  citadel-cli repo insights acme/demo --output json
+  citadel-cli repo insights acme/demo --output yaml`,
 	RunE: runRepoInsights,
 }
 
 // ── handler ───────────────────────────────────────────────────────────────────
 
 func runRepoInsights(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+
 	posArg := ""
 	if len(args) > 0 {
 		posArg = args[0]
@@ -80,11 +86,6 @@ func runRepoInsights(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
-	if err := validateGetOutput(output); err != nil {
-		return err
-	}
-
 	client, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -104,12 +105,15 @@ func runRepoInsights(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" && output != "table" {
+	switch output {
+	case "json":
 		return emitJSON(cmd, resp)
+	case "yaml":
+		return emitYAML(cmd, resp)
+	default:
+		renderInsights(cmd, resp)
+		return nil
 	}
-
-	renderInsights(cmd, resp)
-	return nil
 }
 
 func renderInsights(cmd *cobra.Command, r insightsResponse) {

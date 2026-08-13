@@ -48,6 +48,33 @@ func TestRepoTopicList_BadOutput_Hermetic(t *testing.T) {
 	assertRepoTopicBadOutput(t, "list", "acme/demo")
 }
 
+func TestRepoTopicList_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd,
+		"topic", "list", "--no-cwd-repo",
+		"--output", "xml",
+	).Execute()
+	if err == nil || err.Error() != `--output: unknown format "xml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoTopicList_MissingRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd, "topic", "list", "--no-cwd-repo").Execute()
+	if err == nil || err.Error() != "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want repository path error, got %v", err)
+	}
+}
+
 func TestRepoTopicList_JSON(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -61,6 +88,41 @@ func TestRepoTopicList_JSON(t *testing.T) {
 	var out map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &out); err != nil {
 		t.Fatalf("not valid JSON: %v\nbody: %s", err, buf.String())
+	}
+}
+
+func TestRepoTopicList_YAML(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/topics": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"topics": []string{"go"}})
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "list", "acme/demo", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &out); err == nil {
+		t.Fatalf("expected YAML, got JSON: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "topics:") {
+		t.Fatalf("expected topics key in YAML, got: %s", buf.String())
+	}
+}
+
+func TestRepoTopicList_YAML_Padded(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/namespaces/acme/repos/demo/topics": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"topics": []string{"go"}})
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "list", "acme/demo", "--output", " yaml ").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := strings.TrimSpace(buf.String())
+	if strings.HasPrefix(out, "{") || !strings.Contains(out, "topics:") {
+		t.Fatalf("expected YAML topics output, got: %s", out)
 	}
 }
 
@@ -100,6 +162,33 @@ func TestRepoTopicSet_BadOutput_Hermetic(t *testing.T) {
 	assertRepoTopicBadOutput(t, "set", "acme/demo")
 }
 
+func TestRepoTopicSet_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd,
+		"topic", "set", "--no-cwd-repo",
+		"--output", "xml",
+	).Execute()
+	if err == nil || err.Error() != `--output: unknown format "xml" (use json|yaml|table)` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestRepoTopicSet_MissingRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	err := rootFor(cmd.RepoCmd, "topic", "set", "--no-cwd-repo").Execute()
+	if err == nil || err.Error() != "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git" {
+		t.Fatalf("want repository path error, got %v", err)
+	}
+}
+
 func TestRepoTopicSet_JSON(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -113,6 +202,25 @@ func TestRepoTopicSet_JSON(t *testing.T) {
 	var out map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &out); err != nil {
 		t.Fatalf("not valid JSON: %v\nbody: %s", err, buf.String())
+	}
+}
+
+func TestRepoTopicSet_YAML(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"PUT /api/namespaces/acme/repos/demo/topics": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"topics": []string{"go"}})
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "set", "acme/demo", "go", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &out); err == nil {
+		t.Fatalf("expected YAML, got JSON: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "topics:") {
+		t.Fatalf("expected topics key in YAML, got: %s", buf.String())
 	}
 }
 
@@ -155,6 +263,28 @@ func TestRepoTopicPopular_BadOutput_Hermetic(t *testing.T) {
 	assertRepoTopicBadOutput(t, "popular")
 }
 
+func TestRepoTopicPopular_InvalidLimit_Hermetic(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
+	for _, tt := range []struct {
+		name  string
+		limit string
+	}{
+		{name: "negative", limit: "-1"},
+		{name: "zero", limit: "0"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := rootFor(cmd.RepoCmd, "topic", "popular", "--limit", tt.limit).Execute()
+			if err == nil || err.Error() != "--limit must be at least 1" {
+				t.Fatalf("want limit validation error, got %v", err)
+			}
+		})
+	}
+}
+
 func TestRepoTopicPopular_JSON(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
@@ -176,14 +306,40 @@ func TestRepoTopicPopular_JSON(t *testing.T) {
 	}
 }
 
+func TestRepoTopicPopular_YAML(t *testing.T) {
+	var buf bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /api/topics/popular": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, []map[string]any{
+				{"topic": "go", "count": 42},
+			})
+		},
+	}))
+	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "popular", "--output", "yaml").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	out := strings.TrimSpace(buf.String())
+	var object map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &object); err == nil {
+		t.Fatalf("expected YAML sequence, got JSON object: %s", out)
+	}
+	if strings.Contains(out, "topics:") {
+		t.Fatalf("expected unwrapped YAML sequence, got: %s", out)
+	}
+	if !strings.HasPrefix(out, "- ") || !strings.Contains(out, "topic: go") {
+		t.Fatalf("expected YAML sequence, got: %s", out)
+	}
+}
+
 func assertRepoTopicBadOutput(t *testing.T, args ...string) {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_REPO", "")
 
 	err := rootFor(cmd.RepoCmd, append([]string{"topic"}, append(args, "--output", "toml")...)...).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }

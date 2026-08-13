@@ -223,6 +223,86 @@ func TestKgExtendedRequiredFlagsHermetic(t *testing.T) {
 	}
 }
 
+func TestKgCursorValidationHermetic(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "search",
+			args: []string{"search", "needle", "--cursor", "not-base64!!!"},
+		},
+		{
+			name: "symbols",
+			args: []string{"symbols", "--q", "needle", "--cursor", "not-base64!!!", "--no-cwd-repo"},
+		},
+		{
+			name: "files",
+			args: []string{"files", "--cursor", "not-base64!!!", "--no-cwd-repo"},
+		},
+		{
+			name: "fulltext",
+			args: []string{"fulltext", "--q", "needle", "--cursor", "not-base64!!!", "--no-cwd-repo"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setKgHermeticEnv(t)
+
+			var output strings.Builder
+			err := kgRootForOut(&output, tt.args...).Execute()
+			if err == nil {
+				t.Fatal("error = nil, want invalid cursor error")
+			}
+			if got, want := err.Error(), "invalid --cursor: invalid_cursor: desc"; got != want {
+				t.Fatalf("error = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestKgMissingRepoHermetic(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "symbols",
+			args: []string{"symbols", "--q", "needle", "--no-cwd-repo"},
+		},
+		{
+			name: "files",
+			args: []string{"files", "--no-cwd-repo"},
+		},
+		{
+			name: "fulltext",
+			args: []string{"fulltext", "--q", "needle", "--no-cwd-repo"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setKgHermeticEnv(t)
+
+			var output strings.Builder
+			err := kgRootForOut(&output, tt.args...).Execute()
+			if err == nil {
+				t.Fatal("error = nil, want missing repository error")
+			}
+			if got, want := err.Error(), "repository required: pass -R <namespace>/<slug>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git"; got != want {
+				t.Fatalf("error = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+func setKgHermeticEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+}
+
 func TestKgSearch_AllPagination(t *testing.T) {
 	runKgAllPaginationTest(t,
 		"/api/kg/search",

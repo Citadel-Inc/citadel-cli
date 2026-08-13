@@ -33,8 +33,9 @@ var repoTopicCmd = &cobra.Command{
 var repoTopicListCmd = &cobra.Command{
 	Use:   "list [<namespace>/<repo>]",
 	Short: "List the topics attached to a repository",
-	Example: `  citadel-cli repo topic list acme/myrepo
-  citadel-cli repo topic list acme/myrepo --output json`,
+	Example: `  citadel-cli repo topic list acme/demo
+  citadel-cli repo topic list acme/demo --output json
+  citadel-cli repo topic list acme/demo --output yaml`,
 	RunE: runRepoTopicList,
 }
 
@@ -45,13 +46,14 @@ var repoTopicSetCmd = &cobra.Command{
 The operation is a full replace — existing topics not in the new list are removed.
 Pass no topics to clear all topics from the repository.`,
 	Example: `  # Set topics
-  citadel-cli repo topic set acme/myrepo go cli devtools
+  citadel-cli repo topic set acme/demo go cli devtools
 
   # Clear all topics
-  citadel-cli repo topic set acme/myrepo
+  citadel-cli repo topic set acme/demo
 
-  # Output result as JSON
-  citadel-cli repo topic set acme/myrepo go cli --output json`,
+  # Machine-readable output
+  citadel-cli repo topic set acme/demo go cli --output json
+  citadel-cli repo topic set acme/demo go cli --output yaml`,
 	RunE: runRepoTopicSet,
 }
 
@@ -60,13 +62,19 @@ var repoTopicPopularCmd = &cobra.Command{
 	Short: "List the most popular topics across all repositories",
 	Example: `  citadel-cli repo topic popular
   citadel-cli repo topic popular --limit 20
-  citadel-cli repo topic popular --output json`,
+  citadel-cli repo topic popular --output json
+  citadel-cli repo topic popular --output yaml`,
 	RunE: runRepoTopicPopular,
 }
 
 // ── handlers ─────────────────────────────────────────────────────────────────
 
 func runRepoTopicList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
+		return err
+	}
+
 	posArg := ""
 	if len(args) > 0 {
 		posArg = args[0]
@@ -75,11 +83,6 @@ func runRepoTopicList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
-	if err := validateGetOutput(output); err != nil {
-		return err
-	}
-
 	client, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -99,8 +102,11 @@ func runRepoTopicList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" && output != "table" {
+	switch output {
+	case "json":
 		return emitJSON(cmd, resp)
+	case "yaml":
+		return emitYAML(cmd, resp)
 	}
 
 	if len(resp.Topics) == 0 {
@@ -114,12 +120,13 @@ func runRepoTopicList(cmd *cobra.Command, args []string) error {
 }
 
 func runRepoTopicSet(cmd *cobra.Command, args []string) error {
-	ns, slug, topics, err := resolveTopicSetArgs(cmd, args)
-	if err != nil {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
 		return err
 	}
-	output, _ := cmd.Flags().GetString("output")
-	if err := validateGetOutput(output); err != nil {
+
+	ns, slug, topics, err := resolveTopicSetArgs(cmd, args)
+	if err != nil {
 		return err
 	}
 
@@ -146,8 +153,11 @@ func runRepoTopicSet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" && output != "table" {
+	switch output {
+	case "json":
 		return emitJSON(cmd, resp)
+	case "yaml":
+		return emitYAML(cmd, resp)
 	}
 
 	if len(resp.Topics) == 0 {
@@ -180,11 +190,14 @@ func resolveTopicSetArgs(cmd *cobra.Command, args []string) (ns, slug string, to
 }
 
 func runRepoTopicPopular(cmd *cobra.Command, args []string) error {
-	output, _ := cmd.Flags().GetString("output")
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	limit, _ := cmd.Flags().GetInt("limit")
+	if cmd.Flags().Changed("limit") && limit < 1 {
+		return fmt.Errorf("--limit must be at least 1")
+	}
 
 	client, err := newAPIClient(cmd)
 	if err != nil {
@@ -209,9 +222,15 @@ func runRepoTopicPopular(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if output != "" && output != "table" {
-		_, err := cmd.OutOrStdout().Write(raw)
-		return err
+	switch output {
+	case "json":
+		return emitJSON(cmd, raw)
+	case "yaml":
+		var rows []popularTopic
+		if err := json.Unmarshal(raw, &rows); err != nil {
+			return fmt.Errorf("unexpected response from server: %w", err)
+		}
+		return emitYAML(cmd, rows)
 	}
 
 	var rows []popularTopic

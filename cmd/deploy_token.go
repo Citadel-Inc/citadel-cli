@@ -154,7 +154,31 @@ func parseExpiresFlag(cmd *cobra.Command) (*int64, error) {
 	return &sec, nil
 }
 
+func validateDeployTokenListFlags(cmd *cobra.Command) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	_, cursor, all, err := readPagination(cmd)
+	if err != nil {
+		return err
+	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	return nil
+}
+
 func runRepoDeployTokenList(cmd *cobra.Command, args []string) error {
+	if err := validateDeployTokenListFlags(cmd); err != nil {
+		return err
+	}
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -167,6 +191,9 @@ func runRepoDeployTokenList(cmd *cobra.Command, args []string) error {
 }
 
 func runNamespaceDeployTokenList(cmd *cobra.Command, args []string) error {
+	if err := validateDeployTokenListFlags(cmd); err != nil {
+		return err
+	}
 	return runDeployTokenList(cmd, args[0])
 }
 
@@ -295,6 +322,11 @@ func runDeployTokenList(cmd *cobra.Command, namespacePath string) error {
 }
 
 func runRepoDeployTokenCreate(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
+
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -307,15 +339,16 @@ func runRepoDeployTokenCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runNamespaceDeployTokenCreate(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
 	return runDeployTokenCreate(cmd, args[0])
 }
 
 func runDeployTokenCreate(cmd *cobra.Command, namespacePath string) error {
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "create"); err != nil {
-		return err
-	}
 	expiresIn, err := parseExpiresFlag(cmd)
 	if err != nil {
 		return err
@@ -354,6 +387,11 @@ func runDeployTokenCreate(cmd *cobra.Command, namespacePath string) error {
 }
 
 func runRepoDeployTokenRevoke(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "revoke"); err != nil {
+		return err
+	}
+
 	namespacePath, tokenID, err := parseRepoDeployTokenIDArgs(cmd, args)
 	if err != nil {
 		return err
@@ -362,6 +400,10 @@ func runRepoDeployTokenRevoke(cmd *cobra.Command, args []string) error {
 }
 
 func runNamespaceDeployTokenRevoke(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "revoke"); err != nil {
+		return err
+	}
 	return runDeployTokenRevoke(cmd, args[0], args[1])
 }
 
@@ -369,9 +411,6 @@ func runDeployTokenRevoke(cmd *cobra.Command, namespacePath, tokenID string) err
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	tokenID = strings.TrimSpace(tokenID)
 	output := outputFlag(cmd)
-	if err := validateMutationOutput(output, "revoke"); err != nil {
-		return err
-	}
 	path := deployTokenAPIPath(namespacePath) + "/" + url.PathEscape(tokenID)
 	if dryRunFlag(cmd) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE %s (skipped; --dry-run)\n", path)
@@ -463,8 +502,9 @@ func init() {
 	RepoCmd.AddCommand(repoDeployTokenCmd)
 	NamespaceCmd.AddCommand(namespaceDeployTokenCmd)
 
-	addOutputFlag(repoDeployTokenListCmd, repoDeployTokenCreateCmd, repoDeployTokenRevokeCmd,
-		namespaceDeployTokenListCmd, namespaceDeployTokenCreateCmd, namespaceDeployTokenRevokeCmd)
+	addOutputFlag(repoDeployTokenListCmd, namespaceDeployTokenListCmd)
+	addMutationOutputFlag(repoDeployTokenCreateCmd, repoDeployTokenRevokeCmd,
+		namespaceDeployTokenCreateCmd, namespaceDeployTokenRevokeCmd)
 	addPaginationFlags(repoDeployTokenListCmd, namespaceDeployTokenListCmd)
 	addWatchFlag(repoDeployTokenListCmd, namespaceDeployTokenListCmd)
 	addDryRunFlag(repoDeployTokenRevokeCmd, namespaceDeployTokenRevokeCmd)

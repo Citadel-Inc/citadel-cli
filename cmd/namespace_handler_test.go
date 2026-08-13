@@ -71,6 +71,30 @@ func TestNamespaceGet_TrimmedSlug_HTTP(t *testing.T) {
 	}
 }
 
+func TestNamespaceMembers_TrimmedSlug_HTTP(t *testing.T) {
+	setNamespaceHermeticEnv(t)
+
+	var method, path string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method = r.Method
+		path = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"members":[],"next_cursor":""}`)
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+	t.Setenv("CITADEL_SERVER", server.URL)
+
+	var output bytes.Buffer
+	err := rootForOut(cmd.NamespaceCmd, &output, "members", " myorg ").Execute()
+	if err != nil {
+		t.Fatalf("namespace members trimmed slug: %v", err)
+	}
+	if method != http.MethodGet || path != "/orgs/myorg/members" {
+		t.Fatalf("request = %s %s, want GET /orgs/myorg/members", method, path)
+	}
+}
+
 func TestNamespaceTransferListPending_BadOutput_Hermetic(t *testing.T) {
 	assertNamespaceBadOutput(t, "transfer", "list-pending")
 }
@@ -107,6 +131,24 @@ func TestNamespaceRename_BadOutput_Hermetic(t *testing.T) {
 
 	err := rootFor(cmd.NamespaceCmd, "rename", "acme", "--new-slug", "new-acme", "--output", "toml").Execute()
 	if err == nil || err.Error() != `--output for rename supports json or default human summary only; got "toml"` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestNamespaceDelete_BadOutput_Hermetic(t *testing.T) {
+	setNamespaceHermeticEnv(t)
+
+	err := rootFor(cmd.NamespaceCmd, "delete", "acme", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for delete supports json or default human summary only; got "toml"` {
+		t.Fatalf("want output validation error, got %v", err)
+	}
+}
+
+func TestNamespaceDelete_DryRun_BadOutput_Hermetic(t *testing.T) {
+	setNamespaceHermeticEnv(t)
+
+	err := rootFor(cmd.NamespaceCmd, "delete", "acme", "--dry-run", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for delete supports json or default human summary only; got "toml"` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -209,7 +251,7 @@ func assertNamespaceBadOutput(t *testing.T, args ...string) {
 	setNamespaceHermeticEnv(t)
 
 	err := rootFor(cmd.NamespaceCmd, append(args, "--output", "toml")...).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
@@ -258,6 +300,7 @@ func setNamespaceHermeticEnv(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
 }
 
 func executeNamespaceHTTPCommand(t *testing.T, response string, args ...string) (string, error) {
