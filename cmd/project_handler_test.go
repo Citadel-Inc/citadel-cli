@@ -145,6 +145,28 @@ func TestProjectEdgeRestore_InvalidEdgeIDHermetic(t *testing.T) {
 	}
 }
 
+func TestProjectEdgeRestore_BadOutputHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(
+		cmd.ProjectCmd,
+		"edge", "restore", "ns", "00000000-0000-0000-0000-000000000001",
+		"--output", "toml",
+	).Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf(`error = %v, want --output: unknown format "toml" (use json|yaml|table)`, err)
+	}
+}
+
+func TestProjectReindex_BadOutputHermetic(t *testing.T) {
+	setHermeticProjectEnv(t)
+
+	err := rootFor(cmd.ProjectCmd, "reindex", "ns", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf(`error = %v, want --output: unknown format "toml" (use json|yaml|table)`, err)
+	}
+}
+
 func setHermeticProjectEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())

@@ -552,6 +552,8 @@ func init() {
 		projectEdgeAddCmd, projectEdgeRestoreCmd,
 	)
 	addYesFlag(projectEdgeDeleteCmd, projectEdgeRestoreCmd, projectReindexCmd, projectAdminRecoveryScanCmd)
+	addOutputFlag(projectReindexCmd)
+	addJSONFlag(projectReindexCmd)
 	addOutputFlag(projectAdminRecoveryScanCmd)
 	addJSONFlag(projectAdminRecoveryScanCmd)
 
