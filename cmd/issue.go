@@ -563,16 +563,16 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 }
 
 func runIssueView(cmd *cobra.Command, args []string) error {
-	nsPath, err := resolveIssueNamespacePath(cmd)
-	if err != nil {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateGetOutput(output); err != nil {
 		return err
 	}
 	num, err := parseIssueNumber(args[0])
 	if err != nil {
 		return err
 	}
-	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
-	if err := validateGetOutput(output); err != nil {
+	nsPath, err := resolveIssueNamespacePath(cmd)
+	if err != nil {
 		return err
 	}
 	c, err := newAPIClient(cmd)
