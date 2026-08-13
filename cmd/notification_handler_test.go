@@ -195,8 +195,12 @@ func TestNotificationRead_Happy(t *testing.T) {
 			writeJSON(t, w, 200, map[string]any{"ok": true})
 		},
 	}))
-	if err := rootFor(cmd.NotificationCmd, "read", "notif-1").Execute(); err != nil {
+	var stdout strings.Builder
+	if err := rootForOut(cmd.NotificationCmd, &stdout, "read", "notif-1").Execute(); err != nil {
 		t.Fatal(err)
+	}
+	if stdout.String() != "Notification notif-1 marked as read.\n" {
+		t.Fatalf("notification read output = %q", stdout.String())
 	}
 }
 
@@ -372,17 +376,28 @@ func TestNotificationPrefsSet_KindOverrides(t *testing.T) {
 }
 
 func TestNotificationPrefsSet_NoFlags(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	setNotificationHermeticEnv(t)
+
 	err := rootFor(cmd.NotificationCmd, "prefs", "set").Execute()
-	if err == nil || !strings.Contains(err.Error(), "at least one") {
-		t.Fatalf("want at-least-one error, got %v", err)
+	if err == nil || err.Error() != "at least one of --email-digest, --enable, or --disable is required" {
+		t.Fatalf("want exact at-least-one error, got %v", err)
 	}
 }
 
 func TestNotificationPrefsSet_InvalidCadence(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
+	setNotificationHermeticEnv(t)
+
 	err := rootFor(cmd.NotificationCmd, "prefs", "set", "--email-digest", "monthly").Execute()
-	if err == nil || !strings.Contains(err.Error(), "--email-digest") {
-		t.Fatalf("want cadence error, got %v", err)
+	if err == nil || err.Error() != `--email-digest must be never, daily, or weekly; got "monthly"` {
+		t.Fatalf("want exact cadence error, got %v", err)
+	}
+}
+
+func TestNotificationPrefsSet_BadOutput_Hermetic(t *testing.T) {
+	setNotificationHermeticEnv(t)
+
+	err := rootFor(cmd.NotificationCmd, "prefs", "set", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|table)` {
+		t.Fatalf("want exact output validation error, got %v", err)
 	}
 }

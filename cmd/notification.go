@@ -347,6 +347,9 @@ func runNotificationPrefsGet(cmd *cobra.Command, _ []string) error {
 // ── prefs set ─────────────────────────────────────────────────────────────────
 
 func runNotificationPrefsSet(cmd *cobra.Command, _ []string) error {
+	if err := validateGetOutput(outputFlag(cmd)); err != nil {
+		return err
+	}
 	cadence, _ := cmd.Flags().GetString("email-digest")
 	enableKinds, _ := cmd.Flags().GetStringSlice("enable")
 	disableKinds, _ := cmd.Flags().GetStringSlice("disable")
