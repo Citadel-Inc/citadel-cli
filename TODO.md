@@ -6,6 +6,21 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ---
 
+## Shipped 130248ZAUG26 (fenced wave 31)
+
+| # | Item | Notes |
+| --- | --- | --- |
+| 131 | Issue create/comment/label/close-refs output-before-path | Output validators before `resolveIssueNamespacePath`; BadOutput_NoRepo + MissingRepo |
+| 133 | Issue create/close-refs exact BadOutput | Full-string + four-clear; topics helper still open |
+| 135 | Project empty-path hermetics | status rollup/drilldown, edge add/delete/restore |
+| 145 | Label mutate MissingRepo hermetics | create/edit/delete `--no-cwd-repo` |
+| 151 | Namespace deploy-token BadOutput hermetics | Wrapper guards + exact list/create/revoke |
+| 153 | Namespace delete dry-run + bad `--output` | Exact mutation error; no Would DELETE |
+| 154 | `setNamespaceHermeticEnv` `CITADEL_REPO` | Four-clear parity |
+| — | Should-fix closeout | `issue view` output-before-path; exact view/comment-edit BadOutput; four-clear assign/close/reopen |
+
+---
+
 ## Shipped 130225ZAUG26 (fenced wave 30)
 
 | # | Item | Notes |
@@ -48,16 +63,12 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 | # | Item | Notes |
 | --- | --- | --- |
-| 131 | Issue create/comment/label/close-refs output-before-path | `validateMutationOutput` / `validateGetOutput` before `resolveIssueNamespacePath`; BadOutput_NoRepo + MissingRepo hermetics |
-| 133 | Exact older BadOutput hermetics | `TestIssueCreate_BadOutput_Hermetic`, `TestIssueCloseRefs_BadOutput_Hermetic`, `assertRepoTopicBadOutput` |
+| 133 | Exact `assertRepoTopicBadOutput` | Still `strings.Contains`; list/set/popular hermetics |
 | 134 | Mutation `--output` flag help | `addOutputFlag` lists json/yaml/ndjson/csv/table on verbs that only allow json/default |
-| 135 | Project empty-path hermetics for remaining verbs | status rollup/drilldown, edge add/delete/restore |
 | 143 | Notification residual Contains | `TestNotificationList_NoAuth` and remaining Contains asserts |
 | 144 | Deduplicate project edge guard tests | `handler_test.go` withServer+Contains vs `project_handler_test.go` hermetics |
-| 145 | Label mutate MissingRepo hermetics | create/edit/delete `--no-cwd-repo` siblings of list |
-| 151 | Namespace deploy-token BadOutput hermetics | list/create/revoke positional-ns; exact strings |
-| 153 | Namespace delete dry-run + bad `--output` | `--dry-run --output toml` must fail output before Would DELETE |
-| 154 | `setNamespaceHermeticEnv` `CITADEL_REPO` | Four-clear parity; ns delete never reads repo |
+| 155 | Deduplicate ns deploy-token list guards | `runNamespaceDeployTokenList` repeats `runDeployTokenList` validation |
+| 156 | Exact `assertNamespaceBadOutput` | Helper still `strings.Contains`; new delete dry-run test is exact |
 
 ---
 
