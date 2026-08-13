@@ -251,7 +251,7 @@ func assertNamespaceBadOutput(t *testing.T, args ...string) {
 	setNamespaceHermeticEnv(t)
 
 	err := rootFor(cmd.NamespaceCmd, append(args, "--output", "toml")...).Execute()
-	if err == nil || !strings.Contains(err.Error(), "--output: unknown format") {
+	if err == nil || err.Error() != `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)` {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
