@@ -200,6 +200,15 @@ func TestNotificationRead_Happy(t *testing.T) {
 	}
 }
 
+func TestNotificationRead_EmptyID_Hermetic(t *testing.T) {
+	setNotificationHermeticEnv(t)
+
+	err := rootFor(cmd.NotificationCmd, "read", " \t").Execute()
+	if err == nil || err.Error() != "notification id required" {
+		t.Fatalf("want exact empty-id validation error, got %v", err)
+	}
+}
+
 func TestNotificationRead_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST /api/me/notifications/missing-id/read": func(w http.ResponseWriter, _ *http.Request) {

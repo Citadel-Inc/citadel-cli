@@ -258,11 +258,14 @@ func runNotificationList(cmd *cobra.Command, _ []string) error {
 // ── read ──────────────────────────────────────────────────────────────────────
 
 func runNotificationRead(cmd *cobra.Command, args []string) error {
+	id := strings.TrimSpace(args[0])
+	if id == "" {
+		return fmt.Errorf("notification id required")
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
-	id := strings.TrimSpace(args[0])
 	var resp struct {
 		OK bool `json:"ok"`
 	}
