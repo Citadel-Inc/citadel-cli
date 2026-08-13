@@ -185,6 +185,23 @@ func runRepoDeployTokenList(cmd *cobra.Command, args []string) error {
 }
 
 func runNamespaceDeployTokenList(cmd *cobra.Command, args []string) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	_, cursor, all, err := readPagination(cmd)
+	if err != nil {
+		return err
+	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
 	return runDeployTokenList(cmd, args[0])
 }
 
@@ -330,6 +347,10 @@ func runRepoDeployTokenCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runNamespaceDeployTokenCreate(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "create"); err != nil {
+		return err
+	}
 	return runDeployTokenCreate(cmd, args[0])
 }
 
@@ -390,6 +411,10 @@ func runRepoDeployTokenRevoke(cmd *cobra.Command, args []string) error {
 }
 
 func runNamespaceDeployTokenRevoke(cmd *cobra.Command, args []string) error {
+	output := outputFlag(cmd)
+	if err := validateMutationOutput(output, "revoke"); err != nil {
+		return err
+	}
 	return runDeployTokenRevoke(cmd, args[0], args[1])
 }
 
