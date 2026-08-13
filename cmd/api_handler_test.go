@@ -50,16 +50,26 @@ func TestAPI_DeleteHappy(t *testing.T) {
 }
 
 func TestAPI_InvalidField(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
 	err := rootFor(cmd.APICmd, "-X", "POST", "/foo", "-f", "noequalssign").Execute()
-	if err == nil || !strings.Contains(err.Error(), "key=value") {
-		t.Fatalf("want key=value error, got %v", err)
+	if err == nil || err.Error() != `invalid field "noequalssign": must be key=value` {
+		t.Fatalf(`want invalid field error, got %v`, err)
 	}
 }
 
 func TestAPI_UnsupportedMethod(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
 	err := rootFor(cmd.APICmd, "-X", "HEAD", "/foo").Execute()
-	if err == nil || !strings.Contains(err.Error(), "unsupported method") {
-		t.Fatalf("want unsupported-method error, got %v", err)
+	if err == nil || err.Error() != `unsupported method "HEAD"; use GET, POST, PUT, PATCH, or DELETE` {
+		t.Fatalf(`want unsupported-method error, got %v`, err)
 	}
 }
 
@@ -199,22 +209,37 @@ func TestAPI_InvalidJSONInput(t *testing.T) {
 }
 
 func TestAPI_InputAndFieldsConflict(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
 	err := rootFor(cmd.APICmd, "-X", "POST", "/foo", "--input", "-", "-f", "name=value").Execute()
-	if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
-		t.Fatalf("want input/field conflict error, got %v", err)
+	if err == nil || err.Error() != `--input and --field are mutually exclusive` {
+		t.Fatalf(`want input/field conflict error, got %v`, err)
 	}
 }
 
 func TestAPI_InputRejectsGet(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
 	err := rootFor(cmd.APICmd, "--input", "-", "/foo").Execute()
-	if err == nil || !strings.Contains(err.Error(), "only supported with POST, PUT, or PATCH") {
-		t.Fatalf("want GET input error, got %v", err)
+	if err == nil || err.Error() != `--input is only supported with POST, PUT, or PATCH` {
+		t.Fatalf(`want GET input error, got %v`, err)
 	}
 }
 
 func TestAPI_InputRejectsDelete(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	t.Setenv("CITADEL_SERVER", "")
+	t.Setenv("CITADEL_REPO", "")
+
 	err := rootFor(cmd.APICmd, "-X", "DELETE", "/foo", "--input", "-").Execute()
-	if err == nil || !strings.Contains(err.Error(), "only supported with POST, PUT, or PATCH") {
-		t.Fatalf("want DELETE input error, got %v", err)
+	if err == nil || err.Error() != `--input is only supported with POST, PUT, or PATCH` {
+		t.Fatalf(`want DELETE input error, got %v`, err)
 	}
 }
