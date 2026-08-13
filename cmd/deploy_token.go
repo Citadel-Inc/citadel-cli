@@ -154,7 +154,31 @@ func parseExpiresFlag(cmd *cobra.Command) (*int64, error) {
 	return &sec, nil
 }
 
+func validateDeployTokenListFlags(cmd *cobra.Command) error {
+	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if err := validateListOutput(output); err != nil {
+		return err
+	}
+	_, cursor, all, err := readPagination(cmd)
+	if err != nil {
+		return err
+	}
+	if all && output == "json" {
+		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
+	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
+	if err := validateDescCursor(cursor); err != nil {
+		return fmt.Errorf("invalid --cursor: %w", err)
+	}
+	return nil
+}
+
 func runRepoDeployTokenList(cmd *cobra.Command, args []string) error {
+	if err := validateDeployTokenListFlags(cmd); err != nil {
+		return err
+	}
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -167,6 +191,9 @@ func runRepoDeployTokenList(cmd *cobra.Command, args []string) error {
 }
 
 func runNamespaceDeployTokenList(cmd *cobra.Command, args []string) error {
+	if err := validateDeployTokenListFlags(cmd); err != nil {
+		return err
+	}
 	return runDeployTokenList(cmd, args[0])
 }
 
