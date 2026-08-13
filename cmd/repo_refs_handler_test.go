@@ -134,6 +134,10 @@ func TestRepoTagList_BadOutput_Hermetic(t *testing.T) {
 	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, true, "tag", "list", "acme/demo")
 }
 
+func TestRepoTagList_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, true, "tag", "list")
+}
+
 func TestRepoTagList_MissingRepo_Hermetic(t *testing.T) {
 	assertRepoRefListMissingRepo(t, "tag", "list")
 }
