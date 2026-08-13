@@ -129,3 +129,21 @@ func TestRepoDelete_DryRunHermetic(t *testing.T) {
 		t.Fatalf("dry-run output = %q, want %q", got, "Would DELETE /namespaces/myorg/myrepo (skipped; --dry-run)\n")
 	}
 }
+
+func TestRepoDelete_BadOutput_Hermetic(t *testing.T) {
+	setRepoHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "delete", "acme/repo", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for delete supports json or default human summary only; got "toml"` {
+		t.Fatalf("want delete output validation error, got %v", err)
+	}
+}
+
+func TestRepoDelete_BadOutput_NoRepo_Hermetic(t *testing.T) {
+	setRepoHermeticEnv(t)
+
+	err := rootFor(cmd.RepoCmd, "delete", "--output", "toml").Execute()
+	if err == nil || err.Error() != `--output for delete supports json or default human summary only; got "toml"` {
+		t.Fatalf("want delete output validation error without repo, got %v", err)
+	}
+}
