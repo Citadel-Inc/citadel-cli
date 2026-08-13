@@ -135,7 +135,7 @@ func TestRepoTagList_BadOutput_Hermetic(t *testing.T) {
 }
 
 func TestRepoTagList_BadOutput_NoRepo_Hermetic(t *testing.T) {
-	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, true, "tag", "list")
+	assertRepoRefBadOutput(t, `--output: unknown format "toml" (use json|yaml|ndjson|csv|table)`, true, "tag", "list", "--no-cwd-repo")
 }
 
 func TestRepoTagList_MissingRepo_Hermetic(t *testing.T) {
