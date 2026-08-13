@@ -15,7 +15,6 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 | | |
 | --- | --- |
 | **Packages / files** | `cmd/audit.go`, `cmd/watch.go`, `internal/sseclient`, `docs/cli.md` / `HUMANS.md` (audit) |
-| **Carry-from** | `specs/done/cli-audit/tasks.md` C4; `specs/done/cli-audit/spec.md` A6 |
 | **Blocked** | Daemon `auditapi` has **no** `listwatch` / `Accept: text/event-stream` path (verified against Citadel-Inc/citadel). Do not wire CLI until server ships SSE. |
 | **Acceptance** | `audit list --watch` (and ndjson mode) streams events until interrupt; missing server SSE fails with a clear error, not a hang |
 

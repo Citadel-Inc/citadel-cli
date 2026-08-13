@@ -1,6 +1,6 @@
 # Parked specifications
 
-Specs in **`specs/parked/`** are **intentionally not pursued**. They are neither in-flight (`specs/active/`) nor delivered (`specs/done/`).
+Specs in **`specs/parked/`** are **intentionally not pursued**. They are neither in-flight (`specs/active/`) nor delivered.
 
 Use **parked** when:
 
@@ -23,7 +23,7 @@ We are **not** investing in:
 ## Index
 
 | Slug | Parked | Reason (short) |
-|------|--------|----------------|
+| ------ | -------- | ---------------- |
 | [cli-mcp-stdio](cli-mcp-stdio/spec.md) | 050505ZMAY26 | Superseded — HTTPS MCP only; no stdio server in CLI. |
 | [cli-mcp-stream](cli-mcp-stream/spec.md) | 050505ZMAY26 | Superseded — no parallel SSE streaming client track; canonical MCP stays HTTPS. |
 | [cli-account-avatar](cli-account-avatar/spec.md) | 072200ZMAY26 | Not a dev-loop workflow; no GitHub CLI analogue. Avatar management is a browser/UI concern. |

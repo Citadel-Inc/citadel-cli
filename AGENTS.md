@@ -40,7 +40,6 @@ Generic commit / Git-MCP rules: **`~/.claude/CLAUDE.md`**. Project-specific:
 
 - **Creating a new spec** — no `spec_create` tool. Scaffold `spec.md`, `tasks.md`, `plan.md` manually, then call `spec_claim` to stamp state and commit.
 - **Body prose edits** — acceptance criteria, plan narrative, Q-table rationale.
-- **Bulk hygiene in `specs/done/`** — run `sdd_doctor` first, make targeted edits, verify with `spec_lint --include_done`.
 - **Parking a spec** — `citadel-sdd` has no `spec_park` tool yet. To retire an idea without shipping it, move the tree to `specs/parked/<slug>/`, stamp **PARKED** + resolution in `spec.md`, and record the rationale in `specs/parked/README.md` (or the spec’s Resolution section). Prefer a conventional commit that names the superseding decision.
 
 ## Test conventions
