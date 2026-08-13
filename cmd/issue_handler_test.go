@@ -310,7 +310,7 @@ func TestIssueEdit_BadOutput_NoRepo_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
 
-	err := rootFor(cmd.IssueCmd, "edit", "--no-cwd-repo", "7", "--output", "toml", "--title", "x").Execute()
+	err := rootFor(cmd.IssueCmd, "edit", "7", "--output", "toml", "--title", "x").Execute()
 	const want = `--output for edit supports json or default human summary only; got "toml"`
 	if err == nil || err.Error() != want {
 		t.Fatalf("want exact output validation error %q, got %v", want, err)
@@ -387,7 +387,7 @@ func TestIssueAssign_BadOutput_NoRepo_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
 
-	err := rootFor(cmd.IssueCmd, "assign", "--no-cwd-repo", "7", "--output", "toml").Execute()
+	err := rootFor(cmd.IssueCmd, "assign", "7", "--output", "toml").Execute()
 	const want = `--output for assign supports json or default human summary only; got "toml"`
 	if err == nil || err.Error() != want {
 		t.Fatalf("want exact output validation error %q, got %v", want, err)
@@ -528,7 +528,7 @@ func TestIssueClose_BadOutput_NoRepo_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
 
-	err := rootFor(cmd.IssueCmd, "close", "--no-cwd-repo", "7", "--output", "toml").Execute()
+	err := rootFor(cmd.IssueCmd, "close", "7", "--output", "toml").Execute()
 	const want = `--output for close supports json or default human summary only; got "toml"`
 	if err == nil || err.Error() != want {
 		t.Fatalf("want exact output validation error %q, got %v", want, err)
@@ -594,7 +594,7 @@ func TestIssueReopen_BadOutput_NoRepo_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
 
-	err := rootFor(cmd.IssueCmd, "reopen", "--no-cwd-repo", "7", "--output", "toml").Execute()
+	err := rootFor(cmd.IssueCmd, "reopen", "7", "--output", "toml").Execute()
 	const want = `--output for reopen supports json or default human summary only; got "toml"`
 	if err == nil || err.Error() != want {
 		t.Fatalf("want exact output validation error %q, got %v", want, err)
