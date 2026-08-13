@@ -301,6 +301,13 @@ func runProjectEdgeRestore(cmd *cobra.Command, args []string) error {
 	if _, err := uuid.Parse(edgeID); err != nil {
 		return fmt.Errorf("edge-id must be a UUID")
 	}
+	outMode := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if jsonFlag(cmd) {
+		outMode = "json"
+	}
+	if err := validateGetOutput(outMode); err != nil {
+		return err
+	}
 	if err := confirmSlug(yesFlag(cmd), "restore graph edge", edgeID); err != nil {
 		return err
 	}
@@ -328,6 +335,13 @@ var projectReindexCmd = &cobra.Command{
 func runProjectReindex(cmd *cobra.Command, args []string) error {
 	slug, err := requireProjectPath(args[0])
 	if err != nil {
+		return err
+	}
+	outMode := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
+	if jsonFlag(cmd) {
+		outMode = "json"
+	}
+	if err := validateGetOutput(outMode); err != nil {
 		return err
 	}
 	if err := confirmSlug(yesFlag(cmd), "reindex project graph", slug); err != nil {
