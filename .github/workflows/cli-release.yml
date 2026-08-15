@@ -17,6 +17,9 @@ jobs:
 
       - name: Set up Go
         uses: Rethunk-Tech/gh-actions/setup-go@ea87a602a5214e1fb513feb22a035b7e0f3b9245 # v1.5
+        with:
+          run-lint: "true"
+          lint-version: v2.12.1
 
       - name: Download dependencies
         run: go mod download
@@ -26,11 +29,6 @@ jobs:
 
       - name: Test (race)
         run: go test -race ./...
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
-        with:
-          version: v2.12.1
 
       - name: Build CLI (cross-compile)
         run: make build-all VERSION=${{ github.ref_name }}

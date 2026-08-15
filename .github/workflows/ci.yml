@@ -18,6 +18,9 @@ jobs:
 
       - name: Set up Go
         uses: Rethunk-Tech/gh-actions/setup-go@ea87a602a5214e1fb513feb22a035b7e0f3b9245 # v1.5
+        with:
+          run-govulncheck: "true"
+          govulncheck-version: v1.7.0
 
       - name: Download dependencies
         run: go mod download
@@ -30,9 +33,6 @@ jobs:
 
       - name: Per-package coverage (min 75%)
         run: bash scripts/check-package-coverage.sh
-
-      - name: Vulnerability scan
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
   lint:
     name: golangci-lint
     runs-on: ubuntu-latest
@@ -41,8 +41,6 @@ jobs:
 
       - name: Set up Go
         uses: Rethunk-Tech/gh-actions/setup-go@ea87a602a5214e1fb513feb22a035b7e0f3b9245 # v1.5
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
-          version: v2.12.1
+          run-lint: "true"
+          lint-version: v2.12.1
