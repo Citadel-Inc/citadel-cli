@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/BurntSushi/toml"
+	"github.com/pelletier/go-toml/v2"
 	"golang.org/x/sys/unix"
 )
 
@@ -67,7 +67,11 @@ func Load() (Config, error) {
 	case statErr != nil:
 		return Config{}, statErr
 	default:
-		if _, err := toml.DecodeFile(path, &cfg); err != nil {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return Config{}, err
+		}
+		if err := toml.Unmarshal(data, &cfg); err != nil {
 			return Config{}, err
 		}
 	}
