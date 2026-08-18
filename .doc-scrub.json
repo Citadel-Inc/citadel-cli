@@ -1,6 +1,5 @@
 {
   "skip_paths": [
-    "specs/parked/**",
-    "CLAUDE.md"
+    "specs/parked/**"
   ]
 }

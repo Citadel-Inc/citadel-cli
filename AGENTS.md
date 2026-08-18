@@ -1,6 +1,6 @@
 # citadel-cli — agent primer
 
-If you are an LLM working in this repository, read this file first. `CLAUDE.md` is a symlink to it — **always edit `AGENTS.md`, never `CLAUDE.md`** (a Write to the symlink path replaces the link with a regular file and silently breaks the alias).
+If you are an LLM working in this repository, read this file first. `CLAUDE.md` contains `@AGENTS.md` — **always edit `AGENTS.md`, never `CLAUDE.md`**.
 
 For human maintainer onboarding see [HUMANS.md](HUMANS.md). For commit conventions, branch policy, and contributor checklist see [CONTRIBUTING.md](CONTRIBUTING.md).
 
