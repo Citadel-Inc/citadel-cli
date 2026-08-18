@@ -1,6 +1,6 @@
 # citadel-cli — maintainer primer
 
-If you are an engineer onboarding to `citadel-cli`, read this file first. For LLM / agent context see [AGENTS.md](AGENTS.md) (`CLAUDE.md` is a symlink). For commits, branches, and pre-push verification see [CONTRIBUTING.md](CONTRIBUTING.md).
+If you are an engineer onboarding to `citadel-cli`, read this file first. For LLM / agent context see [AGENTS.md](AGENTS.md) (`CLAUDE.md` contains `@AGENTS.md`). For commits, branches, and pre-push verification see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## What it is
 

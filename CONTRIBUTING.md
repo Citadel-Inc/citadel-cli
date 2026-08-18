@@ -1,6 +1,6 @@
 # Contributing to citadel-cli
 
-This guide is for **human** contributors. If you are an LLM or automation working in the repo, read [AGENTS.md](AGENTS.md) (`CLAUDE.md` is a symlink) first — it carries agent-specific workflow (MCP-first Git, spec MCP tools, and the same conventions below in agent-shaped form).
+This guide is for **human** contributors. If you are an LLM or automation working in the repo, read [AGENTS.md](AGENTS.md) (`CLAUDE.md` contains `@AGENTS.md`) first — it carries agent-specific workflow (MCP-first Git, spec MCP tools, and the same conventions below in agent-shaped form).
 
 ## Commit conventions
 
