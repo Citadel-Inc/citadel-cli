@@ -787,7 +787,7 @@ Below, treat **`<tool>`** as a name from that list. Argument shapes mirror the P
 
 | Intent | Pattern |
 | -------- | --------- |
-| Resolve namespace / org | `citadel-cli mcp call <tool> --arg path=<slug>` — typical discovery tool (historically `get_namespace`; confirm via `mcp tools`). |
+| Resolve namespace / org | `citadel-cli mcp call <tool> --arg path=<slug>` — typical discovery tool is `get_namespace` (confirm via `mcp tools`). |
 | Knowledge graph | Tools such as **`kg_find_symbol`**, **`kg_list_files`**, **`kg_walk`** (examples; verify list). Pass repo/namespace args your server’s schema expects, often `--arg namespace_path=…` or `--arg-string` for opaque IDs. |
 | Project-as-graph | Project tools accept **`project_path`** or **`namespace_path`**-style args per server registration — use `--json` when responses are large. |
 | Issues | When issue MCP tools are enabled, use **`issue_*`** names from `mcp tools` (for example `issue_list`, `issue_get`, `issue_comment`) until first-class CLI issue verbs land; tracked under active spec **`cli-issues`**. |

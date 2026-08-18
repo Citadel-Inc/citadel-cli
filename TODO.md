@@ -10,7 +10,7 @@ Do **not** restore `account passkey` / `account device` — removed deliberately
 
 ### 3. Audit event tail / `--watch`
 
-**Feature.** `cli-audit` deferred `--follow` until SSE; `cli-watch` now owns SSE for many list verbs, but `audit list` has no watch flag.
+**Feature.** `cli-watch` owns SSE for many list verbs, but `audit list` has no `--watch` flag yet.
 
 | | |
 | --- | --- |

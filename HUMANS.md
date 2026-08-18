@@ -30,7 +30,7 @@ citadel-cli repo insights org/repo
 
 ### Local development
 
-Prerequisites: Go 1.25.10+, `golangci-lint` (for `make verify`).
+Prerequisites: Go 1.26.6+, `golangci-lint` (for `make verify`).
 
 ```sh
 go build -o ./citadel-cli .          # local build
@@ -107,7 +107,15 @@ Full reference: [docs/cli.md](docs/cli.md).
 
 ### List pagination
 
-Cursor-backed list verbs (`repo list`, `repo deploy-token list`, `repo webhook list`, `repo commit list`, `namespace deploy-token list`, `namespace webhook list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`, `notification list`, `audit list`) accept **`--limit`** (default 50, maximum 200), **`--cursor`** (opaque token from the prior response’s `next_cursor` field), and **`--all`** (walk pages serially until exhausted). In human/table mode, when more rows exist the CLI prints a trailing hint: `(use --cursor … for more, or --all to fetch everything)`.
+Cursor-backed list verbs (`repo list`, `repo deploy-token list`, `repo webhook list`, `repo commit list`, `namespace deploy-token list`, `namespace webhook list`, `agent list`, `token list`, `oauth clients list`, `namespace list`, `namespace members`, `namespace transfer list-pending`, `notification list`, `audit list`) accept:
+
+| Flag | Behaviour |
+| --- | --- |
+| **`--limit`** | Page size (default 50, maximum 200) |
+| **`--cursor`** | Opaque token from the prior response `next_cursor` field |
+| **`--all`** | Walk pages serially until exhausted |
+
+In human/table mode, when more rows exist the CLI prints: `(use --cursor … for more, or --all to fetch everything)`.
 
 Offset-paginated lists (`gist list` and `audit sessions list`) use **`--limit`/`--offset`** (not **`--cursor`**); negative values are rejected, and a value of `0` omits the parameter or uses the server default.
 
@@ -119,7 +127,22 @@ Malformed **`--cursor`** values (before any HTTP call) produce a clear `invalid 
 
 ### Shell completion
 
-Install scripts with `citadel-cli completion bash|zsh|fish|powershell` (see `citadel-cli completion --help`). Dynamic tab completion for resource arguments — repo slugs (scoped via `-R`, `CITADEL_REPO`, or CWD inference), org namespace slugs on `namespace get|members|delete|transfer initiate`, agent names on `agent get|delete|rotate-token|create`, OAuth client resource UUIDs on `oauth clients show|revoke`, token UUIDs on `token revoke`, deploy-token UUIDs on `repo deploy-token revoke` / `namespace deploy-token revoke`, webhook UUIDs on `repo webhook get|delete` / `namespace webhook get|delete`, SSH key UUIDs on `ssh-key delete` — issues authenticated list calls against the Citadel API. With no access token, completion yields no candidates and never prompts for credentials. JSON cache files live under `$XDG_CACHE_HOME/citadel-cli/completion/<server-host>/` with a 60-second TTL. Set **`CITADEL_NO_COMPLETION_CACHE=1`** to skip disk cache reads and writes (in-memory only; useful for debugging).
+Install scripts with `citadel-cli completion bash|zsh|fish|powershell` (see `citadel-cli completion --help`).
+
+Dynamic tab completion issues authenticated list calls against the Citadel API. With no access token, completion yields no candidates and never prompts for credentials.
+
+| Argument kind | Commands (examples) |
+| --- | --- |
+| Repo slugs | Scoped via `-R`, `CITADEL_REPO`, or CWD inference |
+| Org namespace slugs | `namespace get`, `members`, `delete`, `transfer initiate` |
+| Agent names | `agent get`, `delete`, `rotate-token`, `create` |
+| OAuth client UUIDs | `oauth clients show`, `revoke` |
+| Token UUIDs | `token revoke` |
+| Deploy-token UUIDs | `repo deploy-token revoke`, `namespace deploy-token revoke` |
+| Webhook UUIDs | `repo webhook get`, `delete`; `namespace webhook get`, `delete` |
+| SSH key UUIDs | `ssh-key delete` |
+
+JSON cache files live under `$XDG_CACHE_HOME/citadel-cli/completion/<server-host>/` with a 60-second TTL. Set **`CITADEL_NO_COMPLETION_CACHE=1`** to skip disk cache reads and writes (in-memory only; useful for debugging).
 
 ## Structured errors (`--output json` / `yaml` / `ndjson`)
 
