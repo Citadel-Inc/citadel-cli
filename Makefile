@@ -1,6 +1,6 @@
 # citadel-cli — top-level developer ergonomics.
 
-.PHONY: help build build-all install test vet lint golangci fmt verify clean coverage-check
+.PHONY: help build build-all install test test-race vet lint golangci fmt verify clean coverage-check
 
 VERSION ?= dev
 LDFLAGS = -X github.com/Rethunk-Tech/citadel-cli/cmd.Version=$(VERSION)
@@ -37,7 +37,10 @@ install: build ## Install the binary and man pages
 	fi; \
 	install -m 644 "$$man_dir"/*.1 "$(DESTDIR)$(PREFIX)/share/man/man1/"
 
-test: ## Run go test with race detector across all packages
+test: ## Run go test across all packages
+	go test ./...
+
+test-race: ## Run go test with race detector across all packages
 	go test -race ./...
 
 vet: ## Run go vet
@@ -51,7 +54,7 @@ golangci: ## Run golangci-lint (stricter pass than vet)
 fmt: ## Run go fmt across all packages
 	go fmt ./...
 
-verify: vet test golangci ## Pre-push gate: vet + race tests + golangci
+verify: vet test-race golangci ## Pre-push gate: vet + race tests + golangci
 
 coverage-check: ## Enforce COVERAGE_MIN per package (default 75%); see scripts/check-package-coverage.sh
 	bash scripts/check-package-coverage.sh
