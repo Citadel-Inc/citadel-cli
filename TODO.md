@@ -59,7 +59,7 @@ Do **not** restore `account passkey` / `account device` — those verbs are out 
 
 | Item | Why |
 | ------ | ----- |
-| `cli-webhook-test`, billing, avatar, privacy, account-export, mcp-stdio/stream | Rejected or superseded; reasons in the Parked table of `specs/README.md` and the HTTPS MCP decision in `specs/parked/README.md` |
+| `cli-webhook-test`, billing, avatar, privacy, account-export, mcp-stdio/stream | Rejected or superseded: export/billing/webhook-test in the Parked table of `specs/README.md`, mcp-stdio/stream in the HTTPS MCP decision in `specs/parked/README.md`, avatar/privacy as the settings-panel row below |
 | Restoring `account *` security verbs | Out of scope — browser settings-panel concern, not CLI |
 | Live-smoke / C1-only residuals on done specs | Env-gated operator work, not product features |
 | shadcn / web component work | This repo is a Go Cobra CLI; browser UX lives in Citadel web |
