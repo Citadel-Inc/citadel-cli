@@ -24,7 +24,6 @@ We are **not** investing in:
 
 | Slug | Parked | Reason (short) |
 | ------ | -------- | ---------------- |
-| [cli-mcp-stdio](cli-mcp-stdio/spec.md) | 050505ZMAY26 | Superseded — HTTPS MCP only; no stdio server in CLI. |
-| [cli-mcp-stream](cli-mcp-stream/spec.md) | 050505ZMAY26 | Superseded — no parallel SSE streaming client track; canonical MCP stays HTTPS. |
-| [cli-account-avatar](cli-account-avatar/spec.md) | 072200ZMAY26 | Not a dev-loop workflow; no GitHub CLI analogue. Avatar management is a browser/UI concern. |
-| [cli-account-privacy](cli-account-privacy/spec.md) | 072200ZMAY26 | Not a dev-loop workflow; no GitHub CLI analogue. Privacy toggles are a settings-panel concern. |
+| [cli-account-export](cli-account-export/spec.md) | 091233ZMAY26 | Rejected — GDPR data export is a web account-settings surface. |
+| [cli-billing](cli-billing/spec.md) | 091233ZMAY26 | Rejected — billing management is a web/dashboard surface. |
+| [cli-webhook-test](cli-webhook-test/spec.md) | 091233ZMAY26 | Rejected — no CLI mandate to wrap the webhook test-ping. |
