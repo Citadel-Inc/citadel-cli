@@ -22,8 +22,4 @@ We are **not** investing in:
 
 ## Index
 
-| Slug | Parked | Reason (short) |
-| ------ | -------- | ---------------- |
-| [cli-account-export](cli-account-export/spec.md) | 091233ZMAY26 | Rejected — GDPR data export is a web account-settings surface. |
-| [cli-billing](cli-billing/spec.md) | 091233ZMAY26 | Rejected — billing management is a web/dashboard surface. |
-| [cli-webhook-test](cli-webhook-test/spec.md) | 091233ZMAY26 | Rejected — no CLI mandate to wrap the webhook test-ping. |
+No parked specs. Rejected proposals and their reasons are the Parked table in [../README.md](../README.md).
