@@ -14,7 +14,7 @@
 
 ---
 
-`citadel-cli` is the terminal interface for [Citadel](https://github.com/Citadel-Inc/citadel): namespaces, repos, agents, OAuth, audit, and the knowledge graph. Operators administer the platform; developers clone, push, and script against the API without leaving the shell.
+`citadel-cli` is the terminal interface for [Citadel](https://src.land/): namespaces, repos, agents, OAuth, audit, and the knowledge graph. Operators administer the platform; developers clone, push, and script against the API without leaving the shell.
 
 The CLI embeds an MCP client and structured error envelopes for agentic workflows — same commands humans use, with machine-readable output modes.
 

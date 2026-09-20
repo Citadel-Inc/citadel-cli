@@ -1,6 +1,6 @@
 # Citadel CLI — Installation and usage
 
-The **`citadel-cli`** binary is the command-line **client** for authentication, agent tokens, and MCP tool calls against the Citadel **server**. The server binary lives in the [Citadel-Inc/citadel](https://github.com/Citadel-Inc/citadel) repository and is named **`citadel`** (HTTP, SSH, MCP); do not confuse the two names on disk. The browser login flow brokers through Citadel's OAuth 2.1 endpoints, then stores a Citadel-issued **agent token** locally in `~/.config/citadel/config.toml` (mode 0600).
+The **`citadel-cli`** binary is the command-line **client** for authentication, agent tokens, and MCP tool calls against the Citadel **server**. The server binary is named **`citadel`** (HTTP, SSH, MCP); do not confuse the two names on disk. Product docs live on [src.land](https://src.land/). The browser login flow brokers through Citadel's OAuth 2.1 endpoints, then stores a Citadel-issued **agent token** locally in `~/.config/citadel/config.toml` (mode 0600).
 
 ## Installation
 
@@ -821,7 +821,7 @@ The CLI retries once on **401**: with an agent binding it rotates the stored age
 
 ## Agent token semantics
 
-For comprehensive token lifecycle documentation, see [Citadel-Inc/citadel docs/agents.md](https://github.com/Citadel-Inc/citadel/blob/main/docs/agents.md). In brief:
+For comprehensive token lifecycle documentation, see [src.land/help/agent-tokens](https://src.land/help/agent-tokens). In brief:
 
 - **Tokens are opaque secrets.** Never log them, commit them, or pass them on the command line. Store in environment files (e.g., `.env.local`) or CI secrets with restricted access.
 - **Hashing.** The CLI never stores the clear-text token; only the server stores a sha256 hash. Once you close the terminal, you cannot recover the token — you must revoke and issue a new one.

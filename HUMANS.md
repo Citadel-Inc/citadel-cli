@@ -4,7 +4,7 @@ Human operators: read this first. LLM context: [AGENTS.md](AGENTS.md). Commits a
 
 ## What it is
 
-Official CLI for [Citadel](https://github.com/Citadel-Inc/citadel) — repos, namespaces, agents, OAuth, audit, knowledge graph, and an embedded MCP client.
+Official CLI for [Citadel](https://src.land/) — repos, namespaces, agents, OAuth, audit, knowledge graph, and an embedded MCP client.
 
 ## Install
 
