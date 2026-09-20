@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
 )
 
 // ── commands ──────────────────────────────────────────────────────────────────

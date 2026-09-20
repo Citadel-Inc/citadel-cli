@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/selfhost"
+	"github.com/Citadel-Inc/citadel-cli/internal/selfhost"
 )
 
 // selfHostDebugFlag returns true when --debug is set on the self-host command group.

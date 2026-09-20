@@ -8,7 +8,7 @@ set -euo pipefail
 
 MIN="${COVERAGE_MIN:-75}"
 SKIP="${COVERAGE_SKIP_REGEX:-}"
-MODULE="github.com/Rethunk-Tech/citadel-cli"
+MODULE="github.com/Citadel-Inc/citadel-cli"
 
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT

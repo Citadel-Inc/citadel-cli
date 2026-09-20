@@ -3,7 +3,7 @@ package cmd_test
 import (
 	"testing"
 
-	"github.com/Rethunk-Tech/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/cmd"
 )
 
 func TestSearch_BadOutput_Hermetic(t *testing.T) {

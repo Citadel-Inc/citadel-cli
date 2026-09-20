@@ -1,4 +1,4 @@
-module github.com/Rethunk-Tech/citadel-cli
+module github.com/Citadel-Inc/citadel-cli
 
 go 1.27.1
 

@@ -4,15 +4,15 @@ Human operators: read this first. LLM context: [AGENTS.md](AGENTS.md). Commits a
 
 ## What it is
 
-Official CLI for [Citadel](https://github.com/Rethunk-Tech/citadel) — repos, namespaces, agents, OAuth, audit, knowledge graph, and an embedded MCP client.
+Official CLI for [Citadel](https://src.land/) — repos, namespaces, agents, OAuth, audit, knowledge graph, and an embedded MCP client.
 
 ## Install
 
 ```bash
-go install github.com/Rethunk-Tech/citadel-cli@latest
+go install github.com/Citadel-Inc/citadel-cli@latest
 ```
 
-Binary lands in `~/go/bin`; keep that on `PATH`. Tagged releases (linux/darwin/windows) ship from [GitHub Releases](https://github.com/Rethunk-Tech/citadel-cli/releases).
+Binary lands in `~/go/bin`; keep that on `PATH`. Tagged releases (linux/darwin/windows) ship from [GitHub Releases](https://github.com/Citadel-Inc/citadel-cli/releases).
 
 Prerequisites for local work: Go 1.26.6+, `golangci-lint` (for `make verify`).
 

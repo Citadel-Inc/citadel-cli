@@ -3,8 +3,8 @@ package cmd
 import (
 	"strings"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
-	"github.com/Rethunk-Tech/citadel-cli/internal/completion"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/completion"
 )
 
 // scheduleCompletionInvalidate drops cached completion entries for the

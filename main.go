@@ -7,8 +7,8 @@ import (
 	"os"
 	"slices"
 
-	"github.com/Rethunk-Tech/citadel-cli/cmd"
-	"github.com/Rethunk-Tech/citadel-cli/internal/pager"
+	"github.com/Citadel-Inc/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/internal/pager"
 	"github.com/spf13/cobra"
 )
 

@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/sseclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/sseclient"
 )
 
 func TestSSEWatchQuery(t *testing.T) {

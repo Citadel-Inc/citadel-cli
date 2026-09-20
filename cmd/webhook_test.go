@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/Rethunk-Tech/citadel-cli/cmd"
-	"github.com/Rethunk-Tech/citadel-cli/internal/pagination"
+	"github.com/Citadel-Inc/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/internal/pagination"
 )
 
 const testWebhookID = "11111111-1111-1111-1111-111111111111"

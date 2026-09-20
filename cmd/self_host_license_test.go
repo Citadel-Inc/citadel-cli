@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Rethunk-Tech/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/cmd"
 )
 
 // signedLicenseBytes builds a license JSON signed with the supplied Ed25519

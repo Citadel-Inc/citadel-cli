@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/selfhost"
+	"github.com/Citadel-Inc/citadel-cli/internal/selfhost"
 )
 
 func TestLoad_InvalidYAML(t *testing.T) {

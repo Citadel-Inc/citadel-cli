@@ -13,7 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/term"
+	"github.com/Citadel-Inc/citadel-cli/internal/term"
 )
 
 // outputFormatCompletions matches cli-output-formats acceptance (static list).

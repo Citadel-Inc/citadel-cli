@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/pagination"
+	"github.com/Citadel-Inc/citadel-cli/internal/pagination"
 	"github.com/spf13/cobra"
 )
 

@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 )
 
 func TestOpen_Close_noBody(t *testing.T) {

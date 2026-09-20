@@ -1,6 +1,6 @@
 # Citadel CLI — Installation and usage
 
-The **`citadel-cli`** binary is the command-line **client** for authentication, agent tokens, and MCP tool calls against the Citadel **server**. The server binary lives in the [Rethunk-Tech/citadel](https://github.com/Rethunk-Tech/citadel) repository and is named **`citadel`** (HTTP, SSH, MCP); do not confuse the two names on disk. The browser login flow brokers through Citadel's OAuth 2.1 endpoints, then stores a Citadel-issued **agent token** locally in `~/.config/citadel/config.toml` (mode 0600).
+The **`citadel-cli`** binary is the command-line **client** for authentication, agent tokens, and MCP tool calls against the Citadel **server**. The server binary is named **`citadel`** (HTTP, SSH, MCP); do not confuse the two names on disk. Product docs live on [src.land](https://src.land/). The browser login flow brokers through Citadel's OAuth 2.1 endpoints, then stores a Citadel-issued **agent token** locally in `~/.config/citadel/config.toml` (mode 0600).
 
 ## Installation
 
@@ -32,14 +32,14 @@ make install PREFIX=/usr DESTDIR="$pkgdir"
 ### Via `go install` (latest)
 
 ```bash
-go install github.com/Rethunk-Tech/citadel-cli@latest
+go install github.com/Citadel-Inc/citadel-cli@latest
 ```
 
 This installs to `~/go/bin/citadel-cli`; add `~/go/bin` to your `PATH` if it is not already there.
 
 ### Binary releases
 
-Pre-built binaries for linux-amd64, linux-arm64, darwin-arm64, and windows-amd64 are published to GitHub Releases on every `v*` tag. Check <https://github.com/Rethunk-Tech/citadel-cli/releases/> for the latest release.
+Pre-built binaries for linux-amd64, linux-arm64, darwin-arm64, and windows-amd64 are published to GitHub Releases on every `v*` tag. Check <https://github.com/Citadel-Inc/citadel-cli/releases/> for the latest release.
 
 ## First-run flow
 
@@ -821,7 +821,7 @@ The CLI retries once on **401**: with an agent binding it rotates the stored age
 
 ## Agent token semantics
 
-For comprehensive token lifecycle documentation, see [Rethunk-Tech/citadel docs/agents.md](https://github.com/Rethunk-Tech/citadel/blob/main/docs/agents.md). In brief:
+For comprehensive token lifecycle documentation, see [src.land/help/agent-tokens](https://src.land/help/agent-tokens). In brief:
 
 - **Tokens are opaque secrets.** Never log them, commit them, or pass them on the command line. Store in environment files (e.g., `.env.local`) or CI secrets with restricted access.
 - **Hashing.** The CLI never stores the clear-text token; only the server stores a sha256 hash. Once you close the terminal, you cannot recover the token — you must revoke and issue a new one.
@@ -1317,14 +1317,14 @@ This will create a fresh config.
 
 The CLI binary is built by the GitHub Actions release workflow on every tag matching `v*`, producing static binaries for `linux-amd64`, `linux-arm64`, `darwin-arm64`, and `windows-amd64`. Update `CHANGELOG.md` and run `make verify && make build-all VERSION=<tag>` before pushing the tag. Channels:
 
-- **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Rethunk-Tech/citadel-cli/releases/tag/<tag>` with the four binaries + a `SHA256SUMS` file. Manual download:
+- **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Citadel-Inc/citadel-cli/releases/tag/<tag>` with the four binaries + a `SHA256SUMS` file. Manual download:
 
   ```bash
   # Replace v0.1.0 with the latest tag.
   curl -L -o citadel-cli-linux-amd64 \
-    https://github.com/Rethunk-Tech/citadel-cli/releases/download/v0.1.0/citadel-cli-linux-amd64
+    https://github.com/Citadel-Inc/citadel-cli/releases/download/v0.1.0/citadel-cli-linux-amd64
   curl -L -o SHA256SUMS \
-    https://github.com/Rethunk-Tech/citadel-cli/releases/download/v0.1.0/SHA256SUMS
+    https://github.com/Citadel-Inc/citadel-cli/releases/download/v0.1.0/SHA256SUMS
   sha256sum -c SHA256SUMS --ignore-missing
   chmod +x citadel-cli-linux-amd64
   sudo mv citadel-cli-linux-amd64 /usr/local/bin/citadel-cli
