@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
-	"github.com/Rethunk-Tech/citadel-cli/internal/httpx"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/httpx"
 )
 
 // defaultTimeout is the per-request timeout applied to the api client's

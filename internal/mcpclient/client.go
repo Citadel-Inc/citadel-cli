@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/httpx"
+	"github.com/Citadel-Inc/citadel-cli/internal/httpx"
 )
 
 // ProtocolVersion is the MCP version this client speaks. Must match the

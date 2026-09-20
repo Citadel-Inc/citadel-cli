@@ -12,8 +12,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
-	"github.com/Rethunk-Tech/citadel-cli/internal/mcpclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/mcpclient"
 )
 
 // ErrToolCallFailed signals that a tools/call returned isError=true; main

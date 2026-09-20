@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/selfhost"
+	"github.com/Citadel-Inc/citadel-cli/internal/selfhost"
 )
 
 func TestGenerateBootstrapToken(t *testing.T) {

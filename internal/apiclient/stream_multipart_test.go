@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 )
 
 func TestClient_GetStream_PreservesBinaryBody(t *testing.T) {

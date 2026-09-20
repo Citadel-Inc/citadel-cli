@@ -13,8 +13,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
-	"github.com/Rethunk-Tech/citadel-cli/internal/mcpclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/mcpclient"
 )
 
 func TestCheckServer_Healthy(t *testing.T) {

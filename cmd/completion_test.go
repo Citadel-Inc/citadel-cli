@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/cmd"
 )
 
 func TestCompletion_AllShells(t *testing.T) {

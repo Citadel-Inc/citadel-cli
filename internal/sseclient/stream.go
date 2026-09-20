@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
-	"github.com/Rethunk-Tech/citadel-cli/internal/httpx"
+	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/httpx"
 )
 
 // IdleTimeout is how long we wait for the next byte row before treating the

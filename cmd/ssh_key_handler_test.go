@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Rethunk-Tech/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/cmd"
 )
 
 func TestSSHKeyList_BadOutput_Hermetic(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Rethunk-Tech/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/cmd"
 )
 
 func TestSelfHostTelemetry_UnknownAction(t *testing.T) {

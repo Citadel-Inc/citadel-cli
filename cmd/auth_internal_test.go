@@ -17,7 +17,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 )
 
 // makeUnsignedJWT crafts an HS256-signed JWT with the given claims. The

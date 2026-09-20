@@ -10,7 +10,7 @@ import (
 
 	"github.com/mxschmitt/playwright-go"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 )
 
 // TestLiveOAuthLogin_fullBrowser_optIn drives `citadel-cli auth login` against a

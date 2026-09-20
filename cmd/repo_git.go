@@ -15,9 +15,9 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
-	"github.com/Rethunk-Tech/citadel-cli/internal/completion"
+	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/completion"
 )
 
 var (

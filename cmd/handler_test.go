@@ -26,8 +26,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/Rethunk-Tech/citadel-cli/cmd"
-	"github.com/Rethunk-Tech/citadel-cli/internal/pagination"
+	"github.com/Citadel-Inc/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/internal/pagination"
 )
 
 // rootFor returns a fresh test root with verb attached. SetArgs uses the

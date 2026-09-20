@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/sseclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/sseclient"
 )
 
 type watchListKind int

@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/selfhost"
+	"github.com/Citadel-Inc/citadel-cli/internal/selfhost"
 )
 
 // buildCfg constructs a Config pointing at the given test servers.

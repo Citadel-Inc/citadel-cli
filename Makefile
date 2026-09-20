@@ -3,7 +3,7 @@
 .PHONY: help build build-all install test test-race vet lint golangci fmt verify clean coverage-check
 
 VERSION ?= dev
-LDFLAGS = -X github.com/Rethunk-Tech/citadel-cli/cmd.Version=$(VERSION)
+LDFLAGS = -X github.com/Citadel-Inc/citadel-cli/cmd.Version=$(VERSION)
 PREFIX ?= /usr/local
 DESTDIR ?=
 

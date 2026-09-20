@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/pagination"
+	"github.com/Citadel-Inc/citadel-cli/internal/pagination"
 )
 
 func TestValidateDescCursor_emptyOK(t *testing.T) {

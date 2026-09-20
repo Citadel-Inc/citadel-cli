@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Rethunk-Tech/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/cmd"
 )
 
 func issuePathMatches(r *http.Request, encoded, decoded string) bool {

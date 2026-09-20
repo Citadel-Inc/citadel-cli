@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
 )
 
 var IssueCmd = &cobra.Command{

@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Rethunk-Tech/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/cmd"
 )
 
 func TestRun_HelpExitsZero(t *testing.T) {

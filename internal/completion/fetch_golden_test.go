@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 )
 
 // Golden API shapes from Citadel list endpoints (httptest, not hand-rolled mocks).

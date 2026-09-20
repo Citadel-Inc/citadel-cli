@@ -32,7 +32,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/selfhost"
+	"github.com/Citadel-Inc/citadel-cli/internal/selfhost"
 )
 
 // TestLiveSelfHost_chain_optIn exercises the init→health→bootstrap-token chain.

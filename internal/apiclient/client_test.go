@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/clicfg"
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 )
 
 func TestNew_RequiresToken(t *testing.T) {

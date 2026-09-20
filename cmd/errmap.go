@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Rethunk-Tech/citadel-cli/internal/apiclient"
-	"github.com/Rethunk-Tech/citadel-cli/internal/mcpclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/mcpclient"
 )
 
 // FriendlyError translates infrastructure-flavored errors (raw HTTP status
