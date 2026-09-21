@@ -18,13 +18,21 @@ import (
 )
 
 func TestCheckServer_Healthy(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
 	got := checkServer(context.Background(), srv.URL)
 	if got.status != statusPass {
 		t.Errorf("server reachable: %s", got)
+	}
+	if gotPath != "/healthz" {
+		t.Errorf("probed %q, want /healthz", gotPath)
+	}
+	if !strings.Contains(got.detail, srv.URL) {
+		t.Errorf("detail should name REST base %s: %s", srv.URL, got)
 	}
 }
 

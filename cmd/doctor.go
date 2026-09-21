@@ -30,7 +30,7 @@ prints PASS / WARN / FAIL with one-line context. Exits non-zero if any
 FAIL fires.
 
 Checks performed:
-  - Server reachable (HTTP HEAD / GET against the configured base URL)
+  - REST API reachable (GET /healthz on the resolved REST host, not the MCP host)
   - Auth token present + not expired (claim-only inspection; no round trip)
   - MCP endpoint reachable (initialize handshake)
   - ~/.config/citadel/config.toml mode 0600 (UNIX only)
@@ -101,22 +101,25 @@ func checkServer(ctx context.Context, base string) checkResult {
 	if base == "" {
 		return checkResult{name, statusFail, "no server URL configured (set CITADEL_SERVER or pass --server)"}
 	}
+	// Production splits MCP (mcp.src.land) from JSON REST (api.src.land).
+	// Probe the REST host so a live MCP SPA cannot mask an API outage.
+	restBase := apiclient.ResolveRESTServerURL(base)
 	c := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(base, "/")+"/healthz", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(restBase, "/")+"/healthz", nil)
 	if err != nil {
 		return checkResult{name, statusFail, fmt.Sprintf("build request: %v", err)}
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return checkResult{name, statusFail, fmt.Sprintf("%s unreachable: %v", base, err)}
+		return checkResult{name, statusFail, fmt.Sprintf("%s unreachable: %v", restBase, err)}
 	}
 	defer func() { _ = resp.Body.Close() }()
 	// Any 2xx/3xx/4xx tells us the server is alive (auth-gated paths return
 	// 401, which still proves reachability). 5xx is a real problem.
 	if resp.StatusCode >= 500 {
-		return checkResult{name, statusFail, fmt.Sprintf("%s returned HTTP %d", base, resp.StatusCode)}
+		return checkResult{name, statusFail, fmt.Sprintf("%s returned HTTP %d", restBase, resp.StatusCode)}
 	}
-	return checkResult{name, statusPass, fmt.Sprintf("%s reachable (HTTP %d)", base, resp.StatusCode)}
+	return checkResult{name, statusPass, fmt.Sprintf("%s reachable (HTTP %d)", restBase, resp.StatusCode)}
 }
 
 func checkServerBases(server string) checkResult {
