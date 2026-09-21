@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
-	"golang.org/x/sys/unix"
 )
 
 // Config holds the CLI configuration state: server URL, auth tokens, and user info.
@@ -144,10 +143,11 @@ func Update(fn func(*Config) error) error {
 		return err
 	}
 	defer func() { _ = lock.Close() }()
-	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX); err != nil {
+	unlock, err := lockExclusive(lock)
+	if err != nil {
 		return err
 	}
-	defer func() { _ = unix.Flock(int(lock.Fd()), unix.LOCK_UN) }()
+	defer unlock()
 
 	cfg, err := Load()
 	if err != nil {
