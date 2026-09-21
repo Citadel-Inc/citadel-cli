@@ -4,6 +4,8 @@ All notable changes to `citadel-cli` are documented here.
 
 ## Unreleased
 
+## v0.2.0 - 2026-09-21
+
 ### Added
 
 - Added webhook delivery ID shell completion for `get`/`redeliver`, and
@@ -15,6 +17,11 @@ All notable changes to `citadel-cli` are documented here.
   `project admin recovery-scan`.
 - Added client-side `oauth clients list --dcr` filtering, MCP list/read retries,
   and root help command groups.
+
+### Changed
+
+- Go module path is `github.com/Citadel-Inc/citadel-cli`. Install docs require Go 1.27.1+ and prefer GitHub Release binaries over `go install`.
+- `doctor` probes `GET /healthz` on the resolved REST host (`api.src.land` when the configured server is `mcp.src.land`) so a live MCP endpoint cannot mask an API outage.
 
 ## v0.1.0 - 2026-05-07
 

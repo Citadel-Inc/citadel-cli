@@ -8,13 +8,17 @@ Official CLI for [Citadel](https://src.land/) — repos, namespaces, agents, OAu
 
 ## Install
 
+Prefer a tagged binary from [GitHub Releases](https://github.com/Citadel-Inc/citadel-cli/releases) (linux-amd64, linux-arm64, darwin-arm64, windows-amd64). Put it on `PATH` as `citadel-cli`.
+
+With Go 1.27.1 or newer:
+
 ```bash
 go install github.com/Citadel-Inc/citadel-cli@latest
 ```
 
-Binary lands in `~/go/bin`; keep that on `PATH`. Tagged releases (linux/darwin/windows) ship from [GitHub Releases](https://github.com/Citadel-Inc/citadel-cli/releases).
+That lands in `~/go/bin`. `@latest` is the newest `v*` tag whose `go.mod` path is `github.com/Citadel-Inc/citadel-cli` (v0.1.0 is the old `Rethunk-Tech` module and will not install from this path).
 
-Prerequisites for local work: Go 1.26.6+, `golangci-lint` (for `make verify`).
+Prerequisites for local work: Go 1.27.1+, `golangci-lint` (for `make verify`).
 
 ## Usage
 

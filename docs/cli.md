@@ -29,17 +29,19 @@ under `$(DESTDIR)$(PREFIX)/bin` and man pages under
 make install PREFIX=/usr DESTDIR="$pkgdir"
 ```
 
+### Binary releases
+
+Pre-built binaries for linux-amd64, linux-arm64, darwin-arm64, and windows-amd64 are published to GitHub Releases on every `v*` tag. Check <https://github.com/Citadel-Inc/citadel-cli/releases/> for the latest release. This is the install path that does not require a local Go toolchain.
+
 ### Via `go install` (latest)
+
+Requires Go 1.27.1+. Installs to `~/go/bin/citadel-cli`; add `~/go/bin` to `PATH` if needed.
 
 ```bash
 go install github.com/Citadel-Inc/citadel-cli@latest
 ```
 
-This installs to `~/go/bin/citadel-cli`; add `~/go/bin` to your `PATH` if it is not already there.
-
-### Binary releases
-
-Pre-built binaries for linux-amd64, linux-arm64, darwin-arm64, and windows-amd64 are published to GitHub Releases on every `v*` tag. Check <https://github.com/Citadel-Inc/citadel-cli/releases/> for the latest release.
+`v0.1.0` declares `github.com/Rethunk-Tech/citadel-cli` and will not install from this module path. Use a later `v*` tag, or `go install github.com/Citadel-Inc/citadel-cli@main` to build current `main`.
 
 ## First-run flow
 
@@ -1282,9 +1284,9 @@ Attempting to delete the last default label for a semantic role returns a `label
 
 ### Environment health check
 
-Run `citadel-cli doctor` to check server reachability, local auth state, MCP
-endpoint reachability, config-file permissions, resolved REST/MCP bases, and
-CWD git-origin sanity when `CITADEL_REPO` is unset in one pass.
+Run `citadel-cli doctor` to check REST `/healthz` on the resolved API host,
+local auth state, MCP initialize, config-file permissions, resolved REST/MCP
+bases, and CWD git-origin sanity when `CITADEL_REPO` is unset.
 
 ```bash
 citadel-cli doctor
