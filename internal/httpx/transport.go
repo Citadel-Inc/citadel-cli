@@ -85,7 +85,7 @@ func retryAfterDelay(h http.Header) time.Duration {
 func Backoff(n int) time.Duration {
 	d := min(retryBaseBackoff<<n, retryMaxBackoff)
 	half := d / 2
-	return half + time.Duration(rand.Int64N(int64(half)+1))
+	return half + time.Duration(rand.Int64N(int64(half)+1)) //nolint:gosec // Retry jitter is timing noise, not security material.
 }
 
 func backoff(n int) time.Duration { return Backoff(n) }
