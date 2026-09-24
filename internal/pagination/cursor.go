@@ -25,6 +25,14 @@ const (
 
 var ErrInvalidCursor = errors.New("invalid_cursor")
 
+func encodeCursorInt64(value int64) uint64 {
+	return uint64(value) //nolint:gosec // Fixed-width cursor fields preserve signed integer bits.
+}
+
+func decodeCursorInt64(value uint64) int64 {
+	return int64(value) //nolint:gosec // Fixed-width cursor fields preserve signed integer bits.
+}
+
 type DescCursor struct {
 	TimeUnixNano int64
 	ID           uuid.UUID
@@ -33,7 +41,7 @@ type DescCursor struct {
 func EncodeDesc(t time.Time, id uuid.UUID) string {
 	buf := make([]byte, 1+8+16)
 	buf[0] = cursorV1Desc
-	binary.BigEndian.PutUint64(buf[1:9], uint64(t.UTC().UnixNano()))
+	binary.BigEndian.PutUint64(buf[1:9], encodeCursorInt64(t.UTC().UnixNano()))
 	copy(buf[9:25], id[:])
 	return base64.RawURLEncoding.EncodeToString(buf)
 }
@@ -44,7 +52,7 @@ func EncodeMemberAsc(notOwner bool, joinedAt time.Time, userID uuid.UUID) string
 	if notOwner {
 		buf[1] = 1
 	}
-	binary.BigEndian.PutUint64(buf[2:10], uint64(joinedAt.UTC().UnixNano()))
+	binary.BigEndian.PutUint64(buf[2:10], encodeCursorInt64(joinedAt.UTC().UnixNano()))
 	copy(buf[10:26], userID[:])
 	return base64.RawURLEncoding.EncodeToString(buf)
 }
@@ -55,7 +63,7 @@ func DecodeDesc(s string) (DescCursor, error) {
 	if err != nil || len(raw) != 25 || raw[0] != cursorV1Desc {
 		return z, fmt.Errorf("%w: desc", ErrInvalidCursor)
 	}
-	z.TimeUnixNano = int64(binary.BigEndian.Uint64(raw[1:9]))
+	z.TimeUnixNano = decodeCursorInt64(binary.BigEndian.Uint64(raw[1:9]))
 	copy(z.ID[:], raw[9:25])
 	return z, nil
 }
@@ -70,8 +78,8 @@ type AuditDescCursor struct {
 func EncodeAuditDesc(t time.Time, id int64) string {
 	buf := make([]byte, 1+8+8)
 	buf[0] = cursorV3Audit
-	binary.BigEndian.PutUint64(buf[1:9], uint64(t.UTC().UnixNano()))
-	binary.BigEndian.PutUint64(buf[9:17], uint64(id))
+	binary.BigEndian.PutUint64(buf[1:9], encodeCursorInt64(t.UTC().UnixNano()))
+	binary.BigEndian.PutUint64(buf[9:17], encodeCursorInt64(id))
 	return base64.RawURLEncoding.EncodeToString(buf)
 }
 
@@ -82,8 +90,8 @@ func DecodeAuditDesc(s string) (AuditDescCursor, error) {
 	if err != nil || len(raw) != 17 || raw[0] != cursorV3Audit {
 		return z, fmt.Errorf("%w: audit", ErrInvalidCursor)
 	}
-	z.TimeUnixNano = int64(binary.BigEndian.Uint64(raw[1:9]))
-	z.ID = int64(binary.BigEndian.Uint64(raw[9:17]))
+	z.TimeUnixNano = decodeCursorInt64(binary.BigEndian.Uint64(raw[1:9]))
+	z.ID = decodeCursorInt64(binary.BigEndian.Uint64(raw[9:17]))
 	return z, nil
 }
 
@@ -100,7 +108,7 @@ func DecodeMemberAsc(s string) (MemberAscCursor, error) {
 		return z, fmt.Errorf("%w: members", ErrInvalidCursor)
 	}
 	z.NotOwner = raw[1] != 0
-	z.JoinedNano = int64(binary.BigEndian.Uint64(raw[2:10]))
+	z.JoinedNano = decodeCursorInt64(binary.BigEndian.Uint64(raw[2:10]))
 	copy(z.UserID[:], raw[10:26])
 	return z, nil
 }
