@@ -79,7 +79,7 @@ func lookupRepoRefNames(
 	return vals, cobra.ShellCompDirectiveNoFileComp
 }
 
-func validateMutationOutput(output string, action string) error {
+func validateMutationOutput(output, action string) error {
 	switch strings.TrimSpace(strings.ToLower(output)) {
 	case "", "json":
 		return nil

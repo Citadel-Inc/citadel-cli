@@ -408,7 +408,7 @@ func TestTokenList_AllNdjsonTwoPages(t *testing.T) {
 // ── auth status: agent-token branches ────────────────────────────────────────
 
 // writeAgentConfig writes a config.toml with agent_id to the temp XDG dir.
-func writeAgentConfig(t *testing.T, dir string, agentID, agentName string, expiresAt string) {
+func writeAgentConfig(t *testing.T, dir, agentID, agentName, expiresAt string) {
 	t.Helper()
 	cfgDir := filepath.Join(dir, "citadel")
 	if err := os.MkdirAll(cfgDir, 0o700); err != nil {

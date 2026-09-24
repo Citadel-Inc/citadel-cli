@@ -239,7 +239,7 @@ func (c *Client) PromptsGet(ctx context.Context, name string, arguments map[stri
 // call is the JSON-RPC round-trip primitive. Returns the session id from
 // the response (only meaningful on initialize). The result is decoded
 // into out (any encoding/json target).
-func (c *Client) call(ctx context.Context, method string, params any, out any) (string, error) {
+func (c *Client) call(ctx context.Context, method string, params, out any) (string, error) {
 	c.nextID++
 	reqBody := map[string]any{
 		"jsonrpc": "2.0",

@@ -180,13 +180,13 @@ func resolveTopicSetArgs(cmd *cobra.Command, args []string) (ns, slug string, to
 	}
 	ns, slug, err = resolveRepoFromPosOrFlag(cmd, posArg)
 	if err != nil {
-		return
+		return ns, slug, topics, err
 	}
 	topics = rest
 	if topics == nil {
 		topics = []string{}
 	}
-	return
+	return ns, slug, topics, err
 }
 
 func runRepoTopicPopular(cmd *cobra.Command, args []string) error {

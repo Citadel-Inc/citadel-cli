@@ -178,7 +178,7 @@ func (c *Client) Delete(ctx context.Context, path string) error {
 // GetEventStream issues a GET with Accept: text/event-stream for SSE consumers.
 // The caller must close resp.Body. Non-success statuses return *HTTPError with
 // the body drained.
-func (c *Client) GetEventStream(ctx context.Context, path string, lastEventID string) (*http.Response, error) {
+func (c *Client) GetEventStream(ctx context.Context, path, lastEventID string) (*http.Response, error) {
 	for attempt := range 2 {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.server+path, nil)
 		if err != nil {

@@ -897,7 +897,7 @@ func runIssueCommentEdit(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runIssueStateMutation(cmd *cobra.Command, args []string, state string, verb string) error {
+func runIssueStateMutation(cmd *cobra.Command, args []string, state, verb string) error {
 	output := outputFlag(cmd)
 	if err := validateMutationOutput(output, verb); err != nil {
 		return err

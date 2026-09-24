@@ -135,7 +135,7 @@ func TestCSVRecord_columnCountMatchesHeader(t *testing.T) {
 	id1 := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	id2 := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 
-	check := func(t *testing.T, name string, hdr []string, rec []string) {
+	check := func(t *testing.T, name string, hdr, rec []string) {
 		t.Helper()
 		if len(hdr) != len(rec) {
 			t.Fatalf("%s: header len %d record len %d", name, len(hdr), len(rec))

@@ -1057,7 +1057,7 @@ func TestPRCommentAdd_ServerThreadNotFound(t *testing.T) {
 
 // ── pr comment list — filters and thread grouping ─────────────────────────────
 
-func makeComment(id, authorID, body string, diffFile *string, threadID *string) map[string]any {
+func makeComment(id, authorID, body string, diffFile, threadID *string) map[string]any {
 	m := map[string]any{
 		"id":            id,
 		"pr_id":         testPRUUID,

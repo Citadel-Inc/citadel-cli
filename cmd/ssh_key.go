@@ -156,7 +156,7 @@ func runSSHKeyAdd(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func resolveSSHPublicKeyMaterial(publicKeyFlag, keyFile string) (material string, source string, err error) {
+func resolveSSHPublicKeyMaterial(publicKeyFlag, keyFile string) (material, source string, err error) {
 	publicKeyFlag = strings.TrimSpace(publicKeyFlag)
 	keyFile = strings.TrimSpace(keyFile)
 
@@ -191,7 +191,7 @@ func resolveSSHPublicKeyMaterial(publicKeyFlag, keyFile string) (material string
 	}
 }
 
-func validateSSHPublicKeyMaterial(raw string, source string) error {
+func validateSSHPublicKeyMaterial(raw, source string) error {
 	s := strings.TrimSpace(raw)
 	if s == "" {
 		return fmt.Errorf("empty public key from %s", source)

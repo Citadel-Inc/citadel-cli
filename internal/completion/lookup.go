@@ -41,7 +41,7 @@ func DeployTokenKey(namespacePath string) string { return KeyDeployTokens + name
 // Lookup loads cached values or calls fetch with a quiet apiclient. Any error
 // from fetch (including missing auth) is returned to the caller for shell
 // completion handling.
-func Lookup(ctx context.Context, serverFlag string, resourceKey string, fetch func(context.Context, *apiclient.Client) ([]string, error)) ([]string, error) {
+func Lookup(ctx context.Context, serverFlag, resourceKey string, fetch func(context.Context, *apiclient.Client) ([]string, error)) ([]string, error) {
 	cfg, err := clicfg.Load()
 	if err != nil {
 		return nil, err
