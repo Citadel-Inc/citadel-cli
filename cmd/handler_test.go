@@ -38,6 +38,7 @@ import (
 // defined default before returning.
 func rootFor(verb *cobra.Command, args ...string) *cobra.Command {
 	resetFlagsRecursive(verb)
+	resetCtxRecursive(verb, context.Background())
 	setOutRecursive(verb, io.Discard, io.Discard)
 	root := &cobra.Command{Use: "test"}
 	addTestRootGroups(root)
@@ -53,6 +54,7 @@ func rootFor(verb *cobra.Command, args ...string) *cobra.Command {
 // rootForOut is like rootFor but captures stdout (stderr still discarded).
 func rootForOut(verb *cobra.Command, stdout io.Writer, args ...string) *cobra.Command {
 	resetFlagsRecursive(verb)
+	resetCtxRecursive(verb, context.Background())
 	setOutRecursive(verb, stdout, io.Discard)
 	root := &cobra.Command{Use: "test"}
 	addTestRootGroups(root)
