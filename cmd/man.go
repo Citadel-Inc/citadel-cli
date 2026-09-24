@@ -28,7 +28,7 @@ var ManCmd = &cobra.Command{
 
 func runMan(cmd *cobra.Command, args []string) error {
 	dir := args[0]
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("mkdir %s: %w", dir, err)
 	}
 	header := &doc.GenManHeader{
