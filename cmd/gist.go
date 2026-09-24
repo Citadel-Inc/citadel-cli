@@ -548,7 +548,7 @@ func renderGistWriteResult(cmd *cobra.Command, output, label string, result gist
 	}
 }
 
-func init() {
+func registerGistCommands() {
 	GistCmd.AddCommand(gistListCmd, gistViewCmd, gistCreateCmd, gistEditCmd, gistDeleteCmd, gistRawCmd)
 
 	addOutputFlag(gistListCmd, gistDeleteCmd)

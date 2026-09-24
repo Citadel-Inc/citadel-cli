@@ -373,7 +373,7 @@ func completeRepoSlugs(cmd *cobra.Command, args []string, _ string) ([]string, c
 	return vals, cobra.ShellCompDirectiveNoFileComp
 }
 
-func init() {
+func registerRepoCommands() {
 	RepoCmd.AddCommand(repoCreateCmd)
 	RepoCmd.AddCommand(repoListCmd)
 	RepoCmd.AddCommand(repoGetCmd)

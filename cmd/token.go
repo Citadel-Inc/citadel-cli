@@ -289,7 +289,7 @@ func completeTokenIDs(cmd *cobra.Command, args []string, _ string) ([]string, co
 	return vals, cobra.ShellCompDirectiveNoFileComp
 }
 
-func init() {
+func registerTokenCommands() {
 	TokenCmd.AddCommand(listCmd)
 	TokenCmd.AddCommand(issueCmd)
 	TokenCmd.AddCommand(revokeCmd)

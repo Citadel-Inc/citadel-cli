@@ -217,7 +217,7 @@ func resolveEndpoints(t *testing.T) (apiURL, supabaseURL, adminKey, jwtSecret st
 		if jwtSecret == "" {
 			t.Fatal("CITADEL_SELF_HOST_JWT_SECRET required for bootstrap-token tests in live mode")
 		}
-		return
+		return apiURL, supabaseURL, adminKey, jwtSecret
 	}
 
 	// httptest stub mode: stand up minimal servers.

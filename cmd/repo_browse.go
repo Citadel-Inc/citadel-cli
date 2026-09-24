@@ -336,9 +336,9 @@ func runRepoBrowseRaw(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// ── init ──────────────────────────────────────────────────────────────────────
+// ── command registration ──────────────────────────────────────────────────────
 
-func init() {
+func registerRepoBrowseCommands() {
 	repoBrowseCmd.AddCommand(repoBrowseTreeCmd)
 	repoBrowseCmd.AddCommand(repoBrowseBlobCmd)
 	repoBrowseCmd.AddCommand(repoBrowseRawCmd)

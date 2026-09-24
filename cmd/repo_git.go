@@ -451,7 +451,7 @@ func completeRepoPaths(cmd *cobra.Command, args []string, toComplete string) ([]
 	return out, cobra.ShellCompDirectiveNoFileComp
 }
 
-func init() {
+func registerRepoGitCommands() {
 	RepoCmd.AddCommand(repoCloneCmd)
 	RepoCmd.AddCommand(repoPushCmd)
 	RepoCmd.AddCommand(repoPullCmd)

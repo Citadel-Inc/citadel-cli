@@ -825,7 +825,7 @@ func completeOrgNamespaceSlugs(cmd *cobra.Command, args []string, _ string) ([]s
 	return vals, cobra.ShellCompDirectiveNoFileComp
 }
 
-func init() {
+func registerNamespaceCommands() {
 	NamespaceCmd.AddCommand(nsListCmd)
 	NamespaceCmd.AddCommand(nsGetCmd)
 	NamespaceCmd.AddCommand(nsMembersCmd)

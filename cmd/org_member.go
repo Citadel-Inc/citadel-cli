@@ -364,7 +364,7 @@ func runOrgMemberRemove(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func init() {
+func registerOrgMemberCommands() {
 	OrgCmd.AddCommand(orgMemberCmd)
 	orgMemberCmd.AddCommand(orgMemberListCmd)
 	orgMemberCmd.AddCommand(orgMemberSetPermissionsCmd)

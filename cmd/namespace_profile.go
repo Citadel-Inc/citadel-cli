@@ -165,16 +165,16 @@ func formatSocialLinks(links map[string]string) string {
 	return strings.Join(parts, "  ")
 }
 
-// truncate clips s to max bytes, appending "…" if trimmed.
-func truncate(s string, max int) string {
-	if len(s) <= max {
+// truncate clips s to maxBytes bytes, appending "…" if trimmed.
+func truncate(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
 		return s
 	}
-	return s[:max] + "…"
+	return s[:maxBytes] + "…"
 }
 
-// init wires the profile subtree into NamespaceCmd.
-func init() {
+// registerNamespaceProfileCommands wires the profile subtree into NamespaceCmd.
+func registerNamespaceProfileCommands() {
 	nsProfileCmd.AddCommand(nsProfileGetCmd)
 	NamespaceCmd.AddCommand(nsProfileCmd)
 

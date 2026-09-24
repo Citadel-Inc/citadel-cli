@@ -370,16 +370,16 @@ func formatCommitDate(t time.Time) string {
 	return t.UTC().Format("2006-01-02")
 }
 
-func truncateSubject(s string, max int) string {
-	if len(s) <= max {
+func truncateSubject(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
 		return s
 	}
-	return s[:max-1] + "…"
+	return s[:maxBytes-1] + "…"
 }
 
-// ── init ──────────────────────────────────────────────────────────────────────
+// ── command registration ──────────────────────────────────────────────────────
 
-func init() {
+func registerRepoCommitCommands() {
 	repoCommitCmd.AddCommand(repoCommitListCmd)
 	repoCommitCmd.AddCommand(repoCommitGetCmd)
 

@@ -416,7 +416,7 @@ func completeAgentNames(cmd *cobra.Command, args []string, _ string) ([]string, 
 	return vals, cobra.ShellCompDirectiveNoFileComp
 }
 
-func init() {
+func registerAgentCommands() {
 	AgentCmd.AddCommand(agentCreateCmd)
 	AgentCmd.AddCommand(agentListCmd)
 	AgentCmd.AddCommand(agentGetCmd)

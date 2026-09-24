@@ -193,13 +193,13 @@ func sparkline(vals []int) string {
 		return ""
 	}
 	bars := []rune("▁▂▃▄▅▆▇█")
-	max := 0
+	maxValue := 0
 	for _, v := range vals {
-		if v > max {
-			max = v
+		if v > maxValue {
+			maxValue = v
 		}
 	}
-	if max == 0 {
+	if maxValue == 0 {
 		out := make([]rune, len(vals))
 		for i := range out {
 			out[i] = ' '
@@ -208,7 +208,7 @@ func sparkline(vals []int) string {
 	}
 	out := make([]rune, len(vals))
 	for i, v := range vals {
-		idx := int(float64(v) / float64(max) * float64(len(bars)-1))
+		idx := int(float64(v) / float64(maxValue) * float64(len(bars)-1))
 		if v == 0 {
 			out[i] = ' '
 		} else {
@@ -243,9 +243,9 @@ func renderLanguages(cmd *cobra.Command, langs map[string]int64) {
 	}
 }
 
-// ── init ──────────────────────────────────────────────────────────────────────
+// ── command registration ──────────────────────────────────────────────────────
 
-func init() {
+func registerRepoInsightsCommands() {
 	addOutputFlag(repoInsightsCmd)
 	addRepoFlag(repoInsightsCmd)
 }

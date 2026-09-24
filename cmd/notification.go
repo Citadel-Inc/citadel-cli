@@ -103,9 +103,9 @@ type notifPrefsResp struct {
 	Kinds              []notifKindPref `json:"kinds"`
 }
 
-// ── init ──────────────────────────────────────────────────────────────────────
+// ── command registration ──────────────────────────────────────────────────────
 
-func init() {
+func registerNotificationCommands() {
 	addPaginationFlags(notificationListCmd)
 	addOutputFlag(notificationListCmd)
 	notificationListCmd.Flags().Bool("unread", false, "Show only unread notifications")

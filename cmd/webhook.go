@@ -1283,7 +1283,7 @@ func decorateWebhookDeliveryError(err error, namespacePath, action string) error
 	return err
 }
 
-func init() {
+func registerWebhookCommands() {
 	repoWebhookCmd.AddCommand(repoWebhookListCmd)
 	repoWebhookCmd.AddCommand(repoWebhookCreateCmd)
 	repoWebhookCmd.AddCommand(repoWebhookGetCmd)

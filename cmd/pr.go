@@ -560,9 +560,9 @@ func runPRMerge(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// ── init ──────────────────────────────────────────────────────────────────────
+// ── command registration ──────────────────────────────────────────────────────
 
-func init() {
+func registerPRCommands() {
 	PrCmd.AddCommand(prListCmd)
 	PrCmd.AddCommand(prViewCmd)
 	PrCmd.AddCommand(prCreateCmd)

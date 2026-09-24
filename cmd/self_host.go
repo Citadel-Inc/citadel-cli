@@ -363,7 +363,7 @@ func runSelfHostTelemetry(cmd *cobra.Command, args []string) error {
 
 // ─── wiring ──────────────────────────────────────────────────────────────────
 
-func init() {
+func registerSelfHostCommands() {
 	SelfHostCmd.AddCommand(selfHostInitCmd)
 	SelfHostCmd.AddCommand(selfHostHealthCmd)
 	SelfHostCmd.AddCommand(selfHostMigrateCmd)

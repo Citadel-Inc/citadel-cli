@@ -12,6 +12,8 @@ var Version = "dev"
 // persistent flags that handlers expect. Mirrors main wiring so integration
 // tests and shell completion exercise the same tree as the binary.
 func NewRootCmd() *cobra.Command {
+	registerCommands()
+
 	root := &cobra.Command{
 		Use:   "citadel-cli",
 		Short: "Citadel CLI — authentication, token, and MCP agent interface",

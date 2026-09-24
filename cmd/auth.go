@@ -818,7 +818,7 @@ func openBrowser(u string) {
 // drive the real OAuth flow with browser automation.
 var launchBrowser = openBrowser
 
-func init() {
+func registerAuthCommands() {
 	AuthCmd.AddCommand(loginCmd)
 	AuthCmd.AddCommand(statusCmd)
 	AuthCmd.AddCommand(logoutCmd)

@@ -267,7 +267,7 @@ func decodeBase64Loose(s string) ([]byte, error) {
 	return base64.RawStdEncoding.DecodeString(s)
 }
 
-func init() {
+func registerSelfHostLicenseCommands() {
 	SelfHostCmd.AddCommand(selfHostLicenseCmd)
 	selfHostLicenseCmd.AddCommand(selfHostLicenseValidateCmd)
 

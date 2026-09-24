@@ -466,7 +466,7 @@ func completeOAuthClientIDs(cmd *cobra.Command, args []string, _ string) ([]stri
 	return vals, cobra.ShellCompDirectiveNoFileComp
 }
 
-func init() {
+func registerOAuthClientsCommands() {
 	OauthCmd.AddCommand(oauthClientsCmd)
 	oauthClientsCmd.AddCommand(oauthClientsListCmd)
 	oauthClientsCmd.AddCommand(oauthClientsCreateCmd)

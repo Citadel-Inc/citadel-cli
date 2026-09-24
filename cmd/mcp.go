@@ -449,7 +449,7 @@ func parseFloat(v string) (float64, bool) {
 	return f, true
 }
 
-func init() {
+func registerMCPCommands() {
 	McpCmd.AddCommand(toolsCmd)
 	McpCmd.AddCommand(callCmd)
 	McpCmd.AddCommand(mcpResourcesCmd)

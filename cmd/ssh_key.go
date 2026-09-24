@@ -240,7 +240,7 @@ func completeSSHKeyIDs(cmd *cobra.Command, args []string, _ string) ([]string, c
 	return vals, cobra.ShellCompDirectiveNoFileComp
 }
 
-func init() {
+func registerSSHKeyCommands() {
 	SSHKeyCmd.AddCommand(sshKeyListCmd)
 	SSHKeyCmd.AddCommand(sshKeyAddCmd)
 	SSHKeyCmd.AddCommand(sshKeyDeleteCmd)

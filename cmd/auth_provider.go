@@ -200,7 +200,7 @@ func runAuthProviderUnlink(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func init() {
+func registerAuthProviderCommands() {
 	authProviderCmd.AddCommand(authProviderListCmd)
 	authProviderCmd.AddCommand(authProviderLinkCmd)
 	authProviderCmd.AddCommand(authProviderUnlinkCmd)

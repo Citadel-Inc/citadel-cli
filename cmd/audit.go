@@ -40,7 +40,7 @@ var auditShowCmd = &cobra.Command{
 	RunE:  runAuditShow,
 }
 
-func init() {
+func registerAuditCommands() {
 	AuditCmd.AddCommand(auditListCmd)
 	AuditCmd.AddCommand(auditShowCmd)
 	addPaginationFlags(auditListCmd)

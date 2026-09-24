@@ -1037,7 +1037,7 @@ func runIssueCloseRefs(cmd *cobra.Command, args []string) error {
 	}
 }
 
-func init() {
+func registerIssueCommands() {
 	IssueCmd.AddCommand(issueListCmd)
 	IssueCmd.AddCommand(issueViewCmd)
 	IssueCmd.AddCommand(issueCreateCmd)

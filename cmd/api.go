@@ -131,7 +131,7 @@ func runAPI(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func init() {
+func registerAPICommands() {
 	APICmd.Flags().StringP("method", "X", "", "HTTP method: GET, POST, PUT, PATCH, DELETE (default GET)")
 	APICmd.Flags().StringArrayP("field", "f", nil, "Request field as key=value (may be repeated)")
 	APICmd.Flags().String("input", "", "Read raw JSON request body from file or stdin with '-' (POST, PUT, PATCH only)")

@@ -540,7 +540,7 @@ func projectEmitMutationOK(cmd *cobra.Command, out map[string]any) error {
 	}
 }
 
-func init() {
+func registerProjectCommands() {
 	addOutputFlag(
 		projectPinChainCmd, projectWalkCmd, projectNeighborsCmd,
 		projectStatusRollupCmd, projectStatusDrilldownCmd,

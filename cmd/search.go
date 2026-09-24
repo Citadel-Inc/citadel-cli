@@ -34,7 +34,7 @@ Examples:
 	RunE: runSearch,
 }
 
-func init() {
+func registerSearchCommands() {
 	SearchCmd.Flags().Bool("public", false, "Include broader namespace discovery beyond those you belong to (authenticated scope=all)")
 	SearchCmd.Flags().String("scope", "", "Search scope: namespaces, repos, or all (overrides default; default is namespaces, or all with --public)")
 	SearchCmd.Flags().Int("limit", 0, "Maximum results per request (1–25; omit for server default)")

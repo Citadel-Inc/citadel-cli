@@ -250,7 +250,7 @@ func completeRepoTagNames(cmd *cobra.Command, args []string, _ string) ([]string
 	return completeRepoExistingRefNames(cmd, args, completion.RepoTagKey, completion.FetchRepoTagNames)
 }
 
-func init() {
+func registerRepoTagCommands() {
 	repoTagCmd.AddCommand(repoTagListCmd)
 	repoTagCmd.AddCommand(repoTagCreateCmd)
 	repoTagCmd.AddCommand(repoTagDeleteCmd)

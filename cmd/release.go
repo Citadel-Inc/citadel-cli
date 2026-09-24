@@ -719,7 +719,7 @@ func renderReleaseDetail(cmd *cobra.Command, nsPath string, row releaseRow, outp
 	}
 }
 
-func init() {
+func registerReleaseCommands() {
 	ReleaseCmd.AddCommand(
 		releaseListCmd,
 		releaseLatestCmd,

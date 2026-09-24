@@ -271,7 +271,7 @@ func listSymbolCandidates(ms []symbolMatch) string {
 	return strings.Join(parts, "; ")
 }
 
-func init() {
+func registerKGCommands() {
 	KgCmd.AddCommand(kgImpactCmd)
 	kgImpactCmd.Flags().Int("depth", 0, "BFS depth (1-3, default 2 server-side)")
 	addJSONFlag(kgImpactCmd)

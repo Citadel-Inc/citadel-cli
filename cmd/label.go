@@ -440,7 +440,7 @@ func runLabelClone(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func init() {
+func registerLabelCommands() {
 	LabelCmd.AddCommand(labelListCmd, labelCreateCmd, labelEditCmd, labelDeleteCmd, labelCloneCmd)
 
 	addIssuePathFlag(labelListCmd, labelCreateCmd, labelEditCmd, labelDeleteCmd)

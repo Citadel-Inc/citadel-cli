@@ -229,7 +229,7 @@ func completeRepoBranchNames(cmd *cobra.Command, args []string, _ string) ([]str
 	return completeRepoExistingRefNames(cmd, args, completion.RepoBranchKey, completion.FetchRepoBranchNames)
 }
 
-func init() {
+func registerRepoBranchCommands() {
 	repoBranchCmd.AddCommand(repoBranchListCmd)
 	repoBranchCmd.AddCommand(repoBranchDeleteCmd)
 	repoBranchCmd.AddCommand(repoBranchSetDefaultCmd)

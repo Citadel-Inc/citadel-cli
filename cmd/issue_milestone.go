@@ -525,7 +525,7 @@ func runIssueMilestoneDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func init() {
+func registerIssueMilestoneCommands() {
 	IssueCmd.AddCommand(issueMilestoneCmd)
 	issueMilestoneCmd.AddCommand(
 		issueMilestoneListCmd,

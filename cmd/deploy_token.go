@@ -497,7 +497,7 @@ func runDeployTokenListWatch(cmd *cobra.Command, c *apiclient.Client, namespaceP
 	return consumeSSEWatch(cmd, c, path, h)
 }
 
-func init() {
+func registerDeployTokenCommands() {
 	repoDeployTokenCmd.AddCommand(repoDeployTokenListCmd, repoDeployTokenCreateCmd, repoDeployTokenRevokeCmd)
 	namespaceDeployTokenCmd.AddCommand(namespaceDeployTokenListCmd, namespaceDeployTokenCreateCmd, namespaceDeployTokenRevokeCmd)
 	RepoCmd.AddCommand(repoDeployTokenCmd)

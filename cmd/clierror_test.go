@@ -118,12 +118,19 @@ func TestWriteErrorEnvelope_unknownFormatIsJSON(t *testing.T) {
 
 func TestKindToExitCode_remainingKinds(t *testing.T) {
 	extra := map[CLIErrorKind]int{
+		KindAuthRequired:      3,
 		KindForbidden:         3,
 		KindMFARequired:       3,
+		KindNotFound:          4,
+		KindConflict:          5,
+		KindRateLimited:       6,
+		KindValidation:        2,
 		KindDryRun:            2,
 		KindServerError:       7,
 		KindServerUnavailable: 7,
 		KindTimeout:           7,
+		KindNetwork:           7,
+		KindInternal:          1,
 	}
 	for k, want := range extra {
 		if got := KindToExitCode(k); got != want {

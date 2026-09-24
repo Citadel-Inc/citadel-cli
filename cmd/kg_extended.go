@@ -570,7 +570,7 @@ func mustFlag(cmd *cobra.Command, name string) string {
 	return s
 }
 
-func init() {
+func registerKGExtendedCommands() {
 	KgCmd.AddCommand(kgSearchCmd)
 	KgCmd.AddCommand(kgSymbolsCmd)
 	KgCmd.AddCommand(kgFilesCmd)

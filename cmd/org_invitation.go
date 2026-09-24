@@ -310,7 +310,7 @@ func runOrgInvAccept(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func init() {
+func registerOrgInvitationCommands() {
 	OrgCmd.AddCommand(orgInvitationCmd)
 	orgInvitationCmd.AddCommand(orgInvPendingCmd)
 	orgInvitationCmd.AddCommand(orgInvListCmd)

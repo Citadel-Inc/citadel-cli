@@ -603,9 +603,9 @@ func completePRDiffFiles(cmd *cobra.Command, args []string, _ string) ([]string,
 	return paths, cobra.ShellCompDirectiveNoFileComp
 }
 
-// ── init ──────────────────────────────────────────────────────────────────────
+// ── command registration ──────────────────────────────────────────────────────
 
-func init() {
+func registerPRCollabCommands() {
 	PrCmd.AddCommand(prDiffCmd)
 	PrCmd.AddCommand(prCheckCmd)
 	PrCmd.AddCommand(prCommentCmd)

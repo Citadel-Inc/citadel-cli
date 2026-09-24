@@ -198,7 +198,7 @@ func auditSessionsResolveNS(cmd *cobra.Command) string {
 	return nb
 }
 
-func init() {
+func registerAuditSessionsCommands() {
 	AuditCmd.AddCommand(auditSessionsCmd)
 	auditSessionsCmd.AddCommand(auditSessionsListCmd)
 	auditSessionsCmd.AddCommand(auditSessionsShowCmd)

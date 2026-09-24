@@ -251,9 +251,9 @@ func runRepoTopicPopular(cmd *cobra.Command, args []string) error {
 	return tw.Flush()
 }
 
-// ── init ──────────────────────────────────────────────────────────────────────
+// ── command registration ──────────────────────────────────────────────────────
 
-func init() {
+func registerRepoTopicsCommands() {
 	repoTopicCmd.AddCommand(repoTopicListCmd)
 	repoTopicCmd.AddCommand(repoTopicSetCmd)
 	repoTopicCmd.AddCommand(repoTopicPopularCmd)
