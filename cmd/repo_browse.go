@@ -266,7 +266,7 @@ func runRepoBrowseRaw(cmd *cobra.Command, args []string) error {
 	path := args[0]
 	if len(args) == 2 {
 		posArg = args[0]
-		path = args[1] //nolint:gosec // Cobra's RangeArgs validator guarantees the second positional argument exists.
+		path = args[1] //nolint:gosec // guarded by the len(args) == 2 check above
 	}
 	if path == "" {
 		return fmt.Errorf("file path required")
