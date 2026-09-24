@@ -328,6 +328,7 @@ func patchGitExec(t *testing.T) (string, func()) {
 	oldLookPath := execLookPath
 	execCommandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
 		cmdArgs := append([]string{"-test.run=TestHelperProcessGit", "--", name}, args...)
+		//nolint:gosec // The test helper re-executes the current binary with controlled arguments.
 		cmd := exec.CommandContext(ctx, os.Args[0], cmdArgs...)
 		cmd.Env = append(os.Environ(),
 			"GO_WANT_HELPER_PROCESS_GIT=1",

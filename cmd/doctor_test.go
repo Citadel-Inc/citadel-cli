@@ -285,6 +285,7 @@ func newDoctorGitRepo(t *testing.T, origin string) string {
 	if origin == "" {
 		return dir
 	}
+	//nolint:gosec // The test supplies the origin fixture and controls the git command.
 	cmd = exec.CommandContext(context.Background(), "git", "remote", "add", "origin", origin)
 	cmd.Dir = dir
 	if output, err := cmd.CombinedOutput(); err != nil {
