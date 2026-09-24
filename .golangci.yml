@@ -27,16 +27,6 @@ linters:
     nolintlint:
       require-explanation: true
       require-specific: true
-  # canon go-golangci-lint-00008
-  exclusions:
-    rules:
-      - path: _test\.go
-        linters:
-          - contextcheck
-          - errorlint
-          - gosec
-          - noctx
-
 # canon go-golangci-lint-00003
 issues:
   max-issues-per-linter: 0
