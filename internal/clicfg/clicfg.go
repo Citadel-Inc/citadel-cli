@@ -38,6 +38,11 @@ func configPath() (string, error) {
 	return filepath.Join(configDir, "config.toml"), nil
 }
 
+// ConfigPath returns the effective on-disk CLI configuration path.
+func ConfigPath() (string, error) {
+	return configPath()
+}
+
 // Load reads the config from disk and applies env-var overrides for
 // non-interactive automation. If the file does not exist, returns a
 // zero-value Config (fresh install state).

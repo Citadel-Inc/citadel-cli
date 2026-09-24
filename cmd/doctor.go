@@ -173,13 +173,9 @@ func checkMCP(ctx context.Context, cfg clicfg.Config, server string, opts mcpcli
 
 func checkConfigPerms() checkResult {
 	const name = "config-perms"
-	home, err := os.UserHomeDir()
+	configPath, err := clicfg.ConfigPath()
 	if err != nil {
 		return checkResult{name, statusWarn, fmt.Sprintf("cannot resolve home dir: %v", err)}
-	}
-	configPath := home + "/.config/citadel/config.toml"
-	if v := os.Getenv("XDG_CONFIG_HOME"); v != "" {
-		configPath = v + "/citadel/config.toml"
 	}
 	info, err := os.Stat(configPath)
 	if err != nil {
