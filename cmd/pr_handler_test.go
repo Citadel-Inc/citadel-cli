@@ -113,7 +113,7 @@ func TestPRList_StateFilter(t *testing.T) {
 func TestPRList_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET " + prPath(): func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, `{"error":"not_found"}`, 404)
+			http.Error(w, `{"error":"not_found"}`, http.StatusNotFound)
 		},
 	}))
 	err := rootFor(cmd.PrCmd, "list", "-R", testNSPath).Execute()
@@ -225,7 +225,7 @@ func TestPRView_JSON(t *testing.T) {
 func TestPRView_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET " + prPath("7"): func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, `{"error":"not_found"}`, 404)
+			http.Error(w, `{"error":"not_found"}`, http.StatusNotFound)
 		},
 	}))
 	err := rootFor(cmd.PrCmd, "view", "-R", testNSPath, "7").Execute()
@@ -268,7 +268,7 @@ func TestPRCreate_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST " + prPath(): func(w http.ResponseWriter, r *http.Request) {
 			if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
-				http.Error(w, "bad body", 400)
+				http.Error(w, "bad body", http.StatusBadRequest)
 				return
 			}
 			writeJSON(t, w, 201, openPR())
@@ -293,7 +293,7 @@ func TestPRCreate_InvalidRefs(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST " + prPath(): func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(`{"error":"invalid_refs"}`))
 		},
 	}))
@@ -327,7 +327,7 @@ func TestPRClose_InvalidState(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE " + prPath("7"): func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(409)
+			w.WriteHeader(http.StatusConflict)
 			_, _ = w.Write([]byte(`{"error":"invalid_state"}`))
 		},
 	}))
@@ -359,7 +359,7 @@ func TestPRMerge_AlreadyMerged(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST " + prPath("7", "merge"): func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(409)
+			w.WriteHeader(http.StatusConflict)
 			_, _ = w.Write([]byte(`{"error":"already_merged"}`))
 		},
 	}))
@@ -373,7 +373,7 @@ func TestPRMerge_Conflict(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST " + prPath("7", "merge"): func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(409)
+			w.WriteHeader(http.StatusConflict)
 			_, _ = w.Write([]byte(`{"error":"merge_conflict"}`))
 		},
 	}))
@@ -387,7 +387,7 @@ func TestPRMerge_ApprovalRequired(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST " + prPath("7", "merge"): func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(422)
+			w.WriteHeader(http.StatusUnprocessableEntity)
 			_, _ = w.Write([]byte(`{"error":"approval_required"}`))
 		},
 	}))
@@ -686,10 +686,10 @@ func TestPRReviewerAdd_Happy(t *testing.T) {
 			var b map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&b)
 			if b["user_id"] != "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" {
-				http.Error(w, "wrong user_id", 400)
+				http.Error(w, "wrong user_id", http.StatusBadRequest)
 				return
 			}
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
 	if err := rootFor(cmd.PrCmd, "reviewer", "add", "-R", testNSPath, "7",
@@ -731,7 +731,7 @@ func TestPRReviewerAdd_InvalidUUID(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST " + prPath("7", "reviewers"): func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(`{"error":"invalid_user_id"}`))
 		},
 	}))
@@ -752,10 +752,10 @@ func TestPRReview_Approve(t *testing.T) {
 			var b map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&b)
 			if b["status"] != "approved" {
-				http.Error(w, "want approved", 400)
+				http.Error(w, "want approved", http.StatusBadRequest)
 				return
 			}
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
 	if err := rootFor(cmd.PrCmd, "review", "-R", testNSPath, "7", "--approve").Execute(); err != nil {
@@ -798,10 +798,10 @@ func TestPRReview_RequestChanges(t *testing.T) {
 			var b map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&b)
 			if b["status"] != "changes_requested" {
-				http.Error(w, "want changes_requested", 400)
+				http.Error(w, "want changes_requested", http.StatusBadRequest)
 				return
 			}
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
 	if err := rootFor(cmd.PrCmd, "review", "-R", testNSPath, "7", "--request-changes").Execute(); err != nil {
@@ -836,7 +836,7 @@ func TestPRReview_CommentAndApprove(t *testing.T) {
 		},
 		"PUT " + prPath("7", "reviews", "me"): func(w http.ResponseWriter, _ *http.Request) {
 			reviewed = true
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
 	if err := rootFor(cmd.PrCmd, "review", "-R", testNSPath, "7",
@@ -1015,7 +1015,7 @@ func TestPRCommentAdd_ServerInvalidAnchor(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST " + prPath("7", "comments"): func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(`{"error":"invalid_inline_anchor"}`))
 		},
 	}))
@@ -1033,7 +1033,7 @@ func TestPRCommentAdd_ServerThreadNotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST " + prPath("7", "comments"): func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(404)
+			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"error":"thread_not_found"}`))
 		},
 	}))

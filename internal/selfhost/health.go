@@ -112,7 +112,7 @@ func probeSupabase(ctx context.Context, client *http.Client, supabaseURL, adminK
 		return ProbeResult{name, HealthRed, fmt.Sprintf("build request: %v", err)}
 	}
 	if adminKey != "" {
-		req.Header.Set("apikey", adminKey)
+		req.Header.Set("Apikey", adminKey)
 		req.Header.Set("Authorization", "Bearer "+adminKey)
 	}
 	resp, err := client.Do(req)
@@ -145,7 +145,7 @@ func probeMigrations(ctx context.Context, client *http.Client, supabaseURL, admi
 	if err != nil {
 		return ProbeResult{name, HealthRed, fmt.Sprintf("build request: %v", err)}
 	}
-	req.Header.Set("apikey", adminKey)
+	req.Header.Set("Apikey", adminKey)
 	req.Header.Set("Authorization", "Bearer "+adminKey)
 	req.Header.Set("Accept", "application/json")
 

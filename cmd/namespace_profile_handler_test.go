@@ -132,7 +132,7 @@ func TestNamespaceProfileGet_OwnerFields(t *testing.T) {
 func TestNamespaceProfileGet_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/namespaces/nosuchns/profile": func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, `{"code":"not_found"}`, 404)
+			http.Error(w, `{"code":"not_found"}`, http.StatusNotFound)
 		},
 	}))
 	err := rootFor(cmd.NamespaceCmd, "profile", "get", "nosuchns").Execute()

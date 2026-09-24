@@ -217,7 +217,7 @@ func TestNotificationRead_EmptyID_Hermetic(t *testing.T) {
 func TestNotificationRead_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"POST /api/me/notifications/missing-id/read": func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, `{"code":"not_found"}`, 404)
+			http.Error(w, `{"code":"not_found"}`, http.StatusNotFound)
 		},
 	}))
 	err := rootFor(cmd.NotificationCmd, "read", "missing-id").Execute()

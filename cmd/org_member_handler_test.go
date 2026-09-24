@@ -114,7 +114,7 @@ func TestOrgMemberList_Empty(t *testing.T) {
 func TestOrgMemberList_NotFound(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /orgs/nosuchorg/members": func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, `{"error":"not_found"}`, 404)
+			http.Error(w, `{"error":"not_found"}`, http.StatusNotFound)
 		},
 	}))
 	err := rootFor(cmd.OrgCmd, "member", "list", "nosuchorg").Execute()
@@ -130,10 +130,10 @@ func TestOrgMemberSetPermissions_ByUUID(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"PATCH /orgs/myorg/members/" + testMemberUUID: func(w http.ResponseWriter, r *http.Request) {
 			if err := json.NewDecoder(r.Body).Decode(&patchBody); err != nil {
-				http.Error(w, "bad body", 400)
+				http.Error(w, "bad body", http.StatusBadRequest)
 				return
 			}
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
 	if err := rootFor(cmd.OrgCmd, "member", "set-permissions", "myorg", testMemberUUID,
@@ -154,7 +154,7 @@ func TestOrgMemberSetPermissions_BySlug(t *testing.T) {
 		},
 		"PATCH /orgs/myorg/members/" + testMemberUUID: func(w http.ResponseWriter, _ *http.Request) {
 			patched = true
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
 	if err := rootFor(cmd.OrgCmd, "member", "set-permissions", "myorg", "alice",
@@ -171,10 +171,10 @@ func TestOrgMemberSetPermissions_ClearAll(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"PATCH /orgs/myorg/members/" + testMemberUUID: func(w http.ResponseWriter, r *http.Request) {
 			if err := json.NewDecoder(r.Body).Decode(&patchBody); err != nil {
-				http.Error(w, "bad body", 400)
+				http.Error(w, "bad body", http.StatusBadRequest)
 				return
 			}
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
 	if err := rootFor(cmd.OrgCmd, "member", "set-permissions", "myorg", testMemberUUID).Execute(); err != nil {
@@ -199,7 +199,7 @@ func TestOrgMemberSetPermissions_CannotModifyOwner(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"PATCH /orgs/myorg/members/" + testOwnerUUID: func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(403)
+			w.WriteHeader(http.StatusForbidden)
 			_, _ = w.Write([]byte(`{"error":"cannot_modify_owner"}`))
 		},
 	}))
@@ -214,7 +214,7 @@ func TestOrgMemberSetPermissions_InvalidPermission(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"PATCH /orgs/myorg/members/" + testMemberUUID: func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(`{"error":"invalid_permission"}`))
 		},
 	}))
@@ -232,7 +232,7 @@ func TestOrgMemberRemove_ByUUID(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /orgs/myorg/members/" + testMemberUUID: func(w http.ResponseWriter, _ *http.Request) {
 			deleted = true
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
 	if err := rootFor(cmd.OrgCmd, "member", "remove", "myorg", testMemberUUID, "--yes").Execute(); err != nil {
@@ -260,7 +260,7 @@ func TestOrgMemberRemove_BySlug(t *testing.T) {
 		},
 		"DELETE /orgs/myorg/members/" + testMemberUUID: func(w http.ResponseWriter, _ *http.Request) {
 			deleted = true
-			w.WriteHeader(204)
+			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
 	if err := rootFor(cmd.OrgCmd, "member", "remove", "myorg", "alice", "--yes").Execute(); err != nil {
@@ -275,7 +275,7 @@ func TestOrgMemberRemove_CannotRemoveOwner(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /orgs/myorg/members/" + testOwnerUUID: func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(403)
+			w.WriteHeader(http.StatusForbidden)
 			_, _ = w.Write([]byte(`{"error":"cannot_remove_owner"}`))
 		},
 	}))
@@ -289,7 +289,7 @@ func TestOrgMemberRemove_SelfRemovalLockout(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /orgs/myorg/members/" + testMemberUUID: func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(403)
+			w.WriteHeader(http.StatusForbidden)
 			_, _ = w.Write([]byte(`{"error":"self_removal_lockout"}`))
 		},
 	}))

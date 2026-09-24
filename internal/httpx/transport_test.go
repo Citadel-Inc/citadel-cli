@@ -19,10 +19,10 @@ func TestRetryOn503(t *testing.T) {
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if calls.Add(1) == 1 {
-			w.WriteHeader(503)
+			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
 
@@ -44,7 +44,7 @@ func TestNoRetryOnPOST(t *testing.T) {
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		w.WriteHeader(503)
+		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
 

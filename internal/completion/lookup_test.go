@@ -14,7 +14,7 @@ func TestLookupSecondCallUsesCache(t *testing.T) {
 
 	var apiCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" && r.URL.Path == "/orgs" {
+		if r.Method == http.MethodGet && r.URL.Path == "/orgs" {
 			apiCalls++
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
