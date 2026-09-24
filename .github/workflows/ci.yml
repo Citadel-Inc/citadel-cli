@@ -33,8 +33,5 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - name: Test (race)
-        run: go test -race ./...
-
-      - name: Per-package coverage (min 75%)
+      - name: Test (race) and per-package coverage (min 75%)
         run: bash scripts/check-package-coverage.sh

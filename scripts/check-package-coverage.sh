@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Enforce a minimum statement coverage per Go package (default 75%).
+# Run the race-enabled test suite once and enforce a minimum statement coverage per Go package (default 75%).
 # Writes a Markdown table to $GITHUB_STEP_SUMMARY when running in Actions.
 # Usage: ./scripts/check-package-coverage.sh
 # Env: COVERAGE_MIN (default 75), COVERAGE_SKIP_REGEX (optional egrep -v pattern for packages)
@@ -13,7 +13,7 @@ MODULE="github.com/Citadel-Inc/citadel-cli"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-go test ./... -cover -covermode=atomic -count=1 >"$tmp" 2>&1 || {
+go test -race ./... -cover -covermode=atomic -count=1 >"$tmp" 2>&1 || {
 	cat "$tmp"
 	exit 1
 }
