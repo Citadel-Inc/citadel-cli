@@ -82,9 +82,8 @@ func DeepestCLIError(err error) (*CLIError, bool) {
 }
 
 func pickDisplayMessage(execErr, friendly error) string {
-	_, direct := execErr.(*CLIError)
-	var ignore *CLIError
-	if !direct && errors.As(execErr, &ignore) {
+	_, found := errors.AsType[*CLIError](execErr)
+	if found {
 		return execErr.Error()
 	}
 	return friendly.Error()
