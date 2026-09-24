@@ -128,7 +128,7 @@ func (e *ndjsonWatchEmitter) Handle(ev sseclient.Event) error {
 	return e.enc.Encode(line)
 }
 
-func newWatchSSEHandler(cmd *cobra.Command, kind watchListKind, ctx watchTableCtx) sseEventHandler {
+func newWatchSSEHandler(cmd *cobra.Command, kind watchListKind, ctx watchTableCtx) sseEventHandler { //nolint:ireturn // one of two implementations is chosen at runtime by the --output flag.
 	out := cmd.OutOrStdout()
 	switch strings.TrimSpace(strings.ToLower(outputFlag(cmd))) {
 	case "ndjson":
