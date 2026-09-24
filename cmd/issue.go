@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -229,7 +230,7 @@ func resolveIssueNamespacePath(cmd *cobra.Command) (string, error) {
 	}
 	rawURL, err := gitOriginURL(cmd.Context(), path)
 	if err != nil {
-		if err == exec.ErrNotFound {
+		if errors.Is(err, exec.ErrNotFound) {
 			return "", fmt.Errorf("namespace path required: pass -R <ns/path> or set %s", citadelRepoEnv)
 		}
 		return "", fmt.Errorf("namespace path required: pass -R <ns/path>, set %s, or run from a git checkout with a Citadel origin", citadelRepoEnv)

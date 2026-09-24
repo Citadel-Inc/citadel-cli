@@ -55,7 +55,7 @@ func TestFriendlyError_HTTPStatusBranches(t *testing.T) {
 
 func TestFriendlyError_PassthroughForUnknown(t *testing.T) {
 	in := errors.New("some bespoke verb error")
-	if got := FriendlyError(in); got != in {
+	if got := FriendlyError(in); !errors.Is(got, in) {
 		t.Fatalf("unmapped errors must pass through unchanged: got %v", got)
 	}
 }
@@ -204,7 +204,7 @@ func TestFriendlyError_HTTPUnknown4xxMapsToValidation(t *testing.T) {
 func TestFriendlyError_HTTP1xxPassesThrough(t *testing.T) {
 	in := &apiclient.HTTPError{StatusCode: 100, Body: "continue"}
 	got := FriendlyError(in)
-	if got != in {
+	if !errors.Is(got, in) {
 		t.Fatalf("want pass-through for 1xx, got %T %v", got, got)
 	}
 }

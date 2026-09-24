@@ -3,6 +3,7 @@ package cmd_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -108,7 +109,7 @@ func TestRepoListWatch_scriptedSSESequence_ndjson(t *testing.T) {
 		cancel()
 		select {
 		case err := <-errCh:
-			if err != nil && err != context.Canceled {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				t.Errorf("ExecuteContext: %v", err)
 			}
 		case <-time.After(15 * time.Second):

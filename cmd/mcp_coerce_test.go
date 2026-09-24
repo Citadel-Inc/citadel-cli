@@ -105,7 +105,7 @@ func TestParseArgPairs(t *testing.T) {
 
 func TestSurfaceErr_Passthrough(t *testing.T) {
 	in := errors.New("plain")
-	if got := surfaceErr(in); got != in {
+	if got := surfaceErr(in); !errors.Is(got, in) {
 		t.Errorf("non-auth errors must pass through unchanged: %v", got)
 	}
 }

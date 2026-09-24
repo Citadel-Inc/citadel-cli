@@ -144,13 +144,13 @@ func resolveRepoFlag(cmd *cobra.Command) (ns, slug string, err error) {
 		if errors.Is(err, exec.ErrNotFound) {
 			return "", "", fmt.Errorf("git is not available on PATH; pass -R <namespace>/<slug> or set %s", citadelRepoEnv)
 		}
-		return "", "", fmt.Errorf("could not infer repo from CWD (git remote): %v — pass -R <namespace>/<slug>", err)
+		return "", "", fmt.Errorf("could not infer repo from CWD (git remote): %w — pass -R <namespace>/<slug>", err)
 	}
 
 	hosts := mergeCitadelHosts()
 	ns, slug, err = parseOriginIntoRepo(rawURL, hosts)
 	if err != nil {
-		return "", "", fmt.Errorf("could not infer repo from CWD: %v — pass -R <namespace>/<slug>", err)
+		return "", "", fmt.Errorf("could not infer repo from CWD: %w — pass -R <namespace>/<slug>", err)
 	}
 
 	if inferenceHintWorthy(cmd) {

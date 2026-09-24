@@ -3,6 +3,7 @@ package mcpclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -240,7 +241,8 @@ func TestToolsList_NoRetryOnJSONRPCApplicationError(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := c.ToolsList(context.Background())
-	e, ok := err.(*Error)
+	var e *Error
+	ok := errors.As(err, &e)
 	if !ok || e.Kind != KindInvalidParams {
 		t.Fatalf("want KindInvalidParams, got %v", err)
 	}
@@ -351,7 +353,8 @@ func TestMethodNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := c.ToolsCall(context.Background(), "nope", nil)
-	e, ok := err.(*Error)
+	var e *Error
+	ok := errors.As(err, &e)
 	if !ok || e.Kind != KindMethodNotFound || !strings.Contains(e.Message, "nope") {
 		t.Fatalf("want KindMethodNotFound w/ name, got %v", err)
 	}
@@ -364,7 +367,8 @@ func TestVersionMismatch(t *testing.T) {
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
 	err := c.Initialize(context.Background())
-	e, ok := err.(*Error)
+	var e *Error
+	ok := errors.As(err, &e)
 	if !ok || e.Kind != KindVersionMismatch {
 		t.Fatalf("want KindVersionMismatch, got %v", err)
 	}

@@ -149,7 +149,7 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 				return "", fmt.Errorf("update config after token refresh: %w", err)
 			}
 			if refreshErr != nil {
-				return "", fmt.Errorf("%w: %v", errSessionExpired, refreshErr)
+				return "", fmt.Errorf("%w: %w", errSessionExpired, refreshErr)
 			}
 			return refreshedToken, nil
 		}
@@ -174,9 +174,9 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 				cfg.ExpiresAt = time.Time{}
 				return nil
 			}); clearErr != nil {
-				return "", fmt.Errorf("%w: clear credentials: %v", errSessionExpired, clearErr)
+				return "", fmt.Errorf("%w: clear credentials: %w", errSessionExpired, clearErr)
 			}
-			return "", fmt.Errorf("%w: %v", errSessionExpired, err)
+			return "", fmt.Errorf("%w: %w", errSessionExpired, err)
 		}
 		if newTok.CleartextToken == "" {
 			if err := clicfg.Update(func(cfg *clicfg.Config) error {
@@ -185,7 +185,7 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 				cfg.ExpiresAt = time.Time{}
 				return nil
 			}); err != nil {
-				return "", fmt.Errorf("%w: clear credentials: %v", errSessionExpired, err)
+				return "", fmt.Errorf("%w: clear credentials: %w", errSessionExpired, err)
 			}
 			return "", fmt.Errorf("%w: rotate token: empty cleartext_token in response", errSessionExpired)
 		}
