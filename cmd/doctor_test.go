@@ -119,6 +119,7 @@ func TestCheckAuthToken_Missing(t *testing.T) {
 }
 
 func TestCheckAuthToken_OpaqueToken(t *testing.T) {
+	//nolint:gosec // fixture credential, not a secret
 	got := checkAuthToken(clicfg.Config{AccessToken: "ag_at_opaque_random_bytes"})
 	if got.status != statusPass {
 		t.Errorf("opaque token should PASS: %s", got)

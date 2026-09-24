@@ -177,6 +177,7 @@ func TestLiveSelfHost_health_amber_optIn(t *testing.T) {
 	}))
 	defer supSrv.Close()
 
+	//nolint:gosec // fixture credential, not a secret
 	cfg := selfhost.Config{
 		APIEndpoint: apiSrv.URL,
 		SupabaseURL: supSrv.URL,

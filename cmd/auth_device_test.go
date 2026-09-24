@@ -100,6 +100,7 @@ func TestRunDeviceLogin_SuccessStoresAgentToken(t *testing.T) {
 				"name": "citadel-cli@test-host",
 			})
 		case r.Method == http.MethodPost && r.URL.Path == "/agents/"+agentID+"/rotate-token":
+			//nolint:gosec // fixture credential, not a secret
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id":              "77777777-7777-4777-8777-777777777777",
 				"agent_id":        agentID,

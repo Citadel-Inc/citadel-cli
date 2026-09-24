@@ -93,6 +93,7 @@ func TestBootstrapAgentToken_Happy(t *testing.T) {
 			}
 			_ = json.NewEncoder(w).Encode(map[string]string{"id": agentID, "name": body.Name})
 		case r.Method == http.MethodPost && r.URL.Path == "/agents/"+agentID+"/rotate-token":
+			//nolint:gosec // fixture credential, not a secret
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id":              "88888888-8888-8888-8888-888888888888",
 				"agent_id":        agentID,
@@ -803,6 +804,7 @@ func TestRunLogin_FlowSmoke(t *testing.T) {
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			_ = json.NewEncoder(w).Encode(map[string]string{"id": agentID, "name": body.Name})
 		case r.URL.Path == "/agents/"+agentID+"/rotate-token" && r.Method == http.MethodPost:
+			//nolint:gosec // fixture credential, not a secret
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id":              "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 				"agent_id":        agentID,
