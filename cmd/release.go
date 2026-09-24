@@ -501,6 +501,7 @@ func runReleaseAssetUpload(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	//nolint:gosec // The upload argument explicitly selects the local asset file.
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("open asset file: %w", err)
@@ -549,6 +550,7 @@ func runReleaseAssetDownload(cmd *cobra.Command, args []string) error {
 	dst := cmd.OutOrStdout()
 	var file *os.File
 	if outputFile != "" && outputFile != "-" {
+		//nolint:gosec // --output-file explicitly selects the local download destination.
 		file, err = os.Create(outputFile)
 		if err != nil {
 			return fmt.Errorf("create output file: %w", err)

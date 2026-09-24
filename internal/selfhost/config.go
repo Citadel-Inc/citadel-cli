@@ -61,6 +61,7 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	//nolint:gosec // The config path is explicitly selected by the operator or defaulted under home.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

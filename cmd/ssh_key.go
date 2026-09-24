@@ -173,6 +173,7 @@ func resolveSSHPublicKeyMaterial(publicKeyFlag, keyFile string) (material string
 			}
 			return string(b), "stdin", nil
 		}
+		//nolint:gosec // --key-file explicitly selects the local public-key file.
 		b, err := os.ReadFile(keyFile)
 		if err != nil {
 			return "", "", fmt.Errorf("read --key-file: %w", err)

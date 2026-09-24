@@ -70,6 +70,7 @@ func runAPI(cmd *cobra.Command, args []string) error {
 		if input == "-" {
 			inputJSON, err = io.ReadAll(cmd.InOrStdin())
 		} else {
+			//nolint:gosec // --input explicitly selects a local request-body file.
 			inputJSON, err = os.ReadFile(input)
 		}
 		if err != nil {

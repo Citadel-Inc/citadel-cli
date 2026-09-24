@@ -210,6 +210,7 @@ func readLicenseInput(cmd *cobra.Command, path string) ([]byte, error) {
 		}
 		return b, nil
 	}
+	//nolint:gosec // --file explicitly selects the local license file.
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read license file: %w", err)

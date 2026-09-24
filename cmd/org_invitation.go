@@ -270,6 +270,7 @@ func runOrgInvAccept(cmd *cobra.Command, args []string) error {
 	var token string
 	switch {
 	case tokFile != "":
+		//nolint:gosec // --token-file explicitly selects a local secret file.
 		b, err := os.ReadFile(tokFile)
 		if err != nil {
 			return fmt.Errorf("read --token-file: %w", err)

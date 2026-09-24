@@ -392,6 +392,7 @@ func readIssueBody(cmd *cobra.Command, flagName string) (string, error) {
 	if err := ecmd.Run(); err != nil {
 		return "", fmt.Errorf("run editor: %w", err)
 	}
+	//nolint:gosec // name is a private temporary file created by this command.
 	b, err := os.ReadFile(name)
 	if err != nil {
 		return "", fmt.Errorf("read edited body: %w", err)

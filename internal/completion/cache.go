@@ -97,6 +97,7 @@ func readCache(resolvedServer, resourceKey string) ([]string, bool) {
 	if err != nil {
 		return nil, false
 	}
+	//nolint:gosec // The cache path uses the OS cache directory and sanitized keys.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, false
@@ -134,6 +135,7 @@ func writeCache(resolvedServer, resourceKey string, values []string) {
 	}
 	_ = os.MkdirAll(filepath.Dir(path), 0o700)
 	tmp := path + ".tmp"
+	//nolint:gosec // The temporary cache path derives from the sanitized cache path.
 	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return

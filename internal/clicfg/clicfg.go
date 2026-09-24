@@ -71,6 +71,7 @@ func Load() (Config, error) {
 	case statErr != nil:
 		return Config{}, statErr
 	default:
+		//nolint:gosec // The config path is the operator-selected local config root.
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return Config{}, err
@@ -107,6 +108,7 @@ func (c Config) Save() error {
 
 	// Write to a temporary file first, then atomic rename
 	tmpFile := path + ".tmp"
+	//nolint:gosec // The temporary path is derived from the protected config path.
 	f, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
@@ -144,6 +146,7 @@ func Update(fn func(*Config) error) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
+	//nolint:gosec // The lock path is derived from the protected config path.
 	lock, err := os.OpenFile(path+".lock", os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return err

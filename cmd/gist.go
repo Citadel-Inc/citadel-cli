@@ -174,6 +174,7 @@ func parseGistFiles(values []string) (map[string]string, error) {
 			return nil, fmt.Errorf("--file must use path=content")
 		}
 		if filePath, isRef := strings.CutPrefix(content, "@"); isRef {
+			//nolint:gosec // @path explicitly selects a local file for gist content.
 			data, err := os.ReadFile(filePath)
 			if err != nil {
 				return nil, fmt.Errorf("read %s: %w", filePath, err)
@@ -477,6 +478,7 @@ func runGistRaw(cmd *cobra.Command, args []string) error {
 	dst := cmd.OutOrStdout()
 	var file *os.File
 	if outputFile != "" && outputFile != "-" {
+		//nolint:gosec // --output-file explicitly selects the local download destination.
 		file, err = os.OpenFile(outputFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 		if err != nil {
 			return fmt.Errorf("create output file: %w", err)
