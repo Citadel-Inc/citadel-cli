@@ -128,6 +128,7 @@ func TestCopySecretToClipboard_LinuxFakeTool(t *testing.T) {
 	dir := t.TempDir()
 	// Drop in a stub `wl-copy` that just consumes stdin and exits 0.
 	stub := dir + "/wl-copy"
+	//nolint:gosec // Fixture script must be executable by the test.
 	if err := os.WriteFile(stub, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -143,6 +144,7 @@ func TestCopySecretToClipboard_ToolFails(t *testing.T) {
 	}
 	dir := t.TempDir()
 	stub := dir + "/wl-copy"
+	//nolint:gosec // Fixture script must be executable by the test.
 	if err := os.WriteFile(stub, []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}

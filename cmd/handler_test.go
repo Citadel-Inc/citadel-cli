@@ -1496,6 +1496,7 @@ func TestOAuthRotateSecret_WithClipboard(t *testing.T) {
 	}
 	dir := t.TempDir()
 	stub := dir + "/wl-copy"
+	//nolint:gosec // Fixture script must be executable by the test.
 	if err := os.WriteFile(stub, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}

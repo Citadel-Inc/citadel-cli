@@ -64,6 +64,7 @@ func TestApplyMigrations_BinaryFails(t *testing.T) {
 	// Stub `supabase` that exits non-zero so the cmd.CombinedOutput error path is exercised.
 	dir := t.TempDir()
 	stub := dir + "/supabase"
+	//nolint:gosec // Fixture script must be executable by the test.
 	if err := os.WriteFile(stub, []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
