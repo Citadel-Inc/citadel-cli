@@ -61,7 +61,12 @@ func TestClient_GetStream_ReturnsHTTPError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = c.GetStream(context.Background(), "/missing")
+	resp, err := c.GetStream(context.Background(), "/missing")
+	if resp != nil {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Fatalf("close response body: %v", closeErr)
+		}
+	}
 	var httpErr *HTTPError
 	if !errors.As(err, &httpErr) {
 		t.Fatalf("error type = %T, want *HTTPError", err)

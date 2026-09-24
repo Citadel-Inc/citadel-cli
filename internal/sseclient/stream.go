@@ -102,7 +102,7 @@ func (s *Stream) Next() (Event, error) {
 		}
 
 		if s.br == nil {
-			resp, err := s.api.GetEventStream(s.ctx, s.path, s.lastID)
+			resp, err := s.api.GetEventStream(s.ctx, s.path, s.lastID) //nolint:bodyclose // Stream owns and closes the active response body.
 			if err != nil {
 				if terminalHTTP(err) {
 					return Event{}, err

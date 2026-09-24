@@ -100,7 +100,12 @@ func TestRetryTransport_ReadBodyError(t *testing.T) {
 		t.Fatal(err)
 	}
 	rt := &RetryTransport{Base: http.DefaultTransport}
-	_, err = rt.RoundTrip(req)
+	resp, err := rt.RoundTrip(req)
+	if resp != nil {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Fatalf("close response body: %v", closeErr)
+		}
+	}
 	if err == nil || !strings.Contains(err.Error(), "read request body") {
 		t.Fatalf("want body read error, got %v", err)
 	}

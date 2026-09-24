@@ -464,7 +464,12 @@ func TestClient_GetEventStream_retryAfterOnError(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
-	_, err := c.GetEventStream(context.Background(), "/gone", "")
+	resp, err := c.GetEventStream(context.Background(), "/gone", "")
+	if resp != nil {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Fatalf("close response body: %v", closeErr)
+		}
+	}
 	var he *HTTPError
 	if !errors.As(err, &he) || he.StatusCode != http.StatusGone || he.RetryAfter != 12 {
 		t.Fatalf("HTTPError = %#v", he)
@@ -526,7 +531,12 @@ func TestGetEventStream_401_RetryOn401_HookError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, got := c.GetEventStream(context.Background(), "/stream", "")
+	resp, got := c.GetEventStream(context.Background(), "/stream", "")
+	if resp != nil {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			t.Fatalf("close response body: %v", closeErr)
+		}
+	}
 	if !errors.Is(got, hookErr) {
 		t.Fatalf("want hookErr, got %v", got)
 	}
