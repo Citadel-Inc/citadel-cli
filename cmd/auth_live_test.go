@@ -38,6 +38,7 @@ func TestLiveOAuthLogin_fullBrowser_optIn(t *testing.T) {
 		t.Skip("set CITADEL_TEST_OAUTH_STORAGE_STATE or CITADEL_TEST_OAUTH_REFRESH_TOKEN for full live OAuth browser integration")
 	}
 	if storageState != "" {
+		//nolint:gosec // Opt-in test reads the operator-supplied browser state file.
 		if _, err := os.Stat(storageState); err != nil {
 			t.Skipf("storage-state file unavailable: %v", err)
 		}
