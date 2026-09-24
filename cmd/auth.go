@@ -220,7 +220,10 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 		// The outer defer closes the listener; that is what unblocks Serve.
 		// No follow-up Shutdown() is needed — Serve already returned.
-		server := &http.Server{Handler: mux}
+		server := &http.Server{
+			Handler:           mux,
+			ReadHeaderTimeout: 10 * time.Second,
+		}
 		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errServe <- fmt.Errorf("serve: %w", err)
 		}
