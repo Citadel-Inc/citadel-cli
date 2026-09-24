@@ -141,7 +141,9 @@ func TestClient_PostSendsJSON(t *testing.T) {
 		if r.Header.Get("Content-Type") != "application/json" {
 			t.Errorf("missing content-type")
 		}
-		var body struct{ X int }
+		var body struct {
+			X int `json:"x"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatal(err)
 		}
@@ -307,7 +309,9 @@ func TestClient_PatchSendsJSON(t *testing.T) {
 		if r.Method != http.MethodPatch {
 			t.Errorf("method = %s", r.Method)
 		}
-		var body struct{ Name string }
+		var body struct {
+			Name string `json:"name"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatal(err)
 		}
@@ -329,7 +333,9 @@ func TestClient_PutSendsJSON(t *testing.T) {
 		if r.Method != http.MethodPut {
 			t.Errorf("method = %s", r.Method)
 		}
-		var body struct{ Y int }
+		var body struct {
+			Y int `json:"y"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatal(err)
 		}

@@ -96,7 +96,11 @@ func TestEmitNDJSONLines_rows(t *testing.T) {
 	if err := json.Unmarshal([]byte(lines[0]), &row); err != nil {
 		t.Fatal(err)
 	}
-	if row["a"].(float64) != 1 {
+	value, ok := row["a"].(float64)
+	if !ok {
+		t.Fatalf("row[a] has unexpected type: %T", row["a"])
+	}
+	if value != 1 {
 		t.Fatalf("first row: %v", row)
 	}
 }

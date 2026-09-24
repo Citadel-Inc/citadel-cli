@@ -282,7 +282,11 @@ func TestGistRawStreamsBeforeResponseEOF(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = io.WriteString(w, rawPrefix)
-		w.(http.Flusher).Flush()
+		fl, ok := w.(http.Flusher)
+		if !ok {
+			t.Fatalf("responseWriter does not support Flush")
+		}
+		fl.Flush()
 		close(firstChunkSent)
 		<-sendRemainder
 		_, _ = io.WriteString(w, rawSuffix)

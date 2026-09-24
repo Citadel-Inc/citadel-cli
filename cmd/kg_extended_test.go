@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"reflect"
@@ -28,7 +29,7 @@ func TestKgFetchPagesAndNDJSON(t *testing.T) {
 			}, nil
 		default:
 			t.Fatalf("unexpected cursor %q", cursor)
-			return nil, nil
+			return nil, errors.New("unexpected cursor")
 		}
 	}, "", true)
 	if err != nil {
@@ -42,8 +43,12 @@ func TestKgFetchPagesAndNDJSON(t *testing.T) {
 	if err := kgWritePages(cmd, pages, true, "results"); err != nil {
 		t.Fatal(err)
 	}
+	out, ok := cmd.OutOrStdout().(*bytes.Buffer)
+	if !ok {
+		t.Fatalf("output writer has unexpected type: %T", cmd.OutOrStdout())
+	}
 	var rows []map[string]any
-	for line := range strings.SplitSeq(strings.TrimSpace(cmd.OutOrStdout().(*bytes.Buffer).String()), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out.String()), "\n") {
 		var row map[string]any
 		if err := json.Unmarshal([]byte(line), &row); err != nil {
 			t.Fatal(err)
@@ -102,7 +107,11 @@ func TestKgWritePagesTable(t *testing.T) {
 			if err := kgWritePages(cmd, []any{tt.payload}, false, tt.keys...); err != nil {
 				t.Fatal(err)
 			}
-			lines := strings.Split(strings.TrimSpace(cmd.OutOrStdout().(*bytes.Buffer).String()), "\n")
+			out, ok := cmd.OutOrStdout().(*bytes.Buffer)
+			if !ok {
+				t.Fatalf("output writer has unexpected type: %T", cmd.OutOrStdout())
+			}
+			lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 			if len(lines) != 2 {
 				t.Fatalf("table lines = %#v, want header plus one row", lines)
 			}
@@ -367,7 +376,7 @@ func runKgAllPaginationTest(t *testing.T, path string, args []string, rowKey str
 			if cursor != "" {
 				t.Fatalf("first-page cursor = %q, want empty", cursor)
 			}
-			writeJSON(t, w, http.StatusOK, map[string]any{
+			writeJSON(t, w, map[string]any{
 				rowKey:        []any{first},
 				"next_cursor": "cursor-page-two",
 			})
@@ -375,7 +384,7 @@ func runKgAllPaginationTest(t *testing.T, path string, args []string, rowKey str
 			if cursor != "cursor-page-two" {
 				t.Fatalf("second-page cursor = %q, want cursor-page-two", cursor)
 			}
-			writeJSON(t, w, http.StatusOK, map[string]any{rowKey: []any{second}})
+			writeJSON(t, w, map[string]any{rowKey: []any{second}})
 		default:
 			t.Fatalf("unexpected request %d with cursor %q", calls, cursor)
 		}

@@ -217,7 +217,11 @@ func TestPRView_JSON(t *testing.T) {
 		t.Fatalf("output not valid JSON: %v\nbody: %s", err, buf.String())
 	}
 	pr, _ := out["pull_request"].(map[string]any)
-	if pr["number"].(float64) != float64(testPRNum) {
+	number, ok := pr["number"].(float64)
+	if !ok {
+		t.Fatalf("pull_request.number has unexpected type: %T", pr["number"])
+	}
+	if number != float64(testPRNum) {
 		t.Fatalf("want number=%d, got %v", testPRNum, pr["number"])
 	}
 }
@@ -891,7 +895,11 @@ func TestPRCommentAdd_Inline(t *testing.T) {
 	if gotBody["diff_file"] != "foo.go" {
 		t.Fatalf("want diff_file=foo.go, got %v", gotBody["diff_file"])
 	}
-	if gotBody["diff_line"].(float64) != 42 {
+	diffLine, ok := gotBody["diff_line"].(float64)
+	if !ok {
+		t.Fatalf("diff_line has unexpected type: %T", gotBody["diff_line"])
+	}
+	if diffLine != 42 {
 		t.Fatalf("want diff_line=42, got %v", gotBody["diff_line"])
 	}
 	if gotBody["diff_side"] != "right" {

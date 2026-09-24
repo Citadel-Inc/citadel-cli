@@ -788,8 +788,14 @@ func TestIssueLabel_Happy(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatal(err)
 		}
-		add := body["add"].([]any)
-		remove := body["remove"].([]any)
+		add, ok := body["add"].([]any)
+		if !ok {
+			t.Fatalf("add has unexpected type: %T", body["add"])
+		}
+		remove, ok := body["remove"].([]any)
+		if !ok {
+			t.Fatalf("remove has unexpected type: %T", body["remove"])
+		}
 		if len(add) != 1 || add[0] != "bug" || len(remove) != 1 || remove[0] != "triage" {
 			t.Fatalf("unexpected label payload: %#v", body)
 		}

@@ -53,7 +53,10 @@ func TestRepoListWatch_scriptedSSESequence_ndjson(t *testing.T) {
 		if !strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
 			t.Errorf("want Accept text/event-stream, got %q", r.Header.Get("Accept"))
 		}
-		fl := w.(http.Flusher)
+		fl, ok := w.(http.Flusher)
+		if !ok {
+			t.Fatalf("responseWriter does not support Flush")
+		}
 		w.Header().Set("Content-Type", "text/event-stream")
 
 		switch gen.Add(1) {

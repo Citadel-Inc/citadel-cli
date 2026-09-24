@@ -1997,7 +1997,10 @@ func TestOrgInvitationCreate_PostBodyPermissions(t *testing.T) {
 	if err := json.Unmarshal(gotBody, &m); err != nil {
 		t.Fatal(err)
 	}
-	p := m["permissions"].([]any)
+	p, ok := m["permissions"].([]any)
+	if !ok {
+		t.Fatalf("permissions has unexpected type: %T", m["permissions"])
+	}
 	if len(p) != 2 {
 		t.Fatalf("permissions: %v", m["permissions"])
 	}
