@@ -791,20 +791,23 @@ func generatePKCE() (verifier, challenge string, err error) {
 // openBrowser opens the URL in the default browser.
 // The URL is always printed first so users on headless / SSH systems can
 // copy-paste it even if the automatic open fails.
+func startBrowserCommand(name string, args ...string) {
+	cmd := exec.CommandContext(context.Background(), name, args...) //nolint:gosec // The launcher is selected from fixed platform commands and arguments are not shell input.
+	_ = cmd.Start()
+}
+
 func openBrowser(u string) {
 	fmt.Printf("If the browser does not open, visit:\n  %s\n", u)
-	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux":
-		cmd = exec.CommandContext(context.Background(), "xdg-open", u)
+		startBrowserCommand("xdg-open", u)
 	case "darwin":
-		cmd = exec.CommandContext(context.Background(), "open", u)
+		startBrowserCommand("open", u)
 	case "windows":
-		cmd = exec.CommandContext(context.Background(), "rundll32", "url.dll,FileProtocolHandler", u)
+		startBrowserCommand("rundll32", "url.dll,FileProtocolHandler", u)
 	default:
 		return
 	}
-	_ = cmd.Start()
 }
 
 // launchBrowser is a test hook around openBrowser so env-gated live tests can

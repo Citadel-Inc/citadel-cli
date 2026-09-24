@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -384,7 +383,9 @@ func readIssueBody(cmd *cobra.Command, flagName string) (string, error) {
 	if len(parts) == 0 {
 		return "", fmt.Errorf("invalid $EDITOR command")
 	}
-	ecmd := exec.CommandContext(context.Background(), parts[0], append(parts[1:], name)...)
+	editorArgs := append([]string(nil), parts[1:]...)
+	editorArgs = append(editorArgs, name)
+	ecmd := exec.CommandContext(cmd.Context(), parts[0], editorArgs...) //nolint:gosec // The editor is explicitly selected by the local operator and receives a private temp path.
 	ecmd.Stdin = os.Stdin
 	ecmd.Stdout = os.Stdout
 	ecmd.Stderr = os.Stderr

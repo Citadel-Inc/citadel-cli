@@ -57,7 +57,7 @@ func Start(disabled bool) (cleanup func(), err error) {
 		return noop, err
 	}
 
-	cmd := exec.CommandContext(context.Background(), "/bin/sh", "-c", cmdline)
+	cmd := exec.CommandContext(context.Background(), "/bin/sh", "-c", cmdline) //nolint:gosec // Shell syntax is an intentional local PAGER feature.
 	cmd.Stdin = pr
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
