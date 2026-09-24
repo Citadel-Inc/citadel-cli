@@ -75,7 +75,7 @@ func fetchAuthProviders(ctx context.Context, cmd *cobra.Command) ([]authProvider
 	var payload struct {
 		Providers []authProviderRow `json:"providers"`
 	}
-	if err := doPublicJSON(cmd, http.MethodGet, "/auth/providers", nil, &payload); err != nil {
+	if err := doPublicJSON(ctx, cmd, http.MethodGet, "/auth/providers", nil, &payload); err != nil {
 		return nil, err
 	}
 	if payload.Providers == nil {

@@ -48,7 +48,7 @@ func publicAPIBaseURL(cmd *cobra.Command) (string, error) {
 	return apiclient.ResolveRESTServerURL(cfg.ResolveServerURL(serverFlag(cmd))), nil
 }
 
-func doPublicJSON(cmd *cobra.Command, method, path string, body, out any) error {
+func doPublicJSON(ctx context.Context, cmd *cobra.Command, method, path string, body, out any) error {
 	base, err := publicAPIBaseURL(cmd)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func doPublicJSON(cmd *cobra.Command, method, path string, body, out any) error 
 		}
 		reqBody = bytes.NewReader(raw)
 	}
-	req, err := http.NewRequestWithContext(cmd.Context(), method, strings.TrimRight(base, "/")+path, reqBody)
+	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(base, "/")+path, reqBody)
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}
