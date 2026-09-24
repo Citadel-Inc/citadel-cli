@@ -250,7 +250,7 @@ func TestExchangePKCECode_Happy(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	got, err := exchangePKCECode(srv.URL, redirect, "abc", "ver")
+	got, err := exchangePKCECode(t.Context(), srv.URL, redirect, "abc", "ver")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,7 +266,7 @@ func TestExchangePKCECode_BadStatus(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	_, err := exchangePKCECode(srv.URL, "http://127.0.0.1:1/callback", "x", "y")
+	_, err := exchangePKCECode(t.Context(), srv.URL, "http://127.0.0.1:1/callback", "x", "y")
 	if err == nil || !strings.Contains(err.Error(), "bad code") {
 		t.Errorf("got %v", err)
 	}
@@ -280,7 +280,7 @@ func TestExchangePKCECode_OAuthError(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	_, err := exchangePKCECode(srv.URL, "http://127.0.0.1:1/callback", "x", "y")
+	_, err := exchangePKCECode(t.Context(), srv.URL, "http://127.0.0.1:1/callback", "x", "y")
 	if err == nil || !strings.Contains(err.Error(), "invalid_grant") || !strings.Contains(err.Error(), "authorization code expired") {
 		t.Errorf("got %v", err)
 	}
@@ -294,7 +294,7 @@ func TestExchangePKCECode_TruncatesLongFallback(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	_, err := exchangePKCECode(srv.URL, "http://127.0.0.1:1/callback", "x", "y")
+	_, err := exchangePKCECode(t.Context(), srv.URL, "http://127.0.0.1:1/callback", "x", "y")
 	if err == nil || !strings.Contains(err.Error(), "status=502") {
 		t.Fatalf("got %v", err)
 	}
@@ -325,7 +325,7 @@ func TestExchangeRefreshToken_Happy(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	got, err := exchangeRefreshToken(srv.URL, "refresh-abc")
+	got, err := exchangeRefreshToken(t.Context(), srv.URL, "refresh-abc")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +343,7 @@ func TestExchangeRefreshToken_OAuthErrorAndTruncatedFallback(t *testing.T) {
 		}))
 		t.Cleanup(srv.Close)
 
-		_, err := exchangeRefreshToken(srv.URL, "refresh-abc")
+		_, err := exchangeRefreshToken(t.Context(), srv.URL, "refresh-abc")
 		if err == nil || !strings.Contains(err.Error(), "invalid_grant") || !strings.Contains(err.Error(), "refresh token revoked") {
 			t.Errorf("got %v", err)
 		}
@@ -357,7 +357,7 @@ func TestExchangeRefreshToken_OAuthErrorAndTruncatedFallback(t *testing.T) {
 		}))
 		t.Cleanup(srv.Close)
 
-		_, err := exchangeRefreshToken(srv.URL, "refresh-abc")
+		_, err := exchangeRefreshToken(t.Context(), srv.URL, "refresh-abc")
 		if err == nil || !strings.Contains(err.Error(), "status=502") {
 			t.Fatalf("got %v", err)
 		}
@@ -369,7 +369,7 @@ func TestExchangeRefreshToken_OAuthErrorAndTruncatedFallback(t *testing.T) {
 
 func TestExchangePKCECode_Unreachable(t *testing.T) {
 	// Use an obviously-bad host so http.PostForm fails immediately.
-	if _, err := exchangePKCECode("http://127.0.0.1:1", "http://127.0.0.1:2/callback", "x", "y"); err == nil {
+	if _, err := exchangePKCECode(t.Context(), "http://127.0.0.1:1", "http://127.0.0.1:2/callback", "x", "y"); err == nil {
 		t.Error("expected dial error")
 	}
 }
@@ -380,7 +380,7 @@ func TestExchangePKCECode_BadJSON(t *testing.T) {
 		_, _ = w.Write([]byte("{not-json"))
 	}))
 	t.Cleanup(srv.Close)
-	if _, err := exchangePKCECode(srv.URL, "http://127.0.0.1:1/callback", "x", "y"); err == nil || !strings.Contains(err.Error(), "decode") {
+	if _, err := exchangePKCECode(t.Context(), srv.URL, "http://127.0.0.1:1/callback", "x", "y"); err == nil || !strings.Contains(err.Error(), "decode") {
 		t.Errorf("got %v", err)
 	}
 }
@@ -820,7 +820,7 @@ func TestRunLogin_FlowSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tr, err := exchangePKCECode(srv.URL, redirect, "dummy-code", verifier)
+	tr, err := exchangePKCECode(t.Context(), srv.URL, redirect, "dummy-code", verifier)
 	if err != nil {
 		t.Fatalf("exchange: %v", err)
 	}

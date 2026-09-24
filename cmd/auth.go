@@ -238,7 +238,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return errors.New("login timeout")
 	}
 
-	tokenResp, err := exchangePKCECode(citadelBaseURL, redirectURI, code, verifier)
+	tokenResp, err := exchangePKCECode(cmd.Context(), citadelBaseURL, redirectURI, code, verifier)
 	if err != nil {
 		return err
 	}
@@ -656,7 +656,7 @@ func pollDeviceTokenOnce(ctx context.Context, citadelBaseURL, deviceCode string)
 
 // exchangePKCECode swaps an authorization code + verifier for tokens at
 // Citadel's /api/oauth/token. Split out so tests can drive the request with an httptest server.
-func exchangePKCECode(citadelBaseURL, redirectURI, code, verifier string) (pkceTokenResponse, error) {
+func exchangePKCECode(ctx context.Context, citadelBaseURL, redirectURI, code, verifier string) (pkceTokenResponse, error) {
 	base := strings.TrimRight(citadelBaseURL, "/")
 	tokenURL := base + "/api/oauth/token"
 	form := url.Values{
@@ -666,7 +666,12 @@ func exchangePKCECode(citadelBaseURL, redirectURI, code, verifier string) (pkceT
 		"client_id":     {oauthClientID},
 		"redirect_uri":  {redirectURI},
 	}
-	resp, err := http.PostForm(tokenURL, form)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return pkceTokenResponse{}, fmt.Errorf("token exchange: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return pkceTokenResponse{}, fmt.Errorf("token exchange: %w", err)
 	}
@@ -684,14 +689,19 @@ func exchangePKCECode(citadelBaseURL, redirectURI, code, verifier string) (pkceT
 	return out, nil
 }
 
-func exchangeRefreshToken(citadelBaseURL, refreshToken string) (pkceTokenResponse, error) {
+func exchangeRefreshToken(ctx context.Context, citadelBaseURL, refreshToken string) (pkceTokenResponse, error) {
 	base := strings.TrimRight(citadelBaseURL, "/")
 	form := url.Values{
 		"grant_type":    {"refresh_token"},
 		"refresh_token": {refreshToken},
 		"client_id":     {oauthClientID},
 	}
-	resp, err := http.PostForm(base+"/api/oauth/token", form)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/oauth/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return pkceTokenResponse{}, fmt.Errorf("refresh token exchange: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return pkceTokenResponse{}, fmt.Errorf("refresh token exchange: %w", err)
 	}

@@ -120,7 +120,7 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 				if refreshToken == "" {
 					return nil
 				}
-				tokenResp, err := exchangeRefreshToken(cfg.ResolveServerURL(serverFlag(cmd)), refreshToken)
+				tokenResp, err := exchangeRefreshToken(ctx, cfg.ResolveServerURL(serverFlag(cmd)), refreshToken)
 				if err != nil || strings.TrimSpace(tokenResp.AccessToken) == "" {
 					if err == nil {
 						err = errors.New("refresh token response missing access_token")
