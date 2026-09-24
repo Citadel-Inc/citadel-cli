@@ -4,6 +4,7 @@
 package pager
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"strings"
@@ -56,7 +57,7 @@ func Start(disabled bool) (cleanup func(), err error) {
 		return noop, err
 	}
 
-	cmd := exec.Command("/bin/sh", "-c", cmdline)
+	cmd := exec.CommandContext(context.Background(), "/bin/sh", "-c", cmdline)
 	cmd.Stdin = pr
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -84,7 +84,7 @@ func (c Config) Save() error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("mkdir for self-host config: %w", err)
 	}
 
@@ -94,14 +94,14 @@ func (c Config) Save() error {
 	}
 
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0600); err != nil {
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
 		return fmt.Errorf("write self-host config: %w", err)
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("install self-host config: %w", err)
 	}
-	return os.Chmod(path, 0600)
+	return os.Chmod(path, 0o600)
 }
 
 // Validate returns an error if required fields are missing.

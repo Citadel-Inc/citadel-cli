@@ -93,7 +93,7 @@ func TestConfigSaveLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Stat: %v", err)
 	}
-	if got := info.Mode().Perm(); got != 0600 {
+	if got := info.Mode().Perm(); got != 0o600 {
 		t.Errorf("file mode = %#o; want 0600", got)
 	}
 

@@ -214,7 +214,7 @@ func TestNewMultipartUploadBody_UsesMultipartReader(t *testing.T) {
 	body, contentType := newMultipartUploadBody("file", "artifact.bin", strings.NewReader("payload"))
 	defer func() { _ = body.Close() }()
 
-	req := httptest.NewRequest(http.MethodPost, "/", body)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", body)
 	req.Header.Set("Content-Type", contentType)
 	mr, err := multipart.NewReader(req.Body, strings.TrimPrefix(contentType, "multipart/form-data; boundary=")).NextPart()
 	if err != nil {

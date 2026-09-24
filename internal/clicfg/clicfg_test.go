@@ -41,7 +41,7 @@ func TestSaveAndLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Stat failed: %v", err)
 	}
-	if info.Mode().Perm() != 0600 {
+	if info.Mode().Perm() != 0o600 {
 		t.Errorf("Config file has wrong permissions: got %o, want 0600", info.Mode().Perm())
 	}
 
@@ -129,7 +129,7 @@ func TestSavePermissions(t *testing.T) {
 		t.Fatalf("Stat failed: %v", err)
 	}
 
-	if info.Mode().Perm() != 0600 {
+	if info.Mode().Perm() != 0o600 {
 		t.Errorf("Config file has wrong permissions: got %o, want 0600", info.Mode().Perm())
 	}
 }

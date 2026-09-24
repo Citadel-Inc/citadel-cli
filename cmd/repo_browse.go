@@ -305,7 +305,7 @@ func runRepoBrowseRaw(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var dst = cmd.OutOrStdout()
+	dst := cmd.OutOrStdout()
 	var file *os.File
 	if outputFile != "" && outputFile != "-" {
 		file, err = os.OpenFile(outputFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)

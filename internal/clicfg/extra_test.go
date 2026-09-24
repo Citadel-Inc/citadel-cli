@@ -44,11 +44,11 @@ func TestLoad_BadTOML(t *testing.T) {
 
 	// Create the citadel config dir and a malformed config.toml.
 	dir := filepath.Join(tmp, "citadel")
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	cfg := filepath.Join(dir, "config.toml")
-	if err := os.WriteFile(cfg, []byte("not = valid = toml = at all!!!"), 0600); err != nil {
+	if err := os.WriteFile(cfg, []byte("not = valid = toml = at all!!!"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -63,11 +63,11 @@ func TestLoad_ConfigPathIsDirectory(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmp)
 	dir := filepath.Join(tmp, "citadel")
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	cfgPath := filepath.Join(dir, "config.toml")
-	if err := os.Mkdir(cfgPath, 0700); err != nil {
+	if err := os.Mkdir(cfgPath, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	_, err := Load()
@@ -127,14 +127,14 @@ func TestLoad_StatError(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", tmp)
 
 	dir := filepath.Join(tmp, "citadel")
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	cfgFile := filepath.Join(dir, "config.toml")
-	if err := os.WriteFile(cfgFile, []byte("server_url = \"https://x.com\"\n"), 0000); err != nil {
+	if err := os.WriteFile(cfgFile, []byte("server_url = \"https://x.com\"\n"), 0o000); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = os.Chmod(cfgFile, 0600) }()
+	defer func() { _ = os.Chmod(cfgFile, 0o600) }()
 
 	// If running as root, stat won't error; skip gracefully.
 	if os.Getuid() == 0 {
@@ -196,7 +196,7 @@ func TestSave_MkdirFails(t *testing.T) {
 	}
 	tmp := t.TempDir()
 	parent := filepath.Join(tmp, "blocker")
-	if err := os.WriteFile(parent, []byte(""), 0600); err != nil {
+	if err := os.WriteFile(parent, []byte(""), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("XDG_CONFIG_HOME", parent) // XDG_CONFIG_HOME is a FILE, not dir.
@@ -214,15 +214,15 @@ func TestSave_RenameFails(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", tmp)
 
 	dir := filepath.Join(tmp, "citadel")
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	// Block the rename target by making config.toml a non-empty directory.
 	target := filepath.Join(dir, "config.toml")
-	if err := os.MkdirAll(target, 0700); err != nil {
+	if err := os.MkdirAll(target, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(target, "guard"), []byte("x"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(target, "guard"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -241,10 +241,10 @@ func TestSave_OpenFileFails(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", tmp)
 
 	dir := filepath.Join(tmp, "citadel")
-	if err := os.MkdirAll(dir, 0500); err != nil {
+	if err := os.MkdirAll(dir, 0o500); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = os.Chmod(dir, 0700) }()
+	defer func() { _ = os.Chmod(dir, 0o700) }()
 
 	cfg := Config{ServerURL: "https://x"}
 	if err := cfg.Save(); err == nil {
@@ -291,7 +291,7 @@ func TestSave_EncodeError_DevFull(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmp)
 	dir := filepath.Join(tmp, "citadel")
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	tmpPath := filepath.Join(dir, "config.toml.tmp")

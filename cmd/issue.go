@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -382,7 +383,7 @@ func readIssueBody(cmd *cobra.Command, flagName string) (string, error) {
 	if len(parts) == 0 {
 		return "", fmt.Errorf("invalid $EDITOR command")
 	}
-	ecmd := exec.Command(parts[0], append(parts[1:], name)...)
+	ecmd := exec.CommandContext(context.Background(), parts[0], append(parts[1:], name)...)
 	ecmd.Stdin = os.Stdin
 	ecmd.Stdout = os.Stdout
 	ecmd.Stderr = os.Stderr

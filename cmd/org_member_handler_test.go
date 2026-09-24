@@ -13,8 +13,10 @@ import (
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-const testMemberUUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-const testOwnerUUID = "00000000-1111-2222-3333-444444444444"
+const (
+	testMemberUUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	testOwnerUUID  = "00000000-1111-2222-3333-444444444444"
+)
 
 func makeMembersResp(members []map[string]any) map[string]any {
 	return map[string]any{"members": members}

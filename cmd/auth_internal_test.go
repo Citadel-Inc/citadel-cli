@@ -174,11 +174,11 @@ func TestMaybeEagerMigrateLegacyJWT_RootExecute(t *testing.T) {
 		"exp": float64(time.Now().Add(time.Hour).Unix()),
 	})
 	cfgDir := filepath.Join(xdg, "citadel")
-	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	toml := "server_url = \"" + srv.URL + "\"\naccess_token = \"" + jwt + "\"\n"
-	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -499,11 +499,11 @@ func TestRotateAccessTokenOn401Hook_EmptyAgentID(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", xdg)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	cfgDir := filepath.Join(xdg, "citadel")
-	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"),
-		[]byte("access_token = \"sometoken\"\n"), 0600); err != nil {
+		[]byte("access_token = \"sometoken\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -575,11 +575,11 @@ func TestRotateAccessTokenOn401Hook_RefreshSuccess(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	cfgDir := filepath.Join(xdg, "citadel")
-	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	toml := "server_url = \"" + srv.URL + "\"\naccess_token = \"expired-access\"\nrefresh_token = \"old-refresh\"\n"
-	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -618,11 +618,11 @@ func TestRotateAccessTokenOn401Hook_RefreshFailureClearsSecrets(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", xdg)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	cfgDir := filepath.Join(xdg, "citadel")
-	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	toml := "server_url = \"" + srv.URL + "\"\naccess_token = \"expired-access\"\nrefresh_token = \"stale-refresh\"\n"
-	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -665,7 +665,7 @@ func TestRotateAccessTokenOn401Hook_RotateSuccess(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", srv.URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	cfgDir := filepath.Join(xdg, "citadel")
-	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	cfg := clicfg.Config{
@@ -702,7 +702,7 @@ func TestRotateAccessTokenOn401Hook_Rotate401(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", srv.URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	cfgDir := filepath.Join(xdg, "citadel")
-	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	cfg := clicfg.Config{
@@ -754,11 +754,11 @@ func TestRotateAccessTokenOn401Hook_EmptyToken(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", srv.URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	cfgDir := filepath.Join(xdg, "citadel")
-	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	toml := "access_token = \"old-token\"\nagent_id = \"" + agentID + "\"\n"
-	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(toml), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

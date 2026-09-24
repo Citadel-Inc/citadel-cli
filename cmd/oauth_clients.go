@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -441,15 +442,15 @@ func copySecretToClipboard(s string) error {
 func clipboardCommand() (*exec.Cmd, error) {
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command("pbcopy"), nil
+		return exec.CommandContext(context.Background(), "pbcopy"), nil
 	case "windows":
-		return exec.Command("cmd", "/c", "clip"), nil
+		return exec.CommandContext(context.Background(), "cmd", "/c", "clip"), nil
 	}
 	if _, err := exec.LookPath("wl-copy"); err == nil {
-		return exec.Command("wl-copy"), nil
+		return exec.CommandContext(context.Background(), "wl-copy"), nil
 	}
 	if _, err := exec.LookPath("xclip"); err == nil {
-		return exec.Command("xclip", "-selection", "clipboard"), nil
+		return exec.CommandContext(context.Background(), "xclip", "-selection", "clipboard"), nil
 	}
 	return nil, fmt.Errorf("install wl-copy or xclip, or copy manually")
 }

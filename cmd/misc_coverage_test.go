@@ -305,8 +305,10 @@ func TestNsMembers_TableWithDisplayName(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /orgs/myorg/members": func(w http.ResponseWriter, r *http.Request) {
 			writeJSON(t, w, 200, map[string]any{"members": []map[string]any{
-				{"user_id": "u1", "slug": "alice", "display_name": "Alice Smith", "is_owner": false,
-					"permissions": []string{}, "joined_at": "2026-01-01T00:00:00Z"},
+				{
+					"user_id": "u1", "slug": "alice", "display_name": "Alice Smith", "is_owner": false,
+					"permissions": []string{}, "joined_at": "2026-01-01T00:00:00Z",
+				},
 			}})
 		},
 	}))
@@ -323,8 +325,10 @@ func TestNsMembers_TableNoDisplayName(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /orgs/myorg/members": func(w http.ResponseWriter, r *http.Request) {
 			writeJSON(t, w, 200, map[string]any{"members": []map[string]any{
-				{"user_id": "u1", "slug": "alice", "is_owner": true,
-					"permissions": []string{}, "joined_at": "2026-01-01T00:00:00Z"},
+				{
+					"user_id": "u1", "slug": "alice", "is_owner": true,
+					"permissions": []string{}, "joined_at": "2026-01-01T00:00:00Z",
+				},
 			}})
 		},
 	}))
@@ -407,14 +411,14 @@ func TestTokenList_AllNdjsonTwoPages(t *testing.T) {
 func writeAgentConfig(t *testing.T, dir string, agentID, agentName string, expiresAt string) {
 	t.Helper()
 	cfgDir := filepath.Join(dir, "citadel")
-	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	content := "access_token = \"tok\"\nagent_id = \"" + agentID + "\"\nagent_name = \"" + agentName + "\"\n"
 	if expiresAt != "" {
 		content += "expires_at = " + expiresAt + "\n"
 	}
-	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(content), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -457,11 +461,11 @@ func TestAuthStatus_AgentToken_WithUserUUID(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	cfgDir := filepath.Join(dir, "citadel")
-	if err := os.MkdirAll(cfgDir, 0700); err != nil {
+	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	content := "access_token = \"tok\"\nagent_id = \"agent-uuid-4\"\nagent_name = \"mybot\"\nuser_uuid = \"user-uuid-1\"\nexpires_at = 2099-01-01T00:00:00Z\n"
-	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(content), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(cfgDir, "config.toml"), []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	// runStatus uses fmt.Printf directly (not cmd.OutOrStdout), so we only verify no error.

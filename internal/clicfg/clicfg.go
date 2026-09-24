@@ -96,13 +96,13 @@ func (c Config) Save() error {
 
 	// Ensure parent directory exists
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
 
 	// Write to a temporary file first, then atomic rename
 	tmpFile := path + ".tmp"
-	f, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	f, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (c Config) Save() error {
 	}
 
 	// Ensure final file has correct permissions (paranoia check)
-	return os.Chmod(path, 0600)
+	return os.Chmod(path, 0o600)
 }
 
 // Update serializes a load-mutate-save cycle across CLI processes.
@@ -135,10 +135,10 @@ func Update(fn func(*Config) error) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
-	lock, err := os.OpenFile(path+".lock", os.O_CREATE|os.O_RDWR, 0600)
+	lock, err := os.OpenFile(path+".lock", os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return err
 	}

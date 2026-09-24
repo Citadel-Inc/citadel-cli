@@ -156,7 +156,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	}
 
 	// Start a loopback HTTP server for the OAuth callback
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
@@ -783,11 +783,11 @@ func openBrowser(u string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux":
-		cmd = exec.Command("xdg-open", u)
+		cmd = exec.CommandContext(context.Background(), "xdg-open", u)
 	case "darwin":
-		cmd = exec.Command("open", u)
+		cmd = exec.CommandContext(context.Background(), "open", u)
 	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", u)
+		cmd = exec.CommandContext(context.Background(), "rundll32", "url.dll,FileProtocolHandler", u)
 	default:
 		return
 	}

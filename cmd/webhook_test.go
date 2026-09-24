@@ -14,8 +14,10 @@ import (
 	"github.com/Citadel-Inc/citadel-cli/internal/pagination"
 )
 
-const testWebhookID = "11111111-1111-1111-1111-111111111111"
-const testDeliveryID = "55555555-5555-5555-5555-555555555555"
+const (
+	testWebhookID  = "11111111-1111-1111-1111-111111111111"
+	testDeliveryID = "55555555-5555-5555-5555-555555555555"
+)
 
 func webhookPayload() map[string]any {
 	return map[string]any{

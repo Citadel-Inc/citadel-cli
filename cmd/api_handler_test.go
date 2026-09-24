@@ -112,7 +112,7 @@ func TestAPI_PostWithInputStdin(t *testing.T) {
 func TestAPI_PatchWithInputFile(t *testing.T) {
 	const input = `{"state":"closed","details":{"reason":"done"}}`
 	inputPath := filepath.Join(t.TempDir(), "body.json")
-	if err := os.WriteFile(inputPath, []byte(input), 0600); err != nil {
+	if err := os.WriteFile(inputPath, []byte(input), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -183,7 +183,7 @@ func TestAPI_InvalidJSONInput(t *testing.T) {
 	t.Setenv("CITADEL_REPO", "")
 
 	inputPath := filepath.Join(t.TempDir(), "invalid.json")
-	if err := os.WriteFile(inputPath, []byte(`{"title":`), 0600); err != nil {
+	if err := os.WriteFile(inputPath, []byte(`{"title":`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 

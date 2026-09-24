@@ -13,8 +13,10 @@ import (
 	"golang.org/x/term"
 )
 
-const citadelRepoEnv = "CITADEL_REPO"
-const citadelGitHostsEnv = "CITADEL_GIT_HOSTS"
+const (
+	citadelRepoEnv     = "CITADEL_REPO"
+	citadelGitHostsEnv = "CITADEL_GIT_HOSTS"
+)
 
 var (
 	repoHTTPS = regexp.MustCompile(`^https?://(?:[^@]+@)?(?P<host>[^/:]+)(?::[0-9]+)?/(?P<ns>[^/]+)/(?P<slug>[^/.]+)(?:\.git)?/?$`)

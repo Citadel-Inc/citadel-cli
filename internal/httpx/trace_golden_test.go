@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -32,7 +33,7 @@ func TestVerboseTransport_LogsLineOnSuccess(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c := &http.Client{Transport: Stack(nil, Options{Verbose: true})}
-	req, err := http.NewRequest(http.MethodGet, srv.URL+"/x", nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL+"/x", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +78,7 @@ func TestDebugHTTP_RedactsAuthorization(t *testing.T) {
 
 	c := &http.Client{Transport: Stack(nil, Options{DebugHTTP: true})}
 	form := "refresh_token=raw-refresh&client_secret=raw-client&code=raw-code&code_verifier=raw-verifier"
-	req, err := http.NewRequest(http.MethodPost, srv.URL+"/secret", strings.NewReader(form))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, srv.URL+"/secret", strings.NewReader(form))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +166,7 @@ func TestVerboseTransport_LogsLineOnTransportError(t *testing.T) {
 	}()
 
 	c := &http.Client{Transport: Stack(errRoundTripper{}, Options{Verbose: true})}
-	req, err := http.NewRequest(http.MethodGet, "http://example.test/", nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://example.test/", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

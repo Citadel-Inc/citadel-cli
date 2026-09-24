@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,7 +26,7 @@ func TestLiveAudit_agentCreateRoundTrip(t *testing.T) {
 
 	name := fmt.Sprintf("cli-audit-live-%d", time.Now().UnixNano())
 	body, _ := json.Marshal(map[string]any{"name": name})
-	req, err := http.NewRequest(http.MethodPost, base+"/api/agents", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, base+"/api/agents", bytes.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +43,7 @@ func TestLiveAudit_agentCreateRoundTrip(t *testing.T) {
 	}
 
 	q := base + "/api/audit/events?since=2m&kind=agent.created&limit=50"
-	req2, err := http.NewRequest(http.MethodGet, q, nil)
+	req2, err := http.NewRequestWithContext(context.Background(), http.MethodGet, q, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

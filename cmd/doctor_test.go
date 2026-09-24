@@ -276,7 +276,7 @@ func TestAnyFailed_falseWithoutFail(t *testing.T) {
 func newDoctorGitRepo(t *testing.T, origin string) string {
 	t.Helper()
 	dir := t.TempDir()
-	cmd := exec.Command("git", "init", "--quiet")
+	cmd := exec.CommandContext(context.Background(), "git", "init", "--quiet")
 	cmd.Dir = dir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v\n%s", err, output)
@@ -284,7 +284,7 @@ func newDoctorGitRepo(t *testing.T, origin string) string {
 	if origin == "" {
 		return dir
 	}
-	cmd = exec.Command("git", "remote", "add", "origin", origin)
+	cmd = exec.CommandContext(context.Background(), "git", "remote", "add", "origin", origin)
 	cmd.Dir = dir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git remote add: %v\n%s", err, output)

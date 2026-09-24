@@ -20,10 +20,8 @@ import (
 // stream as stalled (matches cli-watch plan: heartbeat every 15s, drop after 30s idle).
 const IdleTimeout = 30 * time.Second
 
-var (
-	// ErrIdle indicates no SSE traffic within IdleTimeout.
-	ErrIdle = errors.New("sse: idle timeout waiting for event data")
-)
+// ErrIdle indicates no SSE traffic within IdleTimeout.
+var ErrIdle = errors.New("sse: idle timeout waiting for event data")
 
 // Event is one logical SSE dispatch (after blank-line framing).
 type Event struct {

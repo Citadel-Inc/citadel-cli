@@ -17,8 +17,10 @@ import (
 )
 
 // outputFormatCompletions matches cli-output-formats acceptance (static list).
-var outputFormatCompletions = []string{"json", "yaml", "ndjson", "csv", "table"}
-var getOutputFormatCompletions = []string{"json", "yaml", "table"}
+var (
+	outputFormatCompletions    = []string{"json", "yaml", "ndjson", "csv", "table"}
+	getOutputFormatCompletions = []string{"json", "yaml", "table"}
+)
 
 func completeOutputFormats(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	out := make([]string, len(outputFormatCompletions))
