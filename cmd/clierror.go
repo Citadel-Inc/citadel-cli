@@ -65,6 +65,8 @@ func KindToExitCode(k CLIErrorKind) int {
 		return 6
 	case KindServerUnavailable, KindServerError, KindNetwork, KindTimeout:
 		return 7
+	case KindInternal:
+		return 1
 	default:
 		return 1
 	}

@@ -162,7 +162,11 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = listener.Close() }()
 
-	port := listener.Addr().(*net.TCPAddr).Port
+	tcpAddr, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		return fmt.Errorf("listen: unexpected address type %T", listener.Addr())
+	}
+	port := tcpAddr.Port
 	redirectURI := fmt.Sprintf("http://127.0.0.1:%d/callback", port)
 
 	// Generate PKCE challenge

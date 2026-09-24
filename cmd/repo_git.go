@@ -90,7 +90,7 @@ func runRepoClone(cmd *cobra.Command, args []string) error {
 	if err := ensureGitOnPath(); err != nil {
 		return err
 	}
-	_, serverURL, err := loadGitConfig(cmd)
+	serverURL, err := loadGitConfig(cmd)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func runRepoSync(cmd *cobra.Command, args []string, method string) error {
 	if err := ensureGitOnPath(); err != nil {
 		return err
 	}
-	_, serverURL, err := loadGitConfig(cmd)
+	serverURL, err := loadGitConfig(cmd)
 	if err != nil {
 		return err
 	}
@@ -301,15 +301,15 @@ func confirmCreateRepo(force bool, repoPath string) error {
 	}
 }
 
-func loadGitConfig(cmd *cobra.Command) (clicfg.Config, string, error) {
+func loadGitConfig(cmd *cobra.Command) (string, error) {
 	cfg, err := clicfg.Load()
 	if err != nil {
-		return clicfg.Config{}, "", err
+		return "", err
 	}
 	if strings.TrimSpace(cfg.AccessToken) == "" {
-		return clicfg.Config{}, "", errors.New("not authenticated; run 'citadel-cli auth login' first")
+		return "", errors.New("not authenticated; run 'citadel-cli auth login' first")
 	}
-	return cfg, cfg.ResolveServerURL(serverFlag(cmd)), nil
+	return cfg.ResolveServerURL(serverFlag(cmd)), nil
 }
 
 func ensureGitOnPath() error {
@@ -398,7 +398,8 @@ func runGit(cmd *cobra.Command, dir string, args ...string) error {
 	if len(baseEnv) == 0 {
 		baseEnv = os.Environ()
 	}
-	gitCmd.Env = append(baseEnv, "GIT_TERMINAL_PROMPT=0")
+	baseEnv = append(baseEnv, "GIT_TERMINAL_PROMPT=0")
+	gitCmd.Env = baseEnv
 	gitCmd.Stdout = cmd.OutOrStdout()
 	gitCmd.Stderr = cmd.ErrOrStderr()
 	gitCmd.Stdin = os.Stdin

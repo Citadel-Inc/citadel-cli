@@ -15,13 +15,21 @@ import (
 	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 )
 
+func mustFlusher(t *testing.T, w http.ResponseWriter) http.Flusher {
+	t.Helper()
+	fl, ok := w.(http.Flusher)
+	if !ok {
+		t.Fatalf("responseWriter does not support Flush")
+	}
+	return fl
+}
+
 func TestOpen_Close_noBody(t *testing.T) {
-	ctx := context.Background()
 	c, err := apiclient.New(clicfg.Config{ServerURL: "http://unused.test", AccessToken: "x"}, apiclient.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := Open(ctx, c, "/z")
+	s := Open(c, "/z")
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -37,8 +45,8 @@ func TestStream_Next_contextAlreadyCanceled(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	s := Open(ctx, c, "/p")
-	_, err = s.Next()
+	s := Open(c, "/p")
+	_, err = s.Next(ctx)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("got %v", err)
 	}
@@ -49,7 +57,7 @@ func TestStream_Next_singleEventThenCancel(t *testing.T) {
 		if r.Header.Get("Last-Event-ID") != "" {
 			t.Errorf("unexpected Last-Event-ID on first connect: %q", r.Header.Get("Last-Event-ID"))
 		}
-		fl := w.(http.Flusher)
+		fl := mustFlusher(t, w)
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = fmt.Fprintf(w, "event: add\nid: 7\ndata: {\"x\":1}\n\n")
 		fl.Flush()
@@ -64,10 +72,10 @@ func TestStream_Next_singleEventThenCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := Open(ctx, c, "/stream")
+	s := Open(c, "/stream")
 	defer func() { _ = s.Close() }()
 
-	ev, err := s.Next()
+	ev, err := s.Next(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +86,7 @@ func TestStream_Next_singleEventThenCancel(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 		cancel()
 	}()
-	_, err = s.Next()
+	_, err = s.Next(ctx)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("want canceled, got %v", err)
 	}
@@ -88,7 +96,7 @@ func TestStream_Next_reconnectEOFPreservesLastEventID(t *testing.T) {
 	var n atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seq := n.Add(1)
-		fl := w.(http.Flusher)
+		fl := mustFlusher(t, w)
 		w.Header().Set("Content-Type", "text/event-stream")
 		switch seq {
 		case 1:
@@ -115,17 +123,17 @@ func TestStream_Next_reconnectEOFPreservesLastEventID(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := Open(ctx, c, "/s")
+	s := Open(c, "/s")
 	defer func() { _ = s.Close() }()
 
-	ev1, err := s.Next()
+	ev1, err := s.Next(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ev1.ID != "100" || string(ev1.Data) != "one" {
 		t.Fatalf("ev1 = %#v", ev1)
 	}
-	ev2, err := s.Next()
+	ev2, err := s.Next(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,10 +151,10 @@ func TestStream_Next_HTTP401(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := apiclient.New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, apiclient.Options{})
-	s := Open(context.Background(), c, "/x")
+	s := Open(c, "/x")
 	defer func() { _ = s.Close() }()
 
-	_, err := s.Next()
+	_, err := s.Next(context.Background())
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -158,7 +166,7 @@ func TestStream_Next_HTTP401(t *testing.T) {
 
 func TestStream_Next_SSE_errorEvent(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fl := w.(http.Flusher)
+		fl := mustFlusher(t, w)
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = fmt.Fprintf(w, "event: error\ndata: boom\n\n")
 		fl.Flush()
@@ -169,10 +177,10 @@ func TestStream_Next_SSE_errorEvent(t *testing.T) {
 	c, _ := apiclient.New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, apiclient.Options{})
 	ctx := t.Context()
 
-	s := Open(ctx, c, "/s")
+	s := Open(c, "/s")
 	defer func() { _ = s.Close() }()
 
-	_, err := s.Next()
+	_, err := s.Next(ctx)
 	if err == nil || !strings.Contains(err.Error(), "sse stream error") {
 		t.Fatalf("got %v", err)
 	}
@@ -180,7 +188,7 @@ func TestStream_Next_SSE_errorEvent(t *testing.T) {
 
 func TestStream_Next_defaultMessageEventType(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fl := w.(http.Flusher)
+		fl := mustFlusher(t, w)
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = fmt.Fprintf(w, "data: hello\n\n")
 		fl.Flush()
@@ -192,10 +200,10 @@ func TestStream_Next_defaultMessageEventType(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := Open(ctx, c, "/s")
+	s := Open(c, "/s")
 	defer func() { _ = s.Close() }()
 
-	ev, err := s.Next()
+	ev, err := s.Next(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

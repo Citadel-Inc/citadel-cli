@@ -349,9 +349,9 @@ func issueActionLabel(verb string) string {
 	}
 }
 
-func readIssueBody(cmd *cobra.Command, flagName string) (string, error) {
-	if f := cmd.Flags().Lookup(flagName); f != nil && f.Changed {
-		v, _ := cmd.Flags().GetString(flagName)
+func readIssueBody(cmd *cobra.Command) (string, error) {
+	if f := cmd.Flags().Lookup("body"); f != nil && f.Changed {
+		v, _ := cmd.Flags().GetString("body")
 		return v, nil
 	}
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
@@ -618,7 +618,7 @@ func runIssueCreate(cmd *cobra.Command, _ []string) error {
 	if title == "" {
 		return fmt.Errorf("title cannot be empty")
 	}
-	body, err := readIssueBody(cmd, "body")
+	body, err := readIssueBody(cmd)
 	if err != nil {
 		return err
 	}
@@ -769,7 +769,7 @@ func runIssueCommentAdd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	body, err := readIssueBody(cmd, "body")
+	body, err := readIssueBody(cmd)
 	if err != nil {
 		return err
 	}
@@ -869,7 +869,7 @@ func runIssueCommentEdit(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	body, err := readIssueBody(cmd, "body")
+	body, err := readIssueBody(cmd)
 	if err != nil {
 		return err
 	}

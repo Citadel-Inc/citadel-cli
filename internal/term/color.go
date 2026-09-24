@@ -42,6 +42,7 @@ func ColorEnabled(mode ColorMode) bool {
 		return true
 	case ColorNever:
 		return false
+	case ColorAuto:
 	}
 	if os.Getenv("NO_COLOR") != "" {
 		return false

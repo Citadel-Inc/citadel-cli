@@ -331,7 +331,7 @@ func runPRCommentAdd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	body, err := readIssueBody(cmd, "body")
+	body, err := readIssueBody(cmd)
 	if err != nil {
 		return err
 	}

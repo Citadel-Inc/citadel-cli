@@ -76,11 +76,11 @@ func consumeSSEWatch(cmd *cobra.Command, c *apiclient.Client, path string, h sse
 	ctx, stop := notifyWatchContext(cmd.Context())
 	defer stop()
 
-	stream := sseclient.Open(ctx, c, path)
+	stream := sseclient.Open(c, path)
 	defer func() { _ = stream.Close() }()
 
 	for {
-		ev, err := stream.Next()
+		ev, err := stream.Next(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
 				flushOut(cmd.OutOrStdout())
@@ -128,13 +128,13 @@ func (e *ndjsonWatchEmitter) Handle(ev sseclient.Event) error {
 	return e.enc.Encode(line)
 }
 
-func newWatchSSEHandler(cmd *cobra.Command, kind watchListKind, ctx watchTableCtx) (sseEventHandler, error) {
+func newWatchSSEHandler(cmd *cobra.Command, kind watchListKind, ctx watchTableCtx) sseEventHandler {
 	out := cmd.OutOrStdout()
 	switch strings.TrimSpace(strings.ToLower(outputFlag(cmd))) {
 	case "ndjson":
-		return newNdjsonWatchEmitter(out), nil
+		return newNdjsonWatchEmitter(out)
 	default:
-		return newTableWatchEmitter(cmd, kind, ctx), nil
+		return newTableWatchEmitter(cmd, kind, ctx)
 	}
 }
 
@@ -157,19 +157,13 @@ func sseWatchQuery(limit int, cursor string, all bool, extra url.Values) string 
 
 func runRepoListWatch(cmd *cobra.Command, c *apiclient.Client, ns string, limit int, cursor string, all bool) error {
 	path := "/namespaces/" + url.PathEscape(ns) + "/repos?" + sseWatchQuery(limit, cursor, all, nil)
-	h, err := newWatchSSEHandler(cmd, watchRepos, watchTableCtx{repoParentNS: ns})
-	if err != nil {
-		return err
-	}
+	h := newWatchSSEHandler(cmd, watchRepos, watchTableCtx{repoParentNS: ns})
 	return consumeSSEWatch(cmd, c, path, h)
 }
 
 func runAgentListWatch(cmd *cobra.Command, c *apiclient.Client, limit int, cursor string, all bool) error {
 	path := "/agents?" + sseWatchQuery(limit, cursor, all, nil)
-	h, err := newWatchSSEHandler(cmd, watchAgents, watchTableCtx{})
-	if err != nil {
-		return err
-	}
+	h := newWatchSSEHandler(cmd, watchAgents, watchTableCtx{})
 	return consumeSSEWatch(cmd, c, path, h)
 }
 
@@ -179,37 +173,25 @@ func runOAuthClientsListWatch(cmd *cobra.Command, c *apiclient.Client, orgSlug s
 		ex.Set("namespace", orgSlug)
 	}
 	path := "/oauth/clients?" + sseWatchQuery(limit, cursor, all, ex)
-	h, err := newWatchSSEHandler(cmd, watchOAuthClients, watchTableCtx{})
-	if err != nil {
-		return err
-	}
+	h := newWatchSSEHandler(cmd, watchOAuthClients, watchTableCtx{})
 	return consumeSSEWatch(cmd, c, path, h)
 }
 
 func runNsListWatch(cmd *cobra.Command, c *apiclient.Client, limit int, cursor string, all bool) error {
 	path := "/orgs?" + sseWatchQuery(limit, cursor, all, nil)
-	h, err := newWatchSSEHandler(cmd, watchOrgs, watchTableCtx{})
-	if err != nil {
-		return err
-	}
+	h := newWatchSSEHandler(cmd, watchOrgs, watchTableCtx{})
 	return consumeSSEWatch(cmd, c, path, h)
 }
 
 func runNsMembersWatch(cmd *cobra.Command, c *apiclient.Client, orgSlug string, limit int, cursor string, all bool) error {
 	path := "/orgs/" + url.PathEscape(orgSlug) + "/members?" + sseWatchQuery(limit, cursor, all, nil)
-	h, err := newWatchSSEHandler(cmd, watchOrgMembers, watchTableCtx{orgSlug: orgSlug})
-	if err != nil {
-		return err
-	}
+	h := newWatchSSEHandler(cmd, watchOrgMembers, watchTableCtx{orgSlug: orgSlug})
 	return consumeSSEWatch(cmd, c, path, h)
 }
 
 func runNsTransferListPendingWatch(cmd *cobra.Command, c *apiclient.Client, limit int, cursor string, all bool) error {
 	path := "/transfers/pending?" + sseWatchQuery(limit, cursor, all, nil)
-	h, err := newWatchSSEHandler(cmd, watchTransfersPending, watchTableCtx{})
-	if err != nil {
-		return err
-	}
+	h := newWatchSSEHandler(cmd, watchTransfersPending, watchTableCtx{})
 	return consumeSSEWatch(cmd, c, path, h)
 }
 
@@ -217,9 +199,6 @@ func runTokenListWatch(cmd *cobra.Command, c *apiclient.Client, agentID string, 
 	ex := url.Values{}
 	ex.Set("agent_id", agentID)
 	path := "/agent-tokens?" + sseWatchQuery(limit, cursor, all, ex)
-	h, err := newWatchSSEHandler(cmd, watchAgentTokens, watchTableCtx{})
-	if err != nil {
-		return err
-	}
+	h := newWatchSSEHandler(cmd, watchAgentTokens, watchTableCtx{})
 	return consumeSSEWatch(cmd, c, path, h)
 }

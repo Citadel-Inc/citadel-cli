@@ -32,7 +32,6 @@ type Event struct {
 
 // Stream follows an SSE GET with unbounded reconnect and Last-Event-ID resume.
 type Stream struct {
-	ctx  context.Context
 	api  *apiclient.Client
 	path string
 
@@ -56,9 +55,9 @@ func (s *streak) bump() (d time.Duration) {
 
 func (s *streak) reset() { s.n = 0 }
 
-// Open prepares a stream handle; call Next in a loop until context cancel.
-func Open(ctx context.Context, api *apiclient.Client, path string) *Stream {
-	return &Stream{ctx: ctx, api: api, path: path}
+// Open prepares a stream handle; call Next with a context in a loop until it cancels.
+func Open(api *apiclient.Client, path string) *Stream {
+	return &Stream{api: api, path: path}
 }
 
 // Close releases the active HTTP response body, if any.
@@ -95,21 +94,21 @@ func terminalHTTP(err error) bool {
 
 // Next blocks until one SSE event is decoded, the context is canceled, or a
 // terminal server error is returned. Transient disconnects reconnect internally.
-func (s *Stream) Next() (Event, error) {
+func (s *Stream) Next(ctx context.Context) (Event, error) {
 	for {
-		if err := s.ctx.Err(); err != nil {
+		if err := ctx.Err(); err != nil {
 			return Event{}, err
 		}
 
 		if s.br == nil {
-			resp, err := s.api.GetEventStream(s.ctx, s.path, s.lastID) //nolint:bodyclose // Stream owns and closes the active response body.
+			resp, err := s.api.GetEventStream(ctx, s.path, s.lastID) //nolint:bodyclose // Stream owns and closes the active response body.
 			if err != nil {
 				if terminalHTTP(err) {
 					return Event{}, err
 				}
 				select {
-				case <-s.ctx.Done():
-					return Event{}, s.ctx.Err()
+				case <-ctx.Done():
+					return Event{}, ctx.Err()
 				case <-time.After(s.fail.bump()):
 				}
 				continue
@@ -119,7 +118,7 @@ func (s *Stream) Next() (Event, error) {
 			s.br = bufio.NewReader(resp.Body)
 		}
 
-		ev, err := readEvent(s.ctx, s.br)
+		ev, err := readEvent(ctx, s.br)
 		if err != nil {
 			s.closeBody()
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
@@ -130,15 +129,15 @@ func (s *Stream) Next() (Event, error) {
 			}
 			if errors.Is(err, io.EOF) || errors.Is(err, ErrIdle) {
 				select {
-				case <-s.ctx.Done():
-					return Event{}, s.ctx.Err()
+				case <-ctx.Done():
+					return Event{}, ctx.Err()
 				case <-time.After(s.fail.bump()):
 				}
 				continue
 			}
 			select {
-			case <-s.ctx.Done():
-				return Event{}, s.ctx.Err()
+			case <-ctx.Done():
+				return Event{}, ctx.Err()
 			case <-time.After(s.fail.bump()):
 			}
 			continue

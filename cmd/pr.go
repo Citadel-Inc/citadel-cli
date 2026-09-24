@@ -481,7 +481,7 @@ func runPRCreate(cmd *cobra.Command, _ []string) error {
 	if target == "" {
 		return fmt.Errorf("--target ref is required")
 	}
-	body, err := readIssueBody(cmd, "body")
+	body, err := readIssueBody(cmd)
 	if err != nil {
 		return err
 	}

@@ -89,7 +89,7 @@ func runSelfHostLicenseValidate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("missing required fields: %s", strings.Join(missing, ", "))
 	}
 
-	sigStatus := ""
+	var sigStatus string
 	sigOK := false
 	switch {
 	case skipSig:

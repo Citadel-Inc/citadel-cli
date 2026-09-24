@@ -58,10 +58,7 @@ func TestNewWatchSSEHandler_ndjsonVsTable(t *testing.T) {
 	if err := cmd.Flags().Set("output", "ndjson"); err != nil {
 		t.Fatal(err)
 	}
-	h, err := newWatchSSEHandler(cmd, watchRepos, watchTableCtx{repoParentNS: "ns"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	h := newWatchSSEHandler(cmd, watchRepos, watchTableCtx{repoParentNS: "ns"})
 	if _, ok := h.(*ndjsonWatchEmitter); !ok {
 		t.Fatalf("got %T", h)
 	}
@@ -69,10 +66,7 @@ func TestNewWatchSSEHandler_ndjsonVsTable(t *testing.T) {
 	if err := cmd.Flags().Set("output", ""); err != nil {
 		t.Fatal(err)
 	}
-	h2, err := newWatchSSEHandler(cmd, watchRepos, watchTableCtx{repoParentNS: "ns"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	h2 := newWatchSSEHandler(cmd, watchRepos, watchTableCtx{repoParentNS: "ns"})
 	if _, ok := h2.(*tableWatchEmitter); !ok {
 		t.Fatalf("got %T", h2)
 	}

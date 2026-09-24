@@ -221,9 +221,13 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 }
 
 func runTokenIssue(cmd *cobra.Command, _ []string) error {
-	expiresIn, err := parseExpiresFlag(cmd)
+	expiresIn, hasExpires, err := parseExpiresFlag(cmd)
 	if err != nil {
 		return err
+	}
+	var expiresInSeconds *int64
+	if hasExpires {
+		expiresInSeconds = &expiresIn
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -243,7 +247,7 @@ func runTokenIssue(cmd *cobra.Command, _ []string) error {
 		Scopes           []string  `json:"scopes,omitempty"`
 	}{
 		AgentID:          agentID,
-		ExpiresInSeconds: expiresIn,
+		ExpiresInSeconds: expiresInSeconds,
 		Scopes:           scopes,
 	}
 

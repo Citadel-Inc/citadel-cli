@@ -100,6 +100,8 @@ func mcpErrorToCLI(me *mcpclient.Error) *CLIError {
 		kind = KindNotFound
 	case mcpclient.KindInvalidParams, mcpclient.KindInvalidRequest, mcpclient.KindParseError, mcpclient.KindVersionMismatch:
 		kind = KindValidation
+	case mcpclient.KindUnknown:
+		kind = KindInternal
 	default:
 		kind = KindInternal
 	}

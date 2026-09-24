@@ -137,21 +137,21 @@ func parseRepoDeployTokenIDArgs(cmd *cobra.Command, args []string) (string, stri
 	}
 }
 
-func parseExpiresFlag(cmd *cobra.Command) (*int64, error) {
+func parseExpiresFlag(cmd *cobra.Command) (int64, bool, error) {
 	expiresStr, _ := cmd.Flags().GetString("expires")
 	expiresStr = strings.TrimSpace(expiresStr)
 	if expiresStr == "" {
-		return nil, nil
+		return 0, false, nil
 	}
 	d, err := time.ParseDuration(expiresStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid --expires: %w", err)
+		return 0, false, fmt.Errorf("invalid --expires: %w", err)
 	}
 	if d <= 0 {
-		return nil, fmt.Errorf("--expires must be greater than zero")
+		return 0, false, fmt.Errorf("--expires must be greater than zero")
 	}
 	sec := int64(d.Seconds())
-	return &sec, nil
+	return sec, true, nil
 }
 
 func validateDeployTokenListFlags(cmd *cobra.Command) error {
@@ -349,9 +349,13 @@ func runNamespaceDeployTokenCreate(cmd *cobra.Command, args []string) error {
 func runDeployTokenCreate(cmd *cobra.Command, namespacePath string) error {
 	namespacePath = strings.Trim(strings.TrimSpace(namespacePath), "/")
 	output := outputFlag(cmd)
-	expiresIn, err := parseExpiresFlag(cmd)
+	expiresIn, hasExpires, err := parseExpiresFlag(cmd)
 	if err != nil {
 		return err
+	}
+	var expiresInSeconds *int64
+	if hasExpires {
+		expiresInSeconds = &expiresIn
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -365,7 +369,7 @@ func runDeployTokenCreate(cmd *cobra.Command, namespacePath string) error {
 		ExpiresInSeconds *int64 `json:"expires_in_seconds,omitempty"`
 	}{
 		Name:             name,
-		ExpiresInSeconds: expiresIn,
+		ExpiresInSeconds: expiresInSeconds,
 	}
 
 	var created deployTokenWithCleartext
@@ -489,10 +493,7 @@ func lookupDeployTokenIDs(cmd *cobra.Command, namespacePath string) ([]string, c
 
 func runDeployTokenListWatch(cmd *cobra.Command, c *apiclient.Client, namespacePath string, limit int, cursor string, all bool) error {
 	path := deployTokenAPIPath(namespacePath) + "?" + sseWatchQuery(limit, cursor, all, nil)
-	h, err := newWatchSSEHandler(cmd, watchDeployTokens, watchTableCtx{})
-	if err != nil {
-		return err
-	}
+	h := newWatchSSEHandler(cmd, watchDeployTokens, watchTableCtx{})
 	return consumeSSEWatch(cmd, c, path, h)
 }
 
