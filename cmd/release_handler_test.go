@@ -463,6 +463,7 @@ func TestReleaseAssetCRUD_RoundTrip(t *testing.T) {
 	if err := rootFor(cmd.ReleaseCmd, "asset", "download", "v1.0.0", assetID, "-R", "acme/demo", "-o", downloadPath).Execute(); err != nil {
 		t.Fatal(err)
 	}
+	//nolint:gosec // downloadPath is a test-created temporary path.
 	got, err := os.ReadFile(downloadPath)
 	if err != nil {
 		t.Fatal(err)

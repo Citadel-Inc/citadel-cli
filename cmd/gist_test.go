@@ -163,6 +163,7 @@ func TestGistCRUDAndRaw(t *testing.T) {
 	if _, err := executeGistTestCommand(t, "gist", "raw", "g1", "src/main.go", "--output-file", target); err != nil {
 		t.Fatalf("gist raw --output-file: %v", err)
 	}
+	//nolint:gosec // target is a test-created temporary path.
 	data, err := os.ReadFile(target)
 	if err != nil {
 		t.Fatalf("read downloaded gist: %v", err)
@@ -348,6 +349,7 @@ func TestGistRawRefusesBinaryTTY(t *testing.T) {
 	if _, err := executeGistTestCommand(t, "gist", "raw", "g1", "image.bin", "--output-file", target); err != nil {
 		t.Fatalf("gist raw binary --output-file: %v", err)
 	}
+	//nolint:gosec // target is a test-created temporary path.
 	data, err := os.ReadFile(target)
 	if err != nil {
 		t.Fatalf("read downloaded binary gist: %v", err)

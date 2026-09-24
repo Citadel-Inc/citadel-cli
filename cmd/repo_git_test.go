@@ -41,6 +41,7 @@ func TestHelperProcessGit(t *testing.T) {
 	for _, key := range []string{"GIT_ASKPASS", "GIT_TERMINAL_PROMPT", "SSH_ASKPASS"} {
 		env[key] = os.Getenv(key)
 	}
+	//nolint:gosec // logPath is a test-created temporary path.
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		os.Exit(3)
@@ -345,6 +346,7 @@ func patchGitExec(t *testing.T) (string, func()) {
 
 func readGitLog(t *testing.T, logPath string) []fakeGitInvocation {
 	t.Helper()
+	//nolint:gosec // logPath is a test-created temporary path.
 	f, err := os.Open(logPath)
 	if err != nil {
 		if os.IsNotExist(err) {

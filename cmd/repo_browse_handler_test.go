@@ -320,6 +320,7 @@ func TestRepoBrowseRaw_FileOutput(t *testing.T) {
 	if err := rootFor(cmd.RepoCmd, "browse", "raw", "acme/demo", "artifact.bin", "--output-file", outputPath).Execute(); err != nil {
 		t.Fatal(err)
 	}
+	//nolint:gosec // outputPath is a test-created temporary path.
 	got, err := os.ReadFile(outputPath)
 	if err != nil {
 		t.Fatalf("read output file: %v", err)

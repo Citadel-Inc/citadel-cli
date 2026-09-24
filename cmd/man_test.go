@@ -50,6 +50,7 @@ func TestMan_GeneratesPages(t *testing.T) {
 	}
 
 	// Spot-check one page renders nroff-shaped content.
+	//nolint:gosec // dir is a test-created temporary path.
 	page, err := os.ReadFile(filepath.Join(dir, "citadel-cli-auth-login.1"))
 	if err != nil {
 		t.Fatal(err)
