@@ -62,10 +62,14 @@ func TestSave_WriteFileFails_Selfhost(t *testing.T) {
 	if err := os.MkdirAll(cfgDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	//nolint:gosec // The test removes directory write permission to force a write error.
 	if err := os.Chmod(cfgDir, 0o500); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(cfgDir, 0o700) })
+	t.Cleanup(func() {
+		//nolint:gosec // Cleanup restores permissions after an intentional permission test.
+		_ = os.Chmod(cfgDir, 0o700)
+	})
 	t.Setenv("CITADEL_SELF_HOST_CONFIG", filepath.Join(cfgDir, "self-host.yaml"))
 	if err := (selfhost.Config{APIEndpoint: "x"}).Save(); err == nil {
 		t.Fatal("expected write error when dir is not writable, got nil")

@@ -244,7 +244,10 @@ func TestSave_OpenFileFails(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o500); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = os.Chmod(dir, 0o700) }()
+	defer func() {
+		//nolint:gosec // Cleanup restores permissions after an intentional permission test.
+		_ = os.Chmod(dir, 0o700)
+	}()
 
 	cfg := Config{ServerURL: "https://x"}
 	if err := cfg.Save(); err == nil {
@@ -274,7 +277,10 @@ func TestLoad_StatError_NonTraversableParent(t *testing.T) {
 	if err := os.Chmod(dir, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	t.Cleanup(func() {
+		//nolint:gosec // Cleanup restores permissions after an intentional permission test.
+		_ = os.Chmod(dir, 0o700)
+	})
 
 	_, err := Load()
 	if err == nil {
