@@ -108,6 +108,7 @@ func (c Config) Save() error {
 	}
 
 	enc := toml.NewEncoder(f)
+	//nolint:gosec // Config serialization intentionally persists the token in the protected config file.
 	if err := enc.Encode(c); err != nil {
 		_ = f.Close()
 		_ = os.Remove(tmpFile)

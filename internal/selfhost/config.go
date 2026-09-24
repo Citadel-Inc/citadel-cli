@@ -88,6 +88,7 @@ func (c Config) Save() error {
 		return fmt.Errorf("mkdir for self-host config: %w", err)
 	}
 
+	//nolint:gosec // Self-host config serialization intentionally persists the signing secret in the protected file.
 	data, err := yaml.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("marshal self-host config: %w", err)
