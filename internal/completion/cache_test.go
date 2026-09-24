@@ -3,6 +3,7 @@ package completion
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -39,6 +40,26 @@ func TestDiskCacheTTL(t *testing.T) {
 	_, ok = readCache(resolved, key)
 	if ok {
 		t.Fatal("expected miss after 60s TTL")
+	}
+}
+
+func TestCacheFilePath_StaysUnderCacheDirectory(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	base, err := cacheBaseDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	path, err := cacheFilePath("..", "orgs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	relative, err := filepath.Rel(base, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		t.Fatalf("cache path escaped base directory: base=%q path=%q", base, path)
 	}
 }
 

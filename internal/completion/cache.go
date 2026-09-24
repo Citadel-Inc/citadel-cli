@@ -4,6 +4,7 @@ package completion
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,8 +47,12 @@ func safeHostDir(resolvedServer string) string {
 		s = s[i+3:]
 	}
 	s = strings.TrimSuffix(s, "/")
-	repl := strings.NewReplacer(":", "_", "/", "_", "?", "_", "*", "_")
-	return repl.Replace(s)
+	repl := strings.NewReplacer(":", "_", "/", "_", "\\", "_", "?", "_", "*", "_")
+	s = repl.Replace(s)
+	if s == "." || s == ".." {
+		return "_" + s
+	}
+	return s
 }
 
 func safeResourceFileStem(resourceKey string) string {
@@ -73,6 +78,26 @@ func cacheFilePath(resolvedServer, resourceKey string) (string, error) {
 	return filepath.Join(dir, host, stem+".json"), nil
 }
 
+func withCacheRoot(resolvedServer, resourceKey string, create bool, fn func(*os.Root, string) error) error {
+	dir, err := cacheBaseDir()
+	if err != nil {
+		return err
+	}
+	if create {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return err
+		}
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return err
+	}
+	relative := filepath.Join(safeHostDir(resolvedServer), safeResourceFileStem(resourceKey)+".json")
+	fnErr := fn(root, relative)
+	closeErr := root.Close()
+	return errors.Join(fnErr, closeErr)
+}
+
 var (
 	memMu sync.Mutex
 	mem   = map[string]envelope{}
@@ -93,12 +118,12 @@ func readCache(resolvedServer, resourceKey string) ([]string, bool) {
 	if diskCacheDisabled() {
 		return nil, false
 	}
-	path, err := cacheFilePath(resolvedServer, resourceKey)
-	if err != nil {
-		return nil, false
-	}
-	//nolint:gosec // The cache path uses the OS cache directory and sanitized keys.
-	data, err := os.ReadFile(path)
+	var data []byte
+	err := withCacheRoot(resolvedServer, resourceKey, false, func(root *os.Root, relative string) error {
+		var err error
+		data, err = root.ReadFile(relative)
+		return err
+	})
 	if err != nil {
 		return nil, false
 	}
@@ -129,30 +154,28 @@ func writeCache(resolvedServer, resourceKey string, values []string) {
 	if diskCacheDisabled() {
 		return
 	}
-	path, err := cacheFilePath(resolvedServer, resourceKey)
-	if err != nil {
+	if err := withCacheRoot(resolvedServer, resourceKey, true, func(root *os.Root, relative string) error {
+		if err := root.MkdirAll(filepath.Dir(relative), 0o700); err != nil {
+			return err
+		}
+		data, err := json.MarshalIndent(env, "", "  ")
+		if err != nil {
+			return err
+		}
+		data = append(data, '\n')
+		tmp := relative + ".tmp"
+		if err := root.WriteFile(tmp, data, 0o600); err != nil {
+			return err
+		}
+		if err := root.Rename(tmp, relative); err != nil {
+			if removeErr := root.Remove(tmp); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+				return errors.Join(err, removeErr)
+			}
+			return err
+		}
+		return nil
+	}); err != nil {
 		return
-	}
-	_ = os.MkdirAll(filepath.Dir(path), 0o700)
-	tmp := path + ".tmp"
-	//nolint:gosec // The temporary cache path derives from the sanitized cache path.
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
-		return
-	}
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(env); err != nil {
-		_ = f.Close()
-		_ = os.Remove(tmp)
-		return
-	}
-	if err := f.Close(); err != nil {
-		_ = os.Remove(tmp)
-		return
-	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
 	}
 }
 
@@ -165,11 +188,11 @@ func Remove(resolvedServer, resourceKey string) {
 	if diskCacheDisabled() {
 		return
 	}
-	path, err := cacheFilePath(resolvedServer, resourceKey)
-	if err != nil {
+	if err := withCacheRoot(resolvedServer, resourceKey, false, func(root *os.Root, relative string) error {
+		return root.Remove(relative)
+	}); err != nil {
 		return
 	}
-	_ = os.Remove(path)
 }
 
 // RemoveAsync invokes Remove in a background goroutine.
