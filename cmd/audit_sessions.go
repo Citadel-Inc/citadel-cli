@@ -182,7 +182,7 @@ func runAuditSessionsShow(cmd *cobra.Command, args []string) error {
 		if err := json.Indent(&pretty, detail, "", "  "); err != nil {
 			_, _ = fmt.Fprint(cmd.OutOrStdout(), string(detail))
 			_, _ = fmt.Fprintln(cmd.OutOrStdout())
-			return nil
+			return nil //nolint:nilerr // Invalid JSON is emitted as the original response.
 		}
 		_, _ = fmt.Fprint(cmd.OutOrStdout(), pretty.String())
 		return nil
