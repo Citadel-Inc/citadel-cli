@@ -180,9 +180,7 @@ func runAuditSessionsShow(cmd *cobra.Command, args []string) error {
 	default:
 		var pretty bytes.Buffer
 		if err := json.Indent(&pretty, detail, "", "  "); err != nil {
-			_, _ = fmt.Fprint(cmd.OutOrStdout(), string(detail))
-			_, _ = fmt.Fprintln(cmd.OutOrStdout())
-			return nil //nolint:nilerr // Invalid JSON is emitted as the original response.
+			return fmt.Errorf("format audit session response: %w", err)
 		}
 		_, _ = fmt.Fprint(cmd.OutOrStdout(), pretty.String())
 		return nil
