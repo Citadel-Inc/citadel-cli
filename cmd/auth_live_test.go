@@ -88,7 +88,7 @@ func TestLiveOAuthLogin_fullBrowser_optIn(t *testing.T) {
 			}); err != nil {
 				t.Fatalf("goto auth url: %v", err)
 			}
-			_ = clickFirstVisible(page,
+			clickFirstVisible(page,
 				`button:has-text("Authorize")`,
 				`button:has-text("Allow")`,
 				`button:has-text("Continue")`,
@@ -146,7 +146,7 @@ func TestLiveOAuthLogin_fullBrowser_optIn(t *testing.T) {
 	}
 }
 
-func clickFirstVisible(page playwright.Page, selectors ...string) error {
+func clickFirstVisible(page playwright.Page, selectors ...string) {
 	for _, selector := range selectors {
 		loc := page.Locator(selector)
 		count, err := loc.Count()
@@ -156,10 +156,9 @@ func clickFirstVisible(page playwright.Page, selectors ...string) error {
 		if err := loc.First().Click(playwright.LocatorClickOptions{
 			Timeout: playwright.Float(5000),
 		}); err == nil {
-			return nil
+			return
 		}
 	}
-	return nil
 }
 
 func waitForAuthSuccess(page playwright.Page) error {

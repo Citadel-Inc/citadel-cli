@@ -22,14 +22,13 @@ func authProviderServerEnv(t *testing.T, h http.HandlerFunc) *httptest.Server {
 	return srv
 }
 
-func withServer(t *testing.T, h http.HandlerFunc) *httptest.Server {
+func withServer(t *testing.T, h http.HandlerFunc) {
 	t.Helper()
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_SERVER", srv.URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
-	return srv
 }
 
 func setOutRecursive(c *cobra.Command, out, err io.Writer) {
@@ -97,10 +96,10 @@ func rootForOut(stdout io.Writer, args ...string) *cobra.Command {
 	return root
 }
 
-func writeJSON(t *testing.T, w http.ResponseWriter, status int, v any) {
+func writeJSON(t *testing.T, w http.ResponseWriter, v any) {
 	t.Helper()
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		t.Fatalf("encode response: %v", err)
 	}
@@ -136,7 +135,7 @@ func TestAuthProviderList_JSON_Unauthenticated(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		writeJSON(t, w, http.StatusOK, map[string]any{
+		writeJSON(t, w, map[string]any{
 			"providers": []map[string]any{
 				{"id": "github", "label": "GitHub"},
 				{"id": "google", "label": "Google"},
@@ -172,7 +171,7 @@ func TestAuthProviderLink_JSON(t *testing.T) {
 		}
 		assertTestBearer(t, r)
 		assertTestJSONBody(t, r, map[string]any{"provider": "github"})
-		writeJSON(t, w, http.StatusOK, map[string]any{
+		writeJSON(t, w, map[string]any{
 			"provider":     "github",
 			"redirect_url": "https://supabase.example/auth/v1/authorize?provider=github",
 		})
@@ -193,7 +192,7 @@ func TestAuthProviderLink_DefaultLaunchesBrowser(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		writeJSON(t, w, http.StatusOK, map[string]any{
+		writeJSON(t, w, map[string]any{
 			"provider":     "github",
 			"redirect_url": "https://supabase.example/auth/v1/authorize?provider=github",
 		})
@@ -220,7 +219,7 @@ func TestAuthProviderUnlink_JSON(t *testing.T) {
 		}
 		assertTestBearer(t, r)
 		assertTestJSONBody(t, r, map[string]any{"provider": "github"})
-		writeJSON(t, w, http.StatusOK, map[string]any{"status": "ok"})
+		writeJSON(t, w, map[string]any{"status": "ok"})
 	})
 
 	var out strings.Builder

@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -160,14 +159,7 @@ func TestGitOriginIntegration(t *testing.T) {
 	cmd.PersistentFlags().BoolP("quiet", "q", false, "")
 	cmd.SetContext(context.Background())
 
-	old, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(old) })
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
+	t.Chdir(dir)
 
 	ns, slug, err := resolveRepoFlag(cmd)
 	if err != nil {
@@ -199,18 +191,11 @@ func TestInferenceHintSkippedWhenStderrNotTTYFile(t *testing.T) {
 	cmd.SetContext(context.Background())
 	cmd.SetErr(&bytes.Buffer{}) // non-TTY stderr → no hint
 
-	old, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(old) })
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
+	t.Chdir(dir)
 
 	var stderr bytes.Buffer
 	cmd.SetErr(&stderr)
-	_, _, err = resolveRepoFlag(cmd)
+	_, _, err := resolveRepoFlag(cmd)
 	if err != nil {
 		t.Fatal(err)
 	}

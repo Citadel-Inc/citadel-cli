@@ -37,29 +37,11 @@ func TestResolveExplicitEmpty(t *testing.T) {
 // When no pager tier is set, match git: fall back to less with sane flags.
 func TestResolve_DefaultLessWhenEnvUnset(t *testing.T) {
 	keys := []string{"CITADEL_PAGER", "GIT_PAGER", "PAGER"}
-	saved := make([]struct {
-		key string
-		val string
-		ok  bool
-	}, 0, len(keys))
+	// Setenv registers restoration while Unsetenv preserves LookupEnv's absent state.
 	for _, k := range keys {
-		v, ok := os.LookupEnv(k)
-		saved = append(saved, struct {
-			key string
-			val string
-			ok  bool
-		}{k, v, ok})
+		t.Setenv(k, "")
 		_ = os.Unsetenv(k)
 	}
-	t.Cleanup(func() {
-		for _, e := range saved {
-			if e.ok {
-				_ = os.Setenv(e.key, e.val)
-			} else {
-				_ = os.Unsetenv(e.key)
-			}
-		}
-	})
 
 	if got := Resolve(); got != "less -FRX" {
 		t.Fatalf("default pager, got %q", got)
