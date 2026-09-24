@@ -70,7 +70,7 @@ func runWatchCmdOut(t *testing.T, ctx context.Context, srvURL string, verb *cobr
 
 	var out bytes.Buffer
 	resetFlagsRecursive(verb)
-	resetCtxRecursive(verb)
+	resetCtxRecursive(verb, ctx)
 	setOutRecursive(verb, &out, io.Discard)
 
 	root := &cobra.Command{Use: "test"}
@@ -255,7 +255,7 @@ func assertDeployTokenListWatch(t *testing.T, path, jsonData, wantID string, ver
 
 	out := &safeStdout{}
 	resetFlagsRecursive(verb)
-	resetCtxRecursive(verb)
+	resetCtxRecursive(verb, ctx)
 	setOutRecursive(verb, out, io.Discard)
 
 	root := &cobra.Command{Use: "test"}

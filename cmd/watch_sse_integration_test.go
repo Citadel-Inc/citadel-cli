@@ -91,7 +91,7 @@ func TestRepoListWatch_scriptedSSESequence_ndjson(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	out := &safeStdout{}
 	resetFlagsRecursive(cmd.RepoCmd)
-	resetCtxRecursive(cmd.RepoCmd)
+	resetCtxRecursive(cmd.RepoCmd, ctx)
 	setOutRecursive(cmd.RepoCmd, out, io.Discard)
 
 	root := &cobra.Command{Use: "test"}
