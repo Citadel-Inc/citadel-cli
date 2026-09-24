@@ -631,7 +631,7 @@ func TestRotateAccessTokenOn401Hook_RefreshFailureClearsSecrets(t *testing.T) {
 	if err == nil || !errors.Is(err, errSessionExpired) {
 		t.Fatalf("expected session expired error, got %v", err)
 	}
-	cliErr, ok := FriendlyError(err).(*CLIError)
+	cliErr, ok := errors.AsType[*CLIError](FriendlyError(err))
 	if !ok || cliErr.Kind != KindAuthRequired {
 		t.Fatalf("FriendlyError = %#v, want auth_required", FriendlyError(err))
 	}
