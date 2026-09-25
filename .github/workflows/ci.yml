@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Go
-        uses: Rethunk-Tech/gh-actions/setup-go@950fe676e8beb3854c98ac74bcf9951ad7cb7b7c # v1.12
+        uses: Rethunk-Tech/gh-actions/setup-go@99dfb9093ab089d28f76d8036322a7c062259e76 # v1.13
         with:
           run-lint: "true"
           run-govulncheck: "true"
