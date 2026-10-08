@@ -19,7 +19,6 @@ Spec lifecycle: `mcp__citadel-sdd__*` MCP tools only (table below). Releases on 
 
 ## Invariants
 
-- Generic Git rules: `~/.claude/CLAUDE.md`. **Commit freely; push only on explicit instruction.**
 - Specs MUST pass `mcp__citadel-sdd__spec_lint` before commit. Task bullets `- [ ]` / `- [x]`; priority headings only in `tasks.md`.
 - **Never hand-edit** spec status, DTG stamps, or `tasks.md` checkboxes — use MCP tools.
 
@@ -42,7 +41,3 @@ Hand-edit only: new spec scaffold (then `spec_claim`), body prose, parking (`spe
 ## Test conventions
 
 `go test -race ./...` / `make verify`. Live tests env-gated; safe in CI when unset.
-
-## Pre-push
-
-`make verify` before push.
