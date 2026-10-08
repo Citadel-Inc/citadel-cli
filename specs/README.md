@@ -2,7 +2,7 @@
 
 ## Active
 
-*In-flight specifications (DRAFT through BLOCKED) under `specs/active/`. Claim, block, unblock, park, and close via [`@rethunk/citadel-sdd`](https://github.com/Rethunk-AI/citadel-sdd).*
+*In-flight specifications (DRAFT through BLOCKED) under `specs/active/`. Edit status and tasks directly in each spec.*
 
 | Slug | State | DTG | Owner |
 | ------ | ------- | ----- | ------- |
@@ -10,7 +10,7 @@
 
 ## Parked
 
-*Deliberately not pursued (**PARKED**); superseded or withdrawn specs under `specs/parked/`. Use `spec_park` from [`@rethunk/citadel-sdd`](https://github.com/Rethunk-AI/citadel-sdd).*
+*Deliberately not pursued (**PARKED**); superseded or withdrawn specs under `specs/parked/`. Park by moving the spec directory here and noting it in the commit message.*
 
 | Slug | DTG | Note |
 | ------ | ----- | ------ |

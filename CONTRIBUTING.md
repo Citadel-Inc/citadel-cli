@@ -16,14 +16,14 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## Spec discipline
 
-Specs live under `specs/active/` and `specs/parked/` (intentionally not pursued — see [`specs/parked/README.md`](specs/parked/README.md)). Authoring rules and lifecycle for **active** and **done** are defined by [`@rethunk/citadel-sdd`](https://github.com/Rethunk-AI/citadel-sdd). Use the `mcp__citadel-sdd__*` MCP tools — see [AGENTS.md](AGENTS.md) for the tool→operation map. Strict spec lint (`mcp__citadel-sdd__spec_lint`) must pass before merge.
+Specs live under `specs/active/` and `specs/parked/` (intentionally not pursued — see [`specs/parked/README.md`](specs/parked/README.md)).
 
 ## Pre-commit checklist
 
 Before you ask for review or push a change you care about:
 
 1. **`make verify`** — runs `go vet`, race tests, and `golangci-lint`. Fix anything that fails.
-2. **Spec edits** — if you touch `specs/**`, the strict SDD linter must pass before merge; use the Citadel SDD MCP `spec_lint` (or the equivalent CLI from `@rethunk/citadel-sdd`).
+2. **Spec edits** — if you touch `specs/**`, the strict SDD linter must pass before merge.
 3. **Coverage gate (optional locally)** — CI runs the race tests through `scripts/check-package-coverage.sh` (default floor **75%** per package). Run `make coverage-check` before push if you touched tests or coverage-sensitive code. Reaching **~90%** in **`cmd`** is an aspirational target: **`runLogin`** / **`openBrowser`** and watch helpers remain costly to cover without integration harnesses.
 
 ## Code style (mechanical)

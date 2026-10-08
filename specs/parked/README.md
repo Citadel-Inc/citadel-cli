@@ -7,7 +7,7 @@ Use **parked** when:
 - The idea was scoped and written up, but a **product or architecture decision** retires it (often **superseded** by a simpler canonical path).
 - Work should remain **discoverable** for history and rationale, without implying a backlog commitment.
 
-This is the repo-local answer until `@rethunk/citadel-sdd` grows an automated **`spec_park`** (or equivalent) tool; moves into this directory are **hand-edited** and should be called out in commit messages.
+Moves into this directory are hand-edited and called out in commit messages.
 
 ## Program decision — HTTPS MCP is canonical
 
