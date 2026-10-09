@@ -35,7 +35,7 @@ Pre-built binaries for linux-amd64, linux-arm64, darwin-arm64, and windows-amd64
 
 ### Via `go install` (latest)
 
-Requires Go 1.27.1+. Installs to `~/go/bin/citadel-cli`; add `~/go/bin` to `PATH` if needed.
+Requires Go 1.27.2+. Installs to `~/go/bin/citadel-cli`; add `~/go/bin` to `PATH` if needed.
 
 ```bash
 go install github.com/Citadel-Inc/citadel-cli@latest
