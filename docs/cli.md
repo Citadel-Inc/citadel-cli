@@ -654,7 +654,7 @@ citadel-cli kg diff -R myorg/myrepo --from-ref main --to-ref topic-branch
 citadel-cli kg impact myorg/myrepo MyFunc   # symbol name or UUID
 ```
 
-**`kg impact`** uses **`GET /api/namespaces/{namespace}/kg/impact`** (legacy **`/kg/{owner}/impact`** is no longer called).
+**`kg impact`** uses **`GET /api/namespaces/{namespace}/kg/impact`**.
 
 `--all` walks pages when the response advertises `next_cursor`. It cannot be
 combined with `--output json` (use `--output ndjson` to stream every row).
