@@ -1,6 +1,6 @@
 # Contributing to citadel-cli
 
-This guide is for **human** contributors. If you are an LLM or automation working in the repo, read [AGENTS.md](AGENTS.md) (`CLAUDE.md` contains `@AGENTS.md`) first — it carries agent-specific workflow (MCP-first Git, spec MCP tools, and the same conventions below in agent-shaped form).
+This guide is for **human** contributors. If you are an LLM or automation working in the repo, read [AGENTS.md](AGENTS.md) (`CLAUDE.md` is a symlink to it) first.
 
 ## Commit conventions
 
@@ -23,8 +23,7 @@ Specs live under `specs/active/` and `specs/parked/` (intentionally not pursued 
 Before you ask for review or push a change you care about:
 
 1. **`make verify`** — runs `go vet`, race tests, and `golangci-lint`. Fix anything that fails.
-2. **Spec edits** — if you touch `specs/**`, the strict SDD linter must pass before merge.
-3. **Coverage gate (optional locally)** — CI runs the race tests through `scripts/check-package-coverage.sh` (default floor **75%** per package). Run `make coverage-check` before push if you touched tests or coverage-sensitive code. Reaching **~90%** in **`cmd`** is an aspirational target: **`runLogin`** / **`openBrowser`** and watch helpers remain costly to cover without integration harnesses.
+2. **Coverage gate (optional locally)** — CI runs the race tests through `scripts/check-package-coverage.sh` (default floor **75%** per package). Run `make coverage-check` before push if you touched tests or coverage-sensitive code.
 
 ## Code style (mechanical)
 

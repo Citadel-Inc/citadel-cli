@@ -26,13 +26,13 @@ type Config struct {
 	// AdminKey is the Supabase service-role key (secret — never log).
 	AdminKey string `yaml:"admin_key"`
 
-	// JWTSecret is the Supabase JWT signing secret used to mint admin tokens.
+	// JWTSecret is the Supabase JWT signing secret for minting admin tokens.
 	// Required for the bootstrap-token verb.
 	JWTSecret string `yaml:"jwt_secret"`
 
 	// Telemetry, when true, allows anonymous usage data to be sent to
 	// Rethunk-Tech telemetry endpoints.  Disabled by default; enable
-	// explicitly via `citadel self-host telemetry enable`.
+	// explicitly via `citadel-cli self-host telemetry enable`.
 	Telemetry bool `yaml:"telemetry"`
 }
 

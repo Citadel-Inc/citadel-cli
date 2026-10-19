@@ -16,7 +16,7 @@ With Go 1.27.2 or newer:
 go install github.com/Citadel-Inc/citadel-cli@latest
 ```
 
-That lands in `~/go/bin`. `@latest` is the newest `v*` tag whose `go.mod` path is `github.com/Citadel-Inc/citadel-cli` (v0.1.0 is the old `Rethunk-Tech` module and will not install from this path).
+That lands in `~/go/bin`. `@latest` resolves to the newest `v*` tag whose `go.mod` module path is `github.com/Citadel-Inc/citadel-cli`; `@main` builds current `main`.
 
 Prerequisites for local work: Go 1.27.2+, `golangci-lint` (for `make verify`).
 

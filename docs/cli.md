@@ -41,7 +41,7 @@ Requires Go 1.27.2+. Installs to `~/go/bin/citadel-cli`; add `~/go/bin` to `PATH
 go install github.com/Citadel-Inc/citadel-cli@latest
 ```
 
-`v0.1.0` declares `github.com/Rethunk-Tech/citadel-cli` and will not install from this module path. Use a later `v*` tag, or `go install github.com/Citadel-Inc/citadel-cli@main` to build current `main`.
+`go install github.com/Citadel-Inc/citadel-cli@main` builds current `main`.
 
 ## First-run flow
 
@@ -119,7 +119,7 @@ Generate scripts for your shell (bash, zsh, fish, or PowerShell):
 citadel-cli completion bash   # often: source <(citadel-cli completion bash)
 ```
 
-Dynamic completion for most resource arguments (repos, namespaces, agents, OAuth clients, tokens) uses your stored bearer session to query list endpoints. Auth-provider completion resolves from the public provider registry. Cache layout, TTL, and the `CITADEL_NO_COMPLETION_CACHE` bypass are described under **Configuration** in the repo’s [HUMANS.md](../HUMANS.md#configuration) (not duplicated here).
+Dynamic completion for most resource arguments (repos, namespaces, agents, OAuth clients, tokens) uses your stored bearer session to query list endpoints. Auth-provider completion resolves from the public provider registry. Results are cached on disk for 60 seconds; `CITADEL_NO_COMPLETION_CACHE` bypasses the cache ([HUMANS.md](../HUMANS.md#configuration)).
 
 ## Daily commands
 
@@ -170,14 +170,6 @@ for machine-readable output.
 
 HTTP **404** responses may indicate RBAC denial (`projectgraph:read` / `projectgraph:manage`) rather than a wrong path — verify grants before assuming the slug is invalid.
 
-Opt-in live smoke (requires **`CITADEL_TEST_PROJECTGRAPH_LIVE=1`**, **`CITADEL_ACCESS_TOKEN`**, and **`CITADEL_TEST_PROJECTGRAPH_SLUG`**):
-
-```bash
-CITADEL_TEST_PROJECTGRAPH_LIVE=1 \
-CITADEL_TEST_PROJECTGRAPH_SLUG=org/repo \
-go test ./cmd -run TestLiveProjectGraph -count=1
-```
-
 ### Issues
 
 Issue workflows target any Citadel namespace path with **`-R <ns/path>`**. For
@@ -220,7 +212,7 @@ citadel-cli issue milestone edit -R acme/demo <milestone-uuid> --state closed
 citadel-cli issue milestone delete -R acme/demo <milestone-uuid> --yes
 ```
 
-- `list` filters client-side by `--state open|closed|all` because the current
+- `list` filters client-side by `--state open|closed|all` because the
   server endpoint returns the full milestone set for the namespace.
 - `view`, `edit`, and `delete` complete milestone UUIDs dynamically from the
   selected namespace path.
@@ -228,17 +220,6 @@ citadel-cli issue milestone delete -R acme/demo <milestone-uuid> --yes
   to `edit` clears the due date.
 - `delete` requires typed confirmation of the milestone title unless `--yes`
   is set. `--dry-run` prints the DELETE route without executing it.
-
-### Live integration test
-
-Opt-in: **`CITADEL_TEST_ISSUES_LIVE=1`** with **`CITADEL_TEST_ISSUES_NS`** and
-**`CITADEL_ACCESS_TOKEN`**.
-
-```bash
-CITADEL_TEST_ISSUES_LIVE=1 \
-CITADEL_TEST_ISSUES_NS=acme/demo \
-go test ./cmd -run TestLiveIssues_roundTrip_optIn -count=1
-```
 
 ### Direct API requests
 
@@ -348,15 +329,12 @@ citadel-cli namespace webhook delete acme <webhook-id>
 - Namespace webhooks take the namespace path as a positional argument.
 - `create` requires `--url` and `--events`. Citadel generates the webhook secret
   server-side and returns the cleartext secret once; save it immediately.
-- Supported event kinds currently match the server allow-list:
+- Supported event kinds match the server allow-list:
   `comment.created`, `comment.edited`, `issue.assigned`, `issue.closed`,
   `issue.labeled`, `issue.opened`, `issue.reopened`, `issue.unassigned`, and
   `issue.unlabeled`.
 - `--include-descendants` applies to namespace webhooks only.
-- `get` is implemented client-side by listing hooks and filtering by ID because
-  the current API does not expose a dedicated GET-by-ID route.
-- Citadel now exposes a server-side webhook test/ping endpoint; `citadel-cli`
-  does not yet wrap it as a `webhook test` command.
+- `get` lists hooks and filters by ID client-side; the API has no GET-by-ID route.
 
 ### Webhook deliveries
 
@@ -396,10 +374,6 @@ citadel-cli agent rotate-token <name>
 
 #### `agent create`
 
-```bash
-citadel-cli agent create <name> [--org <slug>] [--description "..."]
-```
-
 Registers a new agent in the authenticated user's namespace (or an org namespace
 with `--org <slug>`) and prints the agent's **one-time initial token**. Save this
 token immediately — it will not be displayed again. Subsequent calls to
@@ -427,12 +401,6 @@ citadel-cli token list --agent <agent-name>
 
 Lists all tokens (active and revoked) for the given agent. Columns: token ID, agent name, scopes, created_at, expires_at, revoked_at.
 
-Example:
-
-```bash
-citadel-cli token list --agent my-app
-```
-
 ### Issue a new agent token
 
 ```bash
@@ -447,11 +415,8 @@ Parameters:
 - `--scopes <scope>[,<scope>...]` (optional): Comma-separated list of scopes (e.g., `mcp:read,mcp:write`). Default: no scopes.
 - `--expires <duration>` (optional): Token expiry time (e.g., `24h`, `7d`, `no-expiry`). Default: no expiration.
 
-Example:
-
 ```bash
-$ citadel-cli token issue --agent my-indexer --scopes mcp:read --expires 7d
-sb_at_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+citadel-cli token issue --agent my-indexer --scopes mcp:read --expires 7d
 ```
 
 Save this token immediately — it is never displayed again. Store it in your application's environment or credentials file.
@@ -463,12 +428,6 @@ citadel-cli token revoke <token-id>
 ```
 
 Sets the `revoked_at` timestamp on the token, deactivating it immediately. Revoked tokens are rejected on every MCP call. This command is idempotent — revoking an already-revoked token is a no-op.
-
-Example:
-
-```bash
-citadel-cli token revoke 550e8400-e29b-41d4-a716-446655440000
-```
 
 ### Deploy tokens
 
@@ -584,10 +543,6 @@ citadel-cli org invitation accept --token-file ~/invite-token.txt
 
 Treat invitation tokens like passwords.
 
-### Live integration test
-
-Opt-in: set **`CITADEL_TEST_ORG_INVITATIONS_LIVE=1`** together with **`CITADEL_ACCESS_TOKEN`** and optional **`CITADEL_SERVER`** (see `cmd/org_invitation_live_test.go`). CI skips when unset.
-
 ## SSH public keys (Git)
 
 Register SSH **public** keys for your account so Git SSH endpoints can authorize pushes and pulls. The CLI never uploads private keys and rejects PEM-style private key blobs.
@@ -616,22 +571,13 @@ When stdin is not a TTY, you may pipe a one-line public key. Use **`--key-file -
 citadel-cli ssh-key delete <key-id>
 ```
 
-### Live integration test
-
-Opt-in: **`CITADEL_TEST_SSH_KEYS_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`** (see `cmd/ssh_key_live_test.go`). CI skips when unset.
-
-## Account security
-
-Manage passkeys and signed-in devices in the Citadel web app's settings
-panel. The CLI does not expose account security management verbs.
-
-### `--debug-http` and secrets
+## `--debug-http` and secrets
 
 Do not paste **`--debug-http`** traces into tickets: Authorization is redacted, but never assume other fields are safe to publish.
 
 ## Knowledge graph (HTTP)
 
-Query the Citadel **knowledge-graph REST API** (`kgapi`) with your saved session bearer (normally the agent token minted by `auth login`). Commands follow **`cli-cwd-context`**: pass **`-R namespace/repo`**, set **`CITADEL_REPO`**, or rely on **`git remote origin`** when the remote host is recognised.
+Query the Citadel **knowledge-graph REST API** (`kgapi`) with your saved session bearer (normally the agent token minted by `auth login`). Pass **`-R namespace/repo`**, set **`CITADEL_REPO`**, or rely on the `origin` remote when its host is recognised.
 
 ### Cross-namespace search
 
@@ -661,10 +607,6 @@ combined with `--output json` (use `--output ndjson` to stream every row).
 `--output table` renders stable columns for search/symbols (and related list
 shapes). Machine output also supports **`json`**, **`yaml`**, and **`ndjson`**.
 
-### Live integration test
-
-Opt-in: **`CITADEL_TEST_KG_EXTENDED_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`** — see `cmd/kg_extended_live_test.go`. CI skips when unset.
-
 ## Audit sessions
 
 Inspect grouped audit **sessions** for a namespace (distinct from **`citadel-cli audit list`**, which lists raw events with cursor pagination).
@@ -687,24 +629,17 @@ citadel-cli audit sessions show <session-id>
 citadel-cli audit sessions show <session-id> --output yaml
 ```
 
-### Live integration test
-
-Opt-in: **`CITADEL_TEST_AUDIT_SESSIONS_LIVE=1`** with **`CITADEL_ACCESS_TOKEN`** and **`CITADEL_TEST_AUDIT_SESSIONS_NS`** set to a namespace you can read audit for (see `cmd/audit_sessions_live_test.go`). CI skips when unset.
-
 ## Server URL configuration
 
-The CLI uses `CITADEL_SERVER` as the server URL (or the built-in default if unset). Override it via:
+Precedence, highest first:
 
-1. **`--server` flag** (highest precedence; persistent on the root command).
-2. **Environment variable**: `CITADEL_SERVER`.
-3. **Config file**: Edit `~/.config/citadel/config.toml` and set `server_url = "https://your-server.com"`.
-
-Example:
+1. `--server` (persistent root flag)
+2. `CITADEL_SERVER`
+3. `server_url` in `~/.config/citadel/config.toml`
+4. Built-in default
 
 ```bash
 citadel-cli --server http://localhost:8080 token list --agent my-app
-export CITADEL_SERVER=https://api.internal.example.com
-citadel-cli token list --agent my-app
 ```
 
 ## MCP tool calls
@@ -775,41 +710,16 @@ Edge cases that fall through to string: `.5`, `5.`, `1.2.3`, anything with non-d
 | 1 | Local error: bad flags, no token, transport failure, server JSON-RPC error. |
 | 2 | Tool returned `isError: true` (the call reached the tool; the tool failed). |
 
-### Phase 0 operator cookbook (HTTPS MCP)
+### Operator recipes
 
-Agents should configure the IDE or runtime to talk to **your deployment’s MCP URL** (`$CITADEL_SERVER/mcp`) directly. For **operators** — debugging, runbooks, CI smoke — `citadel-cli mcp call` hits the **same** Streamable HTTP MCP surface as agents; there is no separate stdio MCP in this client ([parked specs](../specs/parked/README.md)).
-
-**Discover names on your server** (tool lists drift with Citadel releases):
-
-```bash
-citadel-cli mcp tools
-```
-
-Below, treat **`<tool>`** as a name from that list. Argument shapes mirror the Proof-of-Life dossier **appendix K** tool groups (`namespace.*`, `repo.*`, `issue.*`, `project.*`, `kg.*`, `agent.*`, `audit.*`, `key.*`) — **wire names differ** (often `snake_case`); always confirm with `mcp tools`.
+`mcp call` hits the same Streamable HTTP MCP surface agents use (`$CITADEL_SERVER/mcp`); there is no stdio MCP in this client ([parked specs](../specs/parked/README.md)). Tool names and argument shapes come from the server: run `citadel-cli mcp tools` first and treat `<tool>` below as a name from that list. Prefer a first-class `citadel-cli <verb>` where one exists.
 
 | Intent | Pattern |
 | -------- | --------- |
-| Resolve namespace / org | `citadel-cli mcp call <tool> --arg path=<slug>` — typical discovery tool is `get_namespace` (confirm via `mcp tools`). |
-| Knowledge graph | Tools such as **`kg_find_symbol`**, **`kg_list_files`**, **`kg_walk`** (examples; verify list). Pass repo/namespace args your server’s schema expects, often `--arg namespace_path=…` or `--arg-string` for opaque IDs. |
-| Project-as-graph | Project tools accept **`project_path`** or **`namespace_path`**-style args per server registration — use `--json` when responses are large. |
-| Issues | When issue MCP tools are enabled, use **`issue_*`** names from `mcp tools` (for example `issue_list`, `issue_get`, `issue_comment`) until first-class CLI issue verbs land; tracked under active spec **`cli-issues`**. |
-| Audit | **`audit.list`** / session tools — align filters (`namespace_path`, `since`) with MCP schema; parity with `citadel-cli audit list` when both exist. |
-| SSH keys | **`key.list` / `key.add` / `key.delete`** per appendix K — same semantics as future `citadel-cli ssh-key` REST wrappers. |
-
-**Recipes**
-
-```bash
-# Namespace lookup (replace get_namespace if your server lists a different name)
-citadel-cli mcp call get_namespace --arg path=Rethunk-Tech
-
-# Raw JSON-RPC envelope (scripting)
-citadel-cli mcp call get_namespace --arg path=Rethunk-Tech --json
-
-# Agent with explicit bearer (CI / rotate-token output)
-citadel-cli mcp --token "$CITADEL_AGENT_TOKEN" tools
-```
-
-**REST parity:** The Citadel API surface is accessible via both the MCP endpoint (`/mcp`) and the REST API; older REST-direct examples may be stale for OAuth, agent, search, audit, and OAuth-client routes. Prefer MCP for agent-shaped workflows; prefer **`citadel-cli <verb>`** when we ship first-class commands (repos, namespaces, audit events) — fewer typed arguments to assemble by hand.
+| Resolve namespace / org | `citadel-cli mcp call get_namespace --arg path=<slug>` |
+| Knowledge graph | `kg_find_symbol`, `kg_list_files`, `kg_walk`; pass the namespace args the tool schema lists (`--arg-string` for opaque IDs) |
+| Large responses | add `--json` |
+| Explicit bearer (CI) | `citadel-cli mcp --token "$CITADEL_AGENT_TOKEN" tools` |
 
 ### Auth failures
 
@@ -854,7 +764,6 @@ citadel-cli namespace profile get myorg --output yaml
 citadel-cli ns profile get myorg
 ```
 
-> **Note:** Profile editing is a settings-panel concern (no `gh profile edit` exists) and is out of scope for `citadel-cli`.
 
 ## Notification inbox
 
@@ -1296,10 +1205,6 @@ citadel-cli doctor
 
 The OAuth flow may have timed out or the browser may have closed. Try `citadel-cli auth login` again.
 
-### Token expires quickly
-
-The default expiration is "no expiry" (tokens live until revoked). If you set `--expires 1h` and saw the token expire quickly, that is expected. Adjust the expiration when issuing the token, or revoke and re-issue with a longer (or infinite) expiration.
-
 ### Config file not found
 
 If `~/.config/citadel/` does not exist, `citadel-cli auth login` creates it automatically with mode 0700 (directory) and 0600 (config file). If the file exists but is unreadable, check its permissions with `ls -la ~/.config/citadel/config.toml`.
@@ -1317,42 +1222,24 @@ This will create a fresh config.
 
 ## Distribution
 
-The CLI binary is built by the GitHub Actions release workflow on every tag matching `v*`, producing static binaries for `linux-amd64`, `linux-arm64`, `darwin-arm64`, and `windows-amd64`. Update `CHANGELOG.md` and run `make verify && make build-all VERSION=<tag>` before pushing the tag. Channels:
+The release workflow builds static binaries for `linux-amd64`, `linux-arm64`, `darwin-arm64`, and `windows-amd64` on every `v*` tag and publishes them with a `SHA256SUMS` file at `github.com/Citadel-Inc/citadel-cli/releases/tag/<tag>`. Cut a release with `make verify && make build-all VERSION=<tag>`, then push the tag.
 
-- **GitHub Releases (canonical, today).** Each tag publishes a release at `github.com/Citadel-Inc/citadel-cli/releases/tag/<tag>` with the four binaries + a `SHA256SUMS` file. Manual download:
-
-  ```bash
-  # Replace v0.1.0 with the latest tag.
-  curl -L -o citadel-cli-linux-amd64 \
-    https://github.com/Citadel-Inc/citadel-cli/releases/download/v0.1.0/citadel-cli-linux-amd64
-  curl -L -o SHA256SUMS \
-    https://github.com/Citadel-Inc/citadel-cli/releases/download/v0.1.0/SHA256SUMS
-  sha256sum -c SHA256SUMS --ignore-missing
-  chmod +x citadel-cli-linux-amd64
-  sudo mv citadel-cli-linux-amd64 /usr/local/bin/citadel-cli
-  ```
-
-- **Homebrew tap (deferred).** Suggested formula path `rethunk-tech/tap/citadel-cli`. Land when a second non-operator user adopts the CLI; until then, GH Releases is sufficient.
-
-- **Static mirror (deferred).** Operator-managed mirror behind Caddy. Only worth standing up if GH Releases is unavailable to a target audience (corporate networks blocking github.com download paths). Not currently planned.
-
-### Versioning
-
-Until v1.0 the **citadel-cli** release tags track the **citadel** server binary releases; both bump together on every release. After v1.0 the CLI versions independently — server-side compatibility is JWT/JWKS-based, not version-pinned.
-
-### Verifying a download
+Manual install and verification:
 
 ```bash
-# After downloading binary + SHA256SUMS for the same tag.
-sha256sum -c SHA256SUMS --ignore-missing
-# Expect: citadel-cli-linux-amd64: OK
+TAG=<tag>
+curl -LO https://github.com/Citadel-Inc/citadel-cli/releases/download/$TAG/citadel-cli-linux-amd64
+curl -LO https://github.com/Citadel-Inc/citadel-cli/releases/download/$TAG/SHA256SUMS
+sha256sum -c SHA256SUMS --ignore-missing   # expect: citadel-cli-linux-amd64: OK
+chmod +x citadel-cli-linux-amd64
+sudo mv citadel-cli-linux-amd64 /usr/local/bin/citadel-cli
 ```
 
-If verification fails, do not run the binary. Re-download from a fresh session and re-verify.
+If verification fails, do not run the binary.
 
 ## Self-host setup
 
-The `citadel self-host` command group manages a self-hosted Citadel + Supabase deployment.
+The `citadel-cli self-host` command group manages a self-hosted Citadel + Supabase deployment.
 Configuration is stored at `~/.citadel/self-host.yaml` (override with `CITADEL_SELF_HOST_CONFIG`).
 
 ### Initialize configuration
@@ -1360,7 +1247,7 @@ Configuration is stored at `~/.citadel/self-host.yaml` (override with `CITADEL_S
 Run the interactive wizard to collect your deployment details:
 
 ```bash
-citadel self-host init
+citadel-cli self-host init
 ```
 
 You will be prompted for:
@@ -1368,12 +1255,12 @@ You will be prompted for:
 - **API endpoint** — base URL of your Citadel API server (e.g. `https://citadel.example.com`)
 - **Supabase URL** — your Supabase project URL (e.g. `https://abc.supabase.co`)
 - **Admin key** — Supabase service-role key (kept in config file at 0600)
-- **JWT secret** — Supabase JWT signing secret (used to mint bootstrap tokens)
+- **JWT secret** — Supabase JWT signing secret (signs bootstrap tokens)
 
 For non-interactive (CI/automation) environments, pass all values as flags:
 
 ```bash
-citadel self-host init --batch \
+citadel-cli self-host init --batch \
   --api-endpoint https://citadel.example.com \
   --supabase-url https://abc.supabase.co \
   --admin-key "$SUPABASE_SERVICE_ROLE_KEY" \
@@ -1385,7 +1272,7 @@ citadel self-host init --batch \
 Probe the API, Supabase connectivity, and migration state:
 
 ```bash
-citadel self-host health
+citadel-cli self-host health
 ```
 
 Example output:
@@ -1416,7 +1303,7 @@ Apply pending database migrations using the `supabase` CLI (must be on `PATH`):
 > in the environment instead — the `--linked` flag will use that value.
 
 ```bash
-citadel self-host migrate
+citadel-cli self-host migrate
 ```
 
 Migrations are tracked in the `schema_migrations` table; already-applied migrations are
@@ -1427,19 +1314,19 @@ skipped automatically (idempotent).
 Mint a Supabase `service_role` JWT for initial operator setup:
 
 ```bash
-citadel self-host bootstrap-token
+citadel-cli self-host bootstrap-token
 ```
 
 The token is printed to stdout once and is never written to disk. Pipe it directly:
 
 ```bash
-TOKEN=$(citadel self-host bootstrap-token)
+TOKEN=$(citadel-cli self-host bootstrap-token)
 ```
 
 Override the default 7-day expiry with `--duration`:
 
 ```bash
-citadel self-host bootstrap-token --duration 24h
+citadel-cli self-host bootstrap-token --duration 24h
 ```
 
 ### Telemetry
@@ -1447,8 +1334,8 @@ citadel self-host bootstrap-token --duration 24h
 Enable or disable anonymous usage telemetry (disabled by default):
 
 ```bash
-citadel self-host telemetry enable
-citadel self-host telemetry disable
+citadel-cli self-host telemetry enable
+citadel-cli self-host telemetry disable
 ```
 
 The flag is stored in `~/.citadel/self-host.yaml` and respected by all `self-host` commands.
@@ -1459,7 +1346,7 @@ All `self-host` subcommands accept `--batch` to suppress interactive prompts.
 In batch mode the command fails immediately if a required value is missing.
 
 ```bash
-citadel self-host --batch health
+citadel-cli self-host --batch health
 ```
 
 ### Debug output
@@ -1469,56 +1356,34 @@ stderr. Secrets (admin keys, JWT signing secrets, tokens) are always redacted.
 User-facing output remains on stdout.
 
 ```bash
-citadel self-host --debug health
-citadel self-host --debug bootstrap-token 2>debug.log
+citadel-cli self-host --debug health
+citadel-cli self-host --debug bootstrap-token 2>debug.log
 ```
 
 ### Troubleshooting
 
 #### Auth failures
 
-If `citadel self-host health` shows `supabase — unreachable` or HTTP 401/403,
-verify the `admin_key` in `~/.citadel/self-host.yaml`:
-
-```bash
-citadel self-host --debug health 2>&1 | grep "admin_key"
-```
-
-Re-run `citadel self-host init` to update the key.
+`supabase — unreachable` or HTTP 401/403 from `health` means a wrong `admin_key` in `~/.citadel/self-host.yaml`; re-run `citadel-cli self-host init`. `--debug` output redacts secrets.
 
 #### Migration mismatch
 
-If `health` reports AMBER (migrations pending), apply the pending migrations:
-
-```bash
-citadel self-host migrate
-```
-
-If `supabase CLI not found on PATH` is shown, install the Supabase CLI:
-<https://supabase.com/docs/guides/cli>. For Supabase Cloud projects, link the
-project first: `supabase link --project-ref <ref>`. For self-hosted Supabase,
-set `SUPABASE_DB_URL=postgresql://postgres:<password>@<host>:5432/postgres`.
+AMBER means pending migrations: run `citadel-cli self-host migrate`. If `supabase CLI not found on PATH` appears, install the [Supabase CLI](https://supabase.com/docs/guides/cli) and satisfy the link prerequisite under *Apply migrations*.
 
 #### JWT expiry
 
-Bootstrap tokens expire based on `--duration` (default 7 days). If a token is
-rejected with `401 Unauthorized` or `JWT expired`, generate a fresh one:
+A bootstrap token rejected with `401 Unauthorized` or `JWT expired` is past its `--duration`; mint a fresh one. Treat long-lived tokens as secrets.
 
-```bash
-TOKEN=$(citadel self-host bootstrap-token --duration 24h)
-```
+## Live tests
 
-Short-lived tokens are safer for automated setup; long-lived tokens are
-convenient for dev but should be treated as secrets.
+Live tests self-skip in CI. Each needs its gate variable plus `CITADEL_ACCESS_TOKEN` (and optionally `CITADEL_SERVER`), then runs from the package shown:
 
-#### Live integration test
-
-Opt-in: **`CITADEL_TEST_SELF_HOST_LIVE=1`** — runs against httptest stubs by
-default, or against a real instance when `CITADEL_SELF_HOST_API`,
-`CITADEL_SELF_HOST_SUPABASE_URL`, `CITADEL_SELF_HOST_ADMIN_KEY`, and
-`CITADEL_SELF_HOST_JWT_SECRET` are set.
-
-```bash
-CITADEL_TEST_SELF_HOST_LIVE=1 \
-go test ./internal/selfhost -run TestLiveSelfHost -v -count=1
-```
+| Gate | Extra env | Test |
+| ---- | --------- | ---- |
+| `CITADEL_TEST_PROJECTGRAPH_LIVE=1` | `CITADEL_TEST_PROJECTGRAPH_SLUG` | `go test ./cmd -run TestLiveProjectGraph -count=1` |
+| `CITADEL_TEST_ISSUES_LIVE=1` | `CITADEL_TEST_ISSUES_NS` | `go test ./cmd -run TestLiveIssues_roundTrip_optIn -count=1` |
+| `CITADEL_TEST_ORG_INVITATIONS_LIVE=1` | | `cmd/org_invitation_live_test.go` |
+| `CITADEL_TEST_SSH_KEYS_LIVE=1` | | `cmd/ssh_key_live_test.go` |
+| `CITADEL_TEST_KG_EXTENDED_LIVE=1` | | `cmd/kg_extended_live_test.go` |
+| `CITADEL_TEST_AUDIT_SESSIONS_LIVE=1` | `CITADEL_TEST_AUDIT_SESSIONS_NS` (namespace you can read audit for) | `cmd/audit_sessions_live_test.go` |
+| `CITADEL_TEST_SELF_HOST_LIVE=1` | httptest stubs by default; real instance with `CITADEL_SELF_HOST_API`, `CITADEL_SELF_HOST_SUPABASE_URL`, `CITADEL_SELF_HOST_ADMIN_KEY`, `CITADEL_SELF_HOST_JWT_SECRET` (no access token needed) | `go test ./internal/selfhost -run TestLiveSelfHost -v -count=1` |

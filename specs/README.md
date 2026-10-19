@@ -14,6 +14,6 @@
 
 | Slug | DTG | Note |
 | ------ | ----- | ------ |
-| cli-account-export | 091233ZMAY26 | REJECTED — out of scope per NCA order 091232ZMAY26. GDPR data export is a web account-settings surface; CLI export path not in current phase mandate. |
-| cli-billing | 091233ZMAY26 | REJECTED — out of scope per NCA order 091232ZMAY26. Billing management is a web/dashboard surface; CLI billing commands not in current phase mandate. |
-| cli-webhook-test | 091233ZMAY26 | REJECTED — out of scope per NCA order 091232ZMAY26. Webhook test-ping is an operational surface; no current CLI mandate to wrap it. |
+| cli-account-export | 091233ZMAY26 | REJECTED — GDPR data export is a web account-settings surface. |
+| cli-billing | 091233ZMAY26 | REJECTED — Billing management is a web/dashboard surface. |
+| cli-webhook-test | 091233ZMAY26 | REJECTED — Webhook test-ping is an operational surface. |

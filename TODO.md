@@ -34,17 +34,17 @@ Do **not** restore `account passkey` / `account device` — those verbs are out 
 
 ### 14b. Homebrew formula (optional)
 
-**Feature.** `make install` shipped; Homebrew tap still deferred until a second non-operator adopter.
+**Feature.** Homebrew tap, deferred until a second non-operator adopter.
 
 | | |
 | --- | --- |
-| **Packages / files** | optional `rethunk-tech/tap` formula (out of tree), `docs/cli.md` Distribution |
+| **Packages / files** | optional `rethunk-tech/tap` formula (out of tree), `docs/cli.md` § Distribution |
 | **Traps** | Do not force tap early; keep docs demand-gated |
 | **Acceptance** | Formula installs current release binary; docs link the tap when published |
 
 ### 21. Optional migrate MCP client to official go-sdk
 
-**Feature.** Retries shipped in hand-rolled client; SDK `StreamableClientTransport` + `ReconnectOptions` still a larger swap.
+**Feature.** The hand-rolled client retries; SDK `StreamableClientTransport` + `ReconnectOptions` is a larger swap.
 
 | | |
 | --- | --- |

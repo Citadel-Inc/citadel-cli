@@ -50,7 +50,7 @@ func selfHostDebugf(cmd *cobra.Command, format string, args ...any) {
 	}
 }
 
-// SelfHostCmd is the top-level `citadel self-host` command group.
+// SelfHostCmd is the top-level `citadel-cli self-host` command group.
 var SelfHostCmd = &cobra.Command{
 	Use:     "self-host",
 	GroupID: "ops",
@@ -231,7 +231,7 @@ func runSelfHostHealth(cmd *cobra.Command, _ []string) error {
 	log.Debug("loaded self-host config", "summary", cfg.DebugSummary())
 	if err := cfg.Validate(); err != nil {
 		log.Debug("config validation failed", "error", err)
-		return fmt.Errorf("self-host config incomplete: %w\nRun `citadel self-host init` to configure", err)
+		return fmt.Errorf("self-host config incomplete: %w\nRun `citadel-cli self-host init` to configure", err)
 	}
 
 	selfHostDebugf(cmd, "probing api=%s supabase=%s", cfg.APIEndpoint, cfg.SupabaseURL)
@@ -263,7 +263,7 @@ func runSelfHostMigrate(cmd *cobra.Command, _ []string) error {
 	log.Debug("loaded self-host config", "summary", cfg.DebugSummary())
 	if err := cfg.Validate(); err != nil {
 		log.Debug("config validation failed", "error", err)
-		return fmt.Errorf("self-host config incomplete: %w\nRun `citadel self-host init` to configure", err)
+		return fmt.Errorf("self-host config incomplete: %w\nRun `citadel-cli self-host init` to configure", err)
 	}
 
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Applying migrations…")
@@ -296,7 +296,7 @@ func runSelfHostBootstrapToken(cmd *cobra.Command, _ []string) error {
 	}
 	// JWT secret is required; other fields optional for this verb.
 	if cfg.JWTSecret == "" {
-		return errors.New("jwt_secret not configured; run `citadel self-host init` to set it")
+		return errors.New("jwt_secret not configured; run `citadel-cli self-host init` to set it")
 	}
 	// Log that we have a secret but NEVER log its value.
 	log.Debug("jwt_secret present", "jwt_secret", "[REDACTED]")

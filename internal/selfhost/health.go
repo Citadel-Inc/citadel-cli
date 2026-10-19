@@ -158,7 +158,7 @@ func probeMigrations(ctx context.Context, client *http.Client, supabaseURL, admi
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode == http.StatusNotFound {
 		// Table does not exist yet — migrations have not been run.
-		return ProbeResult{name, HealthAmber, "schema_migrations table not found — run `citadel self-host migrate`"}
+		return ProbeResult{name, HealthAmber, "schema_migrations table not found — run `citadel-cli self-host migrate`"}
 	}
 	if resp.StatusCode >= 400 {
 		return ProbeResult{name, HealthAmber, fmt.Sprintf("migration check returned HTTP %d: %s", resp.StatusCode, truncate(string(body), 120))}

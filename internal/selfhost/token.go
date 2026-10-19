@@ -22,7 +22,7 @@ const defaultTokenDuration = 7 * 24 * time.Hour
 // stdout.  This function never persists the token to disk.
 func GenerateBootstrapToken(cfg Config, duration time.Duration) (string, error) {
 	if cfg.JWTSecret == "" {
-		return "", errors.New("jwt_secret is not configured; run `citadel self-host init` to set it")
+		return "", errors.New("jwt_secret is not configured; run `citadel-cli self-host init` to set it")
 	}
 	if duration <= 0 {
 		duration = defaultTokenDuration
