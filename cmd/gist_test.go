@@ -308,15 +308,13 @@ func TestGistRawStreamsBeforeResponseEOF(t *testing.T) {
 	case <-firstChunkSent:
 	case <-time.After(2 * time.Second):
 		close(sendRemainder)
-		<-done
-		t.Fatal("server did not send the first response chunk")
+		t.Fatalf("server did not send the first response chunk (Execute: %v)", <-done)
 	}
 	select {
 	case <-output.firstWrite:
 	case <-time.After(2 * time.Second):
 		close(sendRemainder)
-		<-done
-		t.Fatal("gist raw did not write before response EOF")
+		t.Fatalf("gist raw did not write before response EOF (Execute: %v)", <-done)
 	}
 	close(sendRemainder)
 
