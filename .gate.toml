@@ -1,0 +1,6 @@
+# CI vets and runs the race tests with a per-package coverage floor; detection's plain `go test ./...` does neither.
+[gates.vet]
+run = "go vet ./..."
+
+[gates.test]
+run = "bash scripts/check-package-coverage.sh"
