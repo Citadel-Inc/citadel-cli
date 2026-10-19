@@ -65,7 +65,7 @@ linters:
     # canon go-golangci-lint-00010
     exhaustive:
       check:
-        - map
+        - mapliteral
         - switch
     # canon go-golangci-lint-00013
     ireturn:
