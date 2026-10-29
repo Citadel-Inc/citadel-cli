@@ -3,6 +3,7 @@ module github.com/Citadel-Inc/citadel-cli
 go 1.27.3
 
 require (
+	github.com/Rethunk-Tech/go-safefs v0.1.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/mxschmitt/playwright-go v0.6201.1
@@ -15,13 +16,10 @@ require (
 )
 
 require (
-	github.com/Rethunk-Tech/go-safefs v0.0.0-20261029191251-ae9667b83b09 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/deckarep/golang-set/v2 v2.9.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/stretchr/testify v1.12.1 // indirect
 	go.mongodb.org/mongo-driver v1.17.10 // indirect
 )
