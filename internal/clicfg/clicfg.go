@@ -3,11 +3,14 @@ package clicfg
 import (
 	"cmp"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"github.com/Rethunk-Tech/go-safefs"
 )
 
 // Config holds the CLI configuration state: server URL, auth tokens, and user info.
@@ -106,35 +109,10 @@ func (c Config) Save() error {
 		return err
 	}
 
-	// Write to a temporary file first, then atomic rename
-	tmpFile := path + ".tmp"
-	//nolint:gosec // The temporary path is derived from the protected config path.
-	f, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
-	if err != nil {
-		return err
-	}
-
-	enc := toml.NewEncoder(f)
-	//nolint:gosec // Config serialization intentionally persists the token in the protected config file.
-	if err := enc.Encode(c); err != nil {
-		_ = f.Close()
-		_ = os.Remove(tmpFile)
-		return err
-	}
-
-	if err := f.Close(); err != nil {
-		_ = os.Remove(tmpFile)
-		return err
-	}
-
-	// Atomic rename
-	if err := os.Rename(tmpFile, path); err != nil {
-		_ = os.Remove(tmpFile)
-		return err
-	}
-
-	// Ensure final file has correct permissions (paranoia check)
-	return os.Chmod(path, 0o600)
+	return safefs.WriteStreamAtomic(path, 0o600, func(w io.Writer) error {
+		//nolint:gosec // Config serialization intentionally persists the token in the protected config file.
+		return toml.NewEncoder(w).Encode(c)
+	})
 }
 
 // Update serializes a load-mutate-save cycle across CLI processes.

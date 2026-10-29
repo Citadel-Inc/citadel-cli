@@ -3,9 +3,10 @@ package clicfg
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/Rethunk-Tech/go-safefs"
 )
 
 // ─── configPath: XDG_CONFIG_HOME branch ──────────────────────────────────
@@ -290,21 +291,25 @@ func TestLoad_StatError_NonTraversableParent(t *testing.T) {
 
 // When the temp file path is a write-sink (Linux /dev/full), TOML encoding
 // returns an error; Save must clean up and surface it.
-func TestSave_EncodeError_DevFull(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("/dev/full is Linux-specific")
-	}
+func TestSave_IgnoresAPlantedTempSymlink(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmp)
 	dir := filepath.Join(tmp, "citadel")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	tmpPath := filepath.Join(dir, "config.toml.tmp")
-	if err := os.Symlink("/dev/full", tmpPath); err != nil {
+	// A predictable temp name let another process redirect the token write through a symlink planted there.
+	target := filepath.Join(tmp, "victim")
+	if err := os.WriteFile(target, []byte("untouched"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := (Config{ServerURL: "https://x"}).Save(); err == nil {
-		t.Fatal("expected encode error")
+	if err := os.Symlink(target, filepath.Join(dir, "config.toml.tmp")); err != nil {
+		t.Skipf("no symlinks here: %v", err)
+	}
+	if err := (Config{ServerURL: "https://x"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	if b, err := safefs.ReadFile(target); err != nil || string(b) != "untouched" {
+		t.Fatalf("the planted symlink was written through: %q, %v", b, err)
 	}
 }

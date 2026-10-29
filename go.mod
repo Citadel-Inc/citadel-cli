@@ -15,6 +15,7 @@ require (
 )
 
 require (
+	github.com/Rethunk-Tech/go-safefs v0.0.0-20261029191251-ae9667b83b09 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/deckarep/golang-set/v2 v2.9.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect

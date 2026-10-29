@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 
 	"go.yaml.in/yaml/v3"
+
+	"github.com/Rethunk-Tech/go-safefs"
 )
 
 // Config holds the operator-supplied parameters for a self-hosted Citadel
@@ -95,15 +97,10 @@ func (c Config) Save() error {
 		return fmt.Errorf("marshal self-host config: %w", err)
 	}
 
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+	if err := safefs.WriteFileAtomic(path, data, 0o600); err != nil {
 		return fmt.Errorf("write self-host config: %w", err)
 	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return fmt.Errorf("install self-host config: %w", err)
-	}
-	return os.Chmod(path, 0o600)
+	return nil
 }
 
 // Validate returns an error if required fields are missing.
