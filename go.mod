@@ -3,7 +3,7 @@ module github.com/Citadel-Inc/citadel-cli
 go 1.27.3
 
 require (
-	github.com/Rethunk-Tech/go-safefs v0.1.0
+	github.com/Rethunk-Tech/go-safefs v0.2.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/mxschmitt/playwright-go v0.6201.1
