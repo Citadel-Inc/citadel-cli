@@ -366,7 +366,7 @@ repositories hosted elsewhere are unaffected.
 
 ```bash
 citadel-cli auth login
-citadel-cli hook install [--client claude-code] [--scope user|project]
+citadel-cli hook install [--client claude-code] [--scope user|project] [--scopes a,b,...] [--require]
 citadel-cli hook uninstall [--client claude-code] [--scope user|project]
 ```
 
@@ -375,13 +375,20 @@ edits `.claude/settings.json`. Install merges three hooks without touching any
 other key or hook, is idempotent, and refuses to rewrite a settings file that is
 not valid JSON. Uninstall removes only those entries.
 
+`--scopes` sets the agent session scopes (default `code:read`, `code:write`,
+`metadata:read`, `pulls:read`, `pulls:write`, `issues:read`, `issues:write`);
+it is persisted in the `session-start` command line, and re-running install with
+other flags replaces the entries. `--require` adds `--require` to the
+`PreToolUse` command, which then denies a Bash `git push` in a src.land
+repository while no live agent session exists.
+
 | Claude Code event | Command | Effect |
 | --- | --- | --- |
-| `SessionStart` | `citadel-cli hook session-start` | Creates an agent session `claude-code-<hostname>` with an ephemeral ed25519 key under `$XDG_RUNTIME_DIR/citadel/sessions/<session_id>/`, then exports `GIT_SSH_COMMAND`, `CITADEL_AGENT_SESSION` and `CITADEL_ACCESS_TOKEN` through `CLAUDE_ENV_FILE`. For an `https://` origin it also registers a git credential helper for that host through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n`, so `git clone` and `git push` over HTTPS authenticate as the agent with no prompt. The helper is the hidden `citadel-cli hook git-credential`; it answers `get` with username `x` and the token from `CITADEL_ACCESS_TOKEN`, so the token is never in git config or argv. |
-| `PreToolUse` | `citadel-cli hook renew` | Renews the 15-minute session when under 5 minutes remain; otherwise makes no network call. |
+| `SessionStart` | `citadel-cli hook session-start` | Creates an agent session `claude-code-<hostname>` with an ephemeral ed25519 key under `$XDG_RUNTIME_DIR/citadel/sessions/<session_id>/`, then exports `GIT_SSH_COMMAND`, `CITADEL_AGENT_SESSION`, `CITADEL_HOOK_STATE` and `CITADEL_ACCESS_TOKEN` through `CLAUDE_ENV_FILE`. `GIT_SSH_COMMAND` is the hidden `citadel-cli hook git-ssh`, which offers the session key only to Citadel hosts and runs plain `ssh` unchanged for any other host. For an `https://` origin it also registers a git credential helper for that host through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n`, so `git clone` and `git push` over HTTPS authenticate as the agent with no prompt. The helper is the hidden `citadel-cli hook git-credential`; it answers `get` with username `x` and the token from `CITADEL_ACCESS_TOKEN`, so the token is never in git config or argv. |
+| `PreToolUse` | `citadel-cli hook renew` | Renews the 15-minute session when under 5 minutes remain; otherwise makes no network call. If the session already ended (idle over 15 minutes), opens a new one on the same key and scopes and reports it on stderr; the new token is kept in session state, which every `citadel-cli` call in the session reads when `CITADEL_AGENT_SESSION` and `CITADEL_HOOK_STATE` are set. |
 | `SessionEnd` | `citadel-cli hook session-end` | Ends the session and deletes its key directory. |
 
-The hooks never block a session. When login is missing or the server is
+The hooks never block a session unless `--require` is set. When login is missing or the server is
 unreachable, the session starts without an agent identity and git uses your own
 SSH key; the agent is told so in its context. A repository counts as src.land
 when its `origin` host is a default Citadel git host, is listed in

@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -57,12 +59,16 @@ func TestHookSessionLifecycle_Hermetic(t *testing.T) {
 		switch {
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/sessions"):
 			var body struct {
-				Client string `json:"client"`
-				Key    string `json:"ssh_public_key"`
+				Client string   `json:"client"`
+				Key    string   `json:"ssh_public_key"`
+				Scopes []string `json:"scopes"`
 			}
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			if body.Client != "claude-code" || !strings.HasPrefix(body.Key, "ssh-ed25519 ") {
 				t.Errorf("bad session body: %+v", body)
+			}
+			if !slices.Contains(body.Scopes, "pulls:write") || !slices.Contains(body.Scopes, "issues:write") {
+				t.Errorf("scopes = %v", body.Scopes)
 			}
 			created.Add(1)
 			writeJSON(t, w, 201, map[string]any{"session_id": "sess-1", "agent_id": "a1", "agent_name": "claude-code-box", "token": "tok'en", "expires_at": expires})
@@ -102,7 +108,7 @@ func TestHookSessionLifecycle_Hermetic(t *testing.T) {
 	}
 	env, _ := readFile(envFile)
 	keyPath := filepath.Join(runtimeDir, "citadel", "sessions", "sess-1", "id_ed25519")
-	for _, want := range []string{"export GIT_SSH_COMMAND='ssh -i '\\''" + keyPath, "IdentitiesOnly=yes", "export CITADEL_AGENT_SESSION='sess-1'", `export CITADEL_ACCESS_TOKEN='tok'\''en'`} {
+	for _, want := range []string{" hook git-ssh '\\''" + keyPath, "export CITADEL_AGENT_SESSION='sess-1'", `export CITADEL_ACCESS_TOKEN='tok'\''en'`} {
 		if !strings.Contains(string(env), want) {
 			t.Errorf("env file missing %q:\n%s", want, env)
 		}
@@ -244,5 +250,153 @@ func TestHookSessionStart_HTTPSCredential_Hermetic(t *testing.T) {
 	}
 	if n := strings.Count(string(env), "sess-token-123"); n != 1 {
 		t.Fatalf("token appears %d times in the env file, want only CITADEL_ACCESS_TOKEN", n)
+	}
+}
+
+func buildCLI(t *testing.T) string {
+	t.Helper()
+	bin := filepath.Join(t.TempDir(), "citadel-cli")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", bin, "..") //nolint:gosec // fixed go verb, test-owned path
+	if b, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("go build: %v %s", err, b)
+	}
+	return bin
+}
+
+// The ssh wrapper offers the session key to a Citadel host only; any other
+// host gets the arguments untouched.
+func TestHookGitSSH_HostScoped_Hermetic(t *testing.T) {
+	bin := buildCLI(t)
+	fakeDir := t.TempDir()
+	argsFile := filepath.Join(fakeDir, "args")
+	fake := "#!/bin/sh\nprintf '%s\\n' \"$@\" > " + shellQ(argsFile) + "\n"
+	if err := os.WriteFile(filepath.Join(fakeDir, "ssh"), []byte(fake), 0o700); err != nil { //nolint:gosec // test fake must be executable
+		t.Fatal(err)
+	}
+	run := func(host string) string {
+		c := exec.CommandContext(t.Context(), bin, "hook", "git-ssh", "/k/id", "-o", "SendEnv=GIT_PROTOCOL", "-p", "2222", "git@"+host, "git-upload-pack 'a/b.git'") //nolint:gosec // test-owned binary
+		c.Env = append(os.Environ(), "PATH="+fakeDir+":"+os.Getenv("PATH"), "CITADEL_GIT_HOSTS=", "XDG_CONFIG_HOME="+t.TempDir(), "HOME="+t.TempDir())
+		if b, err := c.CombinedOutput(); err != nil {
+			t.Fatalf("git-ssh %s: %v %s", host, err, b)
+		}
+		b, _ := readFile(argsFile)
+		return string(b)
+	}
+	tail := "-o\nSendEnv=GIT_PROTOCOL\n-p\n2222\ngit@%s\ngit-upload-pack 'a/b.git'\n"
+	if got, want := run("src.land"), "-i\n/k/id\n-o\nIdentitiesOnly=yes\n"+strings.Replace(tail, "%s", "src.land", 1); got != want {
+		t.Errorf("citadel host args = %q, want %q", got, want)
+	}
+	if got, want := run("github.com"), strings.Replace(tail, "%s", "github.com", 1); got != want {
+		t.Errorf("other host args = %q, want %q", got, want)
+	}
+}
+
+func shellQ(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
+
+func TestHookInstallFlags_Hermetic(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	path := filepath.Join(home, ".claude", "settings.json")
+	runHook(t, "", "install")
+	runHook(t, "", "install", "--scopes", "code:read,pulls:write", "--require")
+	got, _ := readFile(path)
+	s := string(got)
+	for _, want := range []string{"hook session-start --scopes code:read,pulls:write", "hook renew --require"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("settings missing %q:\n%s", want, s)
+		}
+	}
+	if strings.Count(s, "hook renew") != 1 || strings.Count(s, "hook session-start") != 1 {
+		t.Errorf("re-install must replace, not duplicate:\n%s", s)
+	}
+	runHook(t, "", "uninstall")
+	if left, _ := readFile(path); strings.Contains(string(left), "citadel-cli") {
+		t.Fatalf("uninstall left entries:\n%s", left)
+	}
+}
+
+// After an idle gap the renew gets 409: a new session on the same key replaces
+// it, later CLI calls read the new token from state, and --require denies a
+// push only while no session is live.
+func TestHookRenewReissueAndRequire_Hermetic(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
+	t.Setenv("CLAUDE_ENV_FILE", filepath.Join(t.TempDir(), "env"))
+	t.Setenv("CITADEL_GIT_HOSTS", "")
+	expires := time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339)
+	var created atomic.Int32
+	var keys []string
+	var scopes [][]string
+	var gone atomic.Bool
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/sessions"):
+			var body struct {
+				Key    string   `json:"ssh_public_key"`
+				Scopes []string `json:"scopes"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			keys, scopes = append(keys, body.Key), append(scopes, body.Scopes)
+			n := created.Add(1)
+			writeJSON(t, w, 201, map[string]any{"session_id": "sess-" + strconv.Itoa(int(n)), "agent_name": "claude-code-box", "token": "tok-" + strconv.Itoa(int(n)), "expires_at": expires})
+		case strings.HasSuffix(r.URL.Path, "/renew"):
+			if gone.Load() {
+				writeJSON(t, w, 409, map[string]any{"error": "ended"})
+				return
+			}
+			writeJSON(t, w, 200, map[string]any{"expires_at": expires})
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	repo := gitRepoWithOrigin(t, "git@src.land:acme/app.git")
+	in := `{"session_id":"s9","cwd":"` + repo + `","tool_name":"Bash","tool_input":{"command":"git -C . push origin main"}}`
+	runHook(t, in, "session-start", "--scopes", "code:read")
+	stateFile := filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "citadel", "sessions", "s9", "state.json")
+	expire := func() {
+		near, _ := json.Marshal(map[string]any{"session_id": "sess-1", "agent_name": "claude-code-box", "expires_at": time.Now().Add(-time.Minute), "token": "tok-1", "scopes": []string{"code:read"}})
+		if err := os.WriteFile(stateFile, near, 0o600); err != nil { //nolint:gosec // test-owned temp path
+			t.Fatal(err)
+		}
+	}
+	if out := runHook(t, in, "renew", "--require"); out != "" {
+		t.Fatalf("live session must not be denied: %q", out)
+	}
+
+	expire()
+	gone.Store(true)
+	out := runHook(t, in, "renew", "--require")
+	if out != "" {
+		t.Fatalf("reissued session must not be denied: %q", out)
+	}
+	if created.Load() != 2 || keys[0] != keys[1] || !slices.Equal(scopes[1], []string{"code:read"}) {
+		t.Fatalf("reissue: created=%d keys=%v scopes=%v", created.Load(), keys, scopes)
+	}
+	if st, _ := readFile(stateFile); !strings.Contains(string(st), `"token":"tok-2"`) {
+		t.Fatalf("state lacks the new token: %s", st)
+	}
+
+	cred := exec.CommandContext(t.Context(), buildCLI(t), "hook", "git-credential", "get") //nolint:gosec // test-owned binary
+	cred.Env = append(os.Environ(), "CITADEL_ACCESS_TOKEN=stale", "CITADEL_AGENT_SESSION=sess-1", "CITADEL_HOOK_STATE="+filepath.Dir(stateFile))
+	if b, err := cred.Output(); err != nil || !strings.Contains(string(b), "password=tok-2\n") {
+		t.Fatalf("credential after reissue = %q (%v), want the token from state", b, err)
+	}
+
+	// No state at all: a push to a Citadel host is denied, other commands and hosts are not.
+	if err := os.Remove(stateFile); err != nil { //nolint:gosec // test-owned temp path
+		t.Fatal(err)
+	}
+	if out := runHook(t, in, "renew", "--require"); !strings.Contains(out, `"permissionDecision":"deny"`) {
+		t.Fatalf("push without a session = %q", out)
+	}
+	if out := runHook(t, in, "renew"); out != "" {
+		t.Fatalf("default stays fail-open: %q", out)
+	}
+	ls := strings.Replace(in, "git -C . push origin main", "git status", 1)
+	if out := runHook(t, ls, "renew", "--require"); out != "" {
+		t.Fatalf("non-push denied: %q", out)
+	}
+	gh := gitRepoWithOrigin(t, "git@github.com:acme/app.git")
+	if out := runHook(t, strings.Replace(in, repo, gh, 1), "renew", "--require"); out != "" {
+		t.Fatalf("github push denied: %q", out)
 	}
 }

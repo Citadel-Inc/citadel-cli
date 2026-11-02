@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -61,15 +62,47 @@ var hookSessionEndCmd = &cobra.Command{
 	RunE:  runHookSessionEnd,
 }
 
+// hookGitSSHCmd is GIT_SSH_COMMAND for hook sessions. git appends its ssh
+// arguments after the key path, so flag parsing is off.
+var hookGitSSHCmd = &cobra.Command{
+	Use:                "git-ssh <key> [ssh args...]",
+	Short:              "SSH wrapper that offers the session key only to Citadel hosts",
+	Hidden:             true,
+	DisableFlagParsing: true,
+	Args:               cobra.MinimumNArgs(1),
+	RunE:               runHookGitSSH,
+}
+
 type hookInput struct {
 	SessionID string `json:"session_id"`
 	CWD       string `json:"cwd"`
+	ToolName  string `json:"tool_name"`
+	ToolInput struct {
+		Command string `json:"command"`
+	} `json:"tool_input"`
 }
 
+// hookState is also how a long-running session finds its current token, since
+// a hook cannot change the environment of the running harness.
 type hookState struct {
 	SessionID string    `json:"session_id"`
 	AgentName string    `json:"agent_name"`
 	ExpiresAt time.Time `json:"expires_at"`
+	Token     string    `json:"token,omitempty"`
+	Scopes    []string  `json:"scopes,omitempty"`
+}
+
+// useSessionToken lets every CLI call in a hook session use the token from
+// session state: the env var exported at session start goes stale after a
+// reissue.
+func useSessionToken() {
+	dir := os.Getenv("CITADEL_HOOK_STATE")
+	if os.Getenv("CITADEL_AGENT_SESSION") == "" || dir == "" {
+		return
+	}
+	if st, ok := loadHookState(dir); ok && st.Token != "" {
+		_ = os.Setenv("CITADEL_ACCESS_TOKEN", st.Token)
+	}
 }
 
 type agentSessionResp struct {
@@ -134,20 +167,25 @@ func agentSessionName() string {
 	return "claude-code-" + host
 }
 
-// citadelOrigin returns dir's origin remote when it is on a Citadel git host
-// (the defaults, CITADEL_GIT_HOSTS, or the configured server's host).
-func citadelOrigin(ctx context.Context, cmd *cobra.Command, dir string) (string, bool) {
-	remote, err := gitOriginURL(ctx, dir)
-	if err != nil {
-		return "", false
-	}
+// citadelHostSet is the defaults, CITADEL_GIT_HOSTS, and the configured
+// server's host.
+func citadelHostSet(cmd *cobra.Command) map[string]struct{} {
 	hosts := mergeCitadelHosts()
 	if cfg, err := clicfg.Load(); err == nil {
 		if u, err := url.Parse(cfg.ResolveServerURL(serverFlag(cmd))); err == nil && u.Hostname() != "" {
 			hosts[strings.ToLower(u.Hostname())] = struct{}{}
 		}
 	}
-	_, _, err = parseOriginIntoRepo(remote, hosts)
+	return hosts
+}
+
+// citadelOrigin returns dir's origin remote when it is on a Citadel git host.
+func citadelOrigin(ctx context.Context, cmd *cobra.Command, dir string) (string, bool) {
+	remote, err := gitOriginURL(ctx, dir)
+	if err != nil {
+		return "", false
+	}
+	_, _, err = parseOriginIntoRepo(remote, citadelHostSet(cmd))
 	return remote, err == nil
 }
 
@@ -185,6 +223,52 @@ func runHookGitCredential(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	_, err := fmt.Fprintf(cmd.OutOrStdout(), "username=x\npassword=%s\n", token)
+	return err
+}
+
+// sshArgsWithValue are the ssh flags whose value is the next argument.
+const sshArgsWithValue = "BbcDEeFIiJLlmOopQRSWw"
+
+// sshTargetHost returns the host of an ssh invocation as git builds it
+// (options, then [user@]host, then the remote command).
+func sshTargetHost(args []string) string {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--":
+			if i+1 < len(args) {
+				return hostOfTarget(args[i+1])
+			}
+			return ""
+		case len(a) > 1 && a[0] == '-':
+			if len(a) == 2 && strings.ContainsRune(sshArgsWithValue, rune(a[1])) {
+				i++
+			}
+		default:
+			return hostOfTarget(a)
+		}
+	}
+	return ""
+}
+
+func hostOfTarget(t string) string {
+	if i := strings.LastIndex(t, "@"); i >= 0 {
+		t = t[i+1:]
+	}
+	return strings.ToLower(strings.Trim(t, "[]"))
+}
+
+func runHookGitSSH(cmd *cobra.Command, args []string) error {
+	key, rest := args[0], args[1:]
+	if _, ok := citadelHostSet(cmd)[sshTargetHost(rest)]; ok {
+		rest = append([]string{"-i", key, "-o", "IdentitiesOnly=yes"}, rest...)
+	}
+	c := exec.CommandContext(cmd.Context(), "ssh", rest...) //nolint:gosec // ssh is the program git itself would have run
+	c.Stdin, c.Stdout, c.Stderr = cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr()
+	err := c.Run()
+	if ee, ok := errors.AsType[*exec.ExitError](err); ok {
+		os.Exit(ee.ExitCode())
+	}
 	return err
 }
 
@@ -246,7 +330,11 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	if !ok {
 		return nil
 	}
-	sess, err := openAgentSession(ctx, cmd, dir)
+	scopes, _ := cmd.Flags().GetStringSlice("scopes")
+	if len(scopes) == 0 {
+		scopes = defaultHookScopes
+	}
+	sess, err := openAgentSession(ctx, cmd, dir, scopes, false)
 	if err != nil {
 		_ = os.RemoveAll(dir)
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: no agent session: %v\n", err)
@@ -255,9 +343,14 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	}
 	if envFile := os.Getenv("CLAUDE_ENV_FILE"); envFile != "" {
 		key := filepath.Join(dir, "id_ed25519")
+		exe, err := os.Executable()
+		if err != nil {
+			exe = "citadel-cli"
+		}
 		vars := [][2]string{
-			{"GIT_SSH_COMMAND", "ssh -i " + shellQuote(key) + " -o IdentitiesOnly=yes"},
+			{"GIT_SSH_COMMAND", shellQuote(exe) + " hook git-ssh " + shellQuote(key)},
 			{"CITADEL_AGENT_SESSION", sess.SessionID},
+			{"CITADEL_HOOK_STATE", dir},
 			{"CITADEL_ACCESS_TOKEN", sess.Token},
 		}
 		vars = append(vars, httpsCredentialEnv(remote)...)
@@ -271,20 +364,40 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string) (agentSessionResp, error) {
+// sessionPublicKey derives the public key line from the session's private key.
+func sessionPublicKey(dir string) (string, error) {
+	raw, err := os.ReadFile(filepath.Join(dir, "id_ed25519")) //nolint:gosec // dir is derived from the session id
+	if err != nil {
+		return "", err
+	}
+	signer, err := ssh.ParsePrivateKey(raw)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey()))), nil
+}
+
+// openAgentSession opens a session, reusing the key already in dir when asked
+// and readable so a reissue keeps the running session's git SSH config valid.
+func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scopes []string, reuseKey bool) (agentSessionResp, error) {
 	var sess agentSessionResp
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return sess, err
 	}
-	pub, err := writeSessionKey(dir)
-	if err != nil {
-		return sess, err
+	pub := ""
+	if reuseKey {
+		pub, _ = sessionPublicKey(dir)
+	}
+	if pub == "" {
+		if pub, err = writeSessionKey(dir); err != nil {
+			return sess, err
+		}
 	}
 	body := map[string]any{
 		"client":         "claude-code",
 		"ssh_public_key": pub,
-		"scopes":         []string{"code:read", "code:write", "metadata:read"},
+		"scopes":         scopes,
 	}
 	if err := c.Post(ctx, "/agents/"+url.PathEscape(agentSessionName())+"/sessions", body, &sess); err != nil {
 		return sess, err
@@ -292,17 +405,30 @@ func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string) (agen
 	if sess.SessionID == "" || sess.Token == "" {
 		return sess, errors.New("server returned an incomplete session")
 	}
-	return sess, saveHookState(dir, hookState{SessionID: sess.SessionID, AgentName: sess.AgentName, ExpiresAt: sess.ExpiresAt})
+	return sess, saveHookState(dir, hookState{SessionID: sess.SessionID, AgentName: sess.AgentName, ExpiresAt: sess.ExpiresAt, Token: sess.Token, Scopes: scopes})
 }
 
 func runHookRenew(cmd *cobra.Command, _ []string) error {
-	dir := sessionDir(readHookInput(cmd).SessionID)
-	if dir == "" {
-		return nil
+	in := readHookInput(cmd)
+	live := false
+	if dir := sessionDir(in.SessionID); dir != "" {
+		live = renewSession(cmd, dir)
 	}
+	if require, _ := cmd.Flags().GetBool("require"); require && !live {
+		denyPushWithoutSession(cmd, in)
+	}
+	return nil
+}
+
+// renewSession renews or reissues the session when it is near expiry and
+// reports whether a live session remains.
+func renewSession(cmd *cobra.Command, dir string) bool {
 	st, ok := loadHookState(dir)
-	if !ok || time.Until(st.ExpiresAt) > renewWindow {
-		return nil
+	if !ok {
+		return false
+	}
+	if time.Until(st.ExpiresAt) > renewWindow {
+		return true
 	}
 	ctx, cancel := context.WithTimeout(cmd.Context(), 8*time.Second)
 	defer cancel()
@@ -315,14 +441,51 @@ func runHookRenew(cmd *cobra.Command, _ []string) error {
 	}
 	switch {
 	case apiclient.IsStatus(err, 409):
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "citadel-cli hook: agent session ended or expired; git and citadel-cli calls in this session are no longer authenticated as the agent")
+		return reissueSession(ctx, cmd, dir, st)
 	case err != nil:
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: renew failed: %v\n", err)
-	default:
-		st.ExpiresAt = out.ExpiresAt
-		_ = saveHookState(dir, st)
+		return time.Until(st.ExpiresAt) > 0
 	}
-	return nil
+	st.ExpiresAt = out.ExpiresAt
+	_ = saveHookState(dir, st)
+	return true
+}
+
+// reissueSession replaces an ended session (idle past its 15-minute window)
+// with one on the same key and scopes. The new token reaches later CLI calls
+// through the state file; the harness environment cannot be updated from a hook.
+func reissueSession(ctx context.Context, cmd *cobra.Command, dir string, old hookState) bool {
+	scopes := old.Scopes
+	if len(scopes) == 0 {
+		scopes = defaultHookScopes
+	}
+	sess, err := openAgentSession(ctx, cmd, dir, scopes, true)
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: agent session ended or expired and could not be reissued (%v); git and citadel-cli calls in this session are no longer authenticated as the agent\n", err)
+		return false
+	}
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: agent session expired; reissued as %s\n", sess.SessionID)
+	return true
+}
+
+var gitPushCmd = regexp.MustCompile(`(^|[;&|(\s])git(\s+-\S+(\s+\S+)?)*\s+push(\s|$)`)
+
+// denyPushWithoutSession emits the PreToolUse deny decision for a Bash
+// `git push` run in a Citadel repository.
+func denyPushWithoutSession(cmd *cobra.Command, in hookInput) {
+	if in.ToolName != "Bash" || !gitPushCmd.MatchString(in.ToolInput.Command) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(cmd.Context(), 3*time.Second)
+	defer cancel()
+	if _, ok := citadelOrigin(ctx, cmd, in.CWD); !ok {
+		return
+	}
+	_ = json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{"hookSpecificOutput": map[string]any{
+		"hookEventName":            "PreToolUse",
+		"permissionDecision":       "deny",
+		"permissionDecisionReason": "No live Citadel agent session: git push to src.land is blocked (hook installed with --require). Restart the session after `citadel-cli auth login`.",
+	}})
 }
 
 func runHookSessionEnd(cmd *cobra.Command, _ []string) error {

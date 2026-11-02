@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	safefs "github.com/Rethunk-Tech/go-safefs"
 	"github.com/spf13/cobra"
@@ -34,7 +37,9 @@ settings file, leaving every other key and hook as is. Re-running is a no-op.
 
 Examples:
   citadel-cli hook install
-  citadel-cli hook install --scope project`,
+  citadel-cli hook install --scope project
+  citadel-cli hook install --scopes code:read,code:write,metadata:read
+  citadel-cli hook install --require`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error { return runHookSettings(cmd, true) },
 }
@@ -46,7 +51,16 @@ var hookUninstallCmd = &cobra.Command{
 	RunE:  func(cmd *cobra.Command, _ []string) error { return runHookSettings(cmd, false) },
 }
 
-// hookEvents maps each Claude Code event to the hook verb it runs.
+// defaultHookScopes cover git plus opening and discussing pull requests.
+var defaultHookScopes = []string{
+	"code:read", "code:write", "metadata:read",
+	"pulls:read", "pulls:write", "issues:read", "issues:write",
+}
+
+var scopeToken = regexp.MustCompile(`^[a-z0-9_.:*-]+$`)
+
+// hookEvents maps each Claude Code event to the base hook verb it runs;
+// installed command lines append the flags chosen at install time.
 var hookEvents = map[string]string{
 	"SessionStart": "citadel-cli hook session-start",
 	"PreToolUse":   "citadel-cli hook renew",
@@ -58,11 +72,16 @@ var hookEvents = map[string]string{
 var hookTimeouts = map[string]int{"SessionStart": 20, "PreToolUse": 10, "SessionEnd": 10}
 
 func registerHookCommands() {
+	useSessionToken()
 	for _, c := range []*cobra.Command{hookInstallCmd, hookUninstallCmd} {
 		c.Flags().String("client", "claude-code", "Agent client to configure (claude-code)")
 		c.Flags().String("scope", "user", "Settings scope: user (~/.claude/settings.json) or project (.claude/settings.json)")
 	}
-	HookCmd.AddCommand(hookInstallCmd, hookUninstallCmd, hookSessionStartCmd, hookRenewCmd, hookSessionEndCmd, hookGitCredentialCmd)
+	hookInstallCmd.Flags().StringSlice("scopes", nil, "Agent session scopes to request (default "+strings.Join(defaultHookScopes, ",")+")")
+	hookInstallCmd.Flags().Bool("require", false, "Deny `git push` to a Citadel host while no live agent session exists")
+	hookSessionStartCmd.Flags().StringSlice("scopes", defaultHookScopes, "Agent session scopes to request")
+	hookRenewCmd.Flags().Bool("require", false, "Deny `git push` to a Citadel host while no live agent session exists")
+	HookCmd.AddCommand(hookInstallCmd, hookUninstallCmd, hookSessionStartCmd, hookRenewCmd, hookSessionEndCmd, hookGitCredentialCmd, hookGitSSHCmd)
 }
 
 func runHookSettings(cmd *cobra.Command, install bool) error {
@@ -74,7 +93,22 @@ func runHookSettings(cmd *cobra.Command, install bool) error {
 	if err != nil {
 		return err
 	}
-	changed, err := mergeClaudeHooks(path, install)
+	commands := maps.Clone(hookEvents)
+	if install {
+		scopes, _ := cmd.Flags().GetStringSlice("scopes")
+		for _, sc := range scopes {
+			if !scopeToken.MatchString(sc) {
+				return fmt.Errorf("--scopes: invalid scope %q", sc)
+			}
+		}
+		if len(scopes) > 0 && strings.Join(scopes, ",") != strings.Join(defaultHookScopes, ",") {
+			commands["SessionStart"] += " --scopes " + strings.Join(scopes, ",")
+		}
+		if require, _ := cmd.Flags().GetBool("require"); require {
+			commands["PreToolUse"] += " --require"
+		}
+	}
+	changed, err := mergeClaudeHooks(path, install, commands)
 	if err != nil {
 		return err
 	}
@@ -101,8 +135,9 @@ func claudeSettingsPath(scope string) (string, error) {
 }
 
 // mergeClaudeHooks adds (or removes) only this CLI's hook entries. It refuses
-// to touch a file it cannot parse, and reports whether the file changed.
-func mergeClaudeHooks(path string, install bool) (bool, error) {
+// to touch a file it cannot parse, and reports whether the file changed. An
+// existing entry for the same verb with different flags is replaced.
+func mergeClaudeHooks(path string, install bool, commands map[string]string) (bool, error) {
 	settings := map[string]any{}
 	mode := fs.FileMode(0o600)
 	//nolint:gosec // The settings path is operator-selected.
@@ -133,20 +168,23 @@ func mergeClaudeHooks(path string, install bool) (bool, error) {
 	}
 
 	changed := false
-	for event, command := range hookEvents {
+	for event, base := range hookEvents {
+		command := commands[event]
 		groups, _ := hooks[event].([]any)
 		if _, present := hooks[event]; present && groups == nil {
 			return false, fmt.Errorf("%s: hooks.%s is not an array; fix it and rerun", path, event)
 		}
 		had := groupsHaveCommand(groups, command)
+		stale := groupsHaveVerb(groups, base)
 		switch {
 		case install && !had:
+			groups = stripVerb(groups, base)
 			groups = append(groups, map[string]any{"hooks": []any{map[string]any{
 				"type": "command", "command": command, "timeout": hookTimeouts[event],
 			}}})
 			changed = true
-		case !install && had:
-			groups = stripCommand(groups, command)
+		case !install && stale:
+			groups = stripVerb(groups, base)
 			changed = true
 		}
 		if len(groups) == 0 {
@@ -173,12 +211,25 @@ func mergeClaudeHooks(path string, install bool) (bool, error) {
 	return true, safefs.WriteFileAtomic(path, append(out, '\n'), mode)
 }
 
+func isVerb(command any, base string) bool {
+	c, _ := command.(string)
+	return c == base || strings.HasPrefix(c, base+" ")
+}
+
 func groupsHaveCommand(groups []any, command string) bool {
+	return anyHandler(groups, func(c any) bool { return c == command })
+}
+
+func groupsHaveVerb(groups []any, base string) bool {
+	return anyHandler(groups, func(c any) bool { return isVerb(c, base) })
+}
+
+func anyHandler(groups []any, match func(command any) bool) bool {
 	for _, g := range groups {
 		gm, _ := g.(map[string]any)
 		hs, _ := gm["hooks"].([]any)
 		for _, h := range hs {
-			if hm, _ := h.(map[string]any); hm["command"] == command {
+			if hm, _ := h.(map[string]any); match(hm["command"]) {
 				return true
 			}
 		}
@@ -186,8 +237,9 @@ func groupsHaveCommand(groups []any, command string) bool {
 	return false
 }
 
-// stripCommand drops matching handlers and any group left empty by that.
-func stripCommand(groups []any, command string) []any {
+// stripVerb drops handlers running the verb (with any flags) and any group left
+// empty by that.
+func stripVerb(groups []any, base string) []any {
 	var out []any
 	for _, g := range groups {
 		gm, ok := g.(map[string]any)
@@ -198,7 +250,7 @@ func stripCommand(groups []any, command string) []any {
 		hs, _ := gm["hooks"].([]any)
 		var keep []any
 		for _, h := range hs {
-			if hm, _ := h.(map[string]any); hm["command"] != command {
+			if hm, _ := h.(map[string]any); !isVerb(hm["command"], base) {
 				keep = append(keep, h)
 			}
 		}
