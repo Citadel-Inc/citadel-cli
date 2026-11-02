@@ -16,6 +16,7 @@ func registerCommands() {
 		registerAuthProviderCommands()
 		registerDeployTokenCommands()
 		registerGistCommands()
+		registerHookCommands()
 		registerIssueCommands()
 		registerIssueMilestoneCommands()
 		registerKGCommands()

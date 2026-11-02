@@ -358,6 +358,35 @@ citadel-cli namespace webhook deliveries redeliver acme <delivery-id>
 - `get` shows one delivery including payload and response fields when present.
 - `redeliver` POSTs a new attempt for an existing delivery; `--dry-run` prints the request without sending it.
 
+### Agent session hooks
+
+`hook install` gives every Claude Code session in a src.land repository its own
+agent identity and short-lived credentials, with no token handling. Sessions in
+repositories hosted elsewhere are unaffected.
+
+```bash
+citadel-cli auth login
+citadel-cli hook install [--client claude-code] [--scope user|project]
+citadel-cli hook uninstall [--client claude-code] [--scope user|project]
+```
+
+`--scope user` (default) edits `~/.claude/settings.json`; `--scope project`
+edits `.claude/settings.json`. Install merges three hooks without touching any
+other key or hook, is idempotent, and refuses to rewrite a settings file that is
+not valid JSON. Uninstall removes only those entries.
+
+| Claude Code event | Command | Effect |
+| --- | --- | --- |
+| `SessionStart` | `citadel-cli hook session-start` | Creates an agent session `claude-code-<hostname>` with an ephemeral ed25519 key under `$XDG_RUNTIME_DIR/citadel/sessions/<session_id>/`, then exports `GIT_SSH_COMMAND`, `CITADEL_AGENT_SESSION` and `CITADEL_ACCESS_TOKEN` through `CLAUDE_ENV_FILE`. |
+| `PreToolUse` | `citadel-cli hook renew` | Renews the session when under 5 minutes remain; otherwise makes no network call. |
+| `SessionEnd` | `citadel-cli hook session-end` | Ends the session and deletes its key directory. |
+
+The hooks never block a session. When login is missing or the server is
+unreachable, the session starts without an agent identity and git uses your own
+SSH key; the agent is told so in its context. A repository counts as src.land
+when its `origin` host is a default Citadel git host, is listed in
+`CITADEL_GIT_HOSTS`, or matches the configured server.
+
 ### Agents
 
 Manage the agents registered to your account. An agent is a named identity that

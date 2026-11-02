@@ -61,6 +61,7 @@ Server URL configured via CITADEL_SERVER env var or --server flag.`,
 	root.AddCommand(AgentCmd)
 	root.AddCommand(OauthCmd)
 	root.AddCommand(SSHKeyCmd)
+	root.AddCommand(HookCmd)
 	root.AddCommand(CompletionCmd)
 	root.AddCommand(DoctorCmd)
 	root.AddCommand(ManCmd)
