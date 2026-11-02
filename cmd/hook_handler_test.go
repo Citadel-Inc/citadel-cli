@@ -201,3 +201,48 @@ func TestHookInstallMerge_Hermetic(t *testing.T) {
 		t.Fatal("unparseable file was rewritten")
 	}
 }
+
+// An https origin on a Citadel host gets a git credential helper scoped to that
+// host; a real `git credential fill` then answers with the session token, which
+// never appears in the env file.
+func TestHookSessionStart_HTTPSCredential_Hermetic(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
+	envFile := filepath.Join(t.TempDir(), "env")
+	t.Setenv("CLAUDE_ENV_FILE", envFile)
+	t.Setenv("CITADEL_GIT_HOSTS", "")
+	t.Setenv("GIT_CONFIG_COUNT", "")
+	expires := time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339)
+	withServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(t, w, 201, map[string]any{"session_id": "s3", "agent_id": "a1", "agent_name": "claude-code-box", "token": "sess-token-123", "expires_at": expires})
+	})
+
+	repo := gitRepoWithOrigin(t, "https://git.src.land/acme/app.git")
+	runHook(t, `{"session_id":"s3","cwd":"`+repo+`"}`, "session-start")
+	env, _ := readFile(envFile)
+	for _, want := range []string{"export GIT_CONFIG_COUNT='2'", "export GIT_CONFIG_KEY_0='credential.https://git.src.land.helper'", "hook git-credential"} {
+		if !strings.Contains(string(env), want) {
+			t.Errorf("env file missing %q:\n%s", want, env)
+		}
+	}
+
+	// The helper is the test binary here; point it at a real build of the CLI.
+	bin := filepath.Join(t.TempDir(), "citadel-cli")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", bin, "..") //nolint:gosec // fixed go verb, test-owned path
+	if b, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("go build: %v %s", err, b)
+	}
+	self, _ := os.Executable()
+	script := strings.ReplaceAll(string(env), "'"+self+"'", "'"+bin+"'")
+	fill := exec.CommandContext(t.Context(), "bash", "-c", `set -e; eval "$ENVSCRIPT"; printf 'protocol=https\nhost=git.src.land\n\n' | git credential fill`)
+	fill.Env = append(os.Environ(), "ENVSCRIPT="+script, "GIT_TERMINAL_PROMPT=0", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
+	got, err := fill.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git credential fill: %v %s", err, got)
+	}
+	if !strings.Contains(string(got), "username=x\n") || !strings.Contains(string(got), "password=sess-token-123\n") {
+		t.Fatalf("credential fill = %q", got)
+	}
+	if n := strings.Count(string(env), "sess-token-123"); n != 1 {
+		t.Fatalf("token appears %d times in the env file, want only CITADEL_ACCESS_TOKEN", n)
+	}
+}

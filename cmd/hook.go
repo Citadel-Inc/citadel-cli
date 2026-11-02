@@ -62,7 +62,7 @@ func registerHookCommands() {
 		c.Flags().String("client", "claude-code", "Agent client to configure (claude-code)")
 		c.Flags().String("scope", "user", "Settings scope: user (~/.claude/settings.json) or project (.claude/settings.json)")
 	}
-	HookCmd.AddCommand(hookInstallCmd, hookUninstallCmd, hookSessionStartCmd, hookRenewCmd, hookSessionEndCmd)
+	HookCmd.AddCommand(hookInstallCmd, hookUninstallCmd, hookSessionStartCmd, hookRenewCmd, hookSessionEndCmd, hookGitCredentialCmd)
 }
 
 func runHookSettings(cmd *cobra.Command, install bool) error {

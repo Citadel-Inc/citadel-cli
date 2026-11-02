@@ -7,6 +7,7 @@ All notable changes to `citadel-cli` are documented here.
 ### Added
 
 - Added `hook install`/`uninstall` and the `session-start`, `renew` and `session-end` hooks, which give each Claude Code session in a src.land repo its own agent identity, ephemeral SSH key and short-lived token.
+- `hook session-start` now registers a host-scoped git credential helper (`hook git-credential`) for `https://` origins, so hook sessions clone and push over Smart HTTP with the session token and no prompt.
 
 ## v0.2.0 - 2026-09-21
 

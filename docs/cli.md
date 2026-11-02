@@ -377,8 +377,8 @@ not valid JSON. Uninstall removes only those entries.
 
 | Claude Code event | Command | Effect |
 | --- | --- | --- |
-| `SessionStart` | `citadel-cli hook session-start` | Creates an agent session `claude-code-<hostname>` with an ephemeral ed25519 key under `$XDG_RUNTIME_DIR/citadel/sessions/<session_id>/`, then exports `GIT_SSH_COMMAND`, `CITADEL_AGENT_SESSION` and `CITADEL_ACCESS_TOKEN` through `CLAUDE_ENV_FILE`. |
-| `PreToolUse` | `citadel-cli hook renew` | Renews the session when under 5 minutes remain; otherwise makes no network call. |
+| `SessionStart` | `citadel-cli hook session-start` | Creates an agent session `claude-code-<hostname>` with an ephemeral ed25519 key under `$XDG_RUNTIME_DIR/citadel/sessions/<session_id>/`, then exports `GIT_SSH_COMMAND`, `CITADEL_AGENT_SESSION` and `CITADEL_ACCESS_TOKEN` through `CLAUDE_ENV_FILE`. For an `https://` origin it also registers a git credential helper for that host through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n`, so `git clone` and `git push` over HTTPS authenticate as the agent with no prompt. The helper is the hidden `citadel-cli hook git-credential`; it answers `get` with username `x` and the token from `CITADEL_ACCESS_TOKEN`, so the token is never in git config or argv. |
+| `PreToolUse` | `citadel-cli hook renew` | Renews the 15-minute session when under 5 minutes remain; otherwise makes no network call. |
 | `SessionEnd` | `citadel-cli hook session-end` | Ends the session and deletes its key directory. |
 
 The hooks never block a session. When login is missing or the server is

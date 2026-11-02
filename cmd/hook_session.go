@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,6 +41,17 @@ var hookRenewCmd = &cobra.Command{
 	Short: "Harness hook: renew the agent session when it nears expiry",
 	Args:  cobra.NoArgs,
 	RunE:  runHookRenew,
+}
+
+// hookGitCredentialCmd is a git credential helper (git runs it as
+// `<helper> get`). It answers from the session token in the environment, so the
+// token is never written to git config or argv.
+var hookGitCredentialCmd = &cobra.Command{
+	Use:    "git-credential <operation>",
+	Short:  "Git credential helper backed by the agent session token",
+	Hidden: true,
+	Args:   cobra.ExactArgs(1),
+	RunE:   runHookGitCredential,
 }
 
 var hookSessionEndCmd = &cobra.Command{
@@ -122,12 +134,12 @@ func agentSessionName() string {
 	return "claude-code-" + host
 }
 
-// isCitadelRepo reports whether dir's origin remote is on a Citadel git host
+// citadelOrigin returns dir's origin remote when it is on a Citadel git host
 // (the defaults, CITADEL_GIT_HOSTS, or the configured server's host).
-func isCitadelRepo(ctx context.Context, cmd *cobra.Command, dir string) bool {
+func citadelOrigin(ctx context.Context, cmd *cobra.Command, dir string) (string, bool) {
 	remote, err := gitOriginURL(ctx, dir)
 	if err != nil {
-		return false
+		return "", false
 	}
 	hosts := mergeCitadelHosts()
 	if cfg, err := clicfg.Load(); err == nil {
@@ -136,7 +148,44 @@ func isCitadelRepo(ctx context.Context, cmd *cobra.Command, dir string) bool {
 		}
 	}
 	_, _, err = parseOriginIntoRepo(remote, hosts)
-	return err == nil
+	return remote, err == nil
+}
+
+// httpsCredentialEnv registers the credential helper for an https origin's
+// host through GIT_CONFIG_COUNT, appending after any entries already set. It
+// returns nil for a non-https origin.
+func httpsCredentialEnv(remote string) [][2]string {
+	u, err := url.Parse(remote)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return nil
+	}
+	n, _ := strconv.Atoi(os.Getenv("GIT_CONFIG_COUNT"))
+	n = max(n, 0)
+	exe, err := os.Executable()
+	if err != nil {
+		exe = "citadel-cli"
+	}
+	key := "credential.https://" + u.Host + ".helper"
+	// The empty first value clears helpers inherited from the user's config.
+	return [][2]string{
+		{"GIT_CONFIG_COUNT", strconv.Itoa(n + 2)},
+		{"GIT_CONFIG_KEY_" + strconv.Itoa(n), key},
+		{"GIT_CONFIG_VALUE_" + strconv.Itoa(n), ""},
+		{"GIT_CONFIG_KEY_" + strconv.Itoa(n+1), key},
+		{"GIT_CONFIG_VALUE_" + strconv.Itoa(n+1), "!" + shellQuote(exe) + " hook git-credential"},
+	}
+}
+
+func runHookGitCredential(cmd *cobra.Command, args []string) error {
+	if args[0] != "get" {
+		return nil
+	}
+	token := os.Getenv("CITADEL_ACCESS_TOKEN")
+	if token == "" {
+		return nil
+	}
+	_, err := fmt.Fprintf(cmd.OutOrStdout(), "username=x\npassword=%s\n", token)
+	return err
 }
 
 // writeSessionKey creates the ephemeral keypair and returns the OpenSSH public key line.
@@ -193,7 +242,8 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	}
 	ctx, cancel := context.WithTimeout(cmd.Context(), 15*time.Second)
 	defer cancel()
-	if !isCitadelRepo(ctx, cmd, in.CWD) {
+	remote, ok := citadelOrigin(ctx, cmd, in.CWD)
+	if !ok {
 		return nil
 	}
 	sess, err := openAgentSession(ctx, cmd, dir)
@@ -205,16 +255,18 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	}
 	if envFile := os.Getenv("CLAUDE_ENV_FILE"); envFile != "" {
 		key := filepath.Join(dir, "id_ed25519")
-		if err := appendEnvFile(envFile, [][2]string{
+		vars := [][2]string{
 			{"GIT_SSH_COMMAND", "ssh -i " + shellQuote(key) + " -o IdentitiesOnly=yes"},
 			{"CITADEL_AGENT_SESSION", sess.SessionID},
 			{"CITADEL_ACCESS_TOKEN", sess.Token},
-		}); err != nil {
+		}
+		vars = append(vars, httpsCredentialEnv(remote)...)
+		if err := appendEnvFile(envFile, vars); err != nil {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: write env file: %v\n", err)
 		}
 	}
 	emitSessionContext(cmd, fmt.Sprintf(
-		"This session acts as Citadel agent %q on src.land: git over SSH and citadel-cli calls use its short-lived credentials. Code questions can use `citadel-cli kg` commands.",
+		"This session acts as Citadel agent %q on src.land: git over SSH or HTTPS and citadel-cli calls use its short-lived credentials. Code questions can use `citadel-cli kg` commands.",
 		sess.AgentName))
 	return nil
 }
