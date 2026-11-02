@@ -234,7 +234,7 @@ func runTokenIssue(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	agentName, _ := cmd.Flags().GetString("agent")
-	scopes, _ := cmd.Flags().GetStringSlice("scopes")
+	scopes := scopeFlag(cmd)
 
 	agentID, err := findOrCreateAgent(cmd.Context(), c, agentName)
 	if err != nil {
@@ -300,7 +300,7 @@ func registerTokenCommands() {
 	addWatchFlag(listCmd)
 	_ = listCmd.MarkFlagRequired("agent")
 	issueCmd.Flags().String("agent", "", "Agent name (required)")
-	issueCmd.Flags().StringSlice("scopes", []string{}, "Token scopes (optional)")
+	addScopeFlag(issueCmd)
 	issueCmd.Flags().String("expires", "", "Expiration duration (optional, e.g. '24h')")
 	_ = issueCmd.MarkFlagRequired("agent")
 
@@ -313,4 +313,17 @@ func registerTokenCommands() {
 	revokeCmd.PostRun = func(cmd *cobra.Command, _ []string) {
 		scheduleCompletionInvalidate(serverFlag(cmd), completion.KeyAgentTokens)
 	}
+}
+
+// addScopeFlag registers the repeatable --scope flag. Omitting it lets the
+// server apply its read-only default (metadata:read, code:read).
+func addScopeFlag(cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.Flags().StringArray("scope", nil, "Token scope, repeatable (metadata:read, code:read, code:write, issues:read, issues:write, pulls:read, pulls:write, admin); default metadata:read and code:read")
+	}
+}
+
+func scopeFlag(cmd *cobra.Command) []string {
+	scopes, _ := cmd.Flags().GetStringArray("scope")
+	return scopes
 }

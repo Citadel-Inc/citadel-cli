@@ -3,6 +3,7 @@ package cmd_test
 // HTTP handler tests for namespace, audit-sessions, and token commands.
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -447,7 +448,16 @@ func TestTokenIssue_HumanSecretOutput(t *testing.T) {
 				{"id": agentID, "name": "mybot", "owner_user_id": "u1"},
 			}))
 		},
-		"POST /agent-tokens": func(w http.ResponseWriter, _ *http.Request) {
+		"POST /agent-tokens": func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Scopes []string `json:"scopes"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Errorf("decode body: %v", err)
+			}
+			if strings.Join(body.Scopes, ",") != "code:read,issues:write" {
+				t.Errorf("scopes sent = %v, want repeated --scope values", body.Scopes)
+			}
 			writeJSON(t, w, 201, map[string]any{
 				"id":              "00000000-0000-0000-0000-000000000011",
 				"agent_id":        agentID,
@@ -458,7 +468,7 @@ func TestTokenIssue_HumanSecretOutput(t *testing.T) {
 	}))
 
 	var stdout strings.Builder
-	if err := rootForOut(cmd.TokenCmd, &stdout, "issue", "--agent", "mybot").Execute(); err != nil {
+	if err := rootForOut(cmd.TokenCmd, &stdout, "issue", "--agent", "mybot", "--scope", "code:read", "--scope", "issues:write").Execute(); err != nil {
 		t.Fatal(err)
 	}
 	if stdout.String() != "secret-tok\n" {

@@ -395,11 +395,13 @@ services).
 
 ```bash
 citadel-cli agent list
-citadel-cli agent create <name> [--org <slug>] [--description "..."] [--output json]
+citadel-cli agent create <name> [--org <slug>] [--description "..."] [--scope <scope>]... [--output json]
 citadel-cli agent get <name>
 citadel-cli agent delete <name> [--yes]
-citadel-cli agent rotate-token <name>
+citadel-cli agent rotate-token <name> [--scope <scope>]...
 ```
+
+`agent create` and `agent rotate-token` take the repeatable `--scope` flag described under `token issue`; without it the new token gets `metadata:read` and `code:read`.
 
 #### `agent create`
 
@@ -433,7 +435,7 @@ Lists all tokens (active and revoked) for the given agent. Columns: token ID, ag
 ### Issue a new agent token
 
 ```bash
-citadel-cli token issue --agent <name> [--scopes <scope>[,<scope>...]] [--expires <duration>]
+citadel-cli token issue --agent <name> [--scope <scope>]... [--expires <duration>]
 ```
 
 Creates or finds an agent with the given name and issues a new token. Prints the clear-text token exactly once to stdout (with no debug output). Subsequent `citadel-cli token list` calls will show only metadata, not the secret.
@@ -441,11 +443,11 @@ Creates or finds an agent with the given name and issues a new token. Prints the
 Parameters:
 
 - `--agent <name>` (required): Agent name; if the agent does not exist, it is created.
-- `--scopes <scope>[,<scope>...]` (optional): Comma-separated list of scopes (e.g., `mcp:read,mcp:write`). Default: no scopes.
+- `--scope <scope>` (optional, repeatable): One of `metadata:read`, `code:read`, `code:write`, `issues:read`, `issues:write`, `pulls:read`, `pulls:write`, `admin`. The server rejects any other value with 400. Scopes only narrow what the owner can do. Default: `metadata:read` and `code:read`.
 - `--expires <duration>` (optional): Token expiry time (e.g., `24h`, `7d`, `no-expiry`). Default: no expiration.
 
 ```bash
-citadel-cli token issue --agent my-indexer --scopes mcp:read --expires 7d
+citadel-cli token issue --agent my-indexer --scope code:read --scope issues:read --expires 7d
 ```
 
 Save this token immediately — it is never displayed again. Store it in your application's environment or credentials file.
