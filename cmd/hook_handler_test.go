@@ -536,10 +536,33 @@ func TestHookCursorSession_Hermetic(t *testing.T) {
 	if out.Env["CITADEL_ACCESS_TOKEN"] != "tok-c" || !strings.Contains(out.Env["GIT_SSH_COMMAND"], "hook git-ssh") || out.AdditionalContext == "" {
 		t.Fatalf("sessionStart output = %+v", out)
 	}
+	local := func(repo, key string) string {
+		b, _ := exec.CommandContext(t.Context(), "git", "-C", repo, "config", "--local", "--get-all", key).Output() //nolint:gosec // fixed git verb, test-owned args
+		return strings.TrimSpace(string(b))
+	}
+	if !strings.Contains(local(repo, "core.sshCommand"), "hook git-ssh") {
+		t.Fatalf("session-start left no repo-local core.sshCommand: %q", local(repo, "core.sshCommand"))
+	}
 	pre := `{"conversation_id":"c1","tool_name":"Shell","cwd":"` + repo + `","tool_input":{"command":"git push origin main"}}`
 	if got := runHook(t, pre, "renew", "--client", "cursor"); !strings.Contains(got, `"permission":"allow"`) {
 		t.Fatalf("live session preToolUse = %q", got)
 	}
+	runHook(t, start, "session-end", "--client", "cursor")
+	if got := local(repo, "core.sshCommand"); got != "" {
+		t.Fatalf("session-end left core.sshCommand behind: %q", got)
+	}
+
+	// An https origin also gets the credential helper, reading the state token.
+	web := gitRepoWithOrigin(t, "https://src.land/acme/app.git")
+	runHook(t, `{"session_id":"c3","workspace_roots":["`+web+`"]}`, "session-start", "--client", "cursor")
+	if got := local(web, "credential.https://src.land.helper"); !strings.Contains(got, "hook git-credential --state") {
+		t.Fatalf("credential helper = %q", got)
+	}
+	runHook(t, `{"session_id":"c3","workspace_roots":["`+web+`"]}`, "session-end", "--client", "cursor")
+	if got := local(web, "credential.https://src.land.helper"); got != "" {
+		t.Fatalf("session-end left the credential helper: %q", got)
+	}
+
 	// No state for another conversation: --require denies the push in Cursor's shape.
 	other := strings.Replace(pre, `"c1"`, `"c2"`, 1)
 	if got := runHook(t, other, "renew", "--client", "cursor", "--require"); !strings.Contains(got, `"permission":"deny"`) {

@@ -97,6 +97,10 @@ type hookState struct {
 	Scopes    []string  `json:"scopes,omitempty"`
 	// Revoked sessions stay revoked for the rest of the harness session.
 	Revoked bool `json:"revoked,omitempty"`
+	// GitConfigRepo and GitConfigKeys record the repo-local git settings a
+	// harness without a session environment got, so session end can undo them.
+	GitConfigRepo string   `json:"git_config_repo,omitempty"`
+	GitConfigKeys []string `json:"git_config_keys,omitempty"`
 }
 
 // useSessionToken lets every CLI call in a hook session use the token from
@@ -216,6 +220,11 @@ func citadelOrigin(ctx context.Context, cmd *cobra.Command, dir string) (string,
 // host through GIT_CONFIG_COUNT, appending after any entries already set. It
 // returns nil for a non-https origin.
 func httpsCredentialEnv(remote string) [][2]string {
+	return httpsCredentialEnvWith(remote, "")
+}
+
+// httpsCredentialEnvWith is httpsCredentialEnv with extra flags on the helper.
+func httpsCredentialEnvWith(remote, helperFlags string) [][2]string {
 	u, err := url.Parse(remote)
 	if err != nil || u.Scheme != "https" || u.Host == "" {
 		return nil
@@ -233,7 +242,7 @@ func httpsCredentialEnv(remote string) [][2]string {
 		{"GIT_CONFIG_KEY_" + strconv.Itoa(n), key},
 		{"GIT_CONFIG_VALUE_" + strconv.Itoa(n), ""},
 		{"GIT_CONFIG_KEY_" + strconv.Itoa(n+1), key},
-		{"GIT_CONFIG_VALUE_" + strconv.Itoa(n+1), "!" + shellQuote(exe) + " hook git-credential"},
+		{"GIT_CONFIG_VALUE_" + strconv.Itoa(n+1), "!" + shellQuote(exe) + " hook git-credential" + helperFlags},
 	}
 }
 
@@ -242,6 +251,11 @@ func runHookGitCredential(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	token := os.Getenv("CITADEL_ACCESS_TOKEN")
+	if state, _ := cmd.Flags().GetString("state"); state != "" {
+		if st, ok := loadHookState(state); ok {
+			token = st.Token
+		}
+	}
 	if token == "" {
 		return nil
 	}
@@ -334,6 +348,55 @@ func appendEnvFile(path string, vars [][2]string) error {
 	return f.Close()
 }
 
+// applyLocalGitConfig points the repo's own git config at the session key and
+// credential helper. Cursor documents sessionStart's env only for later hooks,
+// and its sandbox rewrites GIT_SSH_COMMAND, so the agent's shell cannot be
+// relied on to carry the session environment. Keys the developer already set
+// locally are left alone; the rest are removed at session end.
+func applyLocalGitConfig(ctx context.Context, cmd *cobra.Command, dir, cwd, remote, sshCommand string) {
+	top, err := gitOut(ctx, cwd, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return
+	}
+	var keys []string
+	set := func(key string, values ...string) {
+		if existing, _ := gitOut(ctx, top, "config", "--local", "--get-all", key); existing != "" {
+			return
+		}
+		for _, v := range values {
+			if _, err := gitOut(ctx, top, "config", "--local", "--add", key, v); err != nil {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: git config %s: %v\n", key, err)
+				return
+			}
+		}
+		keys = append(keys, key)
+	}
+	set("core.sshCommand", sshCommand)
+	if u, err := url.Parse(remote); err == nil && u.Scheme == "https" && u.Host != "" {
+		exe, err := os.Executable()
+		if err != nil {
+			exe = "citadel-cli"
+		}
+		set("credential.https://"+u.Host+".helper", "", "!"+shellQuote(exe)+" hook git-credential --state "+shellQuote(dir))
+	}
+	if st, ok := loadHookState(dir); ok {
+		st.GitConfigRepo, st.GitConfigKeys = top, keys
+		_ = saveHookState(dir, st)
+	}
+}
+
+func removeLocalGitConfig(ctx context.Context, st hookState) {
+	for _, key := range st.GitConfigKeys {
+		_, _ = gitOut(ctx, st.GitConfigRepo, "config", "--local", "--unset-all", key)
+	}
+}
+
+func gitOut(ctx context.Context, dir string, args ...string) (string, error) {
+	c := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...) //nolint:gosec // fixed git verbs, dir is a hook-provided workspace path
+	out, err := c.Output()
+	return strings.TrimSpace(string(out)), err
+}
+
 func isCursor(cmd *cobra.Command) bool {
 	c, _ := cmd.Flags().GetString("client")
 	return c == "cursor"
@@ -394,6 +457,9 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	for _, kv := range vars {
 		env[kv[0]] = kv[1]
 	}
+	if isCursor(cmd) {
+		applyLocalGitConfig(ctx, cmd, dir, in.CWD, remote, env["GIT_SSH_COMMAND"])
+	}
 	if envFile := os.Getenv("CLAUDE_ENV_FILE"); envFile != "" && !isCursor(cmd) {
 		if err := appendEnvFile(envFile, vars); err != nil {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: write env file: %v\n", err)
@@ -432,7 +498,11 @@ func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scope
 	if sess.SessionID == "" || sess.Token == "" {
 		return sess, errors.New("server returned an incomplete session")
 	}
-	return sess, saveHookState(dir, hookState{SessionID: sess.SessionID, AgentName: sess.AgentName, ExpiresAt: sess.ExpiresAt, Token: sess.Token, Scopes: scopes})
+	next := hookState{SessionID: sess.SessionID, AgentName: sess.AgentName, ExpiresAt: sess.ExpiresAt, Token: sess.Token, Scopes: scopes}
+	if prev, ok := loadHookState(dir); ok {
+		next.GitConfigRepo, next.GitConfigKeys = prev.GitConfigRepo, prev.GitConfigKeys
+	}
+	return sess, saveHookState(dir, next)
 }
 
 func runHookRenew(cmd *cobra.Command, _ []string) error {
@@ -489,6 +559,7 @@ func renewSession(cmd *cobra.Command, dir string) bool {
 // revokeLocalSession drops the key and token of a revoked session and keeps
 // the state as a tombstone so no later hook revives it.
 func revokeLocalSession(cmd *cobra.Command, dir string, st hookState) {
+	removeLocalGitConfig(cmd.Context(), st)
 	_ = os.Remove(filepath.Join(dir, "id_ed25519"))
 	_ = saveHookState(dir, hookState{SessionID: st.SessionID, AgentName: st.AgentName, Revoked: true})
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "citadel-cli hook: this agent session was revoked; git and citadel-cli calls in this Claude Code session are no longer authenticated as the agent. Start a new Claude Code session to get a fresh one.")
@@ -545,6 +616,7 @@ func runHookSessionEnd(cmd *cobra.Command, _ []string) error {
 	if st, ok := loadHookState(dir); ok {
 		ctx, cancel := context.WithTimeout(cmd.Context(), 8*time.Second)
 		defer cancel()
+		removeLocalGitConfig(ctx, st)
 		c, err := hookAPIClient(cmd)
 		if err == nil {
 			err = c.Delete(ctx, "/agent-sessions/"+url.PathEscape(st.SessionID)+"?reason=session_end")
