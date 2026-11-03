@@ -95,13 +95,15 @@ type repoRow struct {
 	GitSSHRemote  string `json:"git_ssh_remote,omitempty"`
 }
 
-// splitRepoArg parses the canonical "<namespace>/<repo>" cobra arg shape.
+// splitRepoArg parses the canonical "<namespace>/<repo>" cobra arg shape. A
+// repo slug has no slash, so the split is at the last one: the namespace of a
+// project repo is "<org>/<project>".
 func splitRepoArg(arg string) (ns, slug string, err error) {
-	parts := strings.SplitN(arg, "/", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+	i := strings.LastIndex(arg, "/")
+	if i <= 0 || i == len(arg)-1 {
 		return "", "", fmt.Errorf("argument must be <namespace>/<repo>")
 	}
-	return parts[0], parts[1], nil
+	return arg[:i], arg[i+1:], nil
 }
 
 func runRepoCreate(cmd *cobra.Command, _ []string) error {

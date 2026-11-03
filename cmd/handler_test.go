@@ -544,6 +544,20 @@ func TestRepoGet_Happy(t *testing.T) {
 	}
 }
 
+func TestRepoGet_ProjectRepo(t *testing.T) {
+	var escaped string
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		escaped = r.URL.EscapedPath()
+		writeJSON(t, w, 200, map[string]any{"slug": "r1", "path": "org/proj/r1", "visibility": "private", "default_branch": "main", "created_at": "2026-01-01"})
+	})
+	if err := rootFor(cmd.RepoCmd, "get", "org/proj/r1").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if want := "/namespaces/org%2Fproj/r1"; escaped != want {
+		t.Fatalf("path = %q, want %q", escaped, want)
+	}
+}
+
 func TestRepoGet_BadArg(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{}))
 	if err := rootFor(cmd.RepoCmd, "get", "noslash").Execute(); err == nil {
