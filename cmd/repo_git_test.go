@@ -95,7 +95,6 @@ func TestRepoClone_InvokesGitCloneWithSSHRemote(t *testing.T) {
 	}
 }
 
-
 func TestRepoCloneIsBloblessForAgentSessions(t *testing.T) {
 	t.Setenv("CITADEL_AGENT_SESSION", "session-id")
 	logPath, cleanup := patchGitExec(t)
