@@ -187,7 +187,7 @@ func ResolveRESTServerURL(server string) string {
 		// (the air-gap default is http://localhost:8000). Only a loopback
 		// server that does not answer /api/healthz is used as written, which
 		// is how a stub or a bare dev backend behaves.
-		if isLoopbackHost(u.Hostname()) && !(ProbeLoopback && loopbackServesAPI(base)) {
+		if isLoopbackHost(u.Hostname()) && (!ProbeLoopback || !loopbackServesAPI(base)) {
 			return base
 		}
 		if !strings.HasSuffix(u.Path, "/api") {
@@ -218,10 +218,12 @@ var loopbackProbe sync.Map
 // to the web origin's HTML.
 func loopbackServesAPI(base string) bool {
 	if v, ok := loopbackProbe.Load(base); ok {
-		return v.(bool)
+		if serves, isBool := v.(bool); isBool {
+			return serves
+		}
 	}
 	hc := &http.Client{Timeout: 2 * time.Second}
-	resp, err := hc.Get(base + "/api/healthz")
+	resp, err := hc.Get(base + "/api/healthz") //nolint:noctx // the URL is resolved before any request context exists
 	if err != nil {
 		return true
 	}
