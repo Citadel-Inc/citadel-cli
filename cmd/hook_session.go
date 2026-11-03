@@ -106,6 +106,9 @@ type hookState struct {
 	// harness without a session environment got, so session end can undo them.
 	GitConfigRepo string   `json:"git_config_repo,omitempty"`
 	GitConfigKeys []string `json:"git_config_keys,omitempty"`
+	// CommitHook is the prepare-commit-msg hook this session installed, which
+	// session end removes.
+	CommitHook string `json:"commit_hook,omitempty"`
 }
 
 // useSessionToken lets every CLI call in a hook session use the token from
@@ -404,9 +407,92 @@ func applyLocalGitConfig(ctx context.Context, cmd *cobra.Command, dir, cwd, remo
 }
 
 func removeLocalGitConfig(ctx context.Context, st hookState) {
+	removeCommitHook(st)
 	for _, key := range st.GitConfigKeys {
 		_, _ = gitOut(ctx, st.GitConfigRepo, "config", "--local", "--unset-all", key)
 	}
+}
+
+// commitHookMarker identifies a hook this tool wrote, so removal never deletes
+// a developer's own.
+const commitHookMarker = "# citadel-cli provenance hook"
+
+// installCommitHook adds Agent-Session and Agent trailers to commits made in
+// this repo, so attribution survives outside the server. It never replaces a
+// developer's hooks: an existing prepare-commit-msg hook or a custom
+// core.hooksPath means it skips and warns.
+func installCommitHook(ctx context.Context, cmd *cobra.Command, dir, cwd string) {
+	skip := func(why string) {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: commit trailers skipped: %s\n", why)
+	}
+	top, err := gitOut(ctx, cwd, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return
+	}
+	if p, _ := gitOut(ctx, top, "config", "--get", "core.hooksPath"); p != "" {
+		skip("core.hooksPath is set (" + p + ")")
+		return
+	}
+	path, err := gitOut(ctx, top, "rev-parse", "--git-path", "hooks/prepare-commit-msg")
+	if err != nil {
+		return
+	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(top, path)
+	}
+	if existing, err := os.ReadFile(path); err == nil && !strings.Contains(string(existing), commitHookMarker) { //nolint:gosec // path is git's own hook path for this repo
+		skip("a prepare-commit-msg hook already exists")
+		return
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		exe = "citadel-cli"
+	}
+	script := "#!/bin/sh\n" + commitHookMarker + " (removed at session end)\nexe=" + shellQuote(exe) + "\n" +
+		"[ -x \"$exe\" ] || exit 0\n\"$exe\" hook commit-trailers --state " + shellQuote(dir) + " \"$@\" || true\nexit 0\n"
+	if err := safefs.WriteFileAtomic(path, []byte(script), 0o755); err != nil {
+		skip(err.Error())
+		return
+	}
+	if st, ok := loadHookState(dir); ok {
+		st.CommitHook = path
+		_ = saveHookState(dir, st)
+	}
+}
+
+func removeCommitHook(st hookState) {
+	if st.CommitHook == "" {
+		return
+	}
+	if b, err := os.ReadFile(st.CommitHook); err == nil && strings.Contains(string(b), commitHookMarker) {
+		_ = os.Remove(st.CommitHook)
+	}
+}
+
+// hookCommitTrailersCmd is what the installed prepare-commit-msg hook runs
+// (git passes the message file, then the source and commit). It never fails:
+// a commit is not blocked over attribution.
+var hookCommitTrailersCmd = &cobra.Command{
+	Use:    "commit-trailers <msg-file> [source] [sha]",
+	Short:  "prepare-commit-msg helper that adds the agent session trailers",
+	Hidden: true,
+	Args:   cobra.MinimumNArgs(1),
+	RunE:   runHookCommitTrailers,
+}
+
+func runHookCommitTrailers(cmd *cobra.Command, args []string) error {
+	state, _ := cmd.Flags().GetString("state")
+	st, ok := loadHookState(state)
+	if !ok || st.Revoked || (len(args) > 1 && args[1] == "merge") {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
+	defer cancel()
+	if _, err := gitOut(ctx, ".", "interpret-trailers", "--in-place", "--if-exists", "addIfDifferent",
+		"--trailer", "Agent-Session: "+st.SessionID, "--trailer", "Agent: "+st.AgentName, args[0]); err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: commit trailers: %v\n", err)
+	}
+	return nil
 }
 
 func gitOut(ctx context.Context, dir string, args ...string) (string, error) {
@@ -478,6 +564,7 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	if isCursor(cmd) {
 		applyLocalGitConfig(ctx, cmd, dir, in.CWD, remote, env["GIT_SSH_COMMAND"])
 	}
+	installCommitHook(ctx, cmd, dir, in.CWD)
 	if envFile := os.Getenv("CLAUDE_ENV_FILE"); envFile != "" && !isCursor(cmd) {
 		if err := appendEnvFile(envFile, vars); err != nil {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: write env file: %v\n", err)
@@ -518,7 +605,7 @@ func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scope
 	}
 	next := hookState{SessionID: sess.SessionID, AgentName: sess.AgentName, ExpiresAt: sess.ExpiresAt, Token: sess.Token, Scopes: scopes}
 	if prev, ok := loadHookState(dir); ok {
-		next.GitConfigRepo, next.GitConfigKeys = prev.GitConfigRepo, prev.GitConfigKeys
+		next.GitConfigRepo, next.GitConfigKeys, next.CommitHook = prev.GitConfigRepo, prev.GitConfigKeys, prev.CommitHook
 	}
 	return sess, saveHookState(dir, next)
 }

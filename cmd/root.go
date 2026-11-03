@@ -67,6 +67,7 @@ Server URL configured via CITADEL_SERVER env var or --server flag.`,
 	root.AddCommand(DoctorCmd)
 	root.AddCommand(ManCmd)
 	root.AddCommand(AuditCmd)
+	root.AddCommand(ProvenanceCmd)
 	root.AddCommand(SearchCmd)
 	root.AddCommand(ProjectCmd)
 	root.AddCommand(NotificationCmd)

@@ -93,7 +93,8 @@ func registerHookCommands() {
 	hookSessionStartCmd.Flags().StringSlice("scopes", defaultHookScopes, "Agent session scopes to request")
 	hookRenewCmd.Flags().Bool("require", false, "Deny `git push` to a Citadel host while no live agent session exists")
 	hookGitCredentialCmd.Flags().String("state", "", "Hook session directory to read the current token from")
-	HookCmd.AddCommand(hookInstallCmd, hookUninstallCmd, hookSessionStartCmd, hookRenewCmd, hookSessionEndCmd, hookGitCredentialCmd, hookGitSSHCmd, hookStatusCmd)
+	hookCommitTrailersCmd.Flags().String("state", "", "Hook session directory holding the session id")
+	HookCmd.AddCommand(hookCommitTrailersCmd, hookInstallCmd, hookUninstallCmd, hookSessionStartCmd, hookRenewCmd, hookSessionEndCmd, hookGitCredentialCmd, hookGitSSHCmd, hookStatusCmd)
 }
 
 func runHookSettings(cmd *cobra.Command, install bool) error {

@@ -32,6 +32,7 @@ func registerCommands() {
 		registerPRCommands()
 		registerPRCollabCommands()
 		registerProjectCommands()
+		registerProvenanceCommands()
 		registerReleaseCommands()
 		registerRepoCommands()
 		registerRepoBranchCommands()
