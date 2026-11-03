@@ -650,8 +650,10 @@ var (
 // citadel-cli would otherwise run as the developer's stored login; it finds the
 // token from these two variables. Cursor's sandbox also sets its own
 // GIT_SSH_COMMAND, which outranks the repo-local core.sshCommand, so git gets a
-// function that sets the session's. Cursor documents preToolUse's updated_input
-// for exactly this kind of rewrite.
+// function that sets the session's. The function also names the session's
+// credential helper: parallel sessions in one repo share its local git config,
+// which holds only the first session's helper and goes away when that one ends.
+// Cursor documents preToolUse's updated_input for exactly this kind of rewrite.
 func cursorShellInput(cmd *cobra.Command, in hookInput) (map[string]any, bool) {
 	line := in.command()
 	runsGit, runsCLI := gitCmdWord.MatchString(line), citadelCmdWord.MatchString(line)
@@ -665,7 +667,8 @@ func cursorShellInput(cmd *cobra.Command, in hookInput) (map[string]any, bool) {
 	}
 	ctx, cancel := context.WithTimeout(cmd.Context(), 3*time.Second)
 	defer cancel()
-	if _, ok := citadelOrigin(ctx, cmd, in.CWD); !ok {
+	remote, ok := citadelOrigin(ctx, cmd, in.CWD)
+	if !ok {
 		return nil, false
 	}
 	prefix := ""
@@ -678,7 +681,12 @@ func cursorShellInput(cmd *cobra.Command, in hookInput) (map[string]any, bool) {
 			exe = "citadel-cli"
 		}
 		ssh := shellQuote(exe) + " hook git-ssh " + shellQuote(filepath.Join(dir, "id_ed25519"))
-		prefix += "git() { GIT_SSH_COMMAND=" + shellQuote(ssh) + ` command git "$@"; }; `
+		helper := ""
+		if u, err := url.Parse(remote); err == nil && helperRemote(u) {
+			key := "credential." + u.Scheme + "://" + u.Host + ".helper"
+			helper = " -c " + shellQuote(key+"=") + " -c " + shellQuote(key+"=!"+shellQuote(exe)+" hook git-credential --state "+shellQuote(dir))
+		}
+		prefix += "git() { GIT_SSH_COMMAND=" + shellQuote(ssh) + " command git" + helper + ` "$@"; }; `
 	}
 	updated := maps.Clone(in.ToolInput)
 	updated["command"] = prefix + line

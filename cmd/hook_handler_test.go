@@ -602,6 +602,11 @@ func TestHookCursorSession_Hermetic(t *testing.T) {
 	if got := local(web, "credential.https://src.land.helper"); !strings.Contains(got, "hook git-credential --state") {
 		t.Fatalf("credential helper = %q", got)
 	}
+	// A push names its own session's helper, whatever the shared repo config holds.
+	webPre := `{"session_id":"c3","tool_name":"Shell","workspace_roots":["` + web + `"],"tool_input":{"command":"git push"}}`
+	if got := runHook(t, webPre, "renew", "--client", "cursor"); !strings.Contains(got, "credential.https://src.land.helper=!") || !strings.Contains(got, filepath.Join("sessions", "c3")) {
+		t.Fatalf("https preToolUse does not name the session helper: %q", got)
+	}
 	runHook(t, `{"session_id":"c3","workspace_roots":["`+web+`"]}`, "session-end", "--client", "cursor")
 	if got := local(web, "credential.https://src.land.helper"); got != "" {
 		t.Fatalf("session-end left the credential helper: %q", got)
