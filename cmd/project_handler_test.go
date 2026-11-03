@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/Citadel-Inc/citadel-cli/cmd"
@@ -248,4 +249,25 @@ func setHermeticProjectEnv(t *testing.T) {
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
+}
+
+func TestProjectStatusDrilldown_SendsCategoryAndWindow(t *testing.T) {
+	var query string
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.RawQuery
+		writeJSON(t, w, 200, map[string]any{"rows": []any{}})
+	})
+	if err := rootFor(cmd.ProjectCmd, "status", "drilldown", "acme", "--category", "commits", "--window", "48h").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if query != "category=commits&window=48h" {
+		t.Fatalf("query = %q", query)
+	}
+}
+
+func TestProjectStatusDrilldown_RequiresCategory(t *testing.T) {
+	setHermeticProjectEnv(t)
+	if err := rootFor(cmd.ProjectCmd, "status", "drilldown", "acme").Execute(); err == nil {
+		t.Fatal("drilldown without --category must fail before any request")
+	}
 }

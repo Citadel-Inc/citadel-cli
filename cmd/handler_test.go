@@ -2564,7 +2564,7 @@ func TestProject_StatusDrilldown_Human(t *testing.T) {
 			writeJSON(t, w, 200, map[string]any{"k": "v"})
 		},
 	}))
-	if err := rootForOut(cmd.ProjectCmd, &buf, "status", "drilldown", "ns").Execute(); err != nil {
+	if err := rootForOut(cmd.ProjectCmd, &buf, "status", "drilldown", "ns", "--category", "commits").Execute(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "k:") {
@@ -2690,7 +2690,7 @@ func TestProject_StatusDrilldown_LongValues(t *testing.T) {
 			writeJSON(t, w, 200, map[string]any{"blob": long})
 		},
 	}))
-	if err := rootForOut(cmd.ProjectCmd, &buf, "status", "drilldown", "ns").Execute(); err != nil {
+	if err := rootForOut(cmd.ProjectCmd, &buf, "status", "drilldown", "ns", "--category", "commits").Execute(); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "...") {

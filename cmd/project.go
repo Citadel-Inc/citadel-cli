@@ -138,8 +138,7 @@ var projectStatusRollupCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		path := projectgraphPath(slug, "status-rollup")
-		return projectGET(cmd, path)
+		return projectGET(cmd, projectgraphPath(slug, "status-rollup"+rollupQuery(cmd, "")))
 	},
 }
 
@@ -152,9 +151,27 @@ var projectStatusDrilldownCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		path := projectgraphPath(slug, "status-rollup/drilldown")
-		return projectGET(cmd, path)
+		category, _ := cmd.Flags().GetString("category")
+		if strings.TrimSpace(category) == "" {
+			return fmt.Errorf("--category is required (for example commits)")
+		}
+		return projectGET(cmd, projectgraphPath(slug, "status-rollup/drilldown"+rollupQuery(cmd, category)))
 	},
+}
+
+// rollupQuery carries --window, and --category for the drilldown, to the server.
+func rollupQuery(cmd *cobra.Command, category string) string {
+	q := url.Values{}
+	if w, _ := cmd.Flags().GetString("window"); strings.TrimSpace(w) != "" {
+		q.Set("window", strings.TrimSpace(w))
+	}
+	if category != "" {
+		q.Set("category", strings.TrimSpace(category))
+	}
+	if enc := q.Encode(); enc != "" {
+		return "?" + enc
+	}
+	return ""
 }
 
 // ── edges ──────────────────────────────────────────────────────────────────────
@@ -559,6 +576,10 @@ func registerProjectCommands() {
 
 	projectWalkCmd.Flags().String("kind", "", "Graph kind (required)")
 	projectWalkCmd.Flags().Int("max-depth", 0, "Optional positive walk depth")
+
+	projectStatusRollupCmd.Flags().String("window", "", "Time window such as 24h (server default 24h)")
+	projectStatusDrilldownCmd.Flags().String("window", "", "Time window such as 24h (server default 24h)")
+	projectStatusDrilldownCmd.Flags().String("category", "", "Rollup category to list (required)")
 
 	projectNeighborsCmd.Flags().String("kind", "", "Neighbor kind filter (required)")
 	projectNeighborsCmd.Flags().String("ns", "", "Override target namespace (optional)")
