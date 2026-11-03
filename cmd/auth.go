@@ -452,9 +452,10 @@ func defaultCLIAgentName() (string, error) {
 	return "citadel-cli@" + host, nil
 }
 
-// cliTokenScopes are the server defaults plus sessions:write, which hook
+// cliTokenScopes cover what the CLI's own verbs write (repos, issues, pull
+// requests) plus sessions:write, which hook
 // sessions need to open, renew and end sessions as this token's owner.
-var cliTokenScopes = []string{"metadata:read", "code:read", "sessions:write"}
+var cliTokenScopes = []string{"metadata:read", "code:read", "code:write", "issues:read", "issues:write", "pulls:read", "pulls:write", "sessions:write"}
 
 // bootstrapAgentToken exchanges the short-lived OAuth JWT for a long-lived
 // agent token via find-or-create + rotate-token, mutating cfg in place.
