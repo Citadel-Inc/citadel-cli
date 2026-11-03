@@ -241,7 +241,7 @@ func TestHookSessionStart_HTTPSCredential_Hermetic(t *testing.T) {
 	self, _ := os.Executable()
 	script := strings.ReplaceAll(string(env), "'"+self+"'", "'"+bin+"'")
 	fill := exec.CommandContext(t.Context(), "bash", "-c", `set -e; eval "$ENVSCRIPT"; printf 'protocol=https\nhost=git.src.land\n\n' | git credential fill`)
-	fill.Env = append(os.Environ(), "ENVSCRIPT="+script, "GIT_TERMINAL_PROMPT=0", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
+	fill.Env = append(cliEnv(), "ENVSCRIPT="+script, "GIT_TERMINAL_PROMPT=0", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
 	got, err := fill.CombinedOutput()
 	if err != nil {
 		t.Fatalf("git credential fill: %v %s", err, got)
@@ -251,6 +251,23 @@ func TestHookSessionStart_HTTPSCredential_Hermetic(t *testing.T) {
 	}
 	if n := strings.Count(string(env), "sess-token-123"); n != 1 {
 		t.Fatalf("token appears %d times in the env file, want only CITADEL_ACCESS_TOKEN", n)
+	}
+}
+
+// cliEnv is the environment for a test that launches the CLI binary. Outside
+// this test process the binary uses the real backend, so a dead bus keeps it
+// off the developer's keyring.
+func cliEnv() []string {
+	return append(os.Environ(), "DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent")
+}
+
+func TestEveryBinaryHarnessUsesCLIEnv(t *testing.T) {
+	src, err := os.ReadFile("hook_handler_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(src), ".Env = "+"append(os."+"Environ()") {
+		t.Fatal("a harness sets its environment without cliEnv")
 	}
 }
 
@@ -276,7 +293,7 @@ func TestHookGitSSH_HostScoped_Hermetic(t *testing.T) {
 	}
 	run := func(host string) string {
 		c := exec.CommandContext(t.Context(), bin, "hook", "git-ssh", "/k/id", "-o", "SendEnv=GIT_PROTOCOL", "-p", "2222", "git@"+host, "git-upload-pack 'a/b.git'") //nolint:gosec // test-owned binary
-		c.Env = append(os.Environ(), "PATH="+fakeDir+":"+os.Getenv("PATH"), "CITADEL_GIT_HOSTS=", "XDG_CONFIG_HOME="+t.TempDir(), "HOME="+t.TempDir())
+		c.Env = append(cliEnv(), "PATH="+fakeDir+":"+os.Getenv("PATH"), "CITADEL_GIT_HOSTS=", "XDG_CONFIG_HOME="+t.TempDir(), "HOME="+t.TempDir())
 		if b, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("git-ssh %s: %v %s", host, err, b)
 		}
@@ -381,7 +398,7 @@ func TestHookRenewReissueAndRequire_Hermetic(t *testing.T) {
 	}
 
 	cred := exec.CommandContext(t.Context(), buildCLI(t), "hook", "git-credential", "get") //nolint:gosec // test-owned binary
-	cred.Env = append(os.Environ(), "CITADEL_ACCESS_TOKEN=stale", "CITADEL_AGENT_SESSION=sess-1", "CITADEL_HOOK_STATE="+filepath.Dir(stateFile))
+	cred.Env = append(cliEnv(), "CITADEL_ACCESS_TOKEN=stale", "CITADEL_AGENT_SESSION=sess-1", "CITADEL_HOOK_STATE="+filepath.Dir(stateFile))
 	if b, err := cred.Output(); err != nil || !strings.Contains(string(b), "password=tok-2\n") {
 		t.Fatalf("credential after reissue = %q (%v), want the token from state", b, err)
 	}
@@ -456,7 +473,7 @@ func TestAuthGit_Hermetic(t *testing.T) {
 	}
 	gitCfg := filepath.Join(t.TempDir(), "gitconfig")
 	c := exec.CommandContext(t.Context(), bin, "auth", "git") //nolint:gosec // test-owned binary
-	c.Env = append(os.Environ(), "CITADEL_SERVER="+srv.URL, "CITADEL_ACCESS_TOKEN=", "XDG_CONFIG_HOME="+cfgHome, "XDG_RUNTIME_DIR="+t.TempDir(), "GIT_CONFIG_GLOBAL="+gitCfg)
+	c.Env = append(cliEnv(), "CITADEL_SERVER="+srv.URL, "CITADEL_ACCESS_TOKEN=", "XDG_CONFIG_HOME="+cfgHome, "XDG_RUNTIME_DIR="+t.TempDir(), "GIT_CONFIG_GLOBAL="+gitCfg)
 	if out, err := c.CombinedOutput(); err != nil {
 		t.Fatalf("auth git: %v %s", err, out)
 	}

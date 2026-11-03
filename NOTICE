@@ -30,6 +30,11 @@ see each module's repository for the full license text.
 | golang.org/x/* (crypto, sys, term) | BSD-3-Clause | Copyright © The Go Authors |
 | github.com/Rethunk-Tech/go-httpkit | MIT | Copyright © Rethunk.Tech, LLC |
 | github.com/Rethunk-Tech/go-safefs | MIT | Copyright © Rethunk.Tech, LLC |
+| github.com/Rethunk-Tech/go-keyring | MIT | Copyright © Rethunk.Tech, LLC |
+| github.com/Rethunk-Tech/go-desktopenv | MIT | Copyright © Rethunk.Tech, LLC |
+| github.com/zalando/go-keyring | MIT | Copyright © Zalando SE |
+| github.com/godbus/dbus/v5 | BSD-2-Clause | Copyright © Georg Reinke and contributors |
+| github.com/danieljoos/wincred | MIT | Copyright © Daniel Joos |
 | github.com/golang-jwt/jwt/v5 | MIT | Copyright © golang-jwt maintainers |
 | github.com/google/uuid | BSD-3-Clause | Copyright © Google, Inc. |
 

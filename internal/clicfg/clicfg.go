@@ -23,6 +23,10 @@ type Config struct {
 	UserUUID     string    `toml:"user_uuid"`
 	AgentID      string    `toml:"agent_id,omitempty"`
 	AgentName    string    `toml:"agent_name,omitempty"`
+	// TokenStore is "keyring" when the tokens are in the OS keyring and absent
+	// here, else "file", with TokenStoreReason saying why. Save sets both.
+	TokenStore       string `toml:"token_store,omitempty"`
+	TokenStoreReason string `toml:"token_store_reason,omitempty"`
 }
 
 // configPath returns the full path to the config file.
@@ -68,25 +72,20 @@ func Load() (Config, error) {
 	}
 
 	var cfg Config
-	_, statErr := os.Stat(path)
-	switch {
-	case errors.Is(statErr, os.ErrNotExist):
-		// Fresh install — leave cfg zero-valued; env overrides may still apply.
-	case statErr != nil:
-		return Config{}, statErr
-	default:
-		//nolint:gosec // The config path is the operator-selected local config root.
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return Config{}, err
-		}
-		if err := toml.Unmarshal(data, &cfg); err != nil {
+	if err := readFile(path, &cfg); err != nil {
+		return Config{}, err
+	}
+
+	// The env token needs no stored one, so it must not wait on a locked keyring.
+	envToken := os.Getenv(accessTokenEnv)
+	if cfg.TokenStore == storeKeyring && envToken == "" {
+		if err := loadKeyringTokens(path, &cfg); err != nil {
 			return Config{}, err
 		}
 	}
 
-	if env := os.Getenv("CITADEL_ACCESS_TOKEN"); env != "" {
-		cfg.AccessToken = env
+	if envToken != "" {
+		cfg.AccessToken = envToken
 		// Trust the env value for an hour; the JWT itself is what gets
 		// validated server-side, so a wrong expiry only affects the
 		// client's own EXPIRED check.
@@ -96,7 +95,23 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-// Save writes the config to disk with mode 0600.
+const accessTokenEnv = "CITADEL_ACCESS_TOKEN"
+
+// readFile fills cfg from path; a missing file leaves it untouched.
+func readFile(path string, cfg *Config) error {
+	//nolint:gosec // The config path is the operator-selected local config root.
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return toml.Unmarshal(data, cfg)
+}
+
+// Save writes the tokens to the OS keyring when one takes them, else keeps them
+// in the file, and writes the file with mode 0600.
 // Creates the config directory if it doesn't exist.
 func (c Config) Save() error {
 	path, err := configPath()
@@ -110,9 +125,29 @@ func (c Config) Save() error {
 		return err
 	}
 
+	onDisk := c
+	priorStore, _ := readStoreMarker(path)
+	switch {
+	case os.Getenv(accessTokenEnv) != "" && priorStore == storeKeyring:
+		// c holds the env token and no refresh token. Storing that would replace
+		// the login the keyring holds.
+		onDisk.AccessToken, onDisk.RefreshToken = "", ""
+		onDisk.TokenStore, onDisk.TokenStoreReason = storeKeyring, ""
+	case c.AccessToken == "" && c.RefreshToken == "":
+		if priorStore == storeKeyring {
+			deleteKeyringTokens(path)
+		}
+		onDisk.TokenStore, onDisk.TokenStoreReason = "", ""
+	default:
+		onDisk.TokenStore, onDisk.TokenStoreReason = storeTokens(path, c.AccessToken, c.RefreshToken)
+		if onDisk.TokenStore == storeKeyring {
+			onDisk.AccessToken, onDisk.RefreshToken = "", ""
+		}
+	}
+
 	return safefs.WriteStreamAtomic(path, 0o600, func(w io.Writer) error {
-		//nolint:gosec // Config serialization intentionally persists the token in the protected config file.
-		return toml.NewEncoder(w).Encode(c)
+		//nolint:gosec // The file holds tokens only as the 0600 fallback when no keyring takes them.
+		return toml.NewEncoder(w).Encode(onDisk)
 	})
 }
 

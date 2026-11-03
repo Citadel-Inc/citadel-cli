@@ -51,7 +51,7 @@ Repo targeting: `-R namespace/slug`, or `CITADEL_REPO`, or CWD `origin` on a Cit
 | `CITADEL_PAGER` / `GIT_PAGER` / `PAGER` | Pager chain (`''` or `--no-pager` disables) |
 | `CITADEL_NO_COMPLETION_CACHE` | Skip completion disk cache |
 
-Config file: `~/.config/citadel/config.toml` (`server_url`, tokens mode 0600). `auth login` stores an agent token; `auth set-token` accepts a Supabase JWT and upgrades on next launch when the API is reachable.
+Config file: `~/.config/citadel/config.toml` (`server_url`, mode 0600). Tokens go to the OS keyring; without one (a headless server), or when a token exceeds its size limit or it is locked at save time, they stay in this file, and `citadel-cli doctor` says which and why. `CITADEL_ACCESS_TOKEN` overrides both. A hook or other run without a terminal never waits on a locked keyring: it fails within 500 ms. `auth login` stores an agent token; `auth set-token` accepts a Supabase JWT and upgrades on next launch when the API is reachable.
 
 ## Verify
 

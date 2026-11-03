@@ -34,6 +34,7 @@ Checks performed:
   - Auth token present + not expired (claim-only inspection; no round trip)
   - MCP endpoint reachable (initialize handshake)
   - ~/.config/citadel/config.toml mode 0600 (UNIX only)
+  - where the tokens are stored (OS keyring, or the config file and why)
   - Resolved REST and MCP base URLs
   - Agent hooks installed and the hook session, if any, still live
   - CWD git origin points at a Citadel host when CITADEL_REPO is unset`,
@@ -77,6 +78,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		checkAuthToken(cfg),
 		checkMCP(cmd.Context(), cfg, server, mcpclient.Options{Verbose: verboseFlag(cmd), DebugHTTP: debugHTTPFlag(cmd)}),
 		checkConfigPerms(),
+		checkTokenStore(),
 		checkServerBases(server),
 		checkGitRemote(cmd.Context()),
 		checkHooks(),
@@ -183,6 +185,19 @@ func checkMCP(ctx context.Context, cfg clicfg.Config, server string, opts mcpcli
 		return checkResult{name, statusFail, fmt.Sprintf("%s unreachable: %v", mcpURL, err)}
 	}
 	return checkResult{name, statusPass, fmt.Sprintf("%s initialized", mcpURL)}
+}
+
+func checkTokenStore() checkResult {
+	const name = "token-store"
+	description, plaintext, err := clicfg.TokenStorage()
+	switch {
+	case err != nil:
+		return checkResult{name, statusWarn, fmt.Sprintf("cannot read config: %v", err)}
+	case plaintext:
+		return checkResult{name, statusWarn, description}
+	default:
+		return checkResult{name, statusPass, description}
+	}
 }
 
 func checkConfigPerms() checkResult {

@@ -89,8 +89,9 @@ var loginCmd = &cobra.Command{
 	Short: "Authenticate via OAuth/PKCE or device flow",
 	Long: `Starts an OAuth 2.1 PKCE flow against the Citadel API (/api/oauth/authorize
 and /api/oauth/token), opens a browser, exchanges the code for a short-lived
-identity token, then swaps it for a long-lived agent token stored in
-~/.config/citadel/config.toml (mode 0600).
+identity token, then swaps it for a long-lived agent token stored in the OS
+keyring, or in ~/.config/citadel/config.toml (mode 0600) where no keyring is
+available. ` + "`doctor`" + ` says which.
 
 For headless hosts, containers, or automation where a browser is unavailable,
 pass --device to use the RFC 8628 device authorization flow.`,
