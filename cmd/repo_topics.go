@@ -18,6 +18,10 @@ type topicsResponse struct {
 	Topics []string `json:"topics"`
 }
 
+type popularTopicsResponse struct {
+	Topics []popularTopic `json:"topics"`
+}
+
 type popularTopic struct {
 	Topic string `json:"topic"`
 	Count int    `json:"count"`
@@ -213,7 +217,6 @@ func runRepoTopicPopular(cmd *cobra.Command, args []string) error {
 		apiPath += "?" + q.Encode()
 	}
 
-	// Popular returns a JSON array, not a wrapped object.
 	var raw json.RawMessage
 	if err := client.Get(cmd.Context(), apiPath, &raw); err != nil {
 		if apiclient.IsStatus(err, http.StatusUnauthorized) {
@@ -225,17 +228,15 @@ func runRepoTopicPopular(cmd *cobra.Command, args []string) error {
 	switch output {
 	case "json":
 		return emitJSON(cmd, raw)
-	case "yaml":
-		var rows []popularTopic
-		if err := json.Unmarshal(raw, &rows); err != nil {
-			return fmt.Errorf("unexpected response from server: %w", err)
-		}
-		return emitYAML(cmd, rows)
 	}
 
-	var rows []popularTopic
-	if err := json.Unmarshal(raw, &rows); err != nil {
+	var resp popularTopicsResponse
+	if err := json.Unmarshal(raw, &resp); err != nil {
 		return fmt.Errorf("unexpected response from server: %w", err)
+	}
+	rows := resp.Topics
+	if output == "yaml" {
+		return emitYAML(cmd, rows)
 	}
 
 	if len(rows) == 0 {

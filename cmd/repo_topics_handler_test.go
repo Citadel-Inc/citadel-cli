@@ -230,10 +230,10 @@ func TestRepoTopicPopular_Happy(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/topics/popular": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{
+			writeJSON(t, w, 200, map[string]any{"topics": []map[string]any{
 				{"topic": "go", "count": 42},
 				{"topic": "cli", "count": 17},
-			})
+			}})
 		},
 	}))
 	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "popular").Execute(); err != nil {
@@ -248,7 +248,7 @@ func TestRepoTopicPopular_Empty(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/topics/popular": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{})
+			writeJSON(t, w, 200, map[string]any{"topics": []map[string]any{}})
 		},
 	}))
 	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "popular").Execute(); err != nil {
@@ -289,18 +289,21 @@ func TestRepoTopicPopular_JSON(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/topics/popular": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{
+			writeJSON(t, w, 200, map[string]any{"topics": []map[string]any{
 				{"topic": "go", "count": 42},
-			})
+			}})
 		},
 	}))
 	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "popular", "--output", "json").Execute(); err != nil {
 		t.Fatal(err)
 	}
-	var out []map[string]any
-	if err := json.Unmarshal(buf.Bytes(), &out); err != nil {
+	var env struct {
+		Topics []map[string]any `json:"topics"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &env); err != nil {
 		t.Fatalf("not valid JSON: %v\nbody: %s", err, buf.String())
 	}
+	out := env.Topics
 	if len(out) != 1 {
 		t.Fatalf("expected 1 topic, got %d", len(out))
 	}
@@ -310,9 +313,9 @@ func TestRepoTopicPopular_YAML(t *testing.T) {
 	var buf bytes.Buffer
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/topics/popular": func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, w, 200, []map[string]any{
+			writeJSON(t, w, 200, map[string]any{"topics": []map[string]any{
 				{"topic": "go", "count": 42},
-			})
+			}})
 		},
 	}))
 	if err := rootForOut(cmd.RepoCmd, &buf, "topic", "popular", "--output", "yaml").Execute(); err != nil {
