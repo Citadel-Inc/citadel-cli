@@ -4,8 +4,11 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"path"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -41,10 +44,12 @@ Uses GET /api/namespaces/{namespace}/kg/impact (JWT required).
 
 The repository may be given as <owner>, <owner>/<repo>, or omitted when -R/--repo,
 ` + "`CITADEL_REPO`" + `, or git origin in the current directory supplies it.
-<symbol> accepts a UUID (direct call) or a name (resolved via /api/namespaces/{ns}/kg/symbols first; if more
-than one symbol matches, prints the candidates so you can disambiguate).
+<symbol> accepts a UUID or a name: Name, Recv.Name, pkg.Name, pkg.Recv.Name, path/to/file.go:Name or
+path/to/dir:Recv.Name. If more than one symbol matches, prints candidates to pass back.
 
-Pretty-printed by default; use --json for the raw HTTP response.`,
+Edges other than a resolved call are labelled: [dispatch] is a concrete method an interface call may reach,
+[http] a client call to a route, [bridge] a generated desktop binding. Same-named method calls on an unknown
+receiver are listed apart and not counted. Compact by default; use --json for the raw HTTP response.`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: runKgImpact,
 }
@@ -70,6 +75,7 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 	if symbol == "" {
 		return fmt.Errorf("symbol cannot be empty")
 	}
+	cmd.SilenceUsage = true
 	depth, _ := cmd.Flags().GetInt("depth")
 	if cmd.Flags().Changed("depth") && (depth < 1 || depth > 3) {
 		return fmt.Errorf("--depth must be between 1 and 3")
@@ -133,18 +139,21 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 	if repo != "" {
 		q.Set("repo", repo)
 	}
-	path := "/api/namespaces/" + url.PathEscape(owner) + "/kg/impact?" + q.Encode()
+	if noTests, _ := cmd.Flags().GetBool("no-tests"); noTests {
+		q.Set("tests", "exclude")
+	}
+	reqPath := "/api/namespaces/" + url.PathEscape(owner) + "/kg/impact?" + q.Encode()
 
 	if rawJSON {
 		var pretty any
-		if err := c.Get(cmd.Context(), path, &pretty); err != nil {
+		if err := c.Get(cmd.Context(), reqPath, &pretty); err != nil {
 			return upgradeUnauthorized(err)
 		}
 		return emitJSON(cmd, pretty)
 	}
 
 	var ir impactResp
-	if err := c.Get(cmd.Context(), path, &ir); err != nil {
+	if err := c.Get(cmd.Context(), reqPath, &ir); err != nil {
 		return upgradeUnauthorized(err)
 	}
 	printImpactTree(cmd, ir)
@@ -160,120 +169,209 @@ type impactResp struct {
 	TransitiveCallers []impactNode `json:"transitive_callers"`
 	AffectedFiles     []string     `json:"affected_files"`
 	Truncated         bool         `json:"truncated"`
+	Unresolved        []impactNode `json:"unresolved"`
+	UnresolvedTotal   int          `json:"unresolved_total"`
 }
 
 type impactNode struct {
-	ID   string `json:"id"`
-	Kind string `json:"kind"`
-	Name string `json:"name,omitempty"`
-	Path string `json:"path,omitempty"`
+	ID        string `json:"id"`
+	Kind      string `json:"kind"`
+	Name      string `json:"name,omitempty"`
+	Qualifier string `json:"qualifier,omitempty"`
+	Path      string `json:"path,omitempty"`
+	Via       string `json:"via,omitempty"`
 }
 
-// printImpactTree renders the response as a human-readable tree.
+// printImpactTree renders the response grouped by file, which spends far fewer
+// tokens than one line per caller when an agent reads it.
 //
-//	rename-impact for foo (function) at file-1.go
-//	  direct callers (3):
-//	    - bar  in file-2.go
-//	    - baz  in file-3.go
-//	  transitive callers (1):
-//	    - qux  in file-4.go
-//	  affected files (4):
-//	    file-1.go, file-2.go, file-3.go, file-4.go
+//	impact Store.Load (function) internal/store.go: 3 direct, 1 transitive, 3 files
+//	direct:
+//	  internal/a.go: Handler.Show, run
+//	  internal/mem.go: Mem.Reload [dispatch]
+//	transitive:
+//	  web/api.ts: fetchIt [http]
+//	unresolved, same method name on an unknown receiver, not counted (2):
+//	  internal/b.go: Worker.Tick
 //
 // `--json` skips this and prints the raw response.
 func printImpactTree(cmd *cobra.Command, ir impactResp) {
 	out := cmd.OutOrStdout()
-	header := "rename-impact for " + ir.Symbol.Name
-	if ir.Symbol.Kind != "" {
-		header += " (" + ir.Symbol.Kind + ")"
-	}
-	if ir.Symbol.Path != "" {
-		header += " at " + ir.Symbol.Path
-	}
-	_, _ = fmt.Fprintln(out, header)
-
-	_, _ = fmt.Fprintf(out, "  direct callers (%d):\n", len(ir.DirectCallers))
-	for _, n := range ir.DirectCallers {
-		_, _ = fmt.Fprintf(out, "    - %s\n", formatCaller(n))
-	}
-	_, _ = fmt.Fprintf(out, "  transitive callers (%d):\n", len(ir.TransitiveCallers))
-	for _, n := range ir.TransitiveCallers {
-		_, _ = fmt.Fprintf(out, "    - %s\n", formatCaller(n))
-	}
-	_, _ = fmt.Fprintf(out, "  affected files (%d):\n", len(ir.AffectedFiles))
-	if len(ir.AffectedFiles) > 0 {
-		_, _ = fmt.Fprintf(out, "    %s\n", strings.Join(ir.AffectedFiles, ", "))
+	_, _ = fmt.Fprintf(out, "impact %s (%s) %s: %d direct, %d transitive, %d files\n",
+		qualifiedName(ir.Symbol.Qualifier, ir.Symbol.Name), ir.Symbol.Kind, ir.Symbol.Path,
+		len(ir.DirectCallers), len(ir.TransitiveCallers), len(ir.AffectedFiles))
+	printImpactGroup(out, "direct", ir.DirectCallers)
+	printImpactGroup(out, "transitive", ir.TransitiveCallers)
+	if len(ir.Unresolved) > 0 {
+		total := max(ir.UnresolvedTotal, len(ir.Unresolved))
+		nodes := make([]impactNode, 0, len(ir.Unresolved))
+		for _, u := range ir.Unresolved {
+			nodes = append(nodes, impactNode{Name: u.Name, Qualifier: u.Qualifier, Path: u.Path})
+		}
+		printImpactGroup(out, fmt.Sprintf("unresolved, same method name on an unknown receiver, not counted (%d)", total), nodes)
 	}
 	if ir.Truncated {
-		_, _ = fmt.Fprintln(out, "  (truncated — narrow depth or scope to see the full set)")
+		_, _ = fmt.Fprintln(out, "TRUNCATED: more callers exist than were walked; lower --depth or use --no-tests")
 	}
 }
 
-func formatCaller(n impactNode) string {
-	label := cmp.Or(n.Name, n.ID)
-	if n.Path != "" {
-		return label + "  in " + n.Path
+func printImpactGroup(out io.Writer, title string, nodes []impactNode) {
+	if len(nodes) == 0 {
+		return
 	}
-	return label
+	_, _ = fmt.Fprintf(out, "%s:\n", title)
+	byFile := map[string][]string{}
+	files := make([]string, 0, len(nodes))
+	for _, n := range nodes {
+		if _, seen := byFile[n.Path]; !seen {
+			files = append(files, n.Path)
+		}
+		label := qualifiedName(n.Qualifier, cmp.Or(n.Name, n.ID))
+		if n.Via != "" && n.Via != "call" {
+			label += " [" + n.Via + "]"
+		}
+		byFile[n.Path] = append(byFile[n.Path], label)
+	}
+	sort.Strings(files)
+	for _, f := range files {
+		_, _ = fmt.Fprintf(out, "  %s: %s\n", f, strings.Join(byFile[f], ", "))
+	}
+}
+
+func qualifiedName(qualifier, name string) string {
+	if qualifier == "" {
+		return name
+	}
+	return qualifier + "." + name
 }
 
 // symbolMatch is the kgapi /symbols result row we care about.
 type symbolMatch struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Kind string `json:"kind"`
-	Path string `json:"path"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Qualifier string `json:"qualifier"`
+	Kind      string `json:"kind"`
+	Path      string `json:"path"`
+	Line      int    `json:"line"`
 }
 
-// resolveSymbolID looks up a symbol UUID by name via /api/namespaces/{slug}/kg/symbols.
-// slug accepts "<owner>" (search across owner's repos) or "<owner>/<repo>"
-// (the suffix is sent as the repo filter so duplicate names across repos
-// don't mask the user's intent).
+// symbolQuery is what a user wrote for a symbol: Name, Recv.Name, pkg.Name,
+// pkg.Recv.Name or path/file.go:Name, with Recv.Name allowed after the colon.
+type symbolQuery struct {
+	path, pkg, qualifier, name string
+	ambiguousDot               bool // the part before the dot may be a package or a receiver
+}
+
+func parseSymbolQuery(s string) symbolQuery {
+	var q symbolQuery
+	if i := strings.LastIndexByte(s, ':'); i > 0 {
+		q.path, s = s[:i], s[i+1:]
+	}
+	parts := strings.Split(s, ".")
+	q.name = parts[len(parts)-1]
+	switch len(parts) {
+	case 1:
+	case 2:
+		q.qualifier, q.ambiguousDot = parts[0], q.path == ""
+	default:
+		q.pkg, q.qualifier = parts[len(parts)-3], parts[len(parts)-2]
+	}
+	return q
+}
+
+func (q symbolQuery) matches(m symbolMatch) bool {
+	if m.Name != q.name {
+		return false
+	}
+	if q.path != "" && m.Path != q.path && !strings.HasPrefix(m.Path, strings.TrimSuffix(q.path, "/")+"/") {
+		return false
+	}
+	if q.pkg != "" && path.Base(path.Dir(m.Path)) != q.pkg {
+		return false
+	}
+	if q.qualifier == "" {
+		return true
+	}
+	if m.Qualifier == q.qualifier {
+		return true
+	}
+	return q.ambiguousDot && path.Base(path.Dir(m.Path)) == q.qualifier
+}
+
+// resolveSymbolID looks a symbol up by any form parseSymbolQuery accepts. slug
+// accepts "<owner>" (search across owner's repos) or "<owner>/<repo>". When the
+// name does not pin down one symbol the error lists candidates in a form that
+// can be passed back as is.
 func resolveSymbolID(ctx context.Context, c *apiclient.Client, slug, name string) (string, error) {
 	owner, repo := splitOwnerRepo(slug)
+	want := parseSymbolQuery(name)
 	q := url.Values{}
-	q.Set("q", name)
+	q.Set("q", want.name)
+	q.Set("limit", "200")
 	if repo != "" {
 		q.Set("repo", repo)
 	}
-	path := "/api/namespaces/" + url.PathEscape(owner) + "/kg/symbols?" + q.Encode()
+	if want.path != "" {
+		q.Set("path_prefix", want.path)
+	}
+	reqPath := "/api/namespaces/" + url.PathEscape(owner) + "/kg/symbols?" + q.Encode()
 
 	var sr struct {
 		Matches []symbolMatch `json:"matches"`
 	}
-	if err := c.Get(ctx, path, &sr); err != nil {
+	if err := c.Get(ctx, reqPath, &sr); err != nil {
 		return "", upgradeUnauthorized(fmt.Errorf("symbols lookup: %w", err))
 	}
 
 	exact := sr.Matches[:0:0]
 	for _, m := range sr.Matches {
-		if m.Name == name {
+		if want.matches(m) {
 			exact = append(exact, m)
 		}
 	}
-	if len(exact) == 0 {
-		if len(sr.Matches) == 0 {
-			return "", fmt.Errorf("no symbol matches %q in %s — try a broader query or pass a UUID", name, slug)
-		}
-		return "", fmt.Errorf("no exact match for %q; closest: %s — pass a UUID to disambiguate", name, listSymbolCandidates(sr.Matches))
+	if len(exact) == 1 {
+		return exact[0].ID, nil
+	}
+	if fns := onlyFunctions(exact); len(fns) == 1 {
+		return fns[0].ID, nil
 	}
 	if len(exact) > 1 {
-		return "", fmt.Errorf("symbol %q is ambiguous (%d hits): %s — pass a UUID", name, len(exact), listSymbolCandidates(exact))
+		return "", fmt.Errorf("%q matches %d symbols; rerun with one of:\n%s", name, len(exact), listSymbolCandidates(exact))
 	}
-	return exact[0].ID, nil
+	if len(sr.Matches) == 0 {
+		return "", fmt.Errorf("no symbol matches %q in %s; it may not be indexed, so search the source to confirm", want.name, slug)
+	}
+	return "", fmt.Errorf("no symbol is exactly %q; closest:\n%s", name, listSymbolCandidates(sr.Matches))
 }
 
-func listSymbolCandidates(ms []symbolMatch) string {
-	parts := make([]string, 0, len(ms))
+func onlyFunctions(ms []symbolMatch) []symbolMatch {
+	out := ms[:0:0]
 	for _, m := range ms {
-		parts = append(parts, fmt.Sprintf("%s (%s @ %s id=%s)", m.Name, m.Kind, m.Path, m.ID))
+		if m.Kind == "function" {
+			out = append(out, m)
+		}
 	}
-	return strings.Join(parts, "; ")
+	return out
+}
+
+const maxSymbolCandidates = 12
+
+func listSymbolCandidates(ms []symbolMatch) string {
+	var b strings.Builder
+	for i, m := range ms {
+		if i == maxSymbolCandidates {
+			fmt.Fprintf(&b, "  ... %d more; narrow with path/to/dir:%s\n", len(ms)-i, m.Name)
+			break
+		}
+		fmt.Fprintf(&b, "  %s:%s  (%s, line %d)\n", m.Path, qualifiedName(m.Qualifier, m.Name), m.Kind, m.Line)
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 func registerKGCommands() {
 	KgCmd.AddCommand(kgImpactCmd)
 	kgImpactCmd.Flags().Int("depth", 0, "BFS depth (1-3, default 2 server-side)")
+	kgImpactCmd.Flags().Bool("no-tests", false, "Leave out callers in test files")
 	addJSONFlag(kgImpactCmd)
 	addRepoFlag(kgImpactCmd)
 }

@@ -154,15 +154,6 @@ func TestCopySecretToClipboard_ToolFails(t *testing.T) {
 	}
 }
 
-func TestFormatCaller(t *testing.T) {
-	if got := formatCaller(impactNode{Name: "foo", Path: "a.go"}); got != "foo  in a.go" {
-		t.Errorf("named+path: %q", got)
-	}
-	if got := formatCaller(impactNode{ID: "bar"}); got != "bar" {
-		t.Errorf("id-only fallback: %q", got)
-	}
-}
-
 func TestSplitOwnerRepo(t *testing.T) {
 	owner, repo := splitOwnerRepo("alice/repo")
 	if owner != "alice" || repo != "repo" {

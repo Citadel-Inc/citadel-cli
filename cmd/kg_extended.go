@@ -29,6 +29,15 @@ Namespace/repo defaults from -R, CITADEL_REPO, or git origin when omitted.`,
 	RunE: runKgSymbols,
 }
 
+var kgUnreferencedCmd = &cobra.Command{
+	Use:   "unreferenced [namespace/repo]",
+	Short: "Functions no production code reaches, each with a certainty",
+	Long: `Calls GET /api/namespaces/{namespace}/kg/unreferenced. These are candidates for dead code, not proof: the
+output says what the graph cannot see, and certainty=uncertain marks rows where a call may exist.`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runKgUnreferenced,
+}
+
 var kgFilesCmd = &cobra.Command{
 	Use:   "files [namespace/repo]",
 	Short: "List KG-indexed files for a namespace",
@@ -38,9 +47,11 @@ var kgFilesCmd = &cobra.Command{
 
 var kgWalkCmd = &cobra.Command{
 	Use:   "walk [namespace/repo]",
-	Short: "Bounded graph walk from a seed symbol",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runKgWalk,
+	Short: "Bounded graph walk from a symbol or file",
+	Long: `Calls GET /api/namespaces/{namespace}/kg/walk from --seed-id (a symbol UUID, as kg symbols --output json shows)
+or --from (a repository file path). --direction is callers or imports. Output is json or yaml.`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runKgWalk,
 }
 
 var kgFulltextCmd = &cobra.Command{
@@ -163,7 +174,7 @@ func kgPayloadRows(payload any, preferred ...string) []any {
 	if !ok {
 		return nil
 	}
-	keys := append(append([]string{}, preferred...), "results", "items", "rows", "data")
+	keys := append(append([]string{}, preferred...), "matches", "results", "items", "rows", "data")
 	for _, key := range keys {
 		if rows, ok := m[key].([]any); ok {
 			return rows
@@ -242,14 +253,14 @@ func kgWriteTable(cmd *cobra.Command, pages []any, rowKeys ...string) error {
 	}
 	w := newTabWriter(cmd)
 	if len(rowKeys) > 0 && rowKeys[0] == "symbols" {
-		_, _ = fmt.Fprintln(w, "NAME\tKIND\tPATH\tLINE\tSIGNATURE")
+		_, _ = fmt.Fprintln(w, "NAME\tKIND\tPATH\tLINE\tID")
 		for _, row := range rows {
 			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-				kgCell(row, "name", "symbol_name", "symbol", "qualified_name"),
+				qualifiedName(kgCell(row, "qualifier"), kgCell(row, "name", "symbol_name", "symbol")),
 				kgCell(row, "kind", "symbol_kind", "type"),
 				kgCell(row, "path", "file_path", "file"),
 				kgCell(row, "line", "line_start", "start_line", "line_number"),
-				kgCell(row, "signature", "signature_text", "detail"),
+				kgCell(row, "id"),
 			)
 		}
 	} else {
@@ -330,14 +341,18 @@ func runKgSearch(cmd *cobra.Command, args []string) error {
 }
 
 func runKgSymbols(cmd *cobra.Command, args []string) error {
+	cmd.SilenceUsage = true
 	qstr, _ := cmd.Flags().GetString("q")
 	qstr = strings.TrimSpace(qstr)
-	if qstr == "" {
-		return fmt.Errorf("--q is required")
-	}
+	pathPrefix := strings.TrimSpace(mustFlag(cmd, "path-prefix"))
 
 	q := url.Values{}
-	q.Set("q", qstr)
+	if qstr != "" {
+		// A qualified form searches by its name: symbols store the two apart.
+		q.Set("q", parseSymbolQuery(qstr).name)
+	} else if pathPrefix == "" {
+		return fmt.Errorf("pass --q or --path-prefix")
+	}
 	if s := strings.TrimSpace(mustFlag(cmd, "kind")); s != "" {
 		q.Set("kind", s)
 	}
@@ -432,10 +447,13 @@ func runKgFiles(cmd *cobra.Command, args []string) error {
 }
 
 func runKgWalk(cmd *cobra.Command, args []string) error {
+	cmd.SilenceUsage = true
 	seed, _ := cmd.Flags().GetString("seed-id")
 	seed = strings.TrimSpace(seed)
-	if seed == "" {
-		return fmt.Errorf("--seed-id is required")
+	from, _ := cmd.Flags().GetString("from")
+	from = strings.TrimSpace(from)
+	if (seed == "") == (from == "") {
+		return fmt.Errorf("pass exactly one of --seed-id or --from")
 	}
 	pos := ""
 	if len(args) > 0 {
@@ -446,7 +464,11 @@ func runKgWalk(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	q := url.Values{}
-	q.Set("seed_id", seed)
+	if seed != "" {
+		q.Set("seed_id", seed)
+	} else {
+		q.Set("from", from)
+	}
 	if rslug != "" {
 		q.Set("repo", rslug)
 	}
@@ -573,6 +595,7 @@ func mustFlag(cmd *cobra.Command, name string) string {
 func registerKGExtendedCommands() {
 	KgCmd.AddCommand(kgSearchCmd)
 	KgCmd.AddCommand(kgSymbolsCmd)
+	KgCmd.AddCommand(kgUnreferencedCmd)
 	KgCmd.AddCommand(kgFilesCmd)
 	KgCmd.AddCommand(kgWalkCmd)
 	KgCmd.AddCommand(kgFulltextCmd)
@@ -587,7 +610,6 @@ func registerKGExtendedCommands() {
 	kgSearchCmd.Flags().String("language", "", "Language filter")
 
 	kgSymbolsCmd.Flags().String("q", "", "Substring query")
-	_ = kgSymbolsCmd.MarkFlagRequired("q")
 	kgSymbolsCmd.Flags().String("kind", "", "Symbol kind filter")
 	kgSymbolsCmd.Flags().String("path-prefix", "", "Path prefix filter")
 
@@ -595,9 +617,14 @@ func registerKGExtendedCommands() {
 	kgFilesCmd.Flags().String("language", "", "Language filter")
 
 	kgWalkCmd.Flags().String("seed-id", "", "Seed symbol UUID")
-	_ = kgWalkCmd.MarkFlagRequired("seed-id")
+	kgWalkCmd.Flags().String("from", "", "Seed file path")
 	kgWalkCmd.Flags().Int("depth", 0, "Walk depth cap (server-enforced max)")
-	kgWalkCmd.Flags().String("direction", "", "Graph direction (server-defined)")
+	kgWalkCmd.Flags().String("direction", "", "callers or imports (default imports)")
+	kgUnreferencedCmd.Flags().String("path-prefix", "", "Path prefix filter")
+	kgUnreferencedCmd.Flags().Bool("exported", false, "Only names exported by their package")
+	kgUnreferencedCmd.Flags().Int("limit", 200, "Maximum rows (1-500)")
+	addRepoFlag(kgUnreferencedCmd)
+	addJSONFlag(kgUnreferencedCmd)
 
 	kgFulltextCmd.Flags().String("q", "", "Fulltext query")
 	_ = kgFulltextCmd.MarkFlagRequired("q")
@@ -609,4 +636,57 @@ func registerKGExtendedCommands() {
 	kgDiffCmd.Flags().String("to-ref", "", "To revision/ref")
 
 	addRepoFlag(kgSymbolsCmd, kgFilesCmd, kgWalkCmd, kgFulltextCmd, kgDiffCmd)
+}
+
+func runKgUnreferenced(cmd *cobra.Command, args []string) error {
+	cmd.SilenceUsage = true
+	pos := ""
+	if len(args) > 0 {
+		pos = args[0]
+	}
+	ns, rslug, err := resolveKgNamespace(cmd, pos)
+	if err != nil {
+		return err
+	}
+	q := url.Values{}
+	q.Set("repo", rslug)
+	if s := strings.TrimSpace(mustFlag(cmd, "path-prefix")); s != "" {
+		q.Set("path_prefix", s)
+	}
+	if exported, _ := cmd.Flags().GetBool("exported"); exported {
+		q.Set("exported", "1")
+	}
+	if limit, _ := cmd.Flags().GetInt("limit"); limit > 0 {
+		q.Set("limit", strconv.Itoa(limit))
+	}
+	c, err := newAPIClient(cmd)
+	if err != nil {
+		return err
+	}
+	var resp struct {
+		Note  string `json:"note"`
+		Total int    `json:"total_count"`
+		Items []struct {
+			Name       string `json:"name"`
+			Qualifier  string `json:"qualifier"`
+			Path       string `json:"path"`
+			Line       int    `json:"line"`
+			Certainty  string `json:"certainty"`
+			Tests      int    `json:"test_callers"`
+			Unresolved int    `json:"unresolved_name_matches"`
+		} `json:"items"`
+	}
+	if err := c.Get(cmd.Context(), "/api/namespaces/"+url.PathEscape(ns)+"/kg/unreferenced?"+q.Encode(), &resp); err != nil {
+		return upgradeUnauthorized(err)
+	}
+	if jsonFlag(cmd) {
+		return emitJSON(cmd, resp)
+	}
+	out := cmd.OutOrStdout()
+	_, _ = fmt.Fprintln(out, resp.Note)
+	_, _ = fmt.Fprintf(out, "%d candidates, showing %d:\n", resp.Total, len(resp.Items))
+	for _, it := range resp.Items {
+		_, _ = fmt.Fprintf(out, "  %s %s  %s test_callers=%d unresolved=%d\n", it.Path, qualifiedName(it.Qualifier, it.Name), it.Certainty, it.Tests, it.Unresolved)
+	}
+	return nil
 }

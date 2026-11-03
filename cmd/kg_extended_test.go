@@ -88,16 +88,16 @@ func TestKgWritePagesTable(t *testing.T) {
 			name: "symbols",
 			payload: map[string]any{
 				"symbols": []any{map[string]any{
-					"symbol_name":    "Run",
-					"symbol_kind":    "function",
-					"file_path":      "cmd/main.go",
-					"line_start":     12,
-					"signature_text": "func Run()",
+					"symbol_name": "Run",
+					"symbol_kind": "function",
+					"file_path":   "cmd/main.go",
+					"line_start":  12,
+					"id":          "abc-id",
 				}},
 			},
 			keys:   []string{"symbols"},
-			header: []string{"NAME", "KIND", "PATH", "LINE", "SIGNATURE"},
-			values: []string{"Run", "function", "cmd/main.go", "12", "func Run()"},
+			header: []string{"NAME", "KIND", "PATH", "LINE", "ID"},
+			values: []string{"Run", "function", "cmd/main.go", "12", "abc-id"},
 		},
 	}
 
@@ -210,12 +210,12 @@ func TestKgExtendedRequiredFlagsHermetic(t *testing.T) {
 		{
 			name: "symbols query",
 			args: []string{"symbols", "org/r1"},
-			want: "q",
+			want: "--q or --path-prefix",
 		},
 		{
 			name: "walk seed",
 			args: []string{"walk", "org/r1"},
-			want: "seed-id",
+			want: "--seed-id or --from",
 		},
 	}
 

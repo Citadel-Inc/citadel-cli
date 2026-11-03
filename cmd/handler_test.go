@@ -1052,8 +1052,8 @@ func TestKgImpact_Ambiguous(t *testing.T) {
 		},
 	}))
 	err := rootFor(cmd.KgCmd, "impact", "myorg", "foo").Execute()
-	if err == nil || !strings.Contains(err.Error(), "ambiguous") {
-		t.Fatalf("want ambiguous error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "a.go:foo") || !strings.Contains(err.Error(), "b.go:foo") {
+		t.Fatalf("want candidates that can be passed back, got %v", err)
 	}
 }
 
