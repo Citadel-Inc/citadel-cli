@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Citadel-Inc/citadel-cli/cmd"
 )
@@ -394,6 +395,29 @@ func TestLabelClone_Happy(t *testing.T) {
 	}
 	if calls != 1 {
 		t.Fatalf("want 1 POST call, got %d", calls)
+	}
+}
+
+func TestLabelClone_WaitsOutRateLimit(t *testing.T) {
+	defer cmd.SetLabelCreateWait(time.Millisecond)()
+	posts := 0
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			writeJSON(t, w, 200, labelsPayload(labelJSON("bug", "Bug", "#d73a4a", false)))
+			return
+		}
+		posts++
+		if posts == 1 {
+			writeJSON(t, w, http.StatusTooManyRequests, map[string]any{"error": "rate_limited"})
+			return
+		}
+		writeJSON(t, w, http.StatusCreated, labelJSON("bug", "Bug", "#d73a4a", false))
+	})
+	if err := rootFor(cmd.LabelCmd, "clone", "--from", "acme/src", "--to", "acme/dst").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if posts != 2 {
+		t.Fatalf("want a retry after the 429, got %d POSTs", posts)
 	}
 }
 

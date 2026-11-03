@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -379,6 +381,31 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// labelCreateWait is how long to pause after a 429 that names no Retry-After;
+// the server allows ten label creates a minute per user.
+var labelCreateWait = 7 * time.Second
+
+// postLabelWithBackoff retries a rate-limited label create: a standard label
+// set is larger than one minute's allowance, so a clone must wait it out.
+func postLabelWithBackoff(cmd *cobra.Command, c *apiclient.Client, dst string, payload map[string]any, out *issueLabel) error {
+	for attempt := 0; ; attempt++ {
+		err := c.Post(cmd.Context(), labelBasePath(dst), payload, out)
+		he, ok := errors.AsType[*apiclient.HTTPError](err)
+		if !ok || he.StatusCode != http.StatusTooManyRequests || attempt == 5 {
+			return err
+		}
+		wait := labelCreateWait
+		if he.RetryAfter > 0 {
+			wait = time.Duration(he.RetryAfter) * time.Second
+		}
+		select {
+		case <-time.After(wait):
+		case <-cmd.Context().Done():
+			return cmd.Context().Err()
+		}
+	}
+}
+
 func runLabelClone(cmd *cobra.Command, _ []string) error {
 	src, _ := cmd.Flags().GetString("from")
 	dst, _ := cmd.Flags().GetString("to")
@@ -420,7 +447,8 @@ func runLabelClone(cmd *cobra.Command, _ []string) error {
 			"description":  l.Description,
 		}
 		var out issueLabel
-		if err := c.Post(cmd.Context(), labelBasePath(dst), payload, &out); err != nil {
+		err := postLabelWithBackoff(cmd, c, dst, payload, &out)
+		if err != nil {
 			if apiclient.IsStatus(err, http.StatusConflict) {
 				skip++
 				continue
