@@ -46,7 +46,7 @@ func (e *HTTPError) Error() string {
 
 // TokenIgnoredHeader names why the server answered an optional-auth route as if
 // no token had been sent: "confined", or the scope the route needs, or "refused".
-const TokenIgnoredHeader = "X-Citadel-Token-Ignored"
+const TokenIgnoredHeader = "X-Citadel-Token-Ignored" //nolint:gosec // a header name, not a credential
 
 // TokenIgnoredError is an answer that only describes an anonymous caller, so it
 // would mislead if shown as the answer for this token.
