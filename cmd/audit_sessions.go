@@ -82,7 +82,7 @@ func runAuditSessionsList(cmd *cobra.Command, _ []string) error {
 	}
 	actorType, _ := cmd.Flags().GetString("actor-type")
 
-	c, err := newAPIClient(cmd)
+	c, err := newHumanAPIClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func runAuditSessionsShow(cmd *cobra.Command, args []string) error {
 	if err := validateGetOutput(output); err != nil {
 		return err
 	}
-	c, err := newAPIClient(cmd)
+	c, err := newHumanAPIClient(cmd)
 	if err != nil {
 		return err
 	}

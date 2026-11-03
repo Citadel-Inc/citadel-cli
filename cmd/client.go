@@ -40,6 +40,33 @@ func newAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
 	})
 }
 
+// newHumanAPIClient is for routes closed to agent tokens, such as the audit log:
+// the stored login's agent token is swapped for a JWT acting as the developer.
+// An explicit CITADEL_ACCESS_TOKEN, as in a hook session, is used as given so an
+// agent never gains its owner's access.
+func newHumanAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
+	cfg, err := clicfg.Load()
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
+	}
+	if os.Getenv("CITADEL_ACCESS_TOKEN") != "" || cfg.RefreshToken == "" {
+		return newAPIClient(cmd)
+	}
+	serverURL := cfg.ResolveServerURL(serverFlag(cmd))
+	token, err := humanAccessToken(contextForCommand(cmd), cfg, serverURL)
+	if err != nil {
+		return nil, err
+	}
+	cfg.ServerURL = serverURL
+	cfg.AccessToken = token
+	return apiclient.New(cfg, apiclient.Options{
+		Server:    serverFlag(cmd),
+		Verbose:   verboseFlag(cmd),
+		DebugHTTP: debugHTTPFlag(cmd),
+		UserAgent: "citadel-cli/" + Version,
+	})
+}
+
 func publicAPIBaseURL(cmd *cobra.Command) (string, error) {
 	cfg, err := clicfg.Load()
 	if err != nil {

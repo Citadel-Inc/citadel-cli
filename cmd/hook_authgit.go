@@ -39,6 +39,28 @@ func authGitKeyDir() (string, error) {
 	return filepath.Join(base, "citadel", "git"), nil
 }
 
+// humanAccessToken trades the refresh token kept by `auth login` for a JWT that
+// acts as the developer, for routes a stored agent token is refused on.
+func humanAccessToken(ctx context.Context, cfg clicfg.Config, serverURL string) (string, error) {
+	refresh := strings.TrimSpace(cfg.RefreshToken)
+	if refresh == "" {
+		return "", errors.New("no stored login to act as you; run `citadel-cli auth login` first")
+	}
+	tok, err := exchangeRefreshToken(ctx, serverURL, refresh)
+	if err == nil && strings.TrimSpace(tok.AccessToken) == "" {
+		err = errors.New("empty access token")
+	}
+	if err != nil {
+		return "", fmt.Errorf("refresh login (run `citadel-cli auth login` again): %w", err)
+	}
+	if next := strings.TrimSpace(tok.RefreshToken); next != "" {
+		if err := clicfg.Update(func(c *clicfg.Config) error { c.RefreshToken = next; return nil }); err != nil {
+			return "", fmt.Errorf("save refreshed login: %w", err)
+		}
+	}
+	return tok.AccessToken, nil
+}
+
 func runAuthGit(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithTimeout(contextForCommand(cmd), 30*time.Second)
 	defer cancel()
@@ -46,22 +68,10 @@ func runAuthGit(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-	refresh := strings.TrimSpace(cfg.RefreshToken)
-	if refresh == "" {
-		return errors.New("no stored login to act as you; run `citadel-cli auth login` first")
-	}
 	serverURL := cfg.ResolveServerURL(serverFlag(cmd))
-	tok, err := exchangeRefreshToken(ctx, serverURL, refresh)
-	if err == nil && strings.TrimSpace(tok.AccessToken) == "" {
-		err = errors.New("empty access token")
-	}
+	accessToken, err := humanAccessToken(ctx, cfg, serverURL)
 	if err != nil {
-		return fmt.Errorf("refresh login (run `citadel-cli auth login` again): %w", err)
-	}
-	if next := strings.TrimSpace(tok.RefreshToken); next != "" {
-		if err := clicfg.Update(func(c *clicfg.Config) error { c.RefreshToken = next; return nil }); err != nil {
-			return fmt.Errorf("save refreshed login: %w", err)
-		}
+		return err
 	}
 
 	dir, err := authGitKeyDir()
@@ -74,7 +84,7 @@ func runAuthGit(cmd *cobra.Command, _ []string) error {
 	}
 	work := cfg
 	work.ServerURL = serverURL
-	work.AccessToken = tok.AccessToken
+	work.AccessToken = accessToken
 	c, err := apiclient.New(work, apiclient.Options{Server: serverFlag(cmd), Verbose: verboseFlag(cmd), DebugHTTP: debugHTTPFlag(cmd), UserAgent: "citadel-cli/" + Version})
 	if err != nil {
 		return err

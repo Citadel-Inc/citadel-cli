@@ -101,7 +101,7 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 
-	c, err := newAPIClient(cmd)
+	c, err := newHumanAPIClient(cmd)
 	if err != nil {
 		return err
 	}
@@ -229,7 +229,7 @@ func runAuditShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	c, err := newAPIClient(cmd)
+	c, err := newHumanAPIClient(cmd)
 	if err != nil {
 		return err
 	}
