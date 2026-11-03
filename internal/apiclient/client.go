@@ -212,16 +212,21 @@ var ProbeLoopback = true
 
 var loopbackProbe sync.Map
 
+// loopbackServesAPI is false only when the server answers /api/healthz with
+// 404, i.e. it has no /api mount. A refused or failed probe (a stack still
+// settling) keeps the documented /api layout instead of sending every request
+// to the web origin's HTML.
 func loopbackServesAPI(base string) bool {
 	if v, ok := loopbackProbe.Load(base); ok {
 		return v.(bool)
 	}
-	ok := false
 	hc := &http.Client{Timeout: 2 * time.Second}
-	if resp, err := hc.Get(base + "/api/healthz"); err == nil {
-		ok = resp.StatusCode == http.StatusOK
-		_ = resp.Body.Close()
+	resp, err := hc.Get(base + "/api/healthz")
+	if err != nil {
+		return true
 	}
+	_ = resp.Body.Close()
+	ok := resp.StatusCode != http.StatusNotFound
 	loopbackProbe.Store(base, ok)
 	return ok
 }

@@ -581,6 +581,11 @@ func TestResolveRESTServerURL_LoopbackFrontDoor(t *testing.T) {
 	if got, want := ResolveRESTServerURL(srv.URL), srv.URL+"/api"; got != want {
 		t.Errorf("loopback front door = %q, want %q", got, want)
 	}
+	bare := httptest.NewServer(http.NotFoundHandler())
+	defer bare.Close()
+	if got := ResolveRESTServerURL(bare.URL); got != bare.URL {
+		t.Errorf("loopback without /api = %q, want %q", got, bare.URL)
+	}
 }
 
 func TestClientEndpoint_NoDoubleAPI(t *testing.T) {
