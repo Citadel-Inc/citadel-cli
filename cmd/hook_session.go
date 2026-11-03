@@ -571,7 +571,7 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 		}
 	}
 	emitSessionContext(cmd, fmt.Sprintf(
-		"This session acts as Citadel agent %q: git over SSH or HTTPS and citadel-cli calls use its short-lived credentials. Code graph: `citadel-cli kg impact <Name|Recv.Name|path/file.go:Name> [--depth 1-3] [--no-tests]` lists callers across files and languages, `kg symbols --q <text>` finds symbols, `kg unreferenced` lists functions with no production caller. Go is type-checked; labelled edges such as [dispatch] are possible calls.",
+		"This session acts as Citadel agent %q: git over SSH or HTTPS and citadel-cli calls use its short-lived credentials. Code graph: `citadel-cli kg impact <Name|Recv.Name|path/file.go:Name> [--depth 1-3] [--no-tests]` lists callers across files and languages, `kg symbols --q <text>` finds symbols, `kg unreferenced` lists functions with no production caller. Go is type-checked; labelled edges such as [dispatch] are possible calls. Prefer it to grep for caller, impact and dead-code questions.",
 		sess.AgentName), env)
 	return nil
 }
