@@ -17,12 +17,12 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 	"github.com/Citadel-Inc/citadel-cli/internal/httpx"
+	"github.com/Rethunk-Tech/go-httpkit"
 )
 
 // defaultTimeout is the per-request timeout applied to the api client's
@@ -58,24 +58,23 @@ func IsStatus(err error, code int) bool {
 	return errors.As(err, &he) && he.StatusCode == code
 }
 
-// ParseRetryAfterSeconds interprets a Retry-After header value: non-negative
-// integer seconds, or HTTP-date; returns 0 when absent or unparseable.
+// ParseRetryAfterSeconds interprets a Retry-After header value: positive
+// integer seconds, or HTTP-date; returns 0 when absent, unparseable or past.
 func ParseRetryAfterSeconds(raw string) int {
-	v := strings.TrimSpace(raw)
-	if v == "" {
+	at, ok := httpkit.RetryAfter(strings.TrimSpace(raw))
+	if !ok {
 		return 0
 	}
-	if secs, err := strconv.Atoi(v); err == nil && secs >= 0 {
-		return secs
-	}
-	if t, err := http.ParseTime(v); err == nil {
-		d := time.Until(t)
-		if d < 0 {
-			return 0
-		}
-		return int(math.Round(d.Seconds()))
-	}
-	return 0
+	return max(0, int(math.Round(time.Until(at).Seconds())))
+}
+
+// maxErrorBody bounds an error answer, which is only ever shown to the user.
+const maxErrorBody = 1 << 20
+
+// ReadErrorBody reads at most maxErrorBody bytes of a failed response's body.
+func ReadErrorBody(r io.Reader) []byte {
+	b, _ := io.ReadAll(io.LimitReader(r, maxErrorBody))
+	return b
 }
 
 // Client is a thin Citadel-API client: server URL + bearer token + http.Client.
@@ -228,7 +227,7 @@ func (c *Client) GetEventStream(ctx context.Context, path, lastEventID string) (
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return resp, nil
 		}
-		b, _ := io.ReadAll(resp.Body)
+		b := ReadErrorBody(resp.Body)
 		_ = resp.Body.Close()
 		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 && c.retryOn401 != nil {
 			newTok, rerr := c.retryOn401(ctx)
@@ -286,7 +285,7 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 			}
 			return nil
 		}
-		b, _ := io.ReadAll(resp.Body)
+		b := ReadErrorBody(resp.Body)
 		_ = resp.Body.Close()
 		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 && c.retryOn401 != nil {
 			newTok, rerr := c.retryOn401(ctx)

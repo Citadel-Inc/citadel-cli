@@ -552,7 +552,7 @@ func requestDeviceAuthorization(ctx context.Context, citadelBaseURL string) (dev
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body := apiclient.ReadErrorBody(resp.Body)
 		return deviceAuthorizationResponse{}, fmt.Errorf("device authorization failed: %s", strings.TrimSpace(string(body)))
 	}
 	var out deviceAuthorizationResponse
@@ -645,7 +645,7 @@ func pollDeviceTokenOnce(ctx context.Context, citadelBaseURL, deviceCode string)
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body := apiclient.ReadErrorBody(resp.Body)
 		var oauthErr struct {
 			Error       string `json:"error"`
 			Description string `json:"error_description"`
@@ -690,7 +690,7 @@ func exchangePKCECode(ctx context.Context, citadelBaseURL, redirectURI, code, ve
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body := apiclient.ReadErrorBody(resp.Body)
 		return pkceTokenResponse{}, oauthTokenExchangeError("token exchange", resp.StatusCode, body)
 	}
 
@@ -720,7 +720,7 @@ func exchangeRefreshToken(ctx context.Context, citadelBaseURL, refreshToken stri
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body := apiclient.ReadErrorBody(resp.Body)
 		return pkceTokenResponse{}, oauthTokenExchangeError("refresh token exchange", resp.StatusCode, body)
 	}
 

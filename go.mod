@@ -3,6 +3,7 @@ module github.com/Citadel-Inc/citadel-cli
 go 1.27.3
 
 require (
+	github.com/Rethunk-Tech/go-httpkit v0.1.0
 	github.com/Rethunk-Tech/go-safefs v0.6.0
 	github.com/aws/aws-sdk-go-v2 v1.47.5
 	github.com/aws/aws-sdk-go-v2/config v1.33.13

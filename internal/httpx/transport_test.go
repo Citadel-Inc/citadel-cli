@@ -78,6 +78,18 @@ func TestRetryAfterDelay_ParseSeconds(t *testing.T) {
 	if got := retryAfterDelay(h); got != 3*time.Second {
 		t.Fatalf("got %v", got)
 	}
+	h.Set("Retry-After", time.Now().Add(10*time.Second).UTC().Format(http.TimeFormat))
+	if got := retryAfterDelay(h); got <= 0 || got > 10*time.Second {
+		t.Fatalf("date: %v", got)
+	}
+	h.Set("Retry-After", "86400")
+	if got := retryAfterDelay(h); got != maxRetryAfterDelay {
+		t.Fatalf("over cap: %v", got)
+	}
+	h.Set("Retry-After", "9000000000")
+	if got := retryAfterDelay(h); got != 0 {
+		t.Fatalf("overflow: %v", got)
+	}
 	h.Set("Retry-After", "not-a-number")
 	if got := retryAfterDelay(h); got != 0 {
 		t.Fatalf("malformed: %v", got)

@@ -12,9 +12,10 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Rethunk-Tech/go-httpkit"
 )
 
 // Options are the verbose / debug toggles passed in from the CLI's persistent
@@ -66,18 +67,18 @@ func idempotentMethod(m string) bool {
 	return false
 }
 
-// retryAfterDelay parses a Retry-After header (seconds-only form). Returns
-// zero if absent or malformed; caller falls back to expo backoff.
+// maxRetryAfterDelay bounds how long one command sleeps on a server's say-so:
+// a person or a hook with a short timeout is waiting on the answer.
+const maxRetryAfterDelay = 30 * time.Second
+
+// retryAfterDelay parses a Retry-After header. Returns zero if absent or
+// malformed; caller falls back to expo backoff.
 func retryAfterDelay(h http.Header) time.Duration {
-	v := h.Get("Retry-After")
-	if v == "" {
+	at, ok := httpkit.RetryAfter(h.Get("Retry-After"))
+	if !ok {
 		return 0
 	}
-	secs, err := strconv.Atoi(v)
-	if err != nil || secs < 0 {
-		return 0
-	}
-	return time.Duration(secs) * time.Second
+	return min(max(0, time.Until(at).Round(time.Second)), maxRetryAfterDelay)
 }
 
 // Backoff returns the expo-jittered delay for reconnect attempt n (0-indexed).

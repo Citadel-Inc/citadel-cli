@@ -53,7 +53,7 @@ func (c *Client) GetStream(ctx context.Context, path string) (*http.Response, er
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return resp, nil
 		}
-		b, _ := io.ReadAll(resp.Body)
+		b := ReadErrorBody(resp.Body)
 		_ = resp.Body.Close()
 		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 && c.retryOn401 != nil {
 			newTok, retryErr := c.retryOn401(ctx)
@@ -107,7 +107,7 @@ func (c *Client) PostMultipart(ctx context.Context, path, field, filename string
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
+		b := ReadErrorBody(resp.Body)
 		return &HTTPError{
 			StatusCode: resp.StatusCode,
 			Body:       strings.TrimSpace(string(b)),

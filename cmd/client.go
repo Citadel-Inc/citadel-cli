@@ -106,7 +106,7 @@ func doPublicJSON(ctx context.Context, cmd *cobra.Command, method, path string, 
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		raw, _ := io.ReadAll(resp.Body)
+		raw := apiclient.ReadErrorBody(resp.Body)
 		return &apiclient.HTTPError{
 			StatusCode: resp.StatusCode,
 			Body:       strings.TrimSpace(string(raw)),

@@ -155,7 +155,7 @@ func probeMigrations(ctx context.Context, client *http.Client, supabaseURL, admi
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode == http.StatusNotFound {
 		// Table does not exist yet — migrations have not been run.
 		return ProbeResult{name, HealthAmber, "schema_migrations table not found — run `citadel-cli self-host migrate`"}
