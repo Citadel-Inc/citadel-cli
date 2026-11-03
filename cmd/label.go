@@ -382,8 +382,9 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 }
 
 // labelCreateWait is how long to pause after a 429 that names no Retry-After;
-// the server allows ten label creates a minute per user.
-var labelCreateWait = 7 * time.Second
+// the server allows ten label creates per user and resets the whole allowance
+// at the end of the minute.
+var labelCreateWait = 20 * time.Second
 
 // postLabelWithBackoff retries a rate-limited label create: a standard label
 // set is larger than one minute's allowance, so a clone must wait it out.
