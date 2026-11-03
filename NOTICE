@@ -22,7 +22,14 @@ see each module's repository for the full license text.
 | Module | SPDX / known license | Copyright / notes |
 |--------|----------------------|-------------------|
 | github.com/spf13/cobra | Apache-2.0 | Copyright © Steve Francia |
-| github.com/BurntSushi/toml | MIT | Copyright © BurntSushi LLC |
+| github.com/spf13/pflag | BSD-3-Clause | Copyright © Alex Ogier; The Go Authors |
+| github.com/pelletier/go-toml/v2 | MIT | Copyright © Thomas Pelletier and contributors |
+| github.com/aws/aws-sdk-go-v2/* | Apache-2.0 | Copyright © Amazon.com, Inc. |
+| github.com/mxschmitt/playwright-go | MIT | Copyright © playwright-go authors |
+| go.yaml.in/yaml/v3 | MIT AND Apache-2.0 | Copyright © The go-yaml authors |
+| golang.org/x/* (crypto, sys, term) | BSD-3-Clause | Copyright © The Go Authors |
+| github.com/Rethunk-Tech/go-httpkit | MIT | Copyright © Rethunk.Tech, LLC |
+| github.com/Rethunk-Tech/go-safefs | MIT | Copyright © Rethunk.Tech, LLC |
 | github.com/golang-jwt/jwt/v5 | MIT | Copyright © golang-jwt maintainers |
 | github.com/google/uuid | BSD-3-Clause | Copyright © Google, Inc. |
 
