@@ -296,7 +296,7 @@ func TestClient_ServerAndToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := c.Server(); got != "https://x.test" {
+	if got := c.Server(); got != "https://x.test/api" {
 		t.Fatalf("Server() = %q", got)
 	}
 	if got := c.Token(); got != "tok" {
@@ -555,7 +555,11 @@ func TestResolveRESTServerURL_OneValueForAllHosts(t *testing.T) {
 		"https://src.land":          "https://src.land/api",
 		"https://src.land/api":      "https://src.land/api",
 		"https://self.example/api":  "https://self.example/api",
+		"https://self.example":      "https://self.example/api",
+		"http://10.0.0.5:8000/":     "http://10.0.0.5:8000/api",
 		"http://127.0.0.1:8080":     "http://127.0.0.1:8080",
+		"http://localhost:8080":     "http://localhost:8080",
+		"http://[::1]:8080":         "http://[::1]:8080",
 	} {
 		if got := ResolveRESTServerURL(in); got != want {
 			t.Errorf("ResolveRESTServerURL(%q) = %q, want %q", in, got, want)

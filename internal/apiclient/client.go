@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -129,8 +130,8 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 
 // ResolveRESTServerURL maps the configured server URL to the base REST paths
 // are appended to. The src.land API lives at the root of api.src.land (the
-// MCP host is coerced there), while the apex and a self-hosted same-origin
-// server serve it under /api. Any other host is used as written.
+// MCP host is coerced there), while the apex and every self-hosted server serve
+// it under /api on the web origin. Loopback hosts are used as written.
 func ResolveRESTServerURL(server string) string {
 	base := strings.TrimRight(strings.TrimSpace(server), "/")
 	u, err := url.Parse(base)
@@ -141,12 +142,16 @@ func ResolveRESTServerURL(server string) string {
 	case "mcp.src.land", "api.src.land":
 		u.Host = "api.src.land"
 		u.Path = strings.TrimSuffix(u.Path, "/api")
-	case "src.land", "www.src.land":
+	default:
+		// Loopback is a dev server running the bare backend. Every documented
+		// self-host layout (single-binary, Helm, air-gap) fronts the API with
+		// Caddy under /api on the web origin.
+		if isLoopbackHost(u.Hostname()) {
+			return base
+		}
 		if !strings.HasSuffix(u.Path, "/api") {
 			u.Path += "/api"
 		}
-	default:
-		return base
 	}
 	return strings.TrimRight(u.String(), "/")
 }
@@ -158,6 +163,14 @@ func (c *Client) endpoint(path string) string {
 		path = strings.TrimPrefix(path, "/api")
 	}
 	return c.server + path
+}
+
+func isLoopbackHost(h string) bool {
+	if strings.EqualFold(h, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }
 
 // Server returns the resolved base URL with no trailing slash.
