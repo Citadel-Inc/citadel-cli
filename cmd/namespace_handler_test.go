@@ -95,6 +95,18 @@ func TestNamespaceMembers_TrimmedSlug_HTTP(t *testing.T) {
 	}
 }
 
+func TestNamespaceMembers_UserNamespace_NotFound(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /orgs/alice/members": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 404, map[string]any{"error": "not_found"})
+		},
+	}))
+	err := rootFor(cmd.NamespaceCmd, "members", "alice").Execute()
+	if err == nil || !strings.Contains(err.Error(), "org 'alice' not found") {
+		t.Fatalf("err = %v, want org not found", err)
+	}
+}
+
 func TestNamespaceTransferListPending_BadOutput_Hermetic(t *testing.T) {
 	assertNamespaceBadOutput(t, "transfer", "list-pending")
 }

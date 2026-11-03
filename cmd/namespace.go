@@ -430,6 +430,9 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 		}
 		path := "/orgs/" + url.PathEscape(slug) + "/members?" + q.Encode()
 		if err := c.Get(cmd.Context(), path, &payload); err != nil {
+			if apiclient.IsStatus(err, http.StatusNotFound) {
+				return fmt.Errorf("org '%s' not found (members exist only on org namespaces)", slug)
+			}
 			return err
 		}
 		members := payload.Members
