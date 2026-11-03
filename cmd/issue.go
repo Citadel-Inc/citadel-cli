@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -292,6 +293,27 @@ func issueListRows(rows []issueRow) []issueListRow {
 		})
 	}
 	return out
+}
+
+// assigneeChanges turns --set into what the server takes: who to add and who to remove.
+func assigneeChanges(current []issueAssignee, want []string) (add, remove []string) {
+	add, remove = []string{}, []string{}
+	held := make(map[string]bool, len(current)*2)
+	for _, x := range current {
+		held[x.UserID] = true
+		held[x.Slug] = true
+	}
+	for _, w := range want {
+		if !held[w] {
+			add = append(add, w)
+		}
+	}
+	for _, x := range current {
+		if !slices.Contains(want, x.UserID) && !slices.Contains(want, x.Slug) {
+			remove = append(remove, x.UserID)
+		}
+	}
+	return add, remove
 }
 
 func assigneeSummary(xs []issueAssignee) string {
@@ -736,8 +758,18 @@ func runIssueAssign(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := c.Put(cmd.Context(), issueBasePath(nsPath)+"/"+strconv.FormatInt(num, 10)+"/assignees", map[string]any{
-		"assignees": set,
+	issuePath := issueBasePath(nsPath) + "/" + strconv.FormatInt(num, 10)
+	var current issueDetailPayload
+	if err := c.Get(cmd.Context(), issuePath, &current); err != nil {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("issue %s#%d not found", nsPath, num)
+		}
+		return err
+	}
+	add, remove := assigneeChanges(current.Issue.Assignees, set)
+	if err := c.Put(cmd.Context(), issuePath+"/assignees", map[string]any{
+		"add":    add,
+		"remove": remove,
 	}, nil); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {
 			return fmt.Errorf("issue %s#%d not found", nsPath, num)
@@ -813,10 +845,8 @@ func runIssueCommentList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	var payload struct {
-		Comments []issueComment `json:"comments"`
-	}
-	if err := c.Get(cmd.Context(), issueBasePath(nsPath)+"/"+strconv.FormatInt(num, 10)+"/comments", &payload); err != nil {
+	var payload issueDetailPayload
+	if err := c.Get(cmd.Context(), issueBasePath(nsPath)+"/"+strconv.FormatInt(num, 10), &payload); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {
 			return fmt.Errorf("issue %s#%d not found", nsPath, num)
 		}

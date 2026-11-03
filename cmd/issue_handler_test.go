@@ -418,6 +418,10 @@ func TestIssueEdit_MissingRepo_Hermetic(t *testing.T) {
 
 func TestIssueAssign_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7", "/namespaces/acme/demo/issues/7") {
+			writeJSON(t, w, 200, map[string]any{"issue": map[string]any{"assignees": []map[string]any{{"user_id": "bob-id", "slug": "bob"}}}})
+			return
+		}
 		if r.Method != http.MethodPut || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7/assignees", "/namespaces/acme/demo/issues/7/assignees") {
 			http.NotFound(w, r)
 			return
@@ -426,9 +430,10 @@ func TestIssueAssign_Happy(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatal(err)
 		}
-		assignees, ok := body["assignees"].([]any)
-		if !ok || len(assignees) != 1 || assignees[0] != "alice" {
-			t.Fatalf("unexpected assignees: %#v", body)
+		add, _ := body["add"].([]any)
+		remove, _ := body["remove"].([]any)
+		if len(add) != 1 || add[0] != "alice" || len(remove) != 1 || remove[0] != "bob-id" {
+			t.Fatalf("unexpected assignee change: %#v", body)
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -439,6 +444,10 @@ func TestIssueAssign_Happy(t *testing.T) {
 
 func TestIssueAssign_Clear(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7", "/namespaces/acme/demo/issues/7") {
+			writeJSON(t, w, 200, map[string]any{"issue": map[string]any{"assignees": []map[string]any{{"user_id": "bob-id", "slug": "bob"}}}})
+			return
+		}
 		if r.Method != http.MethodPut || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7/assignees", "/namespaces/acme/demo/issues/7/assignees") {
 			http.NotFound(w, r)
 			return
@@ -447,8 +456,10 @@ func TestIssueAssign_Clear(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatal(err)
 		}
-		if assignees, ok := body["assignees"].([]any); !ok || len(assignees) != 0 {
-			t.Fatalf("expected empty assignees, got: %#v", body)
+		add, _ := body["add"].([]any)
+		remove, _ := body["remove"].([]any)
+		if len(add) != 0 || len(remove) != 1 || remove[0] != "bob-id" {
+			t.Fatalf("expected only bob removed, got: %#v", body)
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -498,7 +509,7 @@ func TestIssueAssign_MissingRepo_Hermetic(t *testing.T) {
 
 func TestIssueCommentList_Happy(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7/comments", "/namespaces/acme/demo/issues/7/comments") {
+		if r.Method != http.MethodGet || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7", "/namespaces/acme/demo/issues/7") {
 			http.NotFound(w, r)
 			return
 		}
@@ -523,7 +534,7 @@ func TestIssueCommentList_Happy(t *testing.T) {
 
 func TestIssueCommentList_Empty(t *testing.T) {
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7/comments", "/namespaces/acme/demo/issues/7/comments") {
+		if r.Method != http.MethodGet || !issuePathMatches(r, "/namespaces/acme%2Fdemo/issues/7", "/namespaces/acme/demo/issues/7") {
 			http.NotFound(w, r)
 			return
 		}
