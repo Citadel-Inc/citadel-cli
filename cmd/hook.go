@@ -194,11 +194,27 @@ func graphRule(client, scope, settingsPath string) (path, rule string, err error
 	if scope == "project" {
 		return filepath.Join(".cursor", "cli.json"), "Shell(citadel-cli:kg*)", nil
 	}
-	home, err := os.UserHomeDir()
+	dir, err := cursorCLIConfigDir()
 	if err != nil {
 		return "", "", err
 	}
-	return filepath.Join(home, ".cursor", "cli-config.json"), "Shell(citadel-cli:kg*)", nil
+	return filepath.Join(dir, "cli-config.json"), "Shell(citadel-cli:kg*)", nil
+}
+
+// cursorCLIConfigDir is where Cursor reads cli-config.json. Its user hooks.json
+// stays in ~/.cursor whatever these variables say.
+func cursorCLIConfigDir() (string, error) {
+	if dir := os.Getenv("CURSOR_CONFIG_DIR"); strings.TrimSpace(dir) != "" {
+		return dir, nil
+	}
+	if dir := os.Getenv("XDG_CONFIG_HOME"); strings.TrimSpace(dir) != "" {
+		return filepath.Join(dir, "cursor"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".cursor"), nil
 }
 
 // mergeAllowRule adds rule to permissions.allow, or removes it, leaving every

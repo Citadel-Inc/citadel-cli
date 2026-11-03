@@ -622,10 +622,33 @@ func TestHookInstallNamesTheServer(t *testing.T) {
 	}
 }
 
+// Cursor reads cli-config.json from CURSOR_CONFIG_DIR, then XDG_CONFIG_HOME/cursor;
+// its user hooks.json stays in ~/.cursor.
+func TestHookInstallCursorRuleFollowsConfigDir_Hermetic(t *testing.T) {
+	home, xdg, dir := t.TempDir(), t.TempDir(), t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("CURSOR_CONFIG_DIR", "")
+	runHook(t, "", "install", "--client", "cursor")
+	if raw, err := readFile(filepath.Join(xdg, "cursor", "cli-config.json")); err != nil || !strings.Contains(string(raw), "citadel-cli:kg") {
+		t.Fatalf("XDG_CONFIG_HOME rule: %q (%v)", raw, err)
+	}
+	t.Setenv("CURSOR_CONFIG_DIR", dir)
+	runHook(t, "", "install", "--client", "cursor")
+	if raw, err := readFile(filepath.Join(dir, "cli-config.json")); err != nil || !strings.Contains(string(raw), "citadel-cli:kg") {
+		t.Fatalf("CURSOR_CONFIG_DIR rule: %q (%v)", raw, err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".cursor", "hooks.json")); err != nil {
+		t.Fatalf("user hooks.json: %v", err)
+	}
+}
+
 // Install allows graph queries and keeps other rules; uninstall removes only its own.
 func TestHookInstallAllowsGraphQueries_Hermetic(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("CURSOR_CONFIG_DIR", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
 	for _, tc := range []struct{ client, file, rule string }{
 		{"cursor", filepath.Join(home, ".cursor", "cli-config.json"), "Shell(citadel-cli:kg*)"},
 		{"claude-code", filepath.Join(home, ".claude", "settings.json"), "Bash(citadel-cli kg *)"},
