@@ -293,3 +293,18 @@ func newDoctorGitRepo(t *testing.T, origin string) string {
 	}
 	return dir
 }
+
+func TestCheckServer_APISuffixFallsBackToRootHealthz(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/healthz" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer srv.Close()
+	got := checkServer(context.Background(), srv.URL+"/api")
+	if got.status != statusPass || !strings.Contains(got.detail, srv.URL+" reachable") {
+		t.Fatalf("got %+v", got)
+	}
+}

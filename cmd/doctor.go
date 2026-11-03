@@ -107,11 +107,22 @@ func checkServer(ctx context.Context, base string) checkResult {
 	// Probe the REST host so a live MCP SPA cannot mask an API outage.
 	restBase := apiclient.ResolveRESTServerURL(base)
 	c := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(restBase, "/")+"/healthz", nil)
-	if err != nil {
-		return checkResult{name, statusFail, fmt.Sprintf("build request: %v", err)}
+	probe := func(root string) (*http.Response, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(root, "/")+"/healthz", nil)
+		if err != nil {
+			return nil, fmt.Errorf("build request: %w", err)
+		}
+		return c.Do(req)
 	}
-	resp, err := c.Do(req)
+	resp, err := probe(restBase)
+	if err == nil && resp.StatusCode == http.StatusNotFound {
+		// A bare backend serves /healthz at its root, not under /api.
+		_ = resp.Body.Close()
+		if origin := clicfg.StripAPISuffix(restBase); origin != restBase {
+			restBase = origin
+			resp, err = probe(origin)
+		}
+	}
 	if err != nil {
 		return checkResult{name, statusFail, fmt.Sprintf("%s unreachable: %v", restBase, err)}
 	}
