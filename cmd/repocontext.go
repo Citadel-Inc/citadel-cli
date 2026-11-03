@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
+
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 )
 
 const (
@@ -19,8 +22,9 @@ const (
 )
 
 var (
-	repoHTTPS = regexp.MustCompile(`^https?://(?:[^@]+@)?(?P<host>[^/:]+)(?::[0-9]+)?/(?P<ns>[^/]+)/(?P<slug>[^/.]+)(?:\.git)?/?$`)
-	repoSSH   = regexp.MustCompile(`^(?:git\+ssh://|ssh://)?(?:[^@]+@)?(?P<host>[^/:]+)(?::[0-9]+)?[:/](?P<ns>[^/]+)/(?P<slug>[^/.]+?)(?:\.git)?$`)
+	// ns may be "<org>/<project>": a project repo is org/project/repo.
+	repoHTTPS = regexp.MustCompile(`^https?://(?:[^@]+@)?(?P<host>[^/:]+)(?::[0-9]+)?/(?P<ns>[^/]+(?:/[^/]+)?)/(?P<slug>[^/.]+)(?:\.git)?/?$`)
+	repoSSH   = regexp.MustCompile(`^(?:git\+ssh://|ssh://)?(?:[^@]+@)?(?P<host>[^/:]+)(?::[0-9]+)?[:/](?P<ns>[^/]+(?:/[^/]+)?)/(?P<slug>[^/.]+?)(?:\.git)?$`)
 )
 
 func defaultCitadelGitHosts() []string {
@@ -36,6 +40,12 @@ func mergeCitadelHosts() map[string]struct{} {
 	out := make(map[string]struct{})
 	for _, h := range defaultCitadelGitHosts() {
 		out[strings.ToLower(strings.TrimSpace(h))] = struct{}{}
+	}
+	// A self-hosted server's own clone URLs are on its host.
+	if cfg, err := clicfg.Load(); err == nil {
+		if u, err := url.Parse(cfg.ResolveRawServerURL("")); err == nil && u.Hostname() != "" {
+			out[strings.ToLower(u.Hostname())] = struct{}{}
+		}
 	}
 	raw := strings.TrimSpace(os.Getenv(citadelGitHostsEnv))
 	if raw == "" {

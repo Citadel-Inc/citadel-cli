@@ -263,3 +263,21 @@ func TestResolveRepoNamespaceForCompletion_EnvRepo(t *testing.T) {
 		t.Fatalf("got %q", ns)
 	}
 }
+
+func TestParseOriginIntoRepo_ProjectRepoOverSSHPort(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "http://self.example:8000")
+	hosts := mergeCitadelHosts()
+	for _, raw := range []string{
+		"ssh://git@self.example:2222/org/proj/repo.git",
+		"https://self.example:8000/org/proj/repo.git",
+	} {
+		ns, slug, err := parseOriginIntoRepo(raw, hosts)
+		if err != nil {
+			t.Fatalf("%s: %v", raw, err)
+		}
+		if ns != "org/proj" || slug != "repo" {
+			t.Fatalf("%s: got %s/%s", raw, ns, slug)
+		}
+	}
+}
