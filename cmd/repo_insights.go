@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -93,7 +94,7 @@ func runRepoInsights(cmd *cobra.Command, args []string) error {
 
 	var resp insightsResponse
 	if err := client.Get(cmd.Context(),
-		fmt.Sprintf("/api/namespaces/%s/repos/%s/insights", ns, slug),
+		fmt.Sprintf("/api/namespaces/%s/repos/%s/insights", url.PathEscape(ns), url.PathEscape(slug)),
 		&resp,
 	); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {

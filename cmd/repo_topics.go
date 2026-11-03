@@ -94,7 +94,7 @@ func runRepoTopicList(cmd *cobra.Command, args []string) error {
 
 	var resp topicsResponse
 	if err := client.Get(cmd.Context(),
-		fmt.Sprintf("/api/namespaces/%s/repos/%s/topics", ns, slug),
+		fmt.Sprintf("/api/namespaces/%s/repos/%s/topics", url.PathEscape(ns), url.PathEscape(slug)),
 		&resp,
 	); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {
@@ -142,7 +142,7 @@ func runRepoTopicSet(cmd *cobra.Command, args []string) error {
 	body := map[string][]string{"topics": topics}
 	var resp topicsResponse
 	if err := client.Put(cmd.Context(),
-		fmt.Sprintf("/api/namespaces/%s/repos/%s/topics", ns, slug),
+		fmt.Sprintf("/api/namespaces/%s/repos/%s/topics", url.PathEscape(ns), url.PathEscape(slug)),
 		body, &resp,
 	); err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {

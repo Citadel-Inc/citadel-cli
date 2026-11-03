@@ -137,7 +137,7 @@ func runRepoBrowseTree(cmd *cobra.Command, args []string) error {
 	if path != "" {
 		q.Set("path", path)
 	}
-	apiPath := fmt.Sprintf("/api/namespaces/%s/repos/%s/tree", ns, slug)
+	apiPath := fmt.Sprintf("/api/namespaces/%s/repos/%s/tree", url.PathEscape(ns), url.PathEscape(slug))
 	if len(q) > 0 {
 		apiPath += "?" + q.Encode()
 	}
@@ -230,7 +230,7 @@ func runRepoBrowseBlob(cmd *cobra.Command, args []string) error {
 	if ref != "" {
 		q.Set("ref", ref)
 	}
-	apiPath := fmt.Sprintf("/api/namespaces/%s/repos/%s/blob?%s", ns, slug, q.Encode())
+	apiPath := fmt.Sprintf("/api/namespaces/%s/repos/%s/blob?%s", url.PathEscape(ns), url.PathEscape(slug), q.Encode())
 
 	var resp blobResponse
 	if err := client.Get(cmd.Context(), apiPath, &resp); err != nil {
@@ -289,7 +289,7 @@ func runRepoBrowseRaw(cmd *cobra.Command, args []string) error {
 	if ref != "" {
 		q.Set("ref", ref)
 	}
-	apiPath := fmt.Sprintf("/api/namespaces/%s/repos/%s/raw?%s", ns, slug, q.Encode())
+	apiPath := fmt.Sprintf("/api/namespaces/%s/repos/%s/raw?%s", url.PathEscape(ns), url.PathEscape(slug), q.Encode())
 	resp, err := client.GetStream(cmd.Context(), apiPath)
 	if err != nil {
 		if apiclient.IsStatus(err, http.StatusNotFound) {

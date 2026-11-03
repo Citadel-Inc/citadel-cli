@@ -43,6 +43,20 @@ func TestRepoBrowseTree_Happy(t *testing.T) {
 	}
 }
 
+func TestRepoBrowseTree_ProjectRepo(t *testing.T) {
+	var escaped string
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		escaped = r.URL.EscapedPath()
+		writeJSON(t, w, 200, makeBrowseTree("main", "", nil))
+	})
+	if err := rootFor(cmd.RepoCmd, "browse", "tree", "acme/proj/demo").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if want := "/api/namespaces/acme%2Fproj/repos/demo/tree"; escaped != want {
+		t.Fatalf("path = %q, want %q", escaped, want)
+	}
+}
+
 func TestRepoBrowseTree_Empty(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/namespaces/acme/repos/demo/tree": func(w http.ResponseWriter, _ *http.Request) {
