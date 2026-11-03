@@ -31,7 +31,7 @@ Install, auth, and local development: [HUMANS.md](HUMANS.md).
 - **Repo and namespace lifecycle** — clone, push, issues, deploy tokens, webhooks, org members
 - **Agents, OAuth, and tokens** — registration, scopes, provider admin
 - **Knowledge Graph** — traverse the Citadel project graph and repo insights
-- **Agent session hooks** — `hook install` gives each Claude Code session its own agent identity and short-lived credentials
+- **Agent session hooks** — `hook install` gives each Claude Code or Cursor session its own agent identity and short-lived credentials
 - **Audit logs** — search and stream events and session logs
 - **Embedded MCP client** — first-class agentic and LLM workflow integration
 - **Scriptable output** — json, yaml, ndjson, csv, table, and shell completion

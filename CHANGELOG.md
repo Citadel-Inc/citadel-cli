@@ -4,6 +4,14 @@ All notable changes to `citadel-cli` are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Cursor hook sessions record `client: cursor` and a `cursor-<hostname>` agent, not `claude-code`.
+- `citadel-cli` in a Cursor shell acts as the agent session instead of the stored login.
+- `hook install --client cursor --scope project` writes a `.cursor/cli.json` Cursor accepts. Without `permissions.deny` Cursor refused to start in that workspace; re-running install repairs an existing file.
+- `hook install --client cursor` writes the `kg` allow rule where Cursor reads it when `CURSOR_CONFIG_DIR` or `XDG_CONFIG_HOME` is set.
+- Parallel Cursor sessions in one repository keep their own HTTPS identity: a push no longer uses another session's credential helper, or loses it when that session ends.
+
 ### Removed
 
 - `self-host telemetry`: the switch had no sender. The CLI sends no telemetry.

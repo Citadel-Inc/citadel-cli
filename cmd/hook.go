@@ -24,8 +24,8 @@ var HookCmd = &cobra.Command{
 	GroupID: "ops",
 	Short:   "Give each coding-agent session its own agent identity",
 	Long: `Installs and serves coding-agent hooks. Once installed, every Claude Code
-session in a src.land repository gets its own short-lived agent identity,
-ephemeral SSH key and token, with no token handling. Sessions in other
+or Cursor session in a src.land repository gets its own short-lived agent
+identity, ephemeral SSH key and token, with no token handling. Sessions in other
 repositories are untouched.
 
 The session-start, renew and session-end verbs are invoked by the agent
@@ -35,7 +35,7 @@ harness, not by hand.`,
 var hookInstallCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Register the session hooks in the agent's settings file",
-	Long: `Merges the SessionStart, PreToolUse and SessionEnd hooks into the Claude Code
+	Long: `Merges the session start, tool use and session end hooks into the client's
 settings file, leaving every other key and hook as is. Re-running is a no-op.
 
 Examples:
@@ -43,6 +43,7 @@ Examples:
   citadel-cli hook install --scope project
   citadel-cli hook install --scopes code:read,code:write,metadata:read
   citadel-cli hook install --require
+  citadel-cli hook install --client cursor --scope project
 
 Also allows read-only graph queries (citadel-cli kg) in the client's permission
 settings, so its approval step doesn't refuse them. Uninstall removes that rule.`,
@@ -89,7 +90,7 @@ func registerHookCommands() {
 	useSessionToken()
 	for _, c := range []*cobra.Command{hookInstallCmd, hookUninstallCmd} {
 		c.Flags().String("client", "claude-code", "Agent client to configure (claude-code|cursor)")
-		c.Flags().String("scope", "user", "Settings scope: user (~/.claude/settings.json) or project (.claude/settings.json)")
+		c.Flags().String("scope", "user", "Settings scope: user (~/.claude/settings.json, ~/.cursor/hooks.json) or project (.claude/settings.json, .cursor/hooks.json)")
 	}
 	hookInstallCmd.Flags().StringSlice("scopes", nil, "Agent session scopes to request (default "+strings.Join(defaultHookScopes, ",")+")")
 	hookInstallCmd.Flags().Bool("require", false, "Deny `git push` to a Citadel host while no live agent session exists")
