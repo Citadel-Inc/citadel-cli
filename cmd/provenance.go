@@ -35,8 +35,9 @@ var provenanceReportCmd = &cobra.Command{
 	Short: "Fetch a signed report for a pull request, a commit range or a date range",
 	Long: `Writes the signed report envelope to stdout (or --out). Pick exactly one scope:
 --pr N, --to SHA [--from SHA], or --since T --until T (RFC3339).`,
-	Args: cobra.NoArgs,
-	RunE: runProvenanceReport,
+	Args:         cobra.NoArgs,
+	RunE:         runProvenanceReport,
+	SilenceUsage: true,
 }
 
 var provenanceVerifyCmd = &cobra.Command{
@@ -49,14 +50,15 @@ the pinned file ` + "`<user config dir>/citadel/provenance-keys.json`" + `. A ke
 searched by the key_id the report names.
 
 Exit status is non-zero when the signature does not verify.`,
-	Args: cobra.ExactArgs(1),
-	RunE: runProvenanceVerify,
+	Args:         cobra.ExactArgs(1),
+	RunE:         runProvenanceVerify,
+	SilenceUsage: true,
 }
 
 func registerProvenanceCommands() {
 	ProvenanceCmd.AddCommand(provenanceReportCmd, provenanceVerifyCmd)
 	f := provenanceReportCmd.Flags()
-	f.StringP("repo", "r", "", "Repository path (org/repo)")
+	f.StringP("repo", "R", "", "Repository path (org/repo)")
 	f.Int("pr", 0, "Pull request number")
 	f.String("from", "", "Commit range start (exclusive) SHA")
 	f.String("to", "", "Commit range end SHA")
