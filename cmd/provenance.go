@@ -107,9 +107,104 @@ type provEnvelope struct {
 	} `json:"signature"`
 }
 
+// parseProvEnvelope reads an envelope strictly, as the server's Verify does, so
+// the report judged here is the one any other reader of the file sees.
+func parseProvEnvelope(raw []byte) (provEnvelope, error) {
+	var env provEnvelope
+	if err := rejectDuplicateKeys(raw); err != nil {
+		return env, err
+	}
+	top, err := exactFields(raw, "report", "signature")
+	if err != nil {
+		return env, err
+	}
+	sig, err := exactFields(top["signature"], "alg", "key_id", "value")
+	if err != nil {
+		return env, fmt.Errorf("signature: %w", err)
+	}
+	env.Report = top["report"]
+	for name, dst := range map[string]*string{"alg": &env.Signature.Alg, "key_id": &env.Signature.KeyID, "value": &env.Signature.Value} {
+		if err := json.Unmarshal(sig[name], dst); err != nil {
+			return env, fmt.Errorf("signature %s: %w", name, err)
+		}
+	}
+	return env, nil
+}
+
+// maxJSONDepth bounds rejectDuplicateKeys' recursion on a hostile file.
+const maxJSONDepth = 512
+
+// rejectDuplicateKeys fails on an object repeating a key at any depth. Decoders
+// disagree on which duplicate wins, so a signature over one reading proves
+// nothing about another.
+func rejectDuplicateKeys(raw []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	return walkJSONValue(dec, 0)
+}
+
+func walkJSONValue(dec *json.Decoder, depth int) error {
+	if depth > maxJSONDepth {
+		return errors.New("JSON nested too deeply")
+	}
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	switch tok {
+	case json.Delim('{'):
+		seen := map[string]bool{}
+		for dec.More() {
+			key, err := dec.Token()
+			if err != nil {
+				return err
+			}
+			name, _ := key.(string)
+			if seen[name] {
+				return fmt.Errorf("duplicate key %q", name)
+			}
+			seen[name] = true
+			if err := walkJSONValue(dec, depth+1); err != nil {
+				return err
+			}
+		}
+	case json.Delim('['):
+		for dec.More() {
+			if err := walkJSONValue(dec, depth+1); err != nil {
+				return err
+			}
+		}
+	default:
+		return nil
+	}
+	_, err = dec.Token()
+	return err
+}
+
+// exactFields decodes an object that must hold exactly the named keys, compared
+// case-sensitively: Go's struct decoding would fold case and drop the rest.
+func exactFields(raw []byte, names ...string) (map[string]json.RawMessage, error) {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, err
+	}
+	for _, n := range names {
+		if _, ok := m[n]; !ok {
+			return nil, fmt.Errorf("missing key %q", n)
+		}
+	}
+	if len(m) != len(names) {
+		return nil, fmt.Errorf("object must hold exactly %s", strings.Join(names, ", "))
+	}
+	return m, nil
+}
+
 // provCanonical re-encodes JSON with sorted keys and no whitespace, numbers as
 // written, matching what the server signs.
 func provCanonical(raw []byte) ([]byte, error) {
+	if err := rejectDuplicateKeys(raw); err != nil {
+		return nil, err
+	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
 	var v any
@@ -190,8 +285,8 @@ func runProvenanceVerify(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	var env provEnvelope
-	if err := json.Unmarshal(file, &env); err != nil {
+	env, err := parseProvEnvelope(file)
+	if err != nil {
 		return fmt.Errorf("not a provenance envelope: %w", err)
 	}
 	if env.Signature.Alg != "ed25519" {

@@ -125,3 +125,29 @@ func TestHookCommitTrailers_InstallAndRemove(t *testing.T) {
 		t.Fatalf("developer hook removed: %q", b)
 	}
 }
+
+// A verifier must judge the same report a reader sees. Go matches JSON keys
+// case-insensitively and keeps the last duplicate, so without strict decoding a
+// signed report can sit beside a forged one that other tools read instead.
+func TestProvenanceVerifyRefusesAmbiguousEnvelopes(t *testing.T) {
+	report := goldenEnvelope[len(`{"report":`):strings.Index(goldenEnvelope, `,"signature":`)]
+	sig := goldenEnvelope[strings.Index(goldenEnvelope, `"signature":`)+len(`"signature":`) : len(goldenEnvelope)-1]
+	forged := strings.Replace(report, `acme/app`, `evil/app`, 1)
+	for name, env := range map[string]string{
+		"forged report before a signed REPORT": `{"report":` + forged + `,"REPORT":` + report + `,"signature":` + sig + `}`,
+		"duplicate report key":                 `{"report":` + forged + `,"report":` + report + `,"signature":` + sig + `}`,
+		"escaped duplicate report key":         `{"report":` + forged + `,"report":` + report + `,"signature":` + sig + `}`,
+		"unknown envelope key":                 `{"report":` + report + `,"signature":` + sig + `,"note":"x"}`,
+		"cased signature key":                  `{"report":` + report + `,"SIGNATURE":` + sig + `}`,
+		"duplicate key inside the report":      `{"report":{"repo":{"path":"evil/app"},` + report[1:] + `,"signature":` + sig + `}`,
+		"duplicate key inside the signature":   `{"report":` + report + `,"signature":{"alg":"none",` + sig[1:] + `}`,
+	} {
+		file := filepath.Join(t.TempDir(), "report.json")
+		if err := os.WriteFile(file, []byte(env), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := runProvenance(t, "verify", file, "--key", goldenPub); err == nil {
+			t.Errorf("%s verified: %q", name, out)
+		}
+	}
+}
