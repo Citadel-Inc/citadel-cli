@@ -107,6 +107,16 @@ func useSessionToken() {
 	}
 }
 
+// hookAPIClient authenticates as the developer's stored login. Inside a hook
+// session CITADEL_ACCESS_TOKEN is the session token, which cannot manage
+// sessions, so it is dropped here.
+func hookAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
+	if os.Getenv("CITADEL_AGENT_SESSION") != "" {
+		_ = os.Unsetenv("CITADEL_ACCESS_TOKEN")
+	}
+	return newAPIClient(cmd)
+}
+
 type agentSessionResp struct {
 	SessionID string    `json:"session_id"`
 	AgentID   string    `json:"agent_id"`
@@ -374,7 +384,7 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 // server never sees a fingerprint twice.
 func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scopes []string) (agentSessionResp, error) {
 	var sess agentSessionResp
-	c, err := newAPIClient(cmd)
+	c, err := hookAPIClient(cmd)
 	if err != nil {
 		return sess, err
 	}
@@ -388,7 +398,7 @@ func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scope
 		"scopes":         scopes,
 	}
 	if err := c.Post(ctx, "/agents/"+url.PathEscape(agentSessionName())+"/sessions", body, &sess); err != nil {
-		if apiclient.IsStatus(err, 403) {
+		if he, ok := errors.AsType[*apiclient.HTTPError](err); ok && he.StatusCode == 403 && strings.Contains(he.Body, `"forbidden"`) {
 			return sess, errors.New("this login predates hook sessions (token lacks sessions:write); run `citadel-cli auth login` again")
 		}
 		return sess, err
@@ -426,7 +436,7 @@ func renewSession(cmd *cobra.Command, dir string) bool {
 	var out struct {
 		ExpiresAt time.Time `json:"expires_at"`
 	}
-	c, err := newAPIClient(cmd)
+	c, err := hookAPIClient(cmd)
 	if err == nil {
 		err = c.Post(ctx, "/agent-sessions/"+url.PathEscape(st.SessionID)+"/renew", nil, &out)
 	}
@@ -498,7 +508,7 @@ func runHookSessionEnd(cmd *cobra.Command, _ []string) error {
 	if st, ok := loadHookState(dir); ok {
 		ctx, cancel := context.WithTimeout(cmd.Context(), 8*time.Second)
 		defer cancel()
-		c, err := newAPIClient(cmd)
+		c, err := hookAPIClient(cmd)
 		if err == nil {
 			err = c.Delete(ctx, "/agent-sessions/"+url.PathEscape(st.SessionID)+"?reason=session_end")
 		}
