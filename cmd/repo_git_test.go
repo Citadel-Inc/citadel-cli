@@ -59,6 +59,7 @@ func TestHelperProcessGit(t *testing.T) {
 }
 
 func TestRepoClone_InvokesGitCloneWithSSHRemote(t *testing.T) {
+	t.Setenv("CITADEL_AGENT_SESSION", "")
 	logPath, cleanup := patchGitExec(t)
 	defer cleanup()
 
@@ -84,6 +85,44 @@ func TestRepoClone_InvokesGitCloneWithSSHRemote(t *testing.T) {
 	}
 	gotArgs := strings.Join(invocations[0].Args, " ")
 	if gotArgs != "git clone git@src.land:myorg/r1.git" {
+		t.Fatalf("args=%q", gotArgs)
+	}
+	if invocations[0].Env["GIT_TERMINAL_PROMPT"] != "0" {
+		t.Fatalf("env=%v", invocations[0].Env)
+	}
+	if invocations[0].Env["GIT_ASKPASS"] != "" {
+		t.Fatalf("unexpected GIT_ASKPASS in env=%v", invocations[0].Env)
+	}
+}
+
+
+func TestRepoCloneIsBloblessForAgentSessions(t *testing.T) {
+	t.Setenv("CITADEL_AGENT_SESSION", "session-id")
+	logPath, cleanup := patchGitExec(t)
+	defer cleanup()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", "https://mcp.src.land")
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	root := repoTestRoot(t)
+	var out, errBuf strings.Builder
+	root.SetOut(&out)
+	root.SetErr(&errBuf)
+	setOutRecursiveTest(root, &out, &errBuf)
+	root.SetArgs([]string{"repo", "clone", "myorg/r1"})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := out.String(); !strings.Contains(got, "r1\n") {
+		t.Fatalf("stdout=%q", got)
+	}
+	invocations := readGitLog(t, logPath)
+	if len(invocations) != 1 {
+		t.Fatalf("want 1 invocation, got %d", len(invocations))
+	}
+	gotArgs := strings.Join(invocations[0].Args, " ")
+	if gotArgs != "git clone --filter=blob:none git@src.land:myorg/r1.git" {
 		t.Fatalf("args=%q", gotArgs)
 	}
 	if invocations[0].Env["GIT_TERMINAL_PROMPT"] != "0" {

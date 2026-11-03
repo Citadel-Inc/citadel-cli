@@ -102,7 +102,13 @@ func runRepoClone(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	gitArgs := []string{"clone", sshRemote}
+	gitArgs := []string{"clone"}
+	// An agent session reads a few files and fetches the rest on demand, and a
+	// blobless clone of a large repo takes a quarter of the time.
+	if os.Getenv("CITADEL_AGENT_SESSION") != "" {
+		gitArgs = append(gitArgs, "--filter=blob:none")
+	}
+	gitArgs = append(gitArgs, sshRemote)
 	if len(args) == 2 {
 		gitArgs = append(gitArgs, strings.TrimSpace(args[1]))
 	}
