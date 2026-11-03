@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -93,6 +94,9 @@ type orgInvitationRow struct {
 	Permissions []string   `json:"permissions"`
 	CreatedAt   time.Time  `json:"created_at"`
 	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	// ClaimURL is returned once at creation; without a mail relay it is the
+	// only way to hand the invitation to the invitee.
+	ClaimURL string `json:"claim_url,omitempty"`
 }
 
 func runOrgInvPending(cmd *cobra.Command, _ []string) error {
@@ -134,6 +138,11 @@ func runOrgInvList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	rows := payload.Invitations
+	for i := range rows {
+		if rows[i].OrgSlug == "" {
+			rows[i].OrgSlug = orgSlug
+		}
+	}
 	return emitOrgInvitationRows(cmd, output, rows, fmt.Sprintf("No invitations for org '%s'.", orgSlug))
 }
 
@@ -226,6 +235,9 @@ func runOrgInvCreate(cmd *cobra.Command, args []string) error {
 		return emitJSON(cmd, created)
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Invitation %s created for org %s.\n", created.ID, orgSlug)
+	if created.ClaimURL != "" {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Claim URL (shown once): %s\n", created.ClaimURL)
+	}
 	return nil
 }
 
@@ -284,6 +296,8 @@ func runOrgInvAccept(cmd *cobra.Command, args []string) error {
 	if token == "" {
 		return fmt.Errorf("invitation token is empty")
 	}
+	// The claim URL printed at creation ends in the token.
+	token = path.Base(strings.TrimRight(token, "/"))
 
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateMutationOutput(output, "accept"); err != nil {

@@ -110,3 +110,31 @@ func assertOrgInvitationBadOutput(t *testing.T, args ...string) {
 		t.Fatalf("want output validation error, got %v", err)
 	}
 }
+
+func TestOrgInvCreate_PrintsClaimURL(t *testing.T) {
+	var stdout bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /orgs/acme/invitations": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":"inv-1","claim_url":"https://c.example/invite/tok123"}`))
+		},
+	}))
+	if err := rootForOut(cmd.OrgCmd, &stdout, "invitation", "create", "acme", "--slug", "bob").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "https://c.example/invite/tok123") {
+		t.Fatalf("create output lacks claim URL: %q", stdout.String())
+	}
+}
+
+func TestOrgInvAccept_ClaimURL(t *testing.T) {
+	var stdout bytes.Buffer
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /invitations/tok123/accept": func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{}`))
+		},
+	}))
+	if err := rootForOut(cmd.OrgCmd, &stdout, "invitation", "accept", "https://c.example/invite/tok123").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
