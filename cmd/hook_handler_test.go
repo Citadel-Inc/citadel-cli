@@ -615,3 +615,31 @@ func TestHookInstallNamesTheServer(t *testing.T) {
 		t.Fatalf("configured server not named: %q", out)
 	}
 }
+
+// Install allows graph queries and keeps other rules; uninstall removes only its own.
+func TestHookInstallAllowsGraphQueries_Hermetic(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	for _, tc := range []struct{ client, file, rule string }{
+		{"cursor", filepath.Join(home, ".cursor", "cli-config.json"), "Shell(citadel-cli:kg*)"},
+		{"claude-code", filepath.Join(home, ".claude", "settings.json"), "Bash(citadel-cli kg *)"},
+	} {
+		if err := os.MkdirAll(filepath.Dir(tc.file), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(tc.file, []byte(`{"keep":1,"permissions":{"allow":["Shell(ls)"]}}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		runHook(t, "", "install", "--client", tc.client)
+		runHook(t, "", "install", "--client", tc.client)
+		raw, _ := readFile(tc.file)
+		if strings.Count(string(raw), tc.rule) != 1 || !strings.Contains(string(raw), "Shell(ls)") || !strings.Contains(string(raw), `"keep"`) {
+			t.Fatalf("%s after install:\n%s", tc.client, raw)
+		}
+		runHook(t, "", "uninstall", "--client", tc.client)
+		raw, _ = readFile(tc.file)
+		if strings.Contains(string(raw), tc.rule) || !strings.Contains(string(raw), "Shell(ls)") {
+			t.Fatalf("%s after uninstall:\n%s", tc.client, raw)
+		}
+	}
+}

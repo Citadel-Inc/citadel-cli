@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	safefs "github.com/Rethunk-Tech/go-safefs"
@@ -41,7 +42,10 @@ Examples:
   citadel-cli hook install
   citadel-cli hook install --scope project
   citadel-cli hook install --scopes code:read,code:write,metadata:read
-  citadel-cli hook install --require`,
+  citadel-cli hook install --require
+
+Also allows read-only graph queries (citadel-cli kg) in the client's permission
+settings, so its approval step doesn't refuse them. Uninstall removes that rule.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error { return runHookSettings(cmd, true) },
 }
@@ -140,6 +144,16 @@ func runHookSettings(cmd *cobra.Command, install bool) error {
 	if err != nil {
 		return err
 	}
+	rulePath, rule, err := graphRule(client, scope, path)
+	if err != nil {
+		return err
+	}
+	if err := mergeAllowRule(rulePath, rule, install); err != nil {
+		return err
+	}
+	if install {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "allowed graph queries (%s) in %s\n", rule, rulePath)
+	}
 	verb := map[bool]string{true: "installed in", false: "removed from"}[install]
 	if !changed {
 		verb = map[bool]string{true: "already installed in", false: "not present in"}[install]
@@ -168,6 +182,84 @@ func hookSettingsPath(client, scope string) (string, error) {
 		return filepath.Join(".cursor", "hooks.json"), nil
 	}
 	return "", fmt.Errorf("--scope: unknown %q (use user|project)", scope)
+}
+
+// graphRule names the permission that lets an agent run read-only graph queries
+// and the file it belongs in. Without it a client's approval step refuses the
+// first query in each run, and the retries cost more than the graph saves.
+func graphRule(client, scope, settingsPath string) (path, rule string, err error) {
+	if client != "cursor" {
+		return settingsPath, "Bash(citadel-cli kg *)", nil
+	}
+	if scope == "project" {
+		return filepath.Join(".cursor", "cli.json"), "Shell(citadel-cli:kg*)", nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", "", err
+	}
+	return filepath.Join(home, ".cursor", "cli-config.json"), "Shell(citadel-cli:kg*)", nil
+}
+
+// mergeAllowRule adds rule to permissions.allow, or removes it, leaving every
+// other key as is.
+func mergeAllowRule(path, rule string, install bool) error {
+	cfg := map[string]any{}
+	mode := fs.FileMode(0o600)
+	//nolint:gosec // The settings path is operator-selected.
+	raw, err := os.ReadFile(path)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		if !install {
+			return nil
+		}
+	case err != nil:
+		return err
+	default:
+		if st, serr := os.Stat(path); serr == nil {
+			mode = st.Mode().Perm()
+		}
+		if len(raw) > 0 {
+			if err := json.Unmarshal(raw, &cfg); err != nil {
+				return fmt.Errorf("%s: %w", path, err)
+			}
+		}
+	}
+	perms, _ := cfg["permissions"].(map[string]any)
+	if perms == nil {
+		if !install {
+			return nil
+		}
+		perms = map[string]any{}
+	}
+	allow, _ := perms["allow"].([]any)
+	has := slices.Contains(allow, any(rule))
+	if has == install {
+		return nil
+	}
+	if install {
+		allow = append(allow, rule)
+	} else {
+		allow = slices.DeleteFunc(allow, func(v any) bool { return v == rule })
+	}
+	if len(allow) == 0 {
+		delete(perms, "allow")
+	} else {
+		perms["allow"] = allow
+	}
+	if len(perms) == 0 {
+		delete(cfg, "permissions")
+	} else {
+		cfg["permissions"] = perms
+	}
+	out, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { //nolint:gosec // The settings dir is user-visible.
+		return err
+	}
+	return safefs.WriteFileAtomic(path, append(out, '\n'), mode)
 }
 
 func claudeSettingsPath(scope string) (string, error) {
