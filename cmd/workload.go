@@ -121,7 +121,7 @@ func runWorkloadLogin(cmd *cobra.Command, _ []string) error {
 		}
 		body["aws"] = proof
 	} else {
-		raw, err := os.ReadFile(tokenFile) //nolint:gosec // the operator names the projected token file
+		raw, err := os.ReadFile(filepath.Clean(tokenFile))
 		if err != nil {
 			return fmt.Errorf("read oidc token: %w", err)
 		}
