@@ -78,6 +78,19 @@ CITADEL_ACCESS_TOKEN="$JWT" citadel-cli auth set-token
 Use `auth set-token` for CI, containers, or other non-interactive environments
 where even device-code polling is unavailable.
 
+The token from `auth login` reads and opens hook sessions; it cannot write.
+`repo create`, `issue create` and other writes act as you through the login's
+JWT, and inside a hook session they use the session token. A token from an older
+login keeps its wider scopes until it expires or you log in again.
+
+A token given through `auth set-token` or `CITADEL_ACCESS_TOKEN` is used as given
+for reads and writes, so CI that writes needs a token minted with the scopes it
+uses:
+
+```bash
+citadel-cli token issue ci-bot --scope code:write --scope issues:write
+```
+
 ### Check authentication status
 
 ```bash

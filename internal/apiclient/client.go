@@ -85,6 +85,7 @@ type Client struct {
 	http       *http.Client
 	streamHTTP *http.Client
 	retryOn401 func(context.Context) (newAccessToken string, err error)
+	writeToken func(context.Context) (string, error)
 }
 
 // Options are the per-invocation knobs surfaced by root persistent flags.
@@ -103,6 +104,10 @@ type Options struct {
 	DebugHTTP  bool
 	UserAgent  string
 	RetryOn401 func(ctx context.Context) (newAccessToken string, err error)
+	// WriteToken, when set, supplies the bearer for requests other than GET and
+	// HEAD. On error the client's own token is used, so a token that can still
+	// write keeps working.
+	WriteToken func(ctx context.Context) (string, error)
 }
 
 // New builds a Client from a loaded clicfg.Config and the resolved CLI
@@ -124,7 +129,20 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 		http:       &http.Client{Timeout: defaultTimeout, Transport: rt},
 		streamHTTP: &http.Client{Transport: rt},
 		retryOn401: opts.RetryOn401,
+		writeToken: opts.WriteToken,
 	}, nil
+}
+
+// bearer picks the token for one request.
+func (c *Client) bearer(ctx context.Context, method string) string {
+	if c.writeToken == nil || method == http.MethodGet || method == http.MethodHead {
+		return c.token
+	}
+	token, err := c.writeToken(ctx)
+	if err != nil || token == "" {
+		return c.token
+	}
+	return token
 }
 
 // ResolveRESTServerURL maps the configured server URL to the base REST paths
@@ -266,7 +284,7 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 		if err != nil {
 			return fmt.Errorf("build request: %w", err)
 		}
-		req.Header.Set("Authorization", "Bearer "+c.token)
+		req.Header.Set("Authorization", "Bearer "+c.bearer(ctx, method))
 		req.Header.Set("User-Agent", c.userAgent)
 		if body != nil {
 			req.Header.Set("Content-Type", "application/json")

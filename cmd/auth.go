@@ -453,10 +453,16 @@ func defaultCLIAgentName() (string, error) {
 	return "citadel-cli@" + host, nil
 }
 
-// cliTokenScopes cover what the CLI's own verbs write (repos, issues, pull
-// requests) plus sessions:write, which hook
-// sessions need to open, renew and end sessions as this token's owner.
-var cliTokenScopes = []string{"metadata:read", "code:read", "code:write", "issues:read", "issues:write", "pulls:read", "pulls:write", "sessions:write"}
+// cliTokenScopes let the login token read and open hook sessions. Writes go
+// through the login's JWT (newAPIClient), so a stolen token cannot write.
+var cliTokenScopes = []string{"metadata:read", "code:read", "issues:read", "pulls:read", "sessions:write"}
+
+// cliDelegableScopes are what the login token's hook sessions may hold.
+var cliDelegableScopes = []string{"metadata:read", "code:read", "code:write", "issues:read", "issues:write", "pulls:read", "pulls:write"}
+
+func loginTokenRequest() map[string]any {
+	return map[string]any{"scopes": cliTokenScopes, "delegable_scopes": cliDelegableScopes}
+}
 
 // bootstrapAgentToken exchanges the short-lived OAuth JWT for a long-lived
 // agent token via find-or-create + rotate-token, mutating cfg in place.
@@ -481,7 +487,7 @@ func bootstrapAgentToken(ctx context.Context, cmd *cobra.Command, cfg *clicfg.Co
 		return fmt.Errorf("find or create agent: %w", err)
 	}
 	var newTok tokenWithCleartext
-	if err := c.Post(ctx, "/agents/"+agentID.String()+"/rotate-token", map[string]any{"scopes": cliTokenScopes}, &newTok); err != nil {
+	if err := c.Post(ctx, "/agents/"+agentID.String()+"/rotate-token", loginTokenRequest(), &newTok); err != nil {
 		return fmt.Errorf("rotate agent token: %w", err)
 	}
 	if newTok.CleartextToken == "" {

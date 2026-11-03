@@ -96,7 +96,7 @@ func (c *Client) PostMultipart(ctx context.Context, path, field, filename string
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Authorization", "Bearer "+c.bearer(ctx, http.MethodPost))
 	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("Content-Type", contentType)
 

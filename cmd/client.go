@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,19 +26,53 @@ import (
 var errSessionExpired = errors.New("session expired — run `citadel-cli auth login` again")
 
 // newAPIClient loads the on-disk config (with env overrides) and returns an
-// apiclient.Client honoring the persistent --server flag override.
+// apiclient.Client honoring the persistent --server flag override. The stored
+// login token reads and opens sessions; a write acts as the developer through
+// the login's JWT. A token given explicitly (a hook session, or CI through
+// CITADEL_ACCESS_TOKEN or set-token) is used as given for both.
 func newAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
+	return newClient(cmd, true)
+}
+
+// newLoginAPIClient always uses the stored login token, for the session calls
+// its sessions:write scope exists for.
+func newLoginAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
+	return newClient(cmd, false)
+}
+
+func newClient(cmd *cobra.Command, writesAsHuman bool) (*apiclient.Client, error) {
 	cfg, err := clicfg.Load()
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
-	return apiclient.New(cfg, apiclient.Options{
+	opts := apiclient.Options{
 		Server:     serverFlag(cmd),
 		Verbose:    verboseFlag(cmd),
 		DebugHTTP:  debugHTTPFlag(cmd),
 		UserAgent:  "citadel-cli/" + Version,
 		RetryOn401: rotateAccessTokenOn401Hook(cmd),
-	})
+	}
+	if writesAsHuman && os.Getenv("CITADEL_ACCESS_TOKEN") == "" && cfg.AgentID != "" && cfg.RefreshToken != "" {
+		opts.WriteToken = humanWriteToken(cmd, cfg)
+	}
+	return apiclient.New(cfg, opts)
+}
+
+// humanWriteToken exchanges the refresh token once per command, since each
+// exchange rotates it.
+func humanWriteToken(cmd *cobra.Command, cfg clicfg.Config) func(context.Context) (string, error) {
+	var once sync.Once
+	var token string
+	var err error
+	return func(ctx context.Context) (string, error) {
+		once.Do(func() {
+			token, err = humanAccessToken(ctx, cfg, cfg.ResolveServerURL(serverFlag(cmd)))
+			if err != nil {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli: writing with the stored agent token: %v\n", err)
+			}
+		})
+		return token, err
+	}
 }
 
 // newHumanAPIClient is for routes closed to agent tokens, such as the audit log:
@@ -194,7 +229,7 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 			return "", err
 		}
 		var newTok tokenWithCleartext
-		if err := c.Post(ctx, "/agents/"+uid.String()+"/rotate-token", nil, &newTok); err != nil {
+		if err := c.Post(ctx, "/agents/"+uid.String()+"/rotate-token", loginTokenRequest(), &newTok); err != nil {
 			if clearErr := clicfg.Update(func(cfg *clicfg.Config) error {
 				cfg.AccessToken = ""
 				cfg.RefreshToken = ""

@@ -131,7 +131,7 @@ func hookAPIClient(cmd *cobra.Command) (*apiclient.Client, error) {
 	if os.Getenv("CITADEL_AGENT_SESSION") != "" {
 		_ = os.Unsetenv("CITADEL_ACCESS_TOKEN")
 	}
-	return newAPIClient(cmd)
+	return newLoginAPIClient(cmd)
 }
 
 type agentSessionResp struct {
