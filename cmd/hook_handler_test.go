@@ -536,7 +536,13 @@ func TestHookCursorSession_Hermetic(t *testing.T) {
 	expires := time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339)
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/sessions") {
-			writeJSON(t, w, 201, map[string]any{"session_id": "cs-1", "agent_name": "claude-code-box", "token": "tok-c", "expires_at": expires})
+			var body struct {
+				Client string `json:"client"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Client != "cursor" || !strings.HasPrefix(r.URL.Path, "/agents/cursor-") {
+				t.Errorf("session opened as client %q on %s (%v)", body.Client, r.URL.Path, err)
+			}
+			writeJSON(t, w, 201, map[string]any{"session_id": "cs-1", "agent_name": "cursor-box", "token": "tok-c", "expires_at": expires})
 			return
 		}
 		http.NotFound(w, r)

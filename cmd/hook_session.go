@@ -192,14 +192,22 @@ func saveHookState(dir string, st hookState) error {
 
 var nonHostChars = regexp.MustCompile(`[^a-z0-9-]+`)
 
-func agentSessionName() string {
+// hookClient names the harness in the session's audit trail and agent name.
+func hookClient(cmd *cobra.Command) string {
+	if isCursor(cmd) {
+		return "cursor"
+	}
+	return "claude-code"
+}
+
+func agentSessionName(cmd *cobra.Command) string {
 	host, _ := os.Hostname()
 	host, _, _ = strings.Cut(strings.ToLower(host), ".")
 	host = strings.Trim(nonHostChars.ReplaceAllString(host, "-"), "-")
 	if host == "" {
 		host = "host"
 	}
-	return "claude-code-" + host
+	return hookClient(cmd) + "-" + host
 }
 
 // citadelHostSet is the defaults, CITADEL_GIT_HOSTS, and the configured
@@ -590,11 +598,11 @@ func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scope
 		return sess, err
 	}
 	body := map[string]any{
-		"client":         "claude-code",
+		"client":         hookClient(cmd),
 		"ssh_public_key": pub,
 		"scopes":         scopes,
 	}
-	if err := c.Post(ctx, "/agents/"+url.PathEscape(agentSessionName())+"/sessions", body, &sess); err != nil {
+	if err := c.Post(ctx, "/agents/"+url.PathEscape(agentSessionName(cmd))+"/sessions", body, &sess); err != nil {
 		if he, ok := errors.AsType[*apiclient.HTTPError](err); ok && he.StatusCode == http.StatusForbidden && strings.Contains(he.Body, `"forbidden"`) {
 			return sess, errors.New("this login predates hook sessions (token lacks sessions:write); run `citadel-cli auth login` again")
 		}
@@ -703,7 +711,7 @@ func revokeLocalSession(cmd *cobra.Command, dir string, st hookState) {
 	removeLocalGitConfig(cmd.Context(), st)
 	_ = os.Remove(filepath.Join(dir, "id_ed25519"))
 	_ = saveHookState(dir, hookState{SessionID: st.SessionID, AgentName: st.AgentName, Revoked: true})
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "citadel-cli hook: this agent session was revoked; git and citadel-cli calls in this Claude Code session are no longer authenticated as the agent. Start a new Claude Code session to get a fresh one.")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "citadel-cli hook: this agent session was revoked; git and citadel-cli calls in this session are no longer authenticated as the agent. Start a new session to get a fresh one.")
 }
 
 // reissueSession replaces an ended session (idle past its 15-minute window)
