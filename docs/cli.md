@@ -1379,17 +1379,6 @@ Override the default 7-day expiry with `--duration`:
 citadel-cli self-host bootstrap-token --duration 24h
 ```
 
-### Telemetry
-
-Enable or disable anonymous usage telemetry (disabled by default):
-
-```bash
-citadel-cli self-host telemetry enable
-citadel-cli self-host telemetry disable
-```
-
-The flag is stored in `~/.citadel/self-host.yaml` and respected by all `self-host` commands.
-
 ### Batch mode
 
 All `self-host` subcommands accept `--batch` to suppress interactive prompts.

@@ -4,6 +4,10 @@ All notable changes to `citadel-cli` are documented here.
 
 ## Unreleased
 
+### Removed
+
+- `self-host telemetry`: the switch had no sender. The CLI sends no telemetry.
+
 ### Added
 
 - `doctor` and `hook install` print the server in use and where the setting came from, so an unconfigured self-host machine sees it is on the hosted default.

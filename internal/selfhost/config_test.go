@@ -86,7 +86,6 @@ func TestConfigSaveLoad(t *testing.T) {
 		SupabaseURL: "https://abc.supabase.co",
 		AdminKey:    "service_role_key_here",
 		JWTSecret:   "super-secret-jwt-value",
-		Telemetry:   false,
 	}
 	if err := original.Save(); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -117,9 +116,6 @@ func TestConfigSaveLoad(t *testing.T) {
 	}
 	if loaded.JWTSecret != original.JWTSecret {
 		t.Errorf("JWTSecret: got %q, want %q", loaded.JWTSecret, original.JWTSecret)
-	}
-	if loaded.Telemetry != original.Telemetry {
-		t.Errorf("Telemetry: got %v, want %v", loaded.Telemetry, original.Telemetry)
 	}
 }
 
@@ -177,36 +173,6 @@ func TestConfigValidate(t *testing.T) {
 	}
 }
 
-func TestConfigTelemetryToggle(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("CITADEL_SELF_HOST_CONFIG", filepath.Join(dir, "self-host.yaml"))
-
-	cfg := selfhost.Config{
-		APIEndpoint: "https://citadel.example.com",
-		SupabaseURL: "https://abc.supabase.co",
-		AdminKey:    "key",
-		Telemetry:   false,
-	}
-	if err := cfg.Save(); err != nil {
-		t.Fatalf("Save: %v", err)
-	}
-	if cfg.IsTelemetryEnabled() {
-		t.Error("expected telemetry disabled by default")
-	}
-
-	cfg.Telemetry = true
-	if err := cfg.Save(); err != nil {
-		t.Fatalf("Save after enable: %v", err)
-	}
-	reloaded, err := selfhost.Load()
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if !reloaded.IsTelemetryEnabled() {
-		t.Error("expected telemetry enabled after toggle")
-	}
-}
-
 func TestConfigEnvOverride(t *testing.T) {
 	dir := t.TempDir()
 	customPath := filepath.Join(dir, "custom-self-host.yaml")
@@ -238,7 +204,6 @@ func TestConfigDebugSummary(t *testing.T) {
 		SupabaseURL: "https://abc.supabase.co",
 		AdminKey:    "abcdefghijkl1234",
 		JWTSecret:   "secret",
-		Telemetry:   true,
 	}
 	s := cfg.DebugSummary()
 	if strings.Contains(s, cfg.AdminKey) {

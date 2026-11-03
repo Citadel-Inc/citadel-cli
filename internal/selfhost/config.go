@@ -31,11 +31,6 @@ type Config struct {
 	// JWTSecret is the Supabase JWT signing secret for minting admin tokens.
 	// Required for the bootstrap-token verb.
 	JWTSecret string `yaml:"jwt_secret"`
-
-	// Telemetry, when true, allows anonymous usage data to be sent to
-	// Rethunk-Tech telemetry endpoints.  Disabled by default; enable
-	// explicitly via `citadel-cli self-host telemetry enable`.
-	Telemetry bool `yaml:"telemetry"`
 }
 
 // ConfigPath returns the effective path of the self-host config file.
@@ -117,11 +112,6 @@ func (c Config) Validate() error {
 	return nil
 }
 
-// IsTelemetryEnabled returns true only when the operator has explicitly opted in.
-func (c Config) IsTelemetryEnabled() bool {
-	return c.Telemetry
-}
-
 // redactedAdminKey returns a safely redacted representation of the admin key
 // for use in debug output (never the raw secret).
 func (c Config) redactedAdminKey() string {
@@ -142,8 +132,8 @@ func (c Config) redactedJWTSecret() string {
 // DebugSummary returns a human-readable summary with secrets redacted.
 func (c Config) DebugSummary() string {
 	return fmt.Sprintf(
-		"api_endpoint=%s supabase_url=%s admin_key=%s jwt_secret=%s telemetry=%v",
+		"api_endpoint=%s supabase_url=%s admin_key=%s jwt_secret=%s",
 		c.APIEndpoint, c.SupabaseURL,
-		c.redactedAdminKey(), c.redactedJWTSecret(), c.Telemetry,
+		c.redactedAdminKey(), c.redactedJWTSecret(),
 	)
 }

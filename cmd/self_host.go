@@ -109,19 +109,6 @@ Use --duration to override the default 7-day validity window.`,
 	RunE: runSelfHostBootstrapToken,
 }
 
-// selfHostTelemetryCmd — telemetry enable/disable.
-var selfHostTelemetryCmd = &cobra.Command{
-	Use:   "telemetry <enable|disable>",
-	Short: "Enable or disable anonymous usage telemetry",
-	Long: `Flip the global telemetry flag in ~/.citadel/self-host.yaml.
-
-Telemetry is disabled by default.  When enabled, anonymous usage data is
-sent to Rethunk-Tech endpoints.  No secrets or personal data are included.`,
-	Args:      cobra.ExactArgs(1),
-	RunE:      runSelfHostTelemetry,
-	ValidArgs: []string{"enable", "disable"},
-}
-
 // ─── init ────────────────────────────────────────────────────────────────────
 
 func runSelfHostInit(cmd *cobra.Command, _ []string) error {
@@ -328,39 +315,6 @@ func runSelfHostBootstrapToken(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// ─── telemetry ───────────────────────────────────────────────────────────────
-
-func runSelfHostTelemetry(cmd *cobra.Command, args []string) error {
-	log := selfHostLogger(cmd)
-	subcmd := strings.ToLower(strings.TrimSpace(args[0]))
-	switch subcmd {
-	case "enable", "disable":
-		// valid
-	default:
-		return fmt.Errorf("unknown telemetry action %q; expected 'enable' or 'disable'", subcmd)
-	}
-	log.Debug("telemetry action", "action", subcmd)
-
-	cfg, err := selfhost.Load()
-	if err != nil {
-		log.Debug("load self-host config failed", "error", err)
-		return fmt.Errorf("load self-host config: %w", err)
-	}
-
-	cfg.Telemetry = subcmd == "enable"
-	if err := cfg.Save(); err != nil {
-		log.Debug("save self-host config failed", "error", err)
-		return fmt.Errorf("save self-host config: %w", err)
-	}
-	log.Debug("telemetry updated", "enabled", cfg.Telemetry)
-	if cfg.Telemetry {
-		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Telemetry enabled.")
-	} else {
-		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Telemetry disabled.")
-	}
-	return nil
-}
-
 // ─── wiring ──────────────────────────────────────────────────────────────────
 
 func registerSelfHostCommands() {
@@ -368,7 +322,6 @@ func registerSelfHostCommands() {
 	SelfHostCmd.AddCommand(selfHostHealthCmd)
 	SelfHostCmd.AddCommand(selfHostMigrateCmd)
 	SelfHostCmd.AddCommand(selfHostBootstrapTokenCmd)
-	SelfHostCmd.AddCommand(selfHostTelemetryCmd)
 
 	// Persistent --batch flag: suppresses all interactive prompts across subcommands.
 	SelfHostCmd.PersistentFlags().Bool("batch", false, "Non-interactive mode; fail if required params are missing")
