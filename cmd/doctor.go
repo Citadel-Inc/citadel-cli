@@ -35,6 +35,7 @@ Checks performed:
   - MCP endpoint reachable (initialize handshake)
   - ~/.config/citadel/config.toml mode 0600 (UNIX only)
   - Resolved REST and MCP base URLs
+  - Agent hooks installed and the hook session, if any, still live
   - CWD git origin points at a Citadel host when CITADEL_REPO is unset`,
 	RunE: runDoctor,
 }
@@ -77,6 +78,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		checkConfigPerms(),
 		checkServerBases(server),
 		checkGitRemote(cmd.Context()),
+		checkHooks(),
 	}
 	for _, r := range results {
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), r.String())

@@ -42,6 +42,7 @@ func registerCommands() {
 		registerRepoTagCommands()
 		registerRepoTopicsCommands()
 		registerSearchCommands()
+		registerSessionCommands()
 		registerSelfHostCommands()
 		registerSelfHostLicenseCommands()
 		registerSSHKeyCommands()
