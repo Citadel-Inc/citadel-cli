@@ -74,6 +74,22 @@ func TestAuditRBAC_ListNamespaceFilter(t *testing.T) {
 	}
 }
 
+func TestAuditList_AgentFilter(t *testing.T) {
+	const agent = "0b8f2c8e-5f3a-4a54-9a43-3f1d3a0f6a11"
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /audit/events": func(w http.ResponseWriter, r *http.Request) {
+			if got := r.URL.Query().Get("agent"); got != agent {
+				t.Fatalf("agent query = %q, want %q", got, agent)
+			}
+			writeJSON(t, w, http.StatusOK, map[string]any{"events": []any{}, "next_cursor": ""})
+		},
+	}))
+
+	if err := rootFor(cmd.AuditCmd, "list", "--agent", agent, "--output", "json").Execute(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAuditRBAC_ListBadOutput_Hermetic(t *testing.T) {
 	setAuditHermeticEnv(t)
 

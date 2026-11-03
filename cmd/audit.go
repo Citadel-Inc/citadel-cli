@@ -51,6 +51,7 @@ func registerAuditCommands() {
 	auditListCmd.Flags().String("kind", "", "Glob filter on event kind (e.g. repo.*, oauth.**)")
 	auditListCmd.Flags().StringP("namespace", "n", "", "Filter to events for this namespace slug")
 	auditListCmd.Flags().String("actor", "", "Filter by actor UUID or user slug")
+	auditListCmd.Flags().String("agent", "", "Filter to events made through this agent UUID")
 }
 
 type auditEventPayload struct {
@@ -110,6 +111,7 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 	kind, _ := cmd.Flags().GetString("kind")
 	ns, _ := cmd.Flags().GetString("namespace")
 	actor, _ := cmd.Flags().GetString("actor")
+	agent, _ := cmd.Flags().GetString("agent")
 
 	var yamlAccum []auditEventPayload
 	csvHdr := false
@@ -134,6 +136,9 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 		}
 		if strings.TrimSpace(actor) != "" {
 			q.Set("actor", strings.TrimSpace(actor))
+		}
+		if strings.TrimSpace(agent) != "" {
+			q.Set("agent", strings.TrimSpace(agent))
 		}
 
 		var payload struct {
