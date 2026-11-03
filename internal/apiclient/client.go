@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -41,6 +42,26 @@ type HTTPError struct {
 
 func (e *HTTPError) Error() string {
 	return fmt.Sprintf("server error %d: %s", e.StatusCode, e.Body)
+}
+
+// TokenIgnoredHeader names why the server answered an optional-auth route as if
+// no token had been sent: "confined", or the scope the route needs, or "refused".
+const TokenIgnoredHeader = "X-Citadel-Token-Ignored"
+
+// TokenIgnoredError is an answer that only describes an anonymous caller, so it
+// would mislead if shown as the answer for this token.
+type TokenIgnoredError struct {
+	Reason string
+}
+
+func (e *TokenIgnoredError) Error() string {
+	switch e.Reason {
+	case "confined":
+		return "this token is confined to one namespace and cannot use this route, so the server treated the request as anonymous"
+	case "refused":
+		return "this token cannot use this route, so the server treated the request as anonymous"
+	}
+	return "this token lacks the " + e.Reason + " scope, so the server treated the request as anonymous and may be hiding the resource"
 }
 
 // DecodeBody decodes the (best-effort-trimmed) response body as JSON into v.
@@ -293,8 +314,16 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 		if err != nil {
 			return fmt.Errorf("request failed: %w", err)
 		}
+		ignored := resp.Header.Get(TokenIgnoredHeader)
+		if ignored != "" && (ignored == "confined" || resp.StatusCode == http.StatusNotFound) {
+			_ = resp.Body.Close()
+			return &TokenIgnoredError{Reason: ignored}
+		}
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			defer func() { _ = resp.Body.Close() }()
+			if ignored != "" {
+				_, _ = fmt.Fprintf(os.Stderr, "warning: %s\n", &TokenIgnoredError{Reason: ignored})
+			}
 			if out == nil || resp.StatusCode == http.StatusNoContent {
 				return nil
 			}

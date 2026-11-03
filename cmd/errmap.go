@@ -39,6 +39,10 @@ func FriendlyError(err error) error {
 		return mcpErrorToCLI(me)
 	}
 
+	if ti, ok := errors.AsType[*apiclient.TokenIgnoredError](err); ok {
+		return &CLIError{Kind: KindForbidden, Message: ti.Error(), Hint: serverStatusHint}
+	}
+
 	if s := err.Error(); strings.Contains(s, "not authenticated") && strings.Contains(s, "auth login") {
 		return &CLIError{
 			Kind:    KindAuthRequired,
