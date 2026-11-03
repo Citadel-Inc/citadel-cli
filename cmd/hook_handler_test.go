@@ -652,6 +652,42 @@ func TestHookInstallCursorRuleFollowsConfigDir_Hermetic(t *testing.T) {
 	}
 }
 
+// Cursor refuses to start when permissions lacks allow or deny, so the project
+// cli.json this writes carries both, an earlier install is repaired, and
+// uninstall leaves no half-object behind.
+func TestHookInstallCursorProjectPermissionsValid_Hermetic(t *testing.T) {
+	t.Chdir(t.TempDir())
+	path := filepath.Join(".cursor", "cli.json")
+	lists := func() map[string]any {
+		raw, err := readFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cfg struct {
+			Permissions map[string]any `json:"permissions"`
+		}
+		if err := json.Unmarshal(raw, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		return cfg.Permissions
+	}
+	runHook(t, "", "install", "--client", "cursor", "--scope", "project")
+	if p := lists(); p["allow"] == nil || p["deny"] == nil {
+		t.Fatalf("fresh cli.json permissions = %v", p)
+	}
+	if err := os.WriteFile(path, []byte(`{"permissions":{"allow":["Shell(citadel-cli:kg*)"]}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runHook(t, "", "install", "--client", "cursor", "--scope", "project")
+	if p := lists(); p["deny"] == nil {
+		t.Fatalf("repaired cli.json permissions = %v", p)
+	}
+	runHook(t, "", "uninstall", "--client", "cursor", "--scope", "project")
+	if p := lists(); p != nil {
+		t.Fatalf("after uninstall permissions = %v", p)
+	}
+}
+
 // Install allows graph queries and keeps other rules; uninstall removes only its own.
 func TestHookInstallAllowsGraphQueries_Hermetic(t *testing.T) {
 	home := t.TempDir()

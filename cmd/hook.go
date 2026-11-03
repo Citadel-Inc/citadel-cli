@@ -148,7 +148,7 @@ func runHookSettings(cmd *cobra.Command, install bool) error {
 	if err != nil {
 		return err
 	}
-	if err := mergeAllowRule(rulePath, rule, install); err != nil {
+	if err := mergeAllowRule(rulePath, rule, install, client == "cursor"); err != nil {
 		return err
 	}
 	if install {
@@ -218,8 +218,9 @@ func cursorCLIConfigDir() (string, error) {
 }
 
 // mergeAllowRule adds rule to permissions.allow, or removes it, leaving every
-// other key as is.
-func mergeAllowRule(path, rule string, install bool) error {
+// other key as is. Cursor refuses to start on a permissions object that lacks
+// either list, so under strictLists an object that stays keeps both.
+func mergeAllowRule(path, rule string, install, strictLists bool) error {
 	cfg := map[string]any{}
 	mode := fs.FileMode(0o600)
 	//nolint:gosec // The settings path is operator-selected.
@@ -249,19 +250,29 @@ func mergeAllowRule(path, rule string, install bool) error {
 		perms = map[string]any{}
 	}
 	allow, _ := perms["allow"].([]any)
+	deny, hasDeny := perms["deny"].([]any)
 	has := slices.Contains(allow, any(rule))
-	if has == install {
+	if has == install && (!install || !strictLists || hasDeny) {
 		return nil
 	}
-	if install {
+	if install && !has {
 		allow = append(allow, rule)
-	} else {
+	}
+	if !install {
 		allow = slices.DeleteFunc(allow, func(v any) bool { return v == rule })
 	}
-	if len(allow) == 0 {
+	keepEmptyAllow := strictLists && len(deny) > 0
+	if len(allow) == 0 && !keepEmptyAllow {
 		delete(perms, "allow")
 	} else {
-		perms["allow"] = allow
+		perms["allow"] = append([]any{}, allow...)
+	}
+	if strictLists {
+		if len(allow) == 0 && len(deny) == 0 {
+			delete(perms, "deny")
+		} else {
+			perms["deny"] = append([]any{}, deny...)
+		}
 	}
 	if len(perms) == 0 {
 		delete(cfg, "permissions")
