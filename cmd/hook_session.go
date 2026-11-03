@@ -631,7 +631,7 @@ func runHookRenew(cmd *cobra.Command, _ []string) error {
 	if !denied && isCursor(cmd) {
 		out := map[string]any{"permission": "allow"}
 		if live {
-			if input, ok := cursorGitInput(cmd, in); ok {
+			if input, ok := cursorShellInput(cmd, in); ok {
 				out["updated_input"] = input
 			}
 		}
@@ -640,20 +640,27 @@ func runHookRenew(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-var gitCmdWord = regexp.MustCompile(`(^|[;&|(\s])git\s`)
+var (
+	gitCmdWord     = regexp.MustCompile(`(^|[;&|(\s])git\s`)
+	citadelCmdWord = regexp.MustCompile(`(^|[;&|(\s])citadel-cli\s`)
+)
 
-// cursorGitInput rewrites a Shell command that runs git in a Citadel repo so it
-// defines a git function that sets the session's GIT_SSH_COMMAND for every call. Cursor's sandbox sets its own
-// GIT_SSH_COMMAND, which outranks the repo-local core.sshCommand and would send
-// SSH git out with the developer's keys. Cursor documents preToolUse's
-// updated_input for exactly this kind of rewrite.
-func cursorGitInput(cmd *cobra.Command, in hookInput) (map[string]any, bool) {
+// cursorShellInput rewrites a Shell command in a Citadel repo so it acts as the
+// session. Cursor gives sessionStart's env to later hooks but not to Shell, so
+// citadel-cli would otherwise run as the developer's stored login; it finds the
+// token from these two variables. Cursor's sandbox also sets its own
+// GIT_SSH_COMMAND, which outranks the repo-local core.sshCommand, so git gets a
+// function that sets the session's. Cursor documents preToolUse's updated_input
+// for exactly this kind of rewrite.
+func cursorShellInput(cmd *cobra.Command, in hookInput) (map[string]any, bool) {
 	line := in.command()
-	if in.ToolName != "Shell" || !gitCmdWord.MatchString(line) {
+	runsGit, runsCLI := gitCmdWord.MatchString(line), citadelCmdWord.MatchString(line)
+	if in.ToolName != "Shell" || (!runsGit && !runsCLI) {
 		return nil, false
 	}
 	dir := sessionDir(in.SessionID)
-	if st, ok := loadHookState(dir); !ok || st.Revoked {
+	st, ok := loadHookState(dir)
+	if !ok || st.Revoked {
 		return nil, false
 	}
 	ctx, cancel := context.WithTimeout(cmd.Context(), 3*time.Second)
@@ -661,13 +668,20 @@ func cursorGitInput(cmd *cobra.Command, in hookInput) (map[string]any, bool) {
 	if _, ok := citadelOrigin(ctx, cmd, in.CWD); !ok {
 		return nil, false
 	}
-	exe, err := os.Executable()
-	if err != nil {
-		exe = "citadel-cli"
+	prefix := ""
+	if runsCLI {
+		prefix = "export CITADEL_AGENT_SESSION=" + shellQuote(st.SessionID) + " CITADEL_HOOK_STATE=" + shellQuote(dir) + "; "
 	}
-	ssh := shellQuote(exe) + " hook git-ssh " + shellQuote(filepath.Join(dir, "id_ed25519"))
+	if runsGit {
+		exe, err := os.Executable()
+		if err != nil {
+			exe = "citadel-cli"
+		}
+		ssh := shellQuote(exe) + " hook git-ssh " + shellQuote(filepath.Join(dir, "id_ed25519"))
+		prefix += "git() { GIT_SSH_COMMAND=" + shellQuote(ssh) + ` command git "$@"; }; `
+	}
 	updated := maps.Clone(in.ToolInput)
-	updated["command"] = "git() { GIT_SSH_COMMAND=" + shellQuote(ssh) + ` command git "$@"; }; ` + line
+	updated["command"] = prefix + line
 	return updated, true
 }
 

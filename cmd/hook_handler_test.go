@@ -578,6 +578,15 @@ func TestHookCursorSession_Hermetic(t *testing.T) {
 		!strings.Contains(allow.UpdatedInput.Command, "hook git-ssh") || !strings.HasSuffix(allow.UpdatedInput.Command, "; git push origin main") {
 		t.Fatalf("live session preToolUse = %q (%v)", got, err)
 	}
+	// citadel-cli in a Shell must act as the session, not the stored login.
+	cli := strings.Replace(pre, "git push origin main", "citadel-cli kg symbols --q Greet", 1)
+	if err := json.Unmarshal([]byte(runHook(t, cli, "renew", "--client", "cursor")), &allow); err != nil {
+		t.Fatal(err)
+	}
+	if c := allow.UpdatedInput.Command; !strings.Contains(c, "CITADEL_AGENT_SESSION='cs-1'") || !strings.Contains(c, "CITADEL_HOOK_STATE=") ||
+		strings.Contains(c, "tok-c") || strings.Contains(c, "git()") || !strings.HasSuffix(c, "; citadel-cli kg symbols --q Greet") {
+		t.Fatalf("citadel-cli preToolUse = %q", c)
+	}
 	plain := strings.Replace(pre, "git push origin main", "ls", 1)
 	if got := runHook(t, plain, "renew", "--client", "cursor"); strings.Contains(got, "updated_input") {
 		t.Fatalf("non-git command rewritten: %q", got)
