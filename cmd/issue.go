@@ -84,9 +84,9 @@ var issueCommentListCmd = &cobra.Command{
 }
 
 var issueCommentEditCmd = &cobra.Command{
-	Use:   "edit <comment-id>",
+	Use:   "edit <issue-number> <comment-id>",
 	Short: "Edit an issue comment",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(2),
 	RunE:  runIssueCommentEdit,
 }
 
@@ -891,7 +891,11 @@ func runIssueCommentEdit(cmd *cobra.Command, args []string) error {
 	if err := validateMutationOutput(output, "edit"); err != nil {
 		return err
 	}
-	commentID := strings.TrimSpace(args[0])
+	num, err := parseIssueNumber(args[0])
+	if err != nil {
+		return err
+	}
+	commentID := strings.TrimSpace(args[1])
 	if commentID == "" {
 		return fmt.Errorf("comment ID required")
 	}
@@ -910,7 +914,7 @@ func runIssueCommentEdit(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	path := "/namespaces/" + url.PathEscape(nsPath) + "/issues/comments/" + url.PathEscape(commentID)
+	path := issueBasePath(nsPath) + "/" + strconv.FormatInt(num, 10) + "/comments/" + url.PathEscape(commentID)
 	var updated issueComment
 	if err := c.Patch(cmd.Context(), path, map[string]string{
 		"body_markdown": body,

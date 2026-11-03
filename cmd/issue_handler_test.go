@@ -587,8 +587,8 @@ func TestIssueCommentList_MissingRepo_Hermetic(t *testing.T) {
 func TestIssueCommentEdit_Happy(t *testing.T) {
 	const commentID = "00000000-0000-0000-0000-000000000099"
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
-		wantPath := "/namespaces/acme%2Fdemo/issues/comments/" + commentID
-		wantPathDec := "/namespaces/acme/demo/issues/comments/" + commentID
+		wantPath := "/namespaces/acme%2Fdemo/issues/7/comments/" + commentID
+		wantPathDec := "/namespaces/acme/demo/issues/7/comments/" + commentID
 		if r.Method != http.MethodPatch || !issuePathMatches(r, wantPath, wantPathDec) {
 			http.NotFound(w, r)
 			return
@@ -610,13 +610,13 @@ func TestIssueCommentEdit_Happy(t *testing.T) {
 			"edit_count":    1,
 		})
 	})
-	if err := rootFor(cmd.IssueCmd, "comment", "edit", "-R", "acme/demo", commentID, "--body", "updated text").Execute(); err != nil {
+	if err := rootFor(cmd.IssueCmd, "comment", "edit", "-R", "acme/demo", "7", commentID, "--body", "updated text").Execute(); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestIssueCommentEdit_EmptyBody(t *testing.T) {
-	err := rootFor(cmd.IssueCmd, "comment", "edit", "-R", "acme/demo", "some-id", "--body", "").Execute()
+	err := rootFor(cmd.IssueCmd, "comment", "edit", "-R", "acme/demo", "7", "some-id", "--body", "").Execute()
 	if err == nil || !strings.Contains(err.Error(), "cannot be empty") {
 		t.Fatalf("want empty-body error, got %v", err)
 	}
@@ -628,7 +628,7 @@ func TestIssueCommentEdit_BadOutput_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
 
-	err := rootFor(cmd.IssueCmd, "comment", "edit", "-R", "acme/demo", "some-id", "--output", "toml").Execute()
+	err := rootFor(cmd.IssueCmd, "comment", "edit", "-R", "acme/demo", "7", "some-id", "--output", "toml").Execute()
 	const want = `--output for edit supports json or default human summary only; got "toml"`
 	if err == nil || err.Error() != want {
 		t.Fatalf("want exact output validation error %q, got %v", want, err)
@@ -641,7 +641,7 @@ func TestIssueCommentEdit_BadOutput_NoRepo_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
 
-	err := rootFor(cmd.IssueCmd, "comment", "edit", "some-id", "--output", "toml").Execute()
+	err := rootFor(cmd.IssueCmd, "comment", "edit", "7", "some-id", "--output", "toml").Execute()
 	const want = `--output for edit supports json or default human summary only; got "toml"`
 	if err == nil || err.Error() != want {
 		t.Fatalf("want exact output validation error %q, got %v", want, err)
@@ -654,7 +654,7 @@ func TestIssueCommentEdit_MissingRepo_Hermetic(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", "")
 	t.Setenv("CITADEL_REPO", "")
 
-	err := rootFor(cmd.IssueCmd, "comment", "edit", "--no-cwd-repo", "some-id", "--body", "updated text").Execute()
+	err := rootFor(cmd.IssueCmd, "comment", "edit", "--no-cwd-repo", "7", "some-id", "--body", "updated text").Execute()
 	const want = "namespace path required: pass -R <ns/path>, set CITADEL_REPO, or omit --no-cwd-repo to infer from git"
 	if err == nil || err.Error() != want {
 		t.Fatalf("want exact namespace path error %q, got %v", want, err)
