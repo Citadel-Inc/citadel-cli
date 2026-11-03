@@ -396,6 +396,10 @@ SSH key; the agent is told so in its context. A repository counts as src.land
 when its `origin` host is a default Citadel git host, is listed in
 `CITADEL_GIT_HOSTS`, or matches the configured server.
 
+#### Pushing to organizations that require session credentials
+
+An org owner can require short-lived credentials for git writes, which refuses registered SSH keys, plain agent tokens and deploy tokens. Run `citadel-cli auth git` to open an 8-hour SSH session as yourself: it registers a fresh key, keeps the private key under `$XDG_RUNTIME_DIR/citadel/git/`, and sets `git config --global core.sshCommand` to the host-scoped `citadel-cli hook git-ssh` wrapper, which offers the key to Citadel hosts only. If `core.sshCommand` is already set to something else it is left alone and the command to use is printed. It needs the refresh token stored by `auth login`; run it again when the session expires. Human sessions are SSH only.
+
 ### Agents
 
 Manage the agents registered to your account. An agent is a named identity that

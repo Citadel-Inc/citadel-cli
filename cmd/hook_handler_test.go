@@ -3,6 +3,7 @@ package cmd_test
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -421,5 +422,51 @@ func TestHookRenewReissueAndRequire_Hermetic(t *testing.T) {
 	gh := gitRepoWithOrigin(t, "git@github.com:acme/app.git")
 	if out := runHook(t, strings.Replace(in, repo, gh, 1), "renew", "--require"); out != "" {
 		t.Fatalf("github push denied: %q", out)
+	}
+}
+
+// `auth git` trades the stored refresh token for a human JWT, registers a fresh
+// key under it, and points git's ssh at the host-scoped wrapper.
+func TestAuthGit_Hermetic(t *testing.T) {
+	bin := buildCLI(t)
+	var gotAuth, gotKey string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/oauth/token":
+			writeJSON(t, w, 200, map[string]any{"access_token": "human-jwt", "refresh_token": "rt-2"})
+		case "/git-sessions":
+			var body struct {
+				Key string `json:"ssh_public_key"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			gotAuth, gotKey = r.Header.Get("Authorization"), body.Key
+			writeJSON(t, w, 201, map[string]any{"session_id": "hs-1", "expires_at": time.Now().Add(8 * time.Hour).UTC().Format(time.RFC3339)})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	cfgHome := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cfgHome, "citadel"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	cfgFile := filepath.Join(cfgHome, "citadel", "config.toml")
+	if err := os.WriteFile(cfgFile, []byte("access_token = \"agent-tok\"\nagent_id = \"a1\"\nrefresh_token = \"rt-1\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitCfg := filepath.Join(t.TempDir(), "gitconfig")
+	c := exec.CommandContext(t.Context(), bin, "auth", "git") //nolint:gosec // test-owned binary
+	c.Env = append(os.Environ(), "CITADEL_SERVER="+srv.URL, "CITADEL_ACCESS_TOKEN=", "XDG_CONFIG_HOME="+cfgHome, "XDG_RUNTIME_DIR="+t.TempDir(), "GIT_CONFIG_GLOBAL="+gitCfg)
+	if out, err := c.CombinedOutput(); err != nil {
+		t.Fatalf("auth git: %v %s", err, out)
+	}
+	if gotAuth != "Bearer human-jwt" || !strings.HasPrefix(gotKey, "ssh-ed25519 ") {
+		t.Fatalf("git-sessions request: auth=%q key=%q", gotAuth, gotKey)
+	}
+	if g, _ := readFile(gitCfg); !strings.Contains(string(g), "hook git-ssh") {
+		t.Fatalf("core.sshCommand not set: %s", g)
+	}
+	if cfg, _ := readFile(cfgFile); !strings.Contains(string(cfg), "rt-2") {
+		t.Fatalf("rotated refresh token not saved: %s", cfg)
 	}
 }

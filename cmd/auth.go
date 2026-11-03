@@ -828,6 +828,7 @@ func registerAuthCommands() {
 	AuthCmd.AddCommand(logoutCmd)
 	AuthCmd.AddCommand(setTokenCmd)
 	AuthCmd.AddCommand(authProviderCmd)
+	AuthCmd.AddCommand(authGitCmd)
 	setTokenCmd.Flags().String("token", "", "JWT to persist (overrides CITADEL_ACCESS_TOKEN and stdin)")
 	loginCmd.Flags().Bool("device", false, "use RFC 8628 device authorization instead of opening a browser")
 }
