@@ -327,6 +327,14 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 			if out == nil || resp.StatusCode == http.StatusNoContent {
 				return nil
 			}
+			if raw, ok := out.(*json.RawMessage); ok {
+				b, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return fmt.Errorf("read response: %w", err)
+				}
+				*raw = b
+				return nil
+			}
 			if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
 				return fmt.Errorf("decode response: %w", err)
 			}

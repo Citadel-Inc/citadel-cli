@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"os"
@@ -21,6 +22,21 @@ func TestAPI_GetHappy(t *testing.T) {
 	}))
 	if err := rootFor(cmd.APICmd, "/namespaces/acme/demo/issues").Execute(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestAPI_GetPlainTextBody(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"GET /healthz": func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte("ok"))
+		},
+	}))
+	var buf bytes.Buffer
+	if err := rootForOut(cmd.APICmd, &buf, "/healthz").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(buf.String()); got != "ok" {
+		t.Fatalf("output = %q, want ok", got)
 	}
 }
 
