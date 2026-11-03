@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
@@ -181,10 +182,12 @@ func ResolveRESTServerURL(server string) string {
 		u.Host = "api.src.land"
 		u.Path = strings.TrimSuffix(u.Path, "/api")
 	default:
-		// Loopback is a dev server running the bare backend. Every documented
-		// self-host layout (single-binary, Helm, air-gap) fronts the API with
-		// Caddy under /api on the web origin.
-		if isLoopbackHost(u.Hostname()) {
+		// Every documented self-host layout (single-binary, Helm, air-gap)
+		// serves the API under /api on the web origin, loopback included
+		// (the air-gap default is http://localhost:8000). Only a loopback
+		// server that does not answer /api/healthz is used as written, which
+		// is how a stub or a bare dev backend behaves.
+		if isLoopbackHost(u.Hostname()) && !(ProbeLoopback && loopbackServesAPI(base)) {
 			return base
 		}
 		if !strings.HasSuffix(u.Path, "/api") {
@@ -201,6 +204,26 @@ func (c *Client) endpoint(path string) string {
 		path = strings.TrimPrefix(path, "/api")
 	}
 	return c.server + path
+}
+
+// ProbeLoopback turns the loopback front-door check on; test binaries that
+// stub the API at the server root switch it off.
+var ProbeLoopback = true
+
+var loopbackProbe sync.Map
+
+func loopbackServesAPI(base string) bool {
+	if v, ok := loopbackProbe.Load(base); ok {
+		return v.(bool)
+	}
+	ok := false
+	hc := &http.Client{Timeout: 2 * time.Second}
+	if resp, err := hc.Get(base + "/api/healthz"); err == nil {
+		ok = resp.StatusCode == http.StatusOK
+		_ = resp.Body.Close()
+	}
+	loopbackProbe.Store(base, ok)
+	return ok
 }
 
 func isLoopbackHost(h string) bool {

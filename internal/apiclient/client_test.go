@@ -567,6 +567,22 @@ func TestResolveRESTServerURL_OneValueForAllHosts(t *testing.T) {
 	}
 }
 
+func TestResolveRESTServerURL_LoopbackFrontDoor(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/healthz" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = io.WriteString(w, "ok")
+	}))
+	defer srv.Close()
+	ProbeLoopback = true
+	defer func() { ProbeLoopback = false }()
+	if got, want := ResolveRESTServerURL(srv.URL), srv.URL+"/api"; got != want {
+		t.Errorf("loopback front door = %q, want %q", got, want)
+	}
+}
+
 func TestClientEndpoint_NoDoubleAPI(t *testing.T) {
 	c := &Client{server: "https://self.example/api"}
 	if got := c.endpoint("/api/search"); got != "https://self.example/api/search" {
