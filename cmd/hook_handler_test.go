@@ -544,8 +544,20 @@ func TestHookCursorSession_Hermetic(t *testing.T) {
 		t.Fatalf("session-start left no repo-local core.sshCommand: %q", local(repo, "core.sshCommand"))
 	}
 	pre := `{"conversation_id":"c1","tool_name":"Shell","cwd":"` + repo + `","tool_input":{"command":"git push origin main"}}`
-	if got := runHook(t, pre, "renew", "--client", "cursor"); !strings.Contains(got, `"permission":"allow"`) {
-		t.Fatalf("live session preToolUse = %q", got)
+	got := runHook(t, pre, "renew", "--client", "cursor")
+	var allow struct {
+		Permission   string `json:"permission"`
+		UpdatedInput struct {
+			Command string `json:"command"`
+		} `json:"updated_input"`
+	}
+	if err := json.Unmarshal([]byte(got), &allow); err != nil || allow.Permission != "allow" ||
+		!strings.Contains(allow.UpdatedInput.Command, "hook git-ssh") || !strings.HasSuffix(allow.UpdatedInput.Command, "; git push origin main") {
+		t.Fatalf("live session preToolUse = %q (%v)", got, err)
+	}
+	plain := strings.Replace(pre, "git push origin main", "ls", 1)
+	if got := runHook(t, plain, "renew", "--client", "cursor"); strings.Contains(got, "updated_input") {
+		t.Fatalf("non-git command rewritten: %q", got)
 	}
 	runHook(t, start, "session-end", "--client", "cursor")
 	if got := local(repo, "core.sshCommand"); got != "" {

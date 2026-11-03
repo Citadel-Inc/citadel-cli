@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -78,13 +80,16 @@ type hookInput struct {
 	SessionID string `json:"session_id"`
 	// Cursor names the session conversation_id on every event but
 	// sessionStart and sessionEnd, and gives no cwd on those two.
-	ConversationID string   `json:"conversation_id"`
-	WorkspaceRoots []string `json:"workspace_roots"`
-	CWD            string   `json:"cwd"`
-	ToolName       string   `json:"tool_name"`
-	ToolInput      struct {
-		Command string `json:"command"`
-	} `json:"tool_input"`
+	ConversationID string         `json:"conversation_id"`
+	WorkspaceRoots []string       `json:"workspace_roots"`
+	CWD            string         `json:"cwd"`
+	ToolName       string         `json:"tool_name"`
+	ToolInput      map[string]any `json:"tool_input"`
+}
+
+func (in hookInput) command() string {
+	c, _ := in.ToolInput["command"].(string)
+	return c
 }
 
 // hookState is also how a long-running session finds its current token, since
@@ -226,7 +231,7 @@ func httpsCredentialEnv(remote string) [][2]string {
 // httpsCredentialEnvWith is httpsCredentialEnv with extra flags on the helper.
 func httpsCredentialEnvWith(remote, helperFlags string) [][2]string {
 	u, err := url.Parse(remote)
-	if err != nil || u.Scheme != "https" || u.Host == "" {
+	if err != nil || !helperRemote(u) {
 		return nil
 	}
 	n, _ := strconv.Atoi(os.Getenv("GIT_CONFIG_COUNT"))
@@ -235,7 +240,7 @@ func httpsCredentialEnvWith(remote, helperFlags string) [][2]string {
 	if err != nil {
 		exe = "citadel-cli"
 	}
-	key := "credential.https://" + u.Host + ".helper"
+	key := "credential." + u.Scheme + "://" + u.Host + ".helper"
 	// The empty first value clears helpers inherited from the user's config.
 	return [][2]string{
 		{"GIT_CONFIG_COUNT", strconv.Itoa(n + 2)},
@@ -244,6 +249,19 @@ func httpsCredentialEnvWith(remote, helperFlags string) [][2]string {
 		{"GIT_CONFIG_KEY_" + strconv.Itoa(n+1), key},
 		{"GIT_CONFIG_VALUE_" + strconv.Itoa(n+1), "!" + shellQuote(exe) + " hook git-credential" + helperFlags},
 	}
+}
+
+// helperRemote reports whether a credential helper may serve the remote: https,
+// or plain http to a loopback host (a local development server).
+func helperRemote(u *url.URL) bool {
+	if u.Host == "" {
+		return false
+	}
+	if u.Scheme == "https" {
+		return true
+	}
+	ip := net.ParseIP(u.Hostname())
+	return u.Scheme == "http" && (u.Hostname() == "localhost" || (ip != nil && ip.IsLoopback()))
 }
 
 func runHookGitCredential(cmd *cobra.Command, args []string) error {
@@ -372,12 +390,12 @@ func applyLocalGitConfig(ctx context.Context, cmd *cobra.Command, dir, cwd, remo
 		keys = append(keys, key)
 	}
 	set("core.sshCommand", sshCommand)
-	if u, err := url.Parse(remote); err == nil && u.Scheme == "https" && u.Host != "" {
+	if u, err := url.Parse(remote); err == nil && helperRemote(u) {
 		exe, err := os.Executable()
 		if err != nil {
 			exe = "citadel-cli"
 		}
-		set("credential.https://"+u.Host+".helper", "", "!"+shellQuote(exe)+" hook git-credential --state "+shellQuote(dir))
+		set("credential."+u.Scheme+"://"+u.Host+".helper", "", "!"+shellQuote(exe)+" hook git-credential --state "+shellQuote(dir))
 	}
 	if st, ok := loadHookState(dir); ok {
 		st.GitConfigRepo, st.GitConfigKeys = top, keys
@@ -516,10 +534,46 @@ func runHookRenew(cmd *cobra.Command, _ []string) error {
 		denied = denyPushWithoutSession(cmd, in)
 	}
 	if !denied && isCursor(cmd) {
-		// Cursor treats a permission hook's empty output as a schema mismatch.
-		_, _ = fmt.Fprintln(cmd.OutOrStdout(), `{"permission":"allow"}`)
+		out := map[string]any{"permission": "allow"}
+		if live {
+			if input, ok := cursorGitInput(cmd, in); ok {
+				out["updated_input"] = input
+			}
+		}
+		_ = json.NewEncoder(cmd.OutOrStdout()).Encode(out)
 	}
 	return nil
+}
+
+var gitCmdWord = regexp.MustCompile(`(^|[;&|(\s])git\s`)
+
+// cursorGitInput rewrites a Shell command that runs git in a Citadel repo so it
+// defines a git function that sets the session's GIT_SSH_COMMAND for every call. Cursor's sandbox sets its own
+// GIT_SSH_COMMAND, which outranks the repo-local core.sshCommand and would send
+// SSH git out with the developer's keys. Cursor documents preToolUse's
+// updated_input for exactly this kind of rewrite.
+func cursorGitInput(cmd *cobra.Command, in hookInput) (map[string]any, bool) {
+	line := in.command()
+	if in.ToolName != "Shell" || !gitCmdWord.MatchString(line) {
+		return nil, false
+	}
+	dir := sessionDir(in.SessionID)
+	if st, ok := loadHookState(dir); !ok || st.Revoked {
+		return nil, false
+	}
+	ctx, cancel := context.WithTimeout(cmd.Context(), 3*time.Second)
+	defer cancel()
+	if _, ok := citadelOrigin(ctx, cmd, in.CWD); !ok {
+		return nil, false
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		exe = "citadel-cli"
+	}
+	ssh := shellQuote(exe) + " hook git-ssh " + shellQuote(filepath.Join(dir, "id_ed25519"))
+	updated := maps.Clone(in.ToolInput)
+	updated["command"] = "git() { GIT_SSH_COMMAND=" + shellQuote(ssh) + ` command git "$@"; }; ` + line
+	return updated, true
 }
 
 // renewSession renews or reissues the session when it is near expiry and
@@ -587,7 +641,7 @@ var gitPushCmd = regexp.MustCompile(`(^|[;&|(\s])git(\s+-\S+(\s+\S+)?)*\s+push(\
 // denyPushWithoutSession emits the PreToolUse deny decision for a Bash
 // `git push` run in a Citadel repository.
 func denyPushWithoutSession(cmd *cobra.Command, in hookInput) bool {
-	if (in.ToolName != "Bash" && in.ToolName != "Shell") || !gitPushCmd.MatchString(in.ToolInput.Command) {
+	if (in.ToolName != "Bash" && in.ToolName != "Shell") || !gitPushCmd.MatchString(in.command()) {
 		return false
 	}
 	ctx, cancel := context.WithTimeout(cmd.Context(), 3*time.Second)
