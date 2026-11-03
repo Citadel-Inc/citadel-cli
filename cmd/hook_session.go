@@ -571,7 +571,7 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 		}
 	}
 	emitSessionContext(cmd, fmt.Sprintf(
-		"This session acts as Citadel agent %q on src.land: git over SSH or HTTPS and citadel-cli calls use its short-lived credentials. Code questions can use `citadel-cli kg` commands.",
+		"This session acts as Citadel agent %q: git over SSH or HTTPS and citadel-cli calls use its short-lived credentials. Code questions can use `citadel-cli kg` commands.",
 		sess.AgentName), env)
 	return nil
 }
