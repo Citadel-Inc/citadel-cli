@@ -390,6 +390,8 @@ repository while no live agent session exists.
 
 `auth login` stores a token with the `sessions:write` scope, which the hooks need; a token from an older login is refused and the hook asks you to run `citadel-cli auth login` again.
 
+`--client cursor` writes the same three hooks into Cursor's `hooks.json` (`~/.cursor/hooks.json`, or `.cursor/hooks.json` with `--scope project`) as `sessionStart`, `preToolUse` and `sessionEnd` entries (see https://cursor.com/docs/hooks). The verbs run with `--client cursor`: the session variables are returned in `sessionStart`'s `env` output instead of an env file, `preToolUse` answers `{"permission":"allow"}` (or `deny` under `--require`), and the session id on later events is Cursor's `conversation_id`. Cursor documents `env` as available to subsequent hooks only, so whether it reaches the agent's shell commands is unconfirmed; `citadel-cli` calls and git in the agent shell may still use your own credentials.
+
 The hooks never block a session unless `--require` is set. When login is missing or the server is
 unreachable, the session starts without an agent identity and git uses your own
 SSH key; the agent is told so in its context. A repository counts as src.land

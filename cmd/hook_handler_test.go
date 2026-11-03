@@ -470,3 +470,79 @@ func TestAuthGit_Hermetic(t *testing.T) {
 		t.Fatalf("rotated refresh token not saved: %s", cfg)
 	}
 }
+
+// Cursor's hooks.json is version 1 with flat entries; install is idempotent,
+// replaces changed flags, and uninstall leaves foreign entries alone.
+func TestHookInstallCursor_Hermetic(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	path := filepath.Join(home, ".cursor", "hooks.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(`{"version":1,"hooks":{"sessionStart":[{"command":"./mine.sh"}]}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runHook(t, "", "install", "--client", "cursor")
+	runHook(t, "", "install", "--client", "cursor", "--require")
+	var cfg struct {
+		Version int `json:"version"`
+		Hooks   map[string][]struct {
+			Command string `json:"command"`
+			Type    string `json:"type"`
+			Timeout int    `json:"timeout"`
+		} `json:"hooks"`
+	}
+	raw, _ := readFile(path)
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		t.Fatalf("hooks.json: %v\n%s", err, raw)
+	}
+	if cfg.Version != 1 || len(cfg.Hooks["sessionStart"]) != 2 || len(cfg.Hooks["sessionEnd"]) != 1 || len(cfg.Hooks["preToolUse"]) != 1 {
+		t.Fatalf("unexpected layout:\n%s", raw)
+	}
+	if got := cfg.Hooks["preToolUse"][0]; got.Command != "citadel-cli hook renew --client cursor --require" || got.Type != "command" || got.Timeout != 10 {
+		t.Fatalf("preToolUse entry = %+v", got)
+	}
+	runHook(t, "", "uninstall", "--client", "cursor")
+	left, _ := readFile(path)
+	if !strings.Contains(string(left), "./mine.sh") || strings.Contains(string(left), "citadel-cli") {
+		t.Fatalf("uninstall must remove only citadel entries:\n%s", left)
+	}
+}
+
+// Under Cursor the session variables travel in sessionStart's JSON output, the
+// session id on later events is conversation_id, and an allowed tool call still
+// answers with an explicit permission.
+func TestHookCursorSession_Hermetic(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
+	t.Setenv("CITADEL_GIT_HOSTS", "")
+	expires := time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339)
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/sessions") {
+			writeJSON(t, w, 201, map[string]any{"session_id": "cs-1", "agent_name": "claude-code-box", "token": "tok-c", "expires_at": expires})
+			return
+		}
+		http.NotFound(w, r)
+	})
+	repo := gitRepoWithOrigin(t, "git@src.land:acme/app.git")
+	start := `{"session_id":"c1","workspace_roots":["` + repo + `"]}`
+	var out struct {
+		Env               map[string]string `json:"env"`
+		AdditionalContext string            `json:"additional_context"`
+	}
+	if err := json.Unmarshal([]byte(runHook(t, start, "session-start", "--client", "cursor")), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Env["CITADEL_ACCESS_TOKEN"] != "tok-c" || !strings.Contains(out.Env["GIT_SSH_COMMAND"], "hook git-ssh") || out.AdditionalContext == "" {
+		t.Fatalf("sessionStart output = %+v", out)
+	}
+	pre := `{"conversation_id":"c1","tool_name":"Shell","cwd":"` + repo + `","tool_input":{"command":"git push origin main"}}`
+	if got := runHook(t, pre, "renew", "--client", "cursor"); !strings.Contains(got, `"permission":"allow"`) {
+		t.Fatalf("live session preToolUse = %q", got)
+	}
+	// No state for another conversation: --require denies the push in Cursor's shape.
+	other := strings.Replace(pre, `"c1"`, `"c2"`, 1)
+	if got := runHook(t, other, "renew", "--client", "cursor", "--require"); !strings.Contains(got, `"permission":"deny"`) {
+		t.Fatalf("require without session = %q", got)
+	}
+}

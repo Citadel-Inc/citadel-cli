@@ -67,33 +67,49 @@ var hookEvents = map[string]string{
 	"SessionEnd":   "citadel-cli hook session-end",
 }
 
+// cursorHookEvents are the same verbs on Cursor's event names, which pass
+// --client so the verb speaks Cursor's input and output shapes.
+var cursorHookEvents = map[string]string{
+	"sessionStart": "citadel-cli hook session-start --client cursor",
+	"preToolUse":   "citadel-cli hook renew --client cursor",
+	"sessionEnd":   "citadel-cli hook session-end --client cursor",
+}
+
 // hookTimeouts are in seconds; SessionEnd needs a raised timeout because the
 // harness otherwise gives all its hooks a 1.5 s budget.
-var hookTimeouts = map[string]int{"SessionStart": 20, "PreToolUse": 10, "SessionEnd": 10}
+var hookTimeouts = map[string]int{"SessionStart": 20, "PreToolUse": 10, "SessionEnd": 10, "sessionStart": 20, "preToolUse": 10, "sessionEnd": 10}
 
 func registerHookCommands() {
 	useSessionToken()
 	for _, c := range []*cobra.Command{hookInstallCmd, hookUninstallCmd} {
-		c.Flags().String("client", "claude-code", "Agent client to configure (claude-code)")
+		c.Flags().String("client", "claude-code", "Agent client to configure (claude-code|cursor)")
 		c.Flags().String("scope", "user", "Settings scope: user (~/.claude/settings.json) or project (.claude/settings.json)")
 	}
 	hookInstallCmd.Flags().StringSlice("scopes", nil, "Agent session scopes to request (default "+strings.Join(defaultHookScopes, ",")+")")
 	hookInstallCmd.Flags().Bool("require", false, "Deny `git push` to a Citadel host while no live agent session exists")
+	for _, c := range []*cobra.Command{hookSessionStartCmd, hookRenewCmd, hookSessionEndCmd} {
+		c.Flags().String("client", "claude-code", "Harness calling the hook (claude-code|cursor)")
+	}
 	hookSessionStartCmd.Flags().StringSlice("scopes", defaultHookScopes, "Agent session scopes to request")
 	hookRenewCmd.Flags().Bool("require", false, "Deny `git push` to a Citadel host while no live agent session exists")
 	HookCmd.AddCommand(hookInstallCmd, hookUninstallCmd, hookSessionStartCmd, hookRenewCmd, hookSessionEndCmd, hookGitCredentialCmd, hookGitSSHCmd)
 }
 
 func runHookSettings(cmd *cobra.Command, install bool) error {
-	if client, _ := cmd.Flags().GetString("client"); client != "claude-code" {
-		return fmt.Errorf("--client: unsupported %q (use claude-code)", client)
+	client, _ := cmd.Flags().GetString("client")
+	if client != "claude-code" && client != "cursor" {
+		return fmt.Errorf("--client: unsupported %q (use claude-code|cursor)", client)
+	}
+	events := hookEvents
+	if client == "cursor" {
+		events = cursorHookEvents
 	}
 	scope, _ := cmd.Flags().GetString("scope")
-	path, err := claudeSettingsPath(scope)
+	path, err := hookSettingsPath(client, scope)
 	if err != nil {
 		return err
 	}
-	commands := maps.Clone(hookEvents)
+	commands := maps.Clone(events)
 	if install {
 		scopes, _ := cmd.Flags().GetStringSlice("scopes")
 		for _, sc := range scopes {
@@ -101,14 +117,22 @@ func runHookSettings(cmd *cobra.Command, install bool) error {
 				return fmt.Errorf("--scopes: invalid scope %q", sc)
 			}
 		}
+		start, renew := "SessionStart", "PreToolUse"
+		if client == "cursor" {
+			start, renew = "sessionStart", "preToolUse"
+		}
 		if len(scopes) > 0 && strings.Join(scopes, ",") != strings.Join(defaultHookScopes, ",") {
-			commands["SessionStart"] += " --scopes " + strings.Join(scopes, ",")
+			commands[start] += " --scopes " + strings.Join(scopes, ",")
 		}
 		if require, _ := cmd.Flags().GetBool("require"); require {
-			commands["PreToolUse"] += " --require"
+			commands[renew] += " --require"
 		}
 	}
-	changed, err := mergeClaudeHooks(path, install, commands)
+	merge := mergeClaudeHooks
+	if client == "cursor" {
+		merge = mergeCursorHooks
+	}
+	changed, err := merge(path, install, commands)
 	if err != nil {
 		return err
 	}
@@ -118,6 +142,23 @@ func runHookSettings(cmd *cobra.Command, install bool) error {
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "citadel-cli hooks %s %s\n", verb, path)
 	return nil
+}
+
+func hookSettingsPath(client, scope string) (string, error) {
+	if client != "cursor" {
+		return claudeSettingsPath(scope)
+	}
+	switch scope {
+	case "user":
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(home, ".cursor", "hooks.json"), nil
+	case "project":
+		return filepath.Join(".cursor", "hooks.json"), nil
+	}
+	return "", fmt.Errorf("--scope: unknown %q (use user|project)", scope)
 }
 
 func claudeSettingsPath(scope string) (string, error) {
@@ -262,4 +303,84 @@ func stripVerb(groups []any, base string) []any {
 		}
 	}
 	return out
+}
+
+// mergeCursorHooks is mergeClaudeHooks for Cursor's hooks.json: version 1 and a
+// flat entry list per event, no handler groups.
+func mergeCursorHooks(path string, install bool, commands map[string]string) (bool, error) {
+	cfg := map[string]any{}
+	mode := fs.FileMode(0o600)
+	//nolint:gosec // The hooks path is operator-selected.
+	raw, err := os.ReadFile(path)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		if !install {
+			return false, nil
+		}
+	case err != nil:
+		return false, err
+	default:
+		if st, serr := os.Stat(path); serr == nil {
+			mode = st.Mode().Perm()
+		}
+		if len(raw) > 0 {
+			if err := json.Unmarshal(raw, &cfg); err != nil {
+				return false, fmt.Errorf("%s is not valid JSON; fix it and rerun: %w", path, err)
+			}
+		}
+	}
+	hooks, ok := cfg["hooks"].(map[string]any)
+	if !ok {
+		if _, present := cfg["hooks"]; present {
+			return false, fmt.Errorf("%s: \"hooks\" is not an object; fix it and rerun", path)
+		}
+		hooks = map[string]any{}
+	}
+	changed := false
+	for event, base := range cursorHookEvents {
+		entries, _ := hooks[event].([]any)
+		if _, present := hooks[event]; present && entries == nil {
+			return false, fmt.Errorf("%s: hooks.%s is not an array; fix it and rerun", path, event)
+		}
+		var keep []any
+		had := false
+		for _, e := range entries {
+			em, _ := e.(map[string]any)
+			switch {
+			case !isVerb(em["command"], base):
+				keep = append(keep, e)
+			case install && em["command"] == commands[event]:
+				had = true
+				keep = append(keep, e)
+			}
+		}
+		if install && !had {
+			keep = append(keep, map[string]any{"command": commands[event], "type": "command", "timeout": hookTimeouts[event]})
+		}
+		if len(keep) != len(entries) || (install && !had) {
+			changed = true
+		}
+		if len(keep) == 0 {
+			delete(hooks, event)
+		} else {
+			hooks[event] = keep
+		}
+	}
+	if !changed {
+		return false, nil
+	}
+	if len(hooks) == 0 {
+		delete(cfg, "hooks")
+	} else {
+		cfg["hooks"] = hooks
+		cfg["version"] = 1
+	}
+	out, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return false, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { //nolint:gosec // hooks dir is user-visible config
+		return false, err
+	}
+	return true, safefs.WriteFileAtomic(path, append(out, '\n'), mode)
 }

@@ -76,9 +76,13 @@ var hookGitSSHCmd = &cobra.Command{
 
 type hookInput struct {
 	SessionID string `json:"session_id"`
-	CWD       string `json:"cwd"`
-	ToolName  string `json:"tool_name"`
-	ToolInput struct {
+	// Cursor names the session conversation_id on every event but
+	// sessionStart and sessionEnd, and gives no cwd on those two.
+	ConversationID string   `json:"conversation_id"`
+	WorkspaceRoots []string `json:"workspace_roots"`
+	CWD            string   `json:"cwd"`
+	ToolName       string   `json:"tool_name"`
+	ToolInput      struct {
 		Command string `json:"command"`
 	} `json:"tool_input"`
 }
@@ -131,6 +135,12 @@ type agentSessionResp struct {
 func readHookInput(cmd *cobra.Command) hookInput {
 	var in hookInput
 	_ = json.NewDecoder(io.LimitReader(cmd.InOrStdin(), 1<<20)).Decode(&in)
+	if in.SessionID == "" {
+		in.SessionID = in.ConversationID
+	}
+	if in.CWD == "" && len(in.WorkspaceRoots) > 0 {
+		in.CWD = in.WorkspaceRoots[0]
+	}
 	return in
 }
 
@@ -324,7 +334,18 @@ func appendEnvFile(path string, vars [][2]string) error {
 	return f.Close()
 }
 
-func emitSessionContext(cmd *cobra.Command, text string) {
+func isCursor(cmd *cobra.Command) bool {
+	c, _ := cmd.Flags().GetString("client")
+	return c == "cursor"
+}
+
+// emitSessionContext tells the agent about the session. Cursor has no env
+// file; its sessionStart output carries the variables itself.
+func emitSessionContext(cmd *cobra.Command, text string, env map[string]string) {
+	if isCursor(cmd) {
+		_ = json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{"env": env, "additional_context": text})
+		return
+	}
 	_ = json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{"hookSpecificOutput": map[string]any{
 		"hookEventName":     "SessionStart",
 		"additionalContext": text,
@@ -354,29 +375,33 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		_ = os.RemoveAll(dir)
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: no agent session: %v\n", err)
-		emitSessionContext(cmd, "Citadel agent identity is unavailable for this session ("+err.Error()+"). Git will use the developer's own SSH key.")
+		emitSessionContext(cmd, "Citadel agent identity is unavailable for this session ("+err.Error()+"). Git will use the developer's own SSH key.", nil)
 		return nil
 	}
-	if envFile := os.Getenv("CLAUDE_ENV_FILE"); envFile != "" {
-		key := filepath.Join(dir, "id_ed25519")
-		exe, err := os.Executable()
-		if err != nil {
-			exe = "citadel-cli"
-		}
-		vars := [][2]string{
-			{"GIT_SSH_COMMAND", shellQuote(exe) + " hook git-ssh " + shellQuote(key)},
-			{"CITADEL_AGENT_SESSION", sess.SessionID},
-			{"CITADEL_HOOK_STATE", dir},
-			{"CITADEL_ACCESS_TOKEN", sess.Token},
-		}
-		vars = append(vars, httpsCredentialEnv(remote)...)
+	key := filepath.Join(dir, "id_ed25519")
+	exe, err := os.Executable()
+	if err != nil {
+		exe = "citadel-cli"
+	}
+	vars := [][2]string{
+		{"GIT_SSH_COMMAND", shellQuote(exe) + " hook git-ssh " + shellQuote(key)},
+		{"CITADEL_AGENT_SESSION", sess.SessionID},
+		{"CITADEL_HOOK_STATE", dir},
+		{"CITADEL_ACCESS_TOKEN", sess.Token},
+	}
+	vars = append(vars, httpsCredentialEnv(remote)...)
+	env := map[string]string{}
+	for _, kv := range vars {
+		env[kv[0]] = kv[1]
+	}
+	if envFile := os.Getenv("CLAUDE_ENV_FILE"); envFile != "" && !isCursor(cmd) {
 		if err := appendEnvFile(envFile, vars); err != nil {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: write env file: %v\n", err)
 		}
 	}
 	emitSessionContext(cmd, fmt.Sprintf(
 		"This session acts as Citadel agent %q on src.land: git over SSH or HTTPS and citadel-cli calls use its short-lived credentials. Code questions can use `citadel-cli kg` commands.",
-		sess.AgentName))
+		sess.AgentName), env)
 	return nil
 }
 
@@ -416,8 +441,13 @@ func runHookRenew(cmd *cobra.Command, _ []string) error {
 	if dir := sessionDir(in.SessionID); dir != "" {
 		live = renewSession(cmd, dir)
 	}
+	denied := false
 	if require, _ := cmd.Flags().GetBool("require"); require && !live {
-		denyPushWithoutSession(cmd, in)
+		denied = denyPushWithoutSession(cmd, in)
+	}
+	if !denied && isCursor(cmd) {
+		// Cursor treats a permission hook's empty output as a schema mismatch.
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), `{"permission":"allow"}`)
 	}
 	return nil
 }
@@ -485,20 +515,26 @@ var gitPushCmd = regexp.MustCompile(`(^|[;&|(\s])git(\s+-\S+(\s+\S+)?)*\s+push(\
 
 // denyPushWithoutSession emits the PreToolUse deny decision for a Bash
 // `git push` run in a Citadel repository.
-func denyPushWithoutSession(cmd *cobra.Command, in hookInput) {
-	if in.ToolName != "Bash" || !gitPushCmd.MatchString(in.ToolInput.Command) {
-		return
+func denyPushWithoutSession(cmd *cobra.Command, in hookInput) bool {
+	if (in.ToolName != "Bash" && in.ToolName != "Shell") || !gitPushCmd.MatchString(in.ToolInput.Command) {
+		return false
 	}
 	ctx, cancel := context.WithTimeout(cmd.Context(), 3*time.Second)
 	defer cancel()
 	if _, ok := citadelOrigin(ctx, cmd, in.CWD); !ok {
-		return
+		return false
+	}
+	const reason = "No live Citadel agent session: git push to src.land is blocked (hook installed with --require). Restart the session after `citadel-cli auth login`."
+	if isCursor(cmd) {
+		_ = json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{"permission": "deny", "user_message": reason, "agent_message": reason})
+		return true
 	}
 	_ = json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{"hookSpecificOutput": map[string]any{
 		"hookEventName":            "PreToolUse",
 		"permissionDecision":       "deny",
-		"permissionDecisionReason": "No live Citadel agent session: git push to src.land is blocked (hook installed with --require). Restart the session after `citadel-cli auth login`.",
+		"permissionDecisionReason": reason,
 	}})
+	return true
 }
 
 func runHookSessionEnd(cmd *cobra.Command, _ []string) error {
