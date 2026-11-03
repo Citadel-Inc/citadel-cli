@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -398,7 +399,7 @@ func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scope
 		"scopes":         scopes,
 	}
 	if err := c.Post(ctx, "/agents/"+url.PathEscape(agentSessionName())+"/sessions", body, &sess); err != nil {
-		if he, ok := errors.AsType[*apiclient.HTTPError](err); ok && he.StatusCode == 403 && strings.Contains(he.Body, `"forbidden"`) {
+		if he, ok := errors.AsType[*apiclient.HTTPError](err); ok && he.StatusCode == http.StatusForbidden && strings.Contains(he.Body, `"forbidden"`) {
 			return sess, errors.New("this login predates hook sessions (token lacks sessions:write); run `citadel-cli auth login` again")
 		}
 		return sess, err
