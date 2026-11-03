@@ -10,7 +10,9 @@ All notable changes to `citadel-cli` are documented here.
 - `hook session-start` now registers a host-scoped git credential helper (`hook git-credential`) for `https://` origins, so hook sessions clone and push over Smart HTTP with the session token and no prompt.
 - `hook` sessions use host-scoped SSH (`hook git-ssh`): the session key is offered only to Citadel hosts, so SSH git to other hosts keeps working.
 - `hook install --scopes` sets the session scopes (now including `pulls:*` and `issues:*` by default), and `--require` denies `git push` to a Citadel host while no live agent session exists.
-- `hook renew` reissues an expired session on the same key and scopes; CLI calls in the session read the current token from session state.
+- `hook renew` reissues an expired session on a new key (written over the old key file, so `GIT_SSH_COMMAND` keeps working) and the same scopes; CLI calls in the session read the current token from session state.
+- `auth login` now requests `sessions:write` for the stored token, which hook sessions need. Tokens from earlier logins get a clear "run `citadel-cli auth login` again" message from `hook session-start`.
+- A revoked session (renew returns 410 `session_revoked`) is not reissued: the hook removes its key and token, warns, and stays revoked for the rest of that Claude Code session. A new Claude Code session starts fresh.
 
 ## v0.2.0 - 2026-09-21
 

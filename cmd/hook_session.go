@@ -90,6 +90,8 @@ type hookState struct {
 	ExpiresAt time.Time `json:"expires_at"`
 	Token     string    `json:"token,omitempty"`
 	Scopes    []string  `json:"scopes,omitempty"`
+	// Revoked sessions stay revoked for the rest of the harness session.
+	Revoked bool `json:"revoked,omitempty"`
 }
 
 // useSessionToken lets every CLI call in a hook session use the token from
@@ -326,6 +328,9 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	}
 	ctx, cancel := context.WithTimeout(cmd.Context(), 15*time.Second)
 	defer cancel()
+	if st, ok := loadHookState(dir); ok && st.Revoked {
+		return nil
+	}
 	remote, ok := citadelOrigin(ctx, cmd, in.CWD)
 	if !ok {
 		return nil
@@ -334,7 +339,7 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	if len(scopes) == 0 {
 		scopes = defaultHookScopes
 	}
-	sess, err := openAgentSession(ctx, cmd, dir, scopes, false)
+	sess, err := openAgentSession(ctx, cmd, dir, scopes)
 	if err != nil {
 		_ = os.RemoveAll(dir)
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: no agent session: %v\n", err)
@@ -364,35 +369,18 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// sessionPublicKey derives the public key line from the session's private key.
-func sessionPublicKey(dir string) (string, error) {
-	raw, err := os.ReadFile(filepath.Join(dir, "id_ed25519")) //nolint:gosec // dir is derived from the session id
-	if err != nil {
-		return "", err
-	}
-	signer, err := ssh.ParsePrivateKey(raw)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey()))), nil
-}
-
-// openAgentSession opens a session, reusing the key already in dir when asked
-// and readable so a reissue keeps the running session's git SSH config valid.
-func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scopes []string, reuseKey bool) (agentSessionResp, error) {
+// openAgentSession opens a session on a fresh key written over the one at the
+// same path, so the running session's GIT_SSH_COMMAND stays valid while the
+// server never sees a fingerprint twice.
+func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scopes []string) (agentSessionResp, error) {
 	var sess agentSessionResp
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return sess, err
 	}
-	pub := ""
-	if reuseKey {
-		pub, _ = sessionPublicKey(dir)
-	}
-	if pub == "" {
-		if pub, err = writeSessionKey(dir); err != nil {
-			return sess, err
-		}
+	pub, err := writeSessionKey(dir)
+	if err != nil {
+		return sess, err
 	}
 	body := map[string]any{
 		"client":         "claude-code",
@@ -400,6 +388,9 @@ func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scope
 		"scopes":         scopes,
 	}
 	if err := c.Post(ctx, "/agents/"+url.PathEscape(agentSessionName())+"/sessions", body, &sess); err != nil {
+		if apiclient.IsStatus(err, 403) {
+			return sess, errors.New("this login predates hook sessions (token lacks sessions:write); run `citadel-cli auth login` again")
+		}
 		return sess, err
 	}
 	if sess.SessionID == "" || sess.Token == "" {
@@ -424,7 +415,7 @@ func runHookRenew(cmd *cobra.Command, _ []string) error {
 // reports whether a live session remains.
 func renewSession(cmd *cobra.Command, dir string) bool {
 	st, ok := loadHookState(dir)
-	if !ok {
+	if !ok || st.Revoked {
 		return false
 	}
 	if time.Until(st.ExpiresAt) > renewWindow {
@@ -440,6 +431,9 @@ func renewSession(cmd *cobra.Command, dir string) bool {
 		err = c.Post(ctx, "/agent-sessions/"+url.PathEscape(st.SessionID)+"/renew", nil, &out)
 	}
 	switch {
+	case apiclient.IsStatus(err, 410):
+		revokeLocalSession(cmd, dir, st)
+		return false
 	case apiclient.IsStatus(err, 409):
 		return reissueSession(ctx, cmd, dir, st)
 	case err != nil:
@@ -451,15 +445,23 @@ func renewSession(cmd *cobra.Command, dir string) bool {
 	return true
 }
 
+// revokeLocalSession drops the key and token of a revoked session and keeps
+// the state as a tombstone so no later hook revives it.
+func revokeLocalSession(cmd *cobra.Command, dir string, st hookState) {
+	_ = os.Remove(filepath.Join(dir, "id_ed25519"))
+	_ = saveHookState(dir, hookState{SessionID: st.SessionID, AgentName: st.AgentName, Revoked: true})
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "citadel-cli hook: this agent session was revoked; git and citadel-cli calls in this Claude Code session are no longer authenticated as the agent. Start a new Claude Code session to get a fresh one.")
+}
+
 // reissueSession replaces an ended session (idle past its 15-minute window)
-// with one on the same key and scopes. The new token reaches later CLI calls
+// with a new one on a fresh key and the same scopes. The new token reaches later CLI calls
 // through the state file; the harness environment cannot be updated from a hook.
 func reissueSession(ctx context.Context, cmd *cobra.Command, dir string, old hookState) bool {
 	scopes := old.Scopes
 	if len(scopes) == 0 {
 		scopes = defaultHookScopes
 	}
-	sess, err := openAgentSession(ctx, cmd, dir, scopes, true)
+	sess, err := openAgentSession(ctx, cmd, dir, scopes)
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: agent session ended or expired and could not be reissued (%v); git and citadel-cli calls in this session are no longer authenticated as the agent\n", err)
 		return false

@@ -315,8 +315,8 @@ func TestHookInstallFlags_Hermetic(t *testing.T) {
 	}
 }
 
-// After an idle gap the renew gets 409: a new session on the same key replaces
-// it, later CLI calls read the new token from state, and --require denies a
+// After an idle gap the renew gets 409: a new session on a fresh key (same
+// path) replaces it, later CLI calls read the new token from state, and --require denies a
 // push only while no session is live.
 func TestHookRenewReissueAndRequire_Hermetic(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
@@ -326,7 +326,7 @@ func TestHookRenewReissueAndRequire_Hermetic(t *testing.T) {
 	var created atomic.Int32
 	var keys []string
 	var scopes [][]string
-	var gone atomic.Bool
+	var gone, revoked atomic.Bool
 	withServer(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/sessions"):
@@ -339,6 +339,10 @@ func TestHookRenewReissueAndRequire_Hermetic(t *testing.T) {
 			n := created.Add(1)
 			writeJSON(t, w, 201, map[string]any{"session_id": "sess-" + strconv.Itoa(int(n)), "agent_name": "claude-code-box", "token": "tok-" + strconv.Itoa(int(n)), "expires_at": expires})
 		case strings.HasSuffix(r.URL.Path, "/renew"):
+			if revoked.Load() {
+				writeJSON(t, w, 410, map[string]any{"error": "session_revoked"})
+				return
+			}
 			if gone.Load() {
 				writeJSON(t, w, 409, map[string]any{"error": "ended"})
 				return
@@ -368,7 +372,7 @@ func TestHookRenewReissueAndRequire_Hermetic(t *testing.T) {
 	if out != "" {
 		t.Fatalf("reissued session must not be denied: %q", out)
 	}
-	if created.Load() != 2 || keys[0] != keys[1] || !slices.Equal(scopes[1], []string{"code:read"}) {
+	if created.Load() != 2 || keys[0] == keys[1] || !slices.Equal(scopes[1], []string{"code:read"}) {
 		t.Fatalf("reissue: created=%d keys=%v scopes=%v", created.Load(), keys, scopes)
 	}
 	if st, _ := readFile(stateFile); !strings.Contains(string(st), `"token":"tok-2"`) {
@@ -379,6 +383,25 @@ func TestHookRenewReissueAndRequire_Hermetic(t *testing.T) {
 	cred.Env = append(os.Environ(), "CITADEL_ACCESS_TOKEN=stale", "CITADEL_AGENT_SESSION=sess-1", "CITADEL_HOOK_STATE="+filepath.Dir(stateFile))
 	if b, err := cred.Output(); err != nil || !strings.Contains(string(b), "password=tok-2\n") {
 		t.Fatalf("credential after reissue = %q (%v), want the token from state", b, err)
+	}
+
+	// Revoked: stop, drop key and token, and never reissue again.
+	expire()
+	revoked.Store(true)
+	if out := runHook(t, in, "renew", "--require"); !strings.Contains(out, `"permissionDecision":"deny"`) {
+		t.Fatalf("revoked session must deny push: %q", out)
+	}
+	keyFile := filepath.Join(filepath.Dir(stateFile), "id_ed25519")
+	if _, err := os.Stat(keyFile); err == nil { //nolint:gosec // test-owned temp path
+		t.Fatal("revoked session left its key behind")
+	}
+	if st, _ := readFile(stateFile); strings.Contains(string(st), "tok-") || !strings.Contains(string(st), `"revoked":true`) {
+		t.Fatalf("revoked state = %s", st)
+	}
+	runHook(t, in, "renew", "--require")
+	runHook(t, in, "session-start")
+	if created.Load() != 2 {
+		t.Fatalf("revoked session was revived: created=%d", created.Load())
 	}
 
 	// No state at all: a push to a Citadel host is denied, other commands and hosts are not.

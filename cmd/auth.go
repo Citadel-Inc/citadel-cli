@@ -452,6 +452,10 @@ func defaultCLIAgentName() (string, error) {
 	return "citadel-cli@" + host, nil
 }
 
+// cliTokenScopes are the server defaults plus sessions:write, which hook
+// sessions need to open, renew and end sessions as this token's owner.
+var cliTokenScopes = []string{"metadata:read", "code:read", "sessions:write"}
+
 // bootstrapAgentToken exchanges the short-lived OAuth JWT for a long-lived
 // agent token via find-or-create + rotate-token, mutating cfg in place.
 func bootstrapAgentToken(ctx context.Context, cmd *cobra.Command, cfg *clicfg.Config, serverURL, flagServer, jwt string) error {
@@ -475,7 +479,7 @@ func bootstrapAgentToken(ctx context.Context, cmd *cobra.Command, cfg *clicfg.Co
 		return fmt.Errorf("find or create agent: %w", err)
 	}
 	var newTok tokenWithCleartext
-	if err := c.Post(ctx, "/agents/"+agentID.String()+"/rotate-token", nil, &newTok); err != nil {
+	if err := c.Post(ctx, "/agents/"+agentID.String()+"/rotate-token", map[string]any{"scopes": cliTokenScopes}, &newTok); err != nil {
 		return fmt.Errorf("rotate agent token: %w", err)
 	}
 	if newTok.CleartextToken == "" {
