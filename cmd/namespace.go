@@ -532,7 +532,7 @@ func runNsTransferInitiate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	var result map[string]any
-	if err := c.Post(cmd.Context(), "/orgs/"+url.PathEscape(orgSlug)+"/transfer", map[string]string{"to_username": to}, &result); err != nil {
+	if err := c.Post(cmd.Context(), "/transfers", map[string]string{"org_slug": orgSlug, "to_username": to}, &result); err != nil {
 		return err
 	}
 

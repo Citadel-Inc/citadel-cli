@@ -816,7 +816,14 @@ func TestNsDelete_HasRepos(t *testing.T) {
 
 func TestNsTransferInitiate_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
-		"POST /orgs/myorg/transfer": func(w http.ResponseWriter, _ *http.Request) {
+		"POST /transfers": func(w http.ResponseWriter, r *http.Request) {
+			var body map[string]string
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			if body["org_slug"] != "myorg" || body["to_username"] != "newowner" {
+				t.Fatalf("body = %v", body)
+			}
 			writeJSON(t, w, 201, map[string]any{"id": "t1"})
 		},
 	}))
