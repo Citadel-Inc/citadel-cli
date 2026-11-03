@@ -197,3 +197,9 @@ func TestResolveMCPURL(t *testing.T) {
 		}
 	}
 }
+
+func TestResolveMCPURL_DropsAPISuffix(t *testing.T) {
+	if got := resolveMCPURL("https://self.example/api"); got != "https://self.example/mcp" {
+		t.Errorf("got %q", got)
+	}
+}

@@ -118,7 +118,7 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	}
 	rt := httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP})
 	return &Client{
-		server:     ResolveRESTServerURL(cfg.ResolveServerURL(opts.Server)),
+		server:     ResolveRESTServerURL(cfg.ResolveRawServerURL(opts.Server)),
 		token:      cfg.AccessToken,
 		userAgent:  ua,
 		http:       &http.Client{Timeout: defaultTimeout, Transport: rt},
@@ -127,20 +127,37 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	}, nil
 }
 
+// ResolveRESTServerURL maps the configured server URL to the base REST paths
+// are appended to. The src.land API lives at the root of api.src.land (the
+// MCP host is coerced there), while the apex and a self-hosted same-origin
+// server serve it under /api. Any other host is used as written.
 func ResolveRESTServerURL(server string) string {
 	base := strings.TrimRight(strings.TrimSpace(server), "/")
 	u, err := url.Parse(base)
 	if err != nil {
 		return base
 	}
-	// Production splits OAuth/MCP (`mcp.src.land`) from JSON REST (`api.src.land`).
-	// Keep explicit custom hosts untouched, but coerce the known public MCP host
-	// so CLI REST verbs do not fall into the SPA.
-	if u.Host == "mcp.src.land" {
+	switch u.Host {
+	case "mcp.src.land", "api.src.land":
 		u.Host = "api.src.land"
-		return strings.TrimRight(u.String(), "/")
+		u.Path = strings.TrimSuffix(u.Path, "/api")
+	case "src.land", "www.src.land":
+		if !strings.HasSuffix(u.Path, "/api") {
+			u.Path += "/api"
+		}
+	default:
+		return base
 	}
-	return base
+	return strings.TrimRight(u.String(), "/")
+}
+
+// endpoint joins path to the REST base. Paths written with a leading /api work
+// against a base that already ends in /api.
+func (c *Client) endpoint(path string) string {
+	if strings.HasSuffix(c.server, "/api") && strings.HasPrefix(path, "/api/") {
+		path = strings.TrimPrefix(path, "/api")
+	}
+	return c.server + path
 }
 
 // Server returns the resolved base URL with no trailing slash.
@@ -180,7 +197,7 @@ func (c *Client) Delete(ctx context.Context, path string) error {
 // the body drained.
 func (c *Client) GetEventStream(ctx context.Context, path, lastEventID string) (*http.Response, error) {
 	for attempt := range 2 {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.server+path, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.endpoint(path), nil)
 		if err != nil {
 			return nil, fmt.Errorf("build request: %w", err)
 		}
@@ -233,7 +250,7 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 		if bodyBytes != nil {
 			rdr = bytes.NewReader(bodyBytes)
 		}
-		req, err := http.NewRequestWithContext(ctx, method, c.server+path, rdr)
+		req, err := http.NewRequestWithContext(ctx, method, c.endpoint(path), rdr)
 		if err != nil {
 			return fmt.Errorf("build request: %w", err)
 		}

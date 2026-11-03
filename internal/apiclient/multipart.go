@@ -83,7 +83,7 @@ func (c *Client) streamTarget(target string) (string, bool) {
 			strings.EqualFold(base.Host, parsed.Host)
 		return target, sameOrigin
 	}
-	return c.server + target, true
+	return c.endpoint(target), true
 }
 
 // PostMultipart streams one file field to path and decodes its JSON response.
@@ -92,7 +92,7 @@ func (c *Client) PostMultipart(ctx context.Context, path, field, filename string
 	body, contentType := newMultipartUploadBody(field, filename, src)
 	defer func() { _ = body.Close() }()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.server+path, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint(path), body)
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}

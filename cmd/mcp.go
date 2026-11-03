@@ -328,10 +328,10 @@ func dialMCP(cmd *cobra.Command) (*mcpclient.Client, error) {
 }
 
 // resolveMCPURL turns the resolved server base URL into the /mcp path.
-// If the operator pointed --server at api.src.land, swap to mcp.src.land
+// A trailing /api is dropped (MCP is never under it). If the operator pointed --server at api.src.land, swap to mcp.src.land
 // since the production MCP endpoint lives on its own subdomain.
 func resolveMCPURL(server string) string {
-	url := strings.TrimRight(server, "/") + "/mcp"
+	url := clicfg.StripAPISuffix(server) + "/mcp"
 	return strings.Replace(url, "api.src.land/mcp", "mcp.src.land/mcp", 1)
 }
 

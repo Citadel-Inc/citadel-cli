@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
@@ -146,15 +147,29 @@ func Update(fn func(*Config) error) error {
 	return cfg.Save()
 }
 
-// ResolveServerURL picks the effective server URL with this precedence:
+// ResolveRawServerURL picks the configured server URL exactly as written, with
+// this precedence:
 //
 //  1. --server flag (passed as flagOverride; empty string = unset)
 //  2. CITADEL_SERVER env var
 //  3. stored config (c.ServerURL)
 //  4. default https://mcp.src.land
 //
-// Used by every subcommand that issues HTTP requests so the precedence
-// is consistent.
-func (c Config) ResolveServerURL(flagOverride string) string {
+// A trailing /api is meaningful here: REST callers read it to learn that the
+// server fronts its API under /api on the same origin.
+func (c Config) ResolveRawServerURL(flagOverride string) string {
 	return cmp.Or(flagOverride, os.Getenv("CITADEL_SERVER"), c.ServerURL, "https://mcp.src.land")
+}
+
+// ResolveServerURL is the bare server origin used by OAuth, MCP and git
+// callers: ResolveRawServerURL without a trailing slash or /api, so one
+// CITADEL_SERVER value serves REST and non-REST commands alike.
+func (c Config) ResolveServerURL(flagOverride string) string {
+	return StripAPISuffix(c.ResolveRawServerURL(flagOverride))
+}
+
+// StripAPISuffix removes trailing slashes and one trailing /api segment.
+func StripAPISuffix(server string) string {
+	s := strings.TrimRight(strings.TrimSpace(server), "/")
+	return strings.TrimRight(strings.TrimSuffix(s, "/api"), "/")
 }

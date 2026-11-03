@@ -316,3 +316,14 @@ access_token = "from-file"
 		t.Fatalf("got %+v", cfg)
 	}
 }
+
+func TestResolveServerURL_StripsAPISuffixButRawKeepsIt(t *testing.T) {
+	t.Setenv("CITADEL_SERVER", "https://self.example/api/")
+	c := Config{}
+	if got := c.ResolveServerURL(""); got != "https://self.example" {
+		t.Errorf("origin = %q", got)
+	}
+	if got := c.ResolveRawServerURL(""); got != "https://self.example/api/" {
+		t.Errorf("raw = %q", got)
+	}
+}

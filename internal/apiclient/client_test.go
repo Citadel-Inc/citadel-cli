@@ -547,3 +547,28 @@ func TestGetEventStream_401_RetryOn401_HookError(t *testing.T) {
 		t.Fatalf("want hookErr, got %v", got)
 	}
 }
+
+func TestResolveRESTServerURL_OneValueForAllHosts(t *testing.T) {
+	for in, want := range map[string]string{
+		"https://mcp.src.land":      "https://api.src.land",
+		"https://api.src.land/api/": "https://api.src.land",
+		"https://src.land":          "https://src.land/api",
+		"https://src.land/api":      "https://src.land/api",
+		"https://self.example/api":  "https://self.example/api",
+		"http://127.0.0.1:8080":     "http://127.0.0.1:8080",
+	} {
+		if got := ResolveRESTServerURL(in); got != want {
+			t.Errorf("ResolveRESTServerURL(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestClientEndpoint_NoDoubleAPI(t *testing.T) {
+	c := &Client{server: "https://self.example/api"}
+	if got := c.endpoint("/api/search"); got != "https://self.example/api/search" {
+		t.Errorf("api-prefixed path: %q", got)
+	}
+	if got := c.endpoint("/orgs"); got != "https://self.example/api/orgs" {
+		t.Errorf("plain path: %q", got)
+	}
+}

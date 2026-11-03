@@ -68,7 +68,7 @@ func (c checkResult) String() string {
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
 	cfg, _ := clicfg.Load()
-	server := cfg.ResolveServerURL(serverFlag(cmd))
+	server := cfg.ResolveRawServerURL(serverFlag(cmd))
 
 	results := []checkResult{
 		checkServer(cmd.Context(), server),
