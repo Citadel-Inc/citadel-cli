@@ -394,6 +394,8 @@ repository while no live agent session exists.
 
 Cursor's sandbox also sets its own `GIT_SSH_COMMAND` (a `cursorsandbox git-ssh-dial` relay), which outranks `core.sshCommand`, and git cannot pass a non-22 port through it. So `preToolUse` rewrites a `Shell` command that runs git in a Citadel repo (through `updated_input`, which Cursor documents) to define a `git` function that sets the session's `GIT_SSH_COMMAND` for every call. Observed with `cursor-agent` 2026.10.28: a command that is only a `git push` goes out on the session key, but a push chained after other commands with `;` was still sent through the sandbox's relay and failed on a non-22 SSH port. `https://` remotes use the credential helper and worked chained; prefer them under Cursor, or run SSH git as its own command.
 
+`hook install` prints the server the hooks will use and where that setting came from.
+
 The hooks never block a session unless `--require` is set. When login is missing or the server is
 unreachable, the session starts without an agent identity and git uses your own
 SSH key; the agent is told so in its context. A repository counts as src.land
@@ -1241,7 +1243,7 @@ Attempting to delete the last default label for a semantic role returns a `label
 
 ### Environment health check
 
-Run `citadel-cli doctor` to check REST `/healthz` on the resolved API host,
+Run `citadel-cli doctor` to print the server in use and where that setting came from, then check REST `/healthz` on the resolved API host,
 local auth state, MCP initialize, config-file permissions, resolved REST/MCP
 bases, and CWD git-origin sanity when `CITADEL_REPO` is unset.
 

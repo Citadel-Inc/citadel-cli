@@ -254,6 +254,9 @@ func TestRunDoctor_allChecksGreen(t *testing.T) {
 		t.Fatalf("doctor: %v", err)
 	}
 	s := out.String()
+	if want := "server: " + srv.URL + " (from CITADEL_SERVER)"; !strings.Contains(s, want) {
+		t.Fatalf("want %q, got:\n%s", want, s)
+	}
 	if !strings.Contains(s, "[PASS]") || !strings.Contains(s, "server-reachable") {
 		t.Fatalf("expected PASS server line, got:\n%s", s)
 	}

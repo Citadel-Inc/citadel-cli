@@ -581,3 +581,20 @@ func TestHookCursorSession_Hermetic(t *testing.T) {
 		t.Fatalf("require without session = %q", got)
 	}
 }
+
+func TestHookInstallNamesTheServer(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	t.Setenv("CITADEL_SERVER", "")
+	out := runHook(t, "", "install")
+	if !strings.Contains(out, "server: https://mcp.src.land (built-in default") {
+		t.Fatalf("default server not named: %q", out)
+	}
+
+	t.Setenv("CITADEL_SERVER", "https://forge.internal.example")
+	out = runHook(t, "", "install")
+	if !strings.Contains(out, "server: https://forge.internal.example (from CITADEL_SERVER)") {
+		t.Fatalf("configured server not named: %q", out)
+	}
+}

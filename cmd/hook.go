@@ -13,6 +13,8 @@ import (
 
 	safefs "github.com/Rethunk-Tech/go-safefs"
 	"github.com/spf13/cobra"
+
+	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 )
 
 // HookCmd is the top-level `citadel-cli hook` command.
@@ -143,6 +145,11 @@ func runHookSettings(cmd *cobra.Command, install bool) error {
 		verb = map[bool]string{true: "already installed in", false: "not present in"}[install]
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "citadel-cli hooks %s %s\n", verb, path)
+	if install {
+		cfg, _ := clicfg.Load()
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "server: %s (%s)\n",
+			cfg.ResolveRawServerURL(serverFlag(cmd)), cfg.DescribeServerSource(serverFlag(cmd)))
+	}
 	return nil
 }
 

@@ -161,6 +161,20 @@ func (c Config) ResolveRawServerURL(flagOverride string) string {
 	return cmp.Or(flagOverride, os.Getenv("CITADEL_SERVER"), c.ServerURL, "https://mcp.src.land")
 }
 
+// DescribeServerSource names where ResolveRawServerURL got its answer, so a
+// self-hosted user who forgot to configure a server sees it is the hosted one.
+func (c Config) DescribeServerSource(flagOverride string) string {
+	switch {
+	case flagOverride != "":
+		return "from --server"
+	case os.Getenv("CITADEL_SERVER") != "":
+		return "from CITADEL_SERVER"
+	case c.ServerURL != "":
+		return "from the config file"
+	}
+	return "built-in default, the hosted service; set CITADEL_SERVER or pass --server for a self-hosted one"
+}
+
 // ResolveServerURL is the bare server origin used by OAuth, MCP and git
 // callers: ResolveRawServerURL without a trailing slash or /api, so one
 // CITADEL_SERVER value serves REST and non-REST commands alike.

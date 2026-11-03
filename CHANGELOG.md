@@ -6,6 +6,7 @@ All notable changes to `citadel-cli` are documented here.
 
 ### Added
 
+- `doctor` and `hook install` print the server in use and where the setting came from, so an unconfigured self-host machine sees it is on the hosted default.
 - Added `hook install`/`uninstall` and the `session-start`, `renew` and `session-end` hooks, which give each Claude Code session in a src.land repo its own agent identity, ephemeral SSH key and short-lived token.
 - `hook session-start` now registers a host-scoped git credential helper (`hook git-credential`) for `https://` origins, so hook sessions clone and push over Smart HTTP with the session token and no prompt.
 - `hook` sessions use host-scoped SSH (`hook git-ssh`): the session key is offered only to Citadel hosts, so SSH git to other hosts keeps working.
