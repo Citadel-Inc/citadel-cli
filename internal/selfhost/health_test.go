@@ -20,9 +20,9 @@ func buildCfg(apiURL, supabaseURL string) selfhost.Config {
 }
 
 func TestHealthAllGreen(t *testing.T) {
-	// API server — returns 200 on /api/health.
+	// API server — returns 200 on /api/healthz.
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/health" {
+		if r.URL.Path == "/api/healthz" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -66,7 +66,7 @@ func TestHealthAPIDown(t *testing.T) {
 func TestHealthMigrationsMissing(t *testing.T) {
 	// API server healthy.
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/health" {
+		if r.URL.Path == "/api/healthz" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -124,5 +124,23 @@ func TestHealthStatusStrings(t *testing.T) {
 		if got := c.s.String(); got != c.want {
 			t.Errorf("HealthStatus(%d).String() = %q; want %q", c.s, got, c.want)
 		}
+	}
+}
+
+// The Compose air-gap stack runs no PostgREST; its web origin answers every
+// unknown path with the app, which must not read as a healthy Supabase.
+func TestHealthWebPageInPlaceOfPostgREST(t *testing.T) {
+	web := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/healthz" {
+			_, _ = w.Write([]byte("ok"))
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte("<!doctype html>"))
+	}))
+	defer web.Close()
+	report := selfhost.CheckHealth(context.Background(), buildCfg(web.URL, web.URL))
+	if report.Overall() != selfhost.HealthAmber {
+		t.Fatalf("Overall = %v, want AMBER: %+v", report.Overall(), report.Probes)
 	}
 }

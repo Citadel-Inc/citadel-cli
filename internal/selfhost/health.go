@@ -74,13 +74,13 @@ func CheckHealth(ctx context.Context, cfg Config) HealthReport {
 	}
 }
 
-// probeAPI checks that the Citadel API server is reachable at /api/health.
+// probeAPI checks that the Citadel API server answers /api/healthz.
 func probeAPI(ctx context.Context, client *http.Client, endpoint string) ProbeResult {
 	const name = "api"
 	if endpoint == "" {
 		return ProbeResult{name, HealthRed, "api_endpoint not configured"}
 	}
-	url := strings.TrimRight(endpoint, "/") + "/api/health"
+	url := strings.TrimRight(endpoint, "/") + "/api/healthz"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return ProbeResult{name, HealthRed, fmt.Sprintf("build request: %v", err)}
@@ -90,10 +90,17 @@ func probeAPI(ctx context.Context, client *http.Client, endpoint string) ProbeRe
 		return ProbeResult{name, HealthRed, fmt.Sprintf("%s unreachable: %v", endpoint, err)}
 	}
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode >= 500 {
+	if resp.StatusCode != http.StatusOK {
 		return ProbeResult{name, HealthRed, fmt.Sprintf("HTTP %d from %s", resp.StatusCode, url)}
 	}
 	return ProbeResult{name, HealthGreen, fmt.Sprintf("reachable (HTTP %d)", resp.StatusCode)}
+}
+
+// isHTML reports a web front door answering where PostgREST should: the
+// air-gap stack runs no PostgREST, and its web origin serves the app for every
+// unknown path with a 200.
+func isHTML(resp *http.Response) bool {
+	return strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html")
 }
 
 // probeSupabase verifies that the Supabase REST endpoint responds with the
@@ -122,6 +129,9 @@ func probeSupabase(ctx context.Context, client *http.Client, supabaseURL, adminK
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 500 {
 		return ProbeResult{name, HealthRed, fmt.Sprintf("HTTP %d from Supabase REST endpoint", resp.StatusCode)}
+	}
+	if isHTML(resp) {
+		return ProbeResult{name, HealthAmber, fmt.Sprintf("%s serves a web page, not PostgREST; the Compose air-gap stack has none", url)}
 	}
 	return ProbeResult{name, HealthGreen, fmt.Sprintf("reachable (HTTP %d)", resp.StatusCode)}
 }
@@ -159,6 +169,9 @@ func probeMigrations(ctx context.Context, client *http.Client, supabaseURL, admi
 	if resp.StatusCode == http.StatusNotFound {
 		// Table does not exist yet — migrations have not been run.
 		return ProbeResult{name, HealthAmber, "schema_migrations table not found — run `citadel-cli self-host migrate`"}
+	}
+	if isHTML(resp) {
+		return ProbeResult{name, HealthAmber, "no PostgREST at supabase_url, so migrations cannot be checked this way"}
 	}
 	if resp.StatusCode >= 400 {
 		return ProbeResult{name, HealthAmber, fmt.Sprintf("migration check returned HTTP %d: %s", resp.StatusCode, truncate(string(body), 120))}
