@@ -2773,7 +2773,7 @@ func TestKgDiff_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /api/namespaces/org/kg/diff": func(w http.ResponseWriter, r *http.Request) {
 			q := r.URL.Query()
-			if q.Get("from_ref") != "main" || q.Get("to_ref") != "topic" || q.Get("repo") != "r1" {
+			if q.Get("base") != "main" || q.Get("head") != "topic" || q.Get("repo") != "r1" {
 				t.Fatalf("query=%q", q.Encode())
 			}
 			writeJSON(t, w, 200, map[string]any{})

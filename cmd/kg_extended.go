@@ -563,10 +563,10 @@ func runKgDiff(cmd *cobra.Command, args []string) error {
 		q.Set("repo", rslug)
 	}
 	if s := strings.TrimSpace(mustFlag(cmd, "from-ref")); s != "" {
-		q.Set("from_ref", s)
+		q.Set("base", s)
 	}
 	if s := strings.TrimSpace(mustFlag(cmd, "to-ref")); s != "" {
-		q.Set("to_ref", s)
+		q.Set("head", s)
 	}
 	if err := validateKgPayloadOutput(cmd); err != nil {
 		return err
