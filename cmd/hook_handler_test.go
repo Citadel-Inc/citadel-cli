@@ -226,6 +226,24 @@ func TestHookSessionStartSendsRepo_Hermetic(t *testing.T) {
 	}
 }
 
+func TestHookSessionStartStatesPathRules_Hermetic(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
+	t.Setenv("CLAUDE_ENV_FILE", filepath.Join(t.TempDir(), "env"))
+	t.Setenv("CITADEL_GIT_HOSTS", "")
+	srv := withServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(t, w, 201, map[string]any{
+			"session_id": "s", "agent_name": "a", "token": "t", "expires_at": time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+			"path_policy": map[string]any{"repo": "acme/app", "agents_read_only": []string{"infra/**"}, "human_review_required": []string{"auth/**"}, "secret_scan_pushes": "agents"},
+		})
+	})
+	out := runHook(t, `{"session_id":"rules","cwd":"`+gitRepoWithOrigin(t, srv.URL+"/acme/app.git")+`"}`, "session-start")
+	for _, want := range []string{"acme/app has path rules", "cannot change: infra/**", "human review: auth/**", "scanned for secrets"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("session context lacks %q: %s", want, out)
+		}
+	}
+}
+
 func TestHookSessionStart_ServerDown_Hermetic(t *testing.T) {
 	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
 	envFile := filepath.Join(t.TempDir(), "env")

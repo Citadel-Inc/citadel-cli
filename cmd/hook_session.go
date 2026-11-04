@@ -143,6 +143,33 @@ type agentSessionResp struct {
 	AgentName string    `json:"agent_name"`
 	Token     string    `json:"token"`
 	ExpiresAt time.Time `json:"expires_at"`
+	// PathPolicy is present when the session's repo has sensitive-path rules.
+	PathPolicy *sessionPathPolicy `json:"path_policy"`
+}
+
+type sessionPathPolicy struct {
+	Repo                string   `json:"repo"`
+	AgentsReadOnly      []string `json:"agents_read_only"`
+	HumanReviewRequired []string `json:"human_review_required"`
+	SecretScanPushes    string   `json:"secret_scan_pushes"`
+}
+
+// notice tells the agent the rules up front, so it does not learn them from a refused push.
+func (p *sessionPathPolicy) notice() string {
+	if p == nil {
+		return ""
+	}
+	out := " " + p.Repo + " has path rules."
+	if len(p.AgentsReadOnly) > 0 {
+		out += " Agents cannot change: " + strings.Join(p.AgentsReadOnly, ", ") + "."
+	}
+	if len(p.HumanReviewRequired) > 0 {
+		out += " Changes here need human review: " + strings.Join(p.HumanReviewRequired, ", ") + "."
+	}
+	if p.SecretScanPushes != "" && p.SecretScanPushes != "off" {
+		out += " Pushes are scanned for secrets."
+	}
+	return out
 }
 
 // readHookInput never fails the hook: a missing or malformed payload yields a
@@ -612,7 +639,7 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	}
 	emitSessionContext(cmd, fmt.Sprintf(
 		"This session acts as Citadel agent %q: git over SSH or HTTPS and citadel-cli calls use its short-lived credentials. Clone with git clone --filter=blob:none. Code graph: `citadel-cli kg impact <Name|Recv.Name|path/file.go:Name> [--depth 1-3] [--no-tests]` lists callers across files and languages, `kg symbols --q <text>` finds symbols, `kg unreferenced` lists functions with no production caller. Go is type-checked; labelled edges such as [dispatch] are possible calls. Prefer it to grep for caller, impact and dead-code questions.",
-		sess.AgentName), env)
+		sess.AgentName)+sess.PathPolicy.notice(), env)
 	return nil
 }
 
