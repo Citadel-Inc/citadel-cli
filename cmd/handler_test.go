@@ -2815,3 +2815,16 @@ func TestKgFiles_OutputYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestNsDelete_HumanOnlyRefusalIsNotBlamedOnOwnership(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /namespaces/myorg": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"forbidden","reason":"human_only"}`))
+		},
+	}))
+	err := rootFor(cmd.NamespaceCmd, "delete", "myorg", "--yes").Execute()
+	if err == nil || strings.Contains(err.Error(), "only the owner") {
+		t.Fatalf("got %v", err)
+	}
+}

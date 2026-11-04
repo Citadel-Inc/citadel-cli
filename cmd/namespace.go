@@ -765,6 +765,9 @@ func runNsDelete(cmd *cobra.Command, args []string) error {
 				}
 				return fmt.Errorf("conflict: %s", body.Error)
 			case http.StatusForbidden:
+				if isHumanOnlyRefusal(he) {
+					return err
+				}
 				return fmt.Errorf("forbidden: only the owner can delete namespace %s", slug)
 			case http.StatusNotFound:
 				return fmt.Errorf("namespace %s not found, not an org, or already deleted", slug)

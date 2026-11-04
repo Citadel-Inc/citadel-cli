@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"slices"
@@ -391,6 +392,9 @@ func runAgentCreate(cmd *cobra.Command, args []string) error {
 func decorateAgentCreateError(err error, name string) error {
 	if err == nil {
 		return nil
+	}
+	if he, ok := errors.AsType[*apiclient.HTTPError](err); ok && isHumanOnlyRefusal(he) {
+		return err
 	}
 	msg := err.Error()
 	switch {

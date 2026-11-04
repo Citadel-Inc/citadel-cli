@@ -446,6 +446,9 @@ func decorateDeployTokenError(err error, namespacePath, action string, extra ...
 		}
 		return fmt.Errorf("namespace %s not found", namespacePath)
 	case http.StatusForbidden:
+		if isHumanOnlyRefusal(he) {
+			return err
+		}
 		return fmt.Errorf("forbidden: missing permission to %s deploy tokens in %s", action, namespacePath)
 	}
 	return err

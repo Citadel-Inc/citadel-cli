@@ -133,6 +133,15 @@ func curatedValidationDetails(body string) map[string]any {
 	return out
 }
 
+// isHumanOnlyRefusal reports the server's answer on a route no agent token may
+// reach, which no scope would open. Commands that word their own 403 pass it through.
+func isHumanOnlyRefusal(he *apiclient.HTTPError) bool {
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	return he.StatusCode == http.StatusForbidden && json.Unmarshal([]byte(he.Body), &body) == nil && body.Reason == "human_only"
+}
+
 func httpErrorToCLI(he *apiclient.HTTPError) *CLIError {
 	hint := serverStatusHint
 	retry := he.RetryAfter
@@ -146,6 +155,14 @@ func httpErrorToCLI(he *apiclient.HTTPError) *CLIError {
 			Hint:       hint,
 		}
 	case http.StatusForbidden:
+		if isHumanOnlyRefusal(he) {
+			return &CLIError{
+				Kind:       KindForbidden,
+				Message:    "forbidden: this needs a person signed in, so no agent token can do it, whatever its scopes, including the one `citadel-cli auth login` stores — use the web app",
+				HTTPStatus: he.StatusCode,
+				Hint:       hint,
+			}
+		}
 		return &CLIError{
 			Kind:       KindForbidden,
 			Message:    "forbidden: the server rejected your token for this resource — check namespace ownership or token scope",
