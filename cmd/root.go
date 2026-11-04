@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"runtime/debug"
+
 	"github.com/spf13/cobra"
 )
 
@@ -12,6 +14,7 @@ var Version = "dev"
 // persistent flags that handlers expect. Mirrors main wiring so integration
 // tests and shell completion exercise the same tree as the binary.
 func NewRootCmd() *cobra.Command {
+	Version = resolveVersion(Version, debug.ReadBuildInfo)
 	registerCommands()
 
 	root := &cobra.Command{
