@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -100,6 +101,8 @@ type hookState struct {
 	ExpiresAt time.Time `json:"expires_at"`
 	Token     string    `json:"token,omitempty"`
 	Scopes    []string  `json:"scopes,omitempty"`
+	// Repo is what the session said it is for; a reissued session says the same.
+	Repo string `json:"repo,omitempty"`
 	// Revoked sessions stay revoked for the rest of the harness session.
 	Revoked bool `json:"revoked,omitempty"`
 	// GitConfigRepo and GitConfigKeys record the repo-local git settings a
@@ -230,6 +233,35 @@ func citadelOrigin(ctx context.Context, cmd *cobra.Command, dir string) (string,
 	}
 	_, _, err = parseOriginIntoRepo(remote, citadelHostSet(cmd))
 	return remote, err == nil
+}
+
+// sessionRepo is the "org/repo" of an origin served by the Citadel server this
+// session opens on, or "" otherwise: the same path on another server would name
+// someone else's repo and show the session to the wrong org. The hosted service
+// answers on several names; a self-hosted git host with its own name goes in
+// CITADEL_GIT_HOSTS.
+func sessionRepo(cmd *cobra.Command, remote string) string {
+	cfg, err := clicfg.Load()
+	if err != nil {
+		return ""
+	}
+	u, err := url.Parse(cfg.ResolveServerURL(serverFlag(cmd)))
+	if err != nil || u.Hostname() == "" {
+		return ""
+	}
+	server := strings.ToLower(u.Hostname())
+	hosts := envGitHosts()
+	hosts[server] = struct{}{}
+	if defaults := defaultCitadelGitHosts(); slices.Contains(defaults, server) {
+		for _, h := range defaults {
+			hosts[h] = struct{}{}
+		}
+	}
+	ns, slug, err := parseOriginIntoRepo(remote, hosts)
+	if err != nil {
+		return ""
+	}
+	return ns + "/" + slug
 }
 
 // httpsCredentialEnv registers the credential helper for an https origin's
@@ -546,7 +578,7 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	if len(scopes) == 0 {
 		scopes = defaultHookScopes
 	}
-	sess, err := openAgentSession(ctx, cmd, dir, scopes)
+	sess, err := openAgentSession(ctx, cmd, dir, scopes, sessionRepo(cmd, remote))
 	if err != nil {
 		_ = os.RemoveAll(dir)
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: no agent session: %v\n", err)
@@ -587,7 +619,7 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 // openAgentSession opens a session on a fresh key written over the one at the
 // same path, so the running session's GIT_SSH_COMMAND stays valid while the
 // server never sees a fingerprint twice.
-func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scopes []string) (agentSessionResp, error) {
+func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scopes []string, repo string) (agentSessionResp, error) {
 	var sess agentSessionResp
 	c, err := hookAPIClient(cmd)
 	if err != nil {
@@ -602,6 +634,9 @@ func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scope
 		"ssh_public_key": pub,
 		"scopes":         scopes,
 	}
+	if repo != "" {
+		body["repo"] = repo
+	}
 	if err := c.Post(ctx, "/agents/"+url.PathEscape(agentSessionName(cmd))+"/sessions", body, &sess); err != nil {
 		if he, ok := errors.AsType[*apiclient.HTTPError](err); ok && he.StatusCode == http.StatusForbidden && strings.Contains(he.Body, `"forbidden"`) {
 			return sess, errors.New("this login predates hook sessions (token lacks sessions:write); run `citadel-cli auth login` again")
@@ -611,7 +646,7 @@ func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scope
 	if sess.SessionID == "" || sess.Token == "" {
 		return sess, errors.New("server returned an incomplete session")
 	}
-	next := hookState{SessionID: sess.SessionID, AgentName: sess.AgentName, ExpiresAt: sess.ExpiresAt, Token: sess.Token, Scopes: scopes}
+	next := hookState{SessionID: sess.SessionID, AgentName: sess.AgentName, ExpiresAt: sess.ExpiresAt, Token: sess.Token, Scopes: scopes, Repo: repo}
 	if prev, ok := loadHookState(dir); ok {
 		next.GitConfigRepo, next.GitConfigKeys, next.CommitHook = prev.GitConfigRepo, prev.GitConfigKeys, prev.CommitHook
 	}
@@ -744,7 +779,7 @@ func reissueSession(ctx context.Context, cmd *cobra.Command, dir string, old hoo
 	if len(scopes) == 0 {
 		scopes = defaultHookScopes
 	}
-	sess, err := openAgentSession(ctx, cmd, dir, scopes)
+	sess, err := openAgentSession(ctx, cmd, dir, scopes, old.Repo)
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "citadel-cli hook: agent session ended or expired and could not be reissued (%v); git and citadel-cli calls in this session are no longer authenticated as the agent\n", err)
 		return false

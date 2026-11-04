@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -144,6 +145,84 @@ func TestHookSessionLifecycle_Hermetic(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Dir(keyPath)); err == nil {
 		t.Fatal("session dir not removed")
+	}
+}
+
+// The harness payloads are as Claude Code and Cursor send them. A session names
+// its repo only for an origin on the server it opens on, for either harness.
+func TestHookSessionStartSendsRepo_Hermetic(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
+	t.Setenv("CLAUDE_ENV_FILE", filepath.Join(t.TempDir(), "env"))
+	t.Setenv("CITADEL_GIT_HOSTS", "")
+	expires := time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339)
+	repos := []any{}
+	var gone atomic.Bool
+	srv := withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/sessions"):
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			repos = append(repos, body["repo"])
+			writeJSON(t, w, 201, map[string]any{"session_id": "sess", "agent_name": "a", "token": "tok", "expires_at": expires})
+		case gone.Load():
+			writeJSON(t, w, 409, map[string]any{"error": "session_ended"})
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	host := u.Hostname()
+
+	claude := func(id, cwd string) (string, []string) {
+		return `{"session_id":"` + id + `","transcript_path":"/home/dev/.claude/projects/x/` + id + `.jsonl","cwd":"` + cwd + `","hook_event_name":"SessionStart","source":"startup"}`, []string{"session-start"}
+	}
+	cursor := func(id, cwd string) (string, []string) {
+		return `{"session_id":"` + id + `","is_background_agent":false,"composer_mode":"agent","model":"default","hook_event_name":"sessionStart","cursor_version":"2026.10.28","workspace_roots":["` + cwd + `"],"user_email":null}`, []string{"session-start", "--client", "cursor"}
+	}
+	type harness = func(id, cwd string) (string, []string)
+	for _, tc := range []struct {
+		name   string
+		h      harness
+		origin string
+		gitEnv string
+		want   any
+	}{
+		{"claude ssh", claude, "ssh://git@" + host + ":2222/acme/app.git", "", "acme/app"},
+		{"claude https", claude, srv.URL + "/acme/proj/app.git", "", "acme/proj/app"},
+		{"cursor ssh", cursor, "ssh://git@" + host + ":2222/acme/app.git", "", "acme/app"},
+		{"cursor https", cursor, srv.URL + "/acme/app.git", "", "acme/app"},
+		{"claude, hosted origin on a self-hosted server", claude, "git@src.land:acme/app.git", "", nil},
+		{"cursor, hosted origin on a self-hosted server", cursor, "git@src.land:acme/app.git", "", nil},
+		{"named git host", claude, "git@git.corp.example:acme/app.git", "git.corp.example", "acme/app"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("CITADEL_GIT_HOSTS", tc.gitEnv)
+			repos = repos[:0]
+			in, args := tc.h(strings.ReplaceAll(tc.name, " ", "-"), gitRepoWithOrigin(t, tc.origin))
+			runHook(t, in, args...)
+			if len(repos) != 1 || repos[0] != tc.want {
+				t.Fatalf("repo sent = %v, want %v", repos, tc.want)
+			}
+		})
+	}
+
+	// A session reissued after expiry keeps saying what it is for.
+	repos = repos[:0]
+	repo := gitRepoWithOrigin(t, "ssh://git@"+host+":2222/acme/app.git")
+	in, args := claude("reissue", repo)
+	runHook(t, in, args...)
+	state := filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "citadel", "sessions", "reissue", "state.json")
+	expired, _ := json.Marshal(map[string]any{"session_id": "sess", "agent_name": "a", "expires_at": time.Now().Add(-time.Minute), "token": "tok", "repo": "acme/app"})
+	if err := os.WriteFile(state, expired, 0o600); err != nil { //nolint:gosec // test-owned temp path
+		t.Fatal(err)
+	}
+	gone.Store(true)
+	runHook(t, in, "renew")
+	if len(repos) != 2 || repos[1] != "acme/app" {
+		t.Fatalf("reissue repos = %v", repos)
 	}
 }
 

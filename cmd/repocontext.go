@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"os/exec"
@@ -47,13 +48,14 @@ func mergeCitadelHosts() map[string]struct{} {
 			out[strings.ToLower(u.Hostname())] = struct{}{}
 		}
 	}
-	raw := strings.TrimSpace(os.Getenv(citadelGitHostsEnv))
-	if raw == "" {
-		return out
-	}
-	for part := range strings.SplitSeq(raw, ",") {
-		h := strings.ToLower(strings.TrimSpace(part))
-		if h != "" {
+	maps.Copy(out, envGitHosts())
+	return out
+}
+
+func envGitHosts() map[string]struct{} {
+	out := make(map[string]struct{})
+	for part := range strings.SplitSeq(os.Getenv(citadelGitHostsEnv), ",") {
+		if h := strings.ToLower(strings.TrimSpace(part)); h != "" {
 			out[h] = struct{}{}
 		}
 	}
