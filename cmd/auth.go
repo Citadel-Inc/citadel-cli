@@ -552,6 +552,8 @@ func requestDeviceAuthorization(ctx context.Context, citadelBaseURL string) (dev
 		return deviceAuthorizationResponse{}, fmt.Errorf("device authorization request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	// The approval page shows the platform, so the person approving can recognise the request.
+	req.Header.Set("User-Agent", "citadel-cli/"+Version+" ("+runtime.GOOS+"/"+runtime.GOARCH+")")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return deviceAuthorizationResponse{}, fmt.Errorf("device authorization request: %w", err)
