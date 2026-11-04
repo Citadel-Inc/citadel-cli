@@ -1253,6 +1253,9 @@ func decorateWebhookError(err error, namespacePath, action string) error {
 	}
 	switch he.StatusCode {
 	case http.StatusForbidden:
+		if isHumanOnlyRefusal(he) {
+			return err
+		}
 		return fmt.Errorf("forbidden: missing permission to %s webhooks in %s", action, namespacePath)
 	case http.StatusNotFound:
 		return fmt.Errorf("namespace or webhook not found in %s", namespacePath)

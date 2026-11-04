@@ -22,6 +22,7 @@ func TestHumanOnlyRefusalSaysSo(t *testing.T) {
 		"generic":       humanOnly403(),
 		"agent create":  decorateAgentCreateError(humanOnly403(), "a"),
 		"deploy tokens": decorateDeployTokenError(humanOnly403(), "acme/r", "create"),
+		"webhooks":      decorateWebhookError(humanOnly403(), "acme/r", "create"),
 	} {
 		var cli *CLIError
 		if !errors.As(FriendlyError(err), &cli) || !strings.Contains(cli.Message, "web app") || strings.Contains(cli.Message, "scope —") {
