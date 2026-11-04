@@ -35,7 +35,8 @@ not stored; save it securely before closing your terminal.
 Examples:
   citadel-cli agent create mybot
   citadel-cli agent create mybot --output json
-  citadel-cli agent create ci-runner --output json`,
+  citadel-cli agent create ci-runner --output json
+  citadel-cli agent create ci-runner --namespace acme/api --namespace acme/tools`,
 	Args: cobra.ExactArgs(1),
 	RunE: runAgentCreate,
 }
@@ -337,7 +338,7 @@ func runAgentRotateToken(cmd *cobra.Command, args []string) error {
 	// Server-side atomic rotate: issues new token + revokes every other
 	// live token for this agent in a single transaction.
 	var newTok tokenWithCleartext
-	if err := c.Post(cmd.Context(), "/agents/"+a.ID.String()+"/rotate-token", map[string]any{"scopes": scopeFlag(cmd)}, &newTok); err != nil {
+	if err := c.Post(cmd.Context(), "/agents/"+a.ID.String()+"/rotate-token", map[string]any{"scopes": scopeFlag(cmd), "namespaces": namespaceFlag(cmd)}, &newTok); err != nil {
 		return fmt.Errorf("rotate token: %w", err)
 	}
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), newTok.CleartextToken)
@@ -367,7 +368,7 @@ func runAgentCreate(cmd *cobra.Command, args []string) error {
 
 	// Issue an initial token for the new agent.
 	var tok tokenWithCleartext
-	if err := c.Post(cmd.Context(), "/agent-tokens", map[string]any{"agent_id": created.ID, "scopes": scopeFlag(cmd)}, &tok); err != nil {
+	if err := c.Post(cmd.Context(), "/agent-tokens", map[string]any{"agent_id": created.ID, "scopes": scopeFlag(cmd), "namespaces": namespaceFlag(cmd)}, &tok); err != nil {
 		return fmt.Errorf("created agent %s but failed to issue initial token: %w", created.ID, err)
 	}
 

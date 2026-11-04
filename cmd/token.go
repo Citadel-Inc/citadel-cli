@@ -57,6 +57,8 @@ type token struct {
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 	RevokedAt *time.Time `json:"revoked_at,omitempty"`
 	Scopes    []string   `json:"scopes,omitempty"`
+	// Namespaces is null with no limit; empty once every listed repo is deleted.
+	Namespaces []string `json:"namespaces"`
 }
 
 // tokenWithCleartext is the issue / rotate response shape.
@@ -245,10 +247,12 @@ func runTokenIssue(cmd *cobra.Command, _ []string) error {
 		AgentID          uuid.UUID `json:"agent_id"`
 		ExpiresInSeconds *int64    `json:"expires_in_seconds,omitempty"`
 		Scopes           []string  `json:"scopes,omitempty"`
+		Namespaces       []string  `json:"namespaces,omitempty"`
 	}{
 		AgentID:          agentID,
 		ExpiresInSeconds: expiresInSeconds,
 		Scopes:           scopes,
+		Namespaces:       namespaceFlag(cmd),
 	}
 
 	var tok tokenWithCleartext
@@ -320,7 +324,13 @@ func registerTokenCommands() {
 func addScopeFlag(cmds ...*cobra.Command) {
 	for _, c := range cmds {
 		c.Flags().StringArray("scope", nil, "Token scope, repeatable (metadata:read, code:read, code:write, issues:read, issues:write, pulls:read, pulls:write, admin); default metadata:read and code:read")
+		c.Flags().StringArray("namespace", nil, "Limit the token to this repo, project or org, repeatable. Omit for everything you can reach; rotate-token keeps the old limit")
 	}
+}
+
+func namespaceFlag(cmd *cobra.Command) []string {
+	namespaces, _ := cmd.Flags().GetStringArray("namespace")
+	return namespaces
 }
 
 func scopeFlag(cmd *cobra.Command) []string {

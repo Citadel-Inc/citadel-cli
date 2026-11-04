@@ -664,6 +664,9 @@ func openAgentSession(ctx context.Context, cmd *cobra.Command, dir string, scope
 	if repo != "" {
 		body["repo"] = repo
 	}
+	if v := os.Getenv("CITADEL_SESSION_NAMESPACES"); v != "" {
+		body["namespaces"] = strings.Split(v, ",")
+	}
 	if err := c.Post(ctx, "/agents/"+url.PathEscape(agentSessionName(cmd))+"/sessions", body, &sess); err != nil {
 		if he, ok := errors.AsType[*apiclient.HTTPError](err); ok && he.StatusCode == http.StatusForbidden && strings.Contains(he.Body, `"forbidden"`) {
 			return sess, errors.New("this login predates hook sessions (token lacks sessions:write); run `citadel-cli auth login` again")

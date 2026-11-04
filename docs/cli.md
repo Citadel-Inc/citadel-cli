@@ -91,6 +91,14 @@ uses:
 citadel-cli token issue ci-bot --scope code:write --scope issues:write
 ```
 
+Scopes say what a token may do; `--namespace` says where. `token issue`, `agent create` and `agent rotate-token` take it, repeatable, with a repo, project or org path:
+
+```sh
+citadel-cli token issue ci-bot --scope code:write --namespace acme/api --namespace acme/tools
+```
+
+A token never reaches more than you can. Omit `--namespace` for everything you can reach; `agent rotate-token` keeps the old token's limit unless you name a new one. Hook sessions take the same list, comma-separated, from `CITADEL_SESSION_NAMESPACES`.
+
 ### Check authentication status
 
 ```bash
