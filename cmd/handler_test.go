@@ -816,6 +816,9 @@ func TestNsDelete_HasRepos(t *testing.T) {
 
 func TestNsTransferInitiate_Happy(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /orgs/myorg/transfer": func(_ http.ResponseWriter, r *http.Request) {
+			t.Fatalf("initiate must POST /transfers, not %s %s", r.Method, r.URL.Path)
+		},
 		"POST /transfers": func(w http.ResponseWriter, r *http.Request) {
 			var body map[string]string
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -858,8 +861,34 @@ func TestNsTransferAccept_Happy(t *testing.T) {
 			writeJSON(t, w, 200, map[string]any{"id": "t1", "status": "accepted"})
 		},
 	}))
-	if err := rootFor(cmd.NamespaceCmd, "transfer", "accept", "t1").Execute(); err != nil {
+	if err := rootFor(cmd.NamespaceCmd, "transfer", "accept", "t1", "--yes").Execute(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNsTransferAccept_RequiresYes(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"POST /transfers/t1/accept": func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(t, w, 200, map[string]any{"id": "t1"})
+		},
+	}))
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteString("nope\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = orig
+		_ = r.Close()
+	})
+	err = rootFor(cmd.NamespaceCmd, "transfer", "accept", "t1").Execute()
+	if err == nil || !strings.Contains(err.Error(), "confirmation mismatch") {
+		t.Fatalf("want confirmation mismatch without --yes, got %v", err)
 	}
 }
 
@@ -1430,7 +1459,7 @@ func TestNsTransferAccept_JSON(t *testing.T) {
 			writeJSON(t, w, 200, map[string]any{"id": "abc", "status": "accepted"})
 		},
 	}))
-	if err := rootFor(cmd.NamespaceCmd, "transfer", "accept", "abc", "--output", "json").Execute(); err != nil {
+	if err := rootFor(cmd.NamespaceCmd, "transfer", "accept", "abc", "--yes", "--output", "json").Execute(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -2194,8 +2223,34 @@ func TestSshKeyDelete_Happy(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		},
 	}))
-	if err := rootFor(cmd.SSHKeyCmd, "delete", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee").Execute(); err != nil {
+	if err := rootFor(cmd.SSHKeyCmd, "delete", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "--yes").Execute(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSshKeyDelete_RequiresYes(t *testing.T) {
+	withServer(t, route(t, map[string]http.HandlerFunc{
+		"DELETE /account/ssh-keys/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee": func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	}))
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteString("nope\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = orig
+		_ = r.Close()
+	})
+	err = rootFor(cmd.SSHKeyCmd, "delete", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee").Execute()
+	if err == nil || !strings.Contains(err.Error(), "confirmation mismatch") {
+		t.Fatalf("want confirmation mismatch without --yes, got %v", err)
 	}
 }
 
@@ -2205,7 +2260,7 @@ func TestSshKeyDelete_NotFound(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 		},
 	}))
-	err := rootFor(cmd.SSHKeyCmd, "delete", "missing-id").Execute()
+	err := rootFor(cmd.SSHKeyCmd, "delete", "missing-id", "--yes").Execute()
 	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("want not found, got %v", err)
 	}

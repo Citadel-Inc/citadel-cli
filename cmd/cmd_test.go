@@ -753,12 +753,31 @@ func TestNamespaceTransferInitiateFlags(t *testing.T) {
 	}
 }
 
+func TestNamespaceTransferAcceptFlags(t *testing.T) {
+	transfer := findSubcmd(t, cmd.NamespaceCmd, "transfer")
+	accept := findSubcmd(t, transfer, "accept")
+	for _, flag := range []string{"yes", "output"} {
+		if !hasFlag(accept, flag) {
+			t.Errorf("citadel namespace transfer accept: missing flag --%s", flag)
+		}
+	}
+}
+
 func TestNamespaceTransferRevokeFlags(t *testing.T) {
 	transfer := findSubcmd(t, cmd.NamespaceCmd, "transfer")
 	revoke := findSubcmd(t, transfer, "revoke")
 	for _, flag := range []string{"yes", "output"} {
 		if !hasFlag(revoke, flag) {
 			t.Errorf("citadel namespace transfer revoke: missing flag --%s", flag)
+		}
+	}
+}
+
+func TestSSHKeyDeleteFlags(t *testing.T) {
+	c := findSubcmd(t, cmd.SSHKeyCmd, "delete")
+	for _, flag := range []string{"yes", "dry-run"} {
+		if !hasFlag(c, flag) {
+			t.Errorf("citadel ssh-key delete: missing flag --%s", flag)
 		}
 	}
 }

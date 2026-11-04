@@ -51,8 +51,14 @@ Optional --label is stored with the key.`,
 var sshKeyDeleteCmd = &cobra.Command{
 	Use:   "delete <id>",
 	Short: "Delete an SSH public key by id",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runSSHKeyDelete,
+	Long: `Deletes an SSH public key from your account.
+Requires typed-slug confirmation unless --yes is set.
+
+Examples:
+  citadel-cli ssh-key delete 550e8400-e29b-41d4-a716-446655440000
+  citadel-cli ssh-key delete 550e8400-e29b-41d4-a716-446655440000 --yes`,
+	Args: cobra.ExactArgs(1),
+	RunE: runSSHKeyDelete,
 }
 
 type sshKeyRow struct {
@@ -213,6 +219,9 @@ func runSSHKeyDelete(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE /account/ssh-keys/%s (skipped; --dry-run)\n", id)
 		return nil
 	}
+	if err := confirmSlug(yesFlag(cmd), "delete ssh key", id); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -247,6 +256,7 @@ func registerSSHKeyCommands() {
 
 	addOutputFlag(sshKeyListCmd)
 	addMutationOutputFlag(sshKeyAddCmd)
+	addYesFlag(sshKeyDeleteCmd)
 	addDryRunFlag(sshKeyDeleteCmd)
 	sshKeyAddCmd.Flags().String("public-key", "", "Public key string (single line)")
 	sshKeyAddCmd.Flags().String("key-file", "", "Path to a .pub file; use - for stdin")

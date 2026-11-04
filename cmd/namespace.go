@@ -155,9 +155,11 @@ var nsTransferAcceptCmd = &cobra.Command{
 	Use:   "accept <transfer-id>",
 	Short: "Accept a pending namespace transfer",
 	Long: `Accepts an incoming namespace ownership transfer request.
+Requires typed-slug confirmation unless --yes is set.
 
 Examples:
-  citadel-cli namespace transfer accept 550e8400-e29b-41d4-a716-446655440000`,
+  citadel-cli namespace transfer accept 550e8400-e29b-41d4-a716-446655440000
+  citadel-cli namespace transfer accept 550e8400-e29b-41d4-a716-446655440000 --yes`,
 	Args: cobra.ExactArgs(1),
 	RunE: runNsTransferAccept,
 }
@@ -668,6 +670,9 @@ func runNsTransferAccept(cmd *cobra.Command, args []string) error {
 	if err := validateMutationOutput(output, "transfer"); err != nil {
 		return err
 	}
+	if err := confirmSlug(yesFlag(cmd), "accept transfer", transferID); err != nil {
+		return err
+	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -850,7 +855,7 @@ func registerNamespaceCommands() {
 		nsTransferInitiateCmd, nsTransferAcceptCmd, nsTransferDeclineCmd, nsTransferRevokeCmd)
 	addPaginationFlags(nsListCmd, nsMembersCmd, nsTransferListPendingCmd)
 	addWatchFlag(nsListCmd, nsMembersCmd, nsTransferListPendingCmd)
-	addYesFlag(nsDeleteCmd, nsRenameCmd, nsTransferInitiateCmd, nsTransferRevokeCmd)
+	addYesFlag(nsDeleteCmd, nsRenameCmd, nsTransferInitiateCmd, nsTransferAcceptCmd, nsTransferRevokeCmd)
 	addDryRunFlag(nsDeleteCmd, nsRenameCmd, nsTransferRevokeCmd)
 
 	nsRenameCmd.Flags().String("new-slug", "", "New slug for the namespace (required)")
