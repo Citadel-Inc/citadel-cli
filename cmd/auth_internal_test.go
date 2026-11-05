@@ -17,6 +17,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
 
+	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
 	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 )
 
@@ -841,5 +842,77 @@ func TestRunLogin_FlowSmoke(t *testing.T) {
 	}
 	if cfg.AgentID != agentID {
 		t.Fatalf("AgentID = %q", cfg.AgentID)
+	}
+}
+
+func rotateHookFixture(t *testing.T, agentID string, h http.HandlerFunc) {
+	t.Helper()
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	cfg := clicfg.Config{
+		ServerURL: srv.URL, AccessToken: "expired-agent-token", RefreshToken: "stored-" + "login",
+		ExpiresAt: time.Now().Add(-time.Minute), AgentID: agentID, AgentName: "citadel-cli@test",
+	}
+	if err := cfg.Save(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// An agent token the server no longer accepts is replaced through the stored
+// login, and the login survives, with the refresh token the exchange rotated to.
+func TestRotateAccessTokenOn401Hook_ExpiredAgentTokenRenewedByLogin(t *testing.T) {
+	agentID := "42000000-0000-4000-8000-000000000004"
+	rotateHookFixture(t, agentID, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/api/oauth/token":
+			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "login-jwt", "refresh_token": "rotated-" + "login"})
+		case r.URL.Path == "/agents/"+agentID+"/rotate-token" && r.Header.Get("Authorization") == "Bearer login-jwt":
+			_ = json.NewEncoder(w).Encode(map[string]any{"cleartext_token": "fresh-agent-token"})
+		case r.URL.Path == "/agents/"+agentID+"/rotate-token":
+			w.WriteHeader(http.StatusUnauthorized)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	tok, err := rotateAccessTokenOn401Hook(&cobra.Command{})(context.Background())
+	if err != nil || tok != "fresh-agent-token" {
+		t.Fatalf("token %q err %v", tok, err)
+	}
+	loaded, err := clicfg.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.AccessToken != "fresh-agent-token" || loaded.RefreshToken != "rotated-login" {
+		t.Fatalf("stored login = access %q refresh %q", loaded.AccessToken, loaded.RefreshToken)
+	}
+}
+
+// A server error while rotating says nothing about the login, which stays.
+func TestRotateAccessTokenOn401Hook_ServerErrorKeepsLogin(t *testing.T) {
+	agentID := "43000000-0000-4000-8000-000000000004"
+	rotateHookFixture(t, agentID, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	if _, err := rotateAccessTokenOn401Hook(&cobra.Command{})(context.Background()); err == nil {
+		t.Fatal("expected an error")
+	}
+	loaded, err := clicfg.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.AccessToken != "expired-agent-token" || loaded.RefreshToken != "stored-login" {
+		t.Fatalf("login was dropped: %+v", loaded)
+	}
+}
+
+func TestFriendlyError_SessionCredentialRequired(t *testing.T) {
+	he := &apiclient.HTTPError{StatusCode: http.StatusForbidden, Body: `{"error":"session_credential_required"}`}
+	ce, ok := errors.AsType[*CLIError](FriendlyError(he))
+	if !ok || ce.Kind != KindForbidden || !strings.Contains(ce.Message, "auth git") || !strings.Contains(ce.Message, "Require session credentials") {
+		t.Fatalf("FriendlyError = %#v", ce)
 	}
 }

@@ -122,8 +122,9 @@ var setTokenCmd = &cobra.Command{
 UUID + expiry to ~/.config/citadel/config.toml.
 
 This is the supported headless / CI / SSH-only bootstrap when you cannot run
-'auth login' (no browser on the host). The CLI will migrate a stored JWT to an
-agent token on the next command launch when the server is reachable.
+'auth login' (no browser on the host). The JWT is used as given and expires with
+its own lifetime; there is no refresh token, so repeat set-token (or log in) when
+it lapses.
 
 Use this when:
   - you already have a Supabase access token from elsewhere (web app dev tools,

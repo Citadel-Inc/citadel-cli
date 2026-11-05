@@ -142,6 +142,12 @@ func isHumanOnlyRefusal(he *apiclient.HTTPError) bool {
 	return he.StatusCode == http.StatusForbidden && json.Unmarshal([]byte(he.Body), &body) == nil && body.Reason == "human_only"
 }
 
+// isSessionCredentialRefusal reports an org's require_session_credentials bar on a
+// credential that is not a live session.
+func isSessionCredentialRefusal(he *apiclient.HTTPError) bool {
+	return he.StatusCode == http.StatusForbidden && strings.Contains(he.Body, "session_credential_required")
+}
+
 func httpErrorToCLI(he *apiclient.HTTPError) *CLIError {
 	hint := serverStatusHint
 	retry := he.RetryAfter
@@ -155,6 +161,14 @@ func httpErrorToCLI(he *apiclient.HTTPError) *CLIError {
 			Hint:       hint,
 		}
 	case http.StatusForbidden:
+		if isSessionCredentialRefusal(he) {
+			return &CLIError{
+				Kind:       KindForbidden,
+				Message:    "forbidden: this organization requires a session credential, and the token `citadel-cli auth login` stores is not one — run the command inside an agent session (a hook session), use `citadel-cli auth git` for git, or ask an organization owner to turn off \"Require session credentials\"",
+				HTTPStatus: he.StatusCode,
+				Hint:       hint,
+			}
+		}
 		if isHumanOnlyRefusal(he) {
 			return &CLIError{
 				Kind:       KindForbidden,

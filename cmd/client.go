@@ -229,16 +229,26 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 			return "", err
 		}
 		var newTok tokenWithCleartext
+		rotatedRefresh := ""
 		if err := c.Post(ctx, "/agents/"+uid.String()+"/rotate-token", loginTokenRequest(), &newTok); err != nil {
-			if clearErr := clicfg.Update(func(cfg *clicfg.Config) error {
-				cfg.AccessToken = ""
-				cfg.RefreshToken = ""
-				cfg.ExpiresAt = time.Time{}
-				return nil
-			}); clearErr != nil {
-				return "", fmt.Errorf("%w: clear credentials: %w", errSessionExpired, clearErr)
+			// An expired or refused agent token cannot rotate itself, but the stored
+			// OAuth login can mint its replacement.
+			if he, ok := errors.AsType[*apiclient.HTTPError](err); !ok || (he.StatusCode != http.StatusUnauthorized && he.StatusCode != http.StatusForbidden) {
+				return "", fmt.Errorf("rotate agent token: %w", err)
 			}
-			return "", fmt.Errorf("%w: %w", errSessionExpired, err)
+			var humanErr error
+			newTok, rotatedRefresh, humanErr = rotateWithLogin(ctx, cmd, cfg, uid)
+			if humanErr != nil {
+				if clearErr := clicfg.Update(func(cfg *clicfg.Config) error {
+					cfg.AccessToken = ""
+					cfg.RefreshToken = ""
+					cfg.ExpiresAt = time.Time{}
+					return nil
+				}); clearErr != nil {
+					return "", fmt.Errorf("%w: clear credentials: %w", errSessionExpired, clearErr)
+				}
+				return "", fmt.Errorf("%w: %w", errSessionExpired, humanErr)
+			}
 		}
 		if newTok.CleartextToken == "" {
 			if err := clicfg.Update(func(cfg *clicfg.Config) error {
@@ -253,6 +263,9 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 		}
 		if err := clicfg.Update(func(cfg *clicfg.Config) error {
 			cfg.AccessToken = newTok.CleartextToken
+			if rotatedRefresh != "" {
+				cfg.RefreshToken = rotatedRefresh
+			}
 			if newTok.ExpiresAt != nil {
 				cfg.ExpiresAt = *newTok.ExpiresAt
 			}
@@ -262,4 +275,37 @@ func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (strin
 		}
 		return newTok.CleartextToken, nil
 	}
+}
+
+// rotateWithLogin mints a fresh agent token for agentID with a JWT from the stored
+// refresh token, and returns the refresh token that exchange rotated to.
+func rotateWithLogin(ctx context.Context, cmd *cobra.Command, cfg clicfg.Config, agentID uuid.UUID) (tokenWithCleartext, string, error) {
+	var newTok tokenWithCleartext
+	refresh := strings.TrimSpace(cfg.RefreshToken)
+	if refresh == "" {
+		return newTok, "", errors.New("no stored login to renew the agent token")
+	}
+	serverURL := cfg.ResolveServerURL(serverFlag(cmd))
+	jwtResp, err := exchangeRefreshToken(ctx, serverURL, refresh)
+	if err != nil {
+		return newTok, "", err
+	}
+	if strings.TrimSpace(jwtResp.AccessToken) == "" {
+		return newTok, "", errors.New("refresh token response missing access_token")
+	}
+	next := strings.TrimSpace(jwtResp.RefreshToken)
+	if next == "" {
+		next = refresh
+	}
+	work := cfg
+	work.ServerURL = serverURL
+	work.AccessToken = jwtResp.AccessToken
+	c, err := apiclient.New(work, apiclient.Options{
+		Server: serverFlag(cmd), Verbose: verboseFlag(cmd), DebugHTTP: debugHTTPFlag(cmd), UserAgent: "citadel-cli/" + Version,
+	})
+	if err != nil {
+		return newTok, next, err
+	}
+	err = c.Post(ctx, "/agents/"+agentID.String()+"/rotate-token", loginTokenRequest(), &newTok)
+	return newTok, next, err
 }
