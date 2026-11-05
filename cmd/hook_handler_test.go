@@ -653,7 +653,7 @@ func TestHookCursorSession_Hermetic(t *testing.T) {
 	if err := json.Unmarshal([]byte(runHook(t, start, "session-start", "--client", "cursor")), &out); err != nil {
 		t.Fatal(err)
 	}
-	if out.Env["CITADEL_ACCESS_TOKEN"] != "tok-c" || !strings.Contains(out.Env["GIT_SSH_COMMAND"], "hook git-ssh") || out.AdditionalContext == "" {
+	if out.Env["CITADEL_ACCESS_TOKEN"] != "tok-c" || !strings.Contains(out.Env["GIT_SSH_COMMAND"], "hook git-ssh") || out.Env["GIT_SSH_VARIANT"] != "ssh" || out.AdditionalContext == "" {
 		t.Fatalf("sessionStart output = %+v", out)
 	}
 	local := func(repo, key string) string {

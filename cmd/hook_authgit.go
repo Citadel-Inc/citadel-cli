@@ -111,6 +111,9 @@ func runAuthGit(cmd *cobra.Command, _ []string) error {
 	if err := exec.CommandContext(ctx, "git", "config", "--global", "core.sshCommand", sshCmd).Run(); err != nil { //nolint:gosec // fixed git invocation, sshCmd is one argv element
 		return fmt.Errorf("set git core.sshCommand: %w", err)
 	}
+	if err := exec.CommandContext(ctx, "git", "config", "--global", "ssh.variant", "ssh").Run(); err != nil {
+		return fmt.Errorf("set git ssh.variant: %w", err)
+	}
 	_, _ = fmt.Fprintf(out, "Git session %s open until %s; git now pushes over SSH with a short-lived key.\n", sess.SessionID, sess.ExpiresAt.Local().Format(time.RFC3339))
 	return nil
 }

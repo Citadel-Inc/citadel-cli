@@ -467,6 +467,7 @@ func applyLocalGitConfig(ctx context.Context, cmd *cobra.Command, dir, cwd, remo
 		keys = append(keys, key)
 	}
 	set("core.sshCommand", sshCommand)
+	set("ssh.variant", "ssh")
 	if u, err := url.Parse(remote); err == nil && helperRemote(u) {
 		exe, err := os.Executable()
 		if err != nil {
@@ -627,6 +628,8 @@ func runHookSessionStart(cmd *cobra.Command, _ []string) error {
 	}
 	vars := [][2]string{
 		{"GIT_SSH_COMMAND", shellQuote(exe) + " hook git-ssh " + shellQuote(key)},
+		// git guesses the variant from the command's name, and an unknown one cannot carry a port.
+		{"GIT_SSH_VARIANT", "ssh"},
 		{"CITADEL_AGENT_SESSION", sess.SessionID},
 		{"CITADEL_HOOK_STATE", dir},
 		{"CITADEL_ACCESS_TOKEN", sess.Token},
