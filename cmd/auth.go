@@ -146,6 +146,9 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	flagServer, _ := cmd.Flags().GetString("server")
 	serverURL := cfg.ResolveServerURL(flagServer)
 	citadelBaseURL := strings.TrimRight(serverURL, "/")
+	// With no flag, env var or config this is the vendor's host, which someone on a
+	// private install needs to see before a credential goes anywhere.
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Signing in to %s\n", citadelBaseURL)
 	useDevice, _ := cmd.Flags().GetBool("device")
 	if useDevice {
 		return runDeviceLogin(cmd, &cfg, serverURL, flagServer)
