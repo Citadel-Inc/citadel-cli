@@ -27,10 +27,10 @@ type Options struct {
 
 // Stack wraps base with retry + (when enabled) trace, returning a
 // RoundTripper suitable as http.Client.Transport. base may be nil
-// (uses http.DefaultTransport).
+// (uses the stock transport, verifying servers through kept roots).
 func Stack(base http.RoundTripper, opts Options) http.RoundTripper {
 	if base == nil {
-		base = http.DefaultTransport
+		base = defaultBase()
 	}
 	rt := http.RoundTripper(&RetryTransport{Base: base})
 	if opts.Verbose || opts.DebugHTTP {
