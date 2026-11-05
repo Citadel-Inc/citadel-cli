@@ -323,7 +323,7 @@ func TestHookSessionStart_HTTPSCredential_Hermetic(t *testing.T) {
 	repo := gitRepoWithOrigin(t, "https://git.src.land/acme/app.git")
 	runHook(t, `{"session_id":"s3","cwd":"`+repo+`"}`, "session-start")
 	env, _ := readFile(envFile)
-	for _, want := range []string{"export GIT_CONFIG_COUNT='2'", "export GIT_CONFIG_KEY_0='credential.https://git.src.land.helper'", "hook git-credential"} {
+	for _, want := range []string{"export GIT_CONFIG_COUNT='3'", "export GIT_CONFIG_KEY_0='credential.https://git.src.land.helper'", "hook git-credential"} {
 		if !strings.Contains(string(env), want) {
 			t.Errorf("env file missing %q:\n%s", want, env)
 		}

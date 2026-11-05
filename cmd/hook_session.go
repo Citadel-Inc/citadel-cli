@@ -311,14 +311,21 @@ func httpsCredentialEnvWith(remote, helperFlags string) [][2]string {
 		exe = "citadel-cli"
 	}
 	key := "credential." + u.Scheme + "://" + u.Host + ".helper"
-	// The empty first value clears helpers inherited from the user's config.
+	// The empty first value clears helpers inherited from the user's config. Proactive auth
+	// skips the 401 that every first request of a git command otherwise costs.
 	return [][2]string{
-		{"GIT_CONFIG_COUNT", strconv.Itoa(n + 2)},
+		{"GIT_CONFIG_COUNT", strconv.Itoa(n + 3)},
+		{"GIT_CONFIG_KEY_" + strconv.Itoa(n+2), proactiveAuthKey(u)},
+		{"GIT_CONFIG_VALUE_" + strconv.Itoa(n+2), "basic"},
 		{"GIT_CONFIG_KEY_" + strconv.Itoa(n), key},
 		{"GIT_CONFIG_VALUE_" + strconv.Itoa(n), ""},
 		{"GIT_CONFIG_KEY_" + strconv.Itoa(n+1), key},
 		{"GIT_CONFIG_VALUE_" + strconv.Itoa(n+1), "!" + shellQuote(exe) + " hook git-credential" + helperFlags},
 	}
+}
+
+func proactiveAuthKey(u *url.URL) string {
+	return "http." + u.Scheme + "://" + u.Host + ".proactiveAuth"
 }
 
 // helperRemote reports whether a credential helper may serve the remote: https,
@@ -466,6 +473,7 @@ func applyLocalGitConfig(ctx context.Context, cmd *cobra.Command, dir, cwd, remo
 			exe = "citadel-cli"
 		}
 		set("credential."+u.Scheme+"://"+u.Host+".helper", "", "!"+shellQuote(exe)+" hook git-credential --state "+shellQuote(dir))
+		set(proactiveAuthKey(u), "basic")
 	}
 	if st, ok := loadHookState(dir); ok {
 		st.GitConfigRepo, st.GitConfigKeys = top, keys
