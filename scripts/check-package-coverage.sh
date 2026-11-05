@@ -13,7 +13,8 @@ MODULE="github.com/Citadel-Inc/citadel-cli"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-go test -race ./... -cover -covermode=atomic -count=1 >"$tmp" 2>&1 || {
+# A race binary sleeps 1s at exit by default, and the fake-git tests re-exec the test binary per git call.
+GORACE=atexit_sleep_ms=0 go test -race ./... -cover -covermode=atomic >"$tmp" 2>&1 || {
 	cat "$tmp"
 	exit 1
 }
