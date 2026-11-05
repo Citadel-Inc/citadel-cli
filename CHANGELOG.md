@@ -2,10 +2,17 @@
 
 All notable changes to `citadel-cli` are documented here.
 
-## Unreleased
+## v0.5.0
+
+### Changed
+
+- Hook sessions send git credentials with the first request, so a clone or push skips the 401 round trip.
+- The CLI verifies a server against the root that vouched for it in the last 24 hours, which skips loading the system certificate store on each run. Hostname, chain and expiry are still checked on every connection.
 
 ### Fixed
 
+- Git over SSH on a port other than 22 works through the session wrapper.
+- An expired login token renews through the stored login instead of being dropped.
 - Cursor hook sessions record `client: cursor` and a `cursor-<hostname>` agent, not `claude-code`.
 - `citadel-cli` in a Cursor shell acts as the agent session instead of the stored login.
 - `hook install --client cursor --scope project` writes a `.cursor/cli.json` Cursor accepts. Without `permissions.deny` Cursor refused to start in that workspace; re-running install repairs an existing file.
@@ -18,6 +25,7 @@ All notable changes to `citadel-cli` are documented here.
 
 ### Added
 
+- `login` names the server before anything is sent.
 - `doctor` and `hook install` print the server in use and where the setting came from, so an unconfigured self-host machine sees it is on the hosted default.
 - Added `hook install`/`uninstall` and the `session-start`, `renew` and `session-end` hooks, which give each Claude Code session in a src.land repo its own agent identity, ephemeral SSH key and short-lived token.
 - `hook session-start` now registers a host-scoped git credential helper (`hook git-credential`) for `https://` origins, so hook sessions clone and push over Smart HTTP with the session token and no prompt.
