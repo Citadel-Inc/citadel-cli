@@ -2,8 +2,14 @@ package httpx
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -81,5 +87,105 @@ func TestServerVerifier(t *testing.T) {
 	}
 	if err := get(trusted); err != nil {
 		t.Fatalf("after damage: %v", err)
+	}
+}
+
+type testCA struct {
+	cert *x509.Certificate
+	key  *ecdsa.PrivateKey
+}
+
+func newTestCA(t *testing.T) testCA {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "test ca"},
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(24 * time.Hour),
+		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return testCA{cert, key}
+}
+
+// serve starts a TLS server whose leaf the CA signs for the given names and validity.
+func (ca testCA) serve(t *testing.T, dns []string, notBefore, notAfter time.Time) *httptest.Server {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "leaf"},
+		DNSNames: dns, IPAddresses: nil, NotBefore: notBefore, NotAfter: notAfter,
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	if len(dns) == 0 {
+		tmpl.IPAddresses = []net.IP{net.IPv4(127, 0, 0, 1)}
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, ca.cert, &key.PublicKey, ca.key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") }))
+	srv.TLS = &tls.Config{Certificates: []tls.Certificate{{Certificate: [][]byte{der}, PrivateKey: key}}}
+	srv.StartTLS()
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// With a root kept for the host, a wrong name, an expired leaf and a chain from
+// another root are all still refused, on a fresh connection each time.
+func TestServerVerifier_RefusesBadServersWithKeptRoot(t *testing.T) {
+	ca, other := newTestCA(t), newTestCA(t)
+	system := x509.NewCertPool()
+	system.AddCert(ca.cert)
+	dir := t.TempDir()
+	now := time.Now()
+
+	get := func(srv *httptest.Server) error {
+		t.Helper()
+		tr := &http.Transport{ForceAttemptHTTP2: true, DialTLSContext: serverVerifier{dir: dir, systemRoots: system}.dialTLS((&net.Dialer{}).DialContext)}
+		defer tr.CloseIdleConnections()
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+		defer cancel()
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := tr.RoundTrip(req)
+		if err != nil {
+			return err
+		}
+		return resp.Body.Close()
+	}
+
+	good := ca.serve(t, nil, now.Add(-time.Hour), now.Add(time.Hour))
+	if err := get(good); err != nil {
+		t.Fatalf("good server: %v", err)
+	}
+	if _, err := os.Stat(serverVerifier{dir: dir}.path("127.0.0.1")); err != nil {
+		t.Fatalf("root not kept: %v", err)
+	}
+	for name, srv := range map[string]*httptest.Server{
+		"wrong hostname":  ca.serve(t, []string{"other.example"}, now.Add(-time.Hour), now.Add(time.Hour)),
+		"expired leaf":    ca.serve(t, nil, now.Add(-2*time.Hour), now.Add(-time.Hour)),
+		"untrusted chain": other.serve(t, nil, now.Add(-time.Hour), now.Add(time.Hour)),
+	} {
+		if err := get(srv); err == nil {
+			t.Errorf("%s was accepted", name)
+		}
+	}
+	if err := get(good); err != nil {
+		t.Fatalf("good server after the refusals: %v", err)
 	}
 }

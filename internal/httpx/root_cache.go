@@ -111,9 +111,10 @@ func (v serverVerifier) dialTLS(dial func(ctx context.Context, network, addr str
 		if err != nil {
 			return nil, err
 		}
-		conn := tls.Client(raw, &tls.Config{ //nolint:gosec // see the function comment
-			ServerName:         host,
-			NextProtos:         []string{"h2", "http/1.1"},
+		conn := tls.Client(raw, &tls.Config{
+			ServerName: host,
+			NextProtos: []string{"h2", "http/1.1"},
+			//nolint:gosec // the library's own check is replaced by VerifyConnection below, which runs on every handshake
 			InsecureSkipVerify: true,
 			VerifyConnection:   func(cs tls.ConnectionState) error { return v.verify(host, cs.PeerCertificates) },
 		})
