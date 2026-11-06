@@ -213,49 +213,37 @@ func (e *tableWatchEmitter) writeHeader(w io.Writer) {
 }
 
 func (e *tableWatchEmitter) writeRow(w io.Writer, key string, raw json.RawMessage) {
-	switch e.kind {
-	case watchRepos:
-		var r repoRow
-		if json.Unmarshal(raw, &r) != nil {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
-			return
-		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.Path, r.Visibility, r.DefaultBranch, r.CreatedAt)
-	case watchAgents:
-		var r agentRow
-		if json.Unmarshal(raw, &r) != nil {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
-			return
-		}
+	if f, ok := watchRowFormatters[e.kind]; ok {
+		_, _ = fmt.Fprintln(w, f(key, raw))
+		return
+	}
+	_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
+}
+
+// watchRowFormatters renders one tab-separated table line per list kind; a
+// payload that does not decode shows as key and raw JSON.
+var watchRowFormatters = map[watchListKind]func(key string, raw json.RawMessage) string{
+	watchRepos: watchRowOf(func(r repoRow) string {
+		return fmt.Sprintf("%s\t%s\t%s\t%s", r.Path, r.Visibility, r.DefaultBranch, r.CreatedAt)
+	}),
+	watchAgents: watchRowOf(func(r agentRow) string {
 		hint := ""
 		if r.ModelHint != nil {
 			hint = *r.ModelHint
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", r.Name, r.ID, hint)
-	case watchOAuthClients:
-		var r oauthClient
-		if json.Unmarshal(raw, &r) != nil {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
-			return
-		}
+		return fmt.Sprintf("%s\t%s\t%s", r.Name, r.ID, hint)
+	}),
+	watchOAuthClients: watchRowOf(func(r oauthClient) string {
 		scopes := strings.Join(r.AllowedScopes, ",")
 		if scopes == "" {
 			scopes = "—"
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", r.ClientID, r.Name, scopes)
-	case watchOrgs:
-		var r nsOrgRow
-		if json.Unmarshal(raw, &r) != nil {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
-			return
-		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", r.Slug, r.DisplayName, r.CreatedAt.Format("2006-01-02"))
-	case watchOrgMembers:
-		var r nsMemberRow
-		if json.Unmarshal(raw, &r) != nil {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
-			return
-		}
+		return fmt.Sprintf("%s\t%s\t%s", r.ClientID, r.Name, scopes)
+	}),
+	watchOrgs: watchRowOf(func(r nsOrgRow) string {
+		return fmt.Sprintf("%s\t%s\t%s", r.Slug, r.DisplayName, r.CreatedAt.Format("2006-01-02"))
+	}),
+	watchOrgMembers: watchRowOf(func(r nsMemberRow) string {
 		role := "member"
 		if r.IsOwner {
 			role = "owner"
@@ -264,25 +252,16 @@ func (e *tableWatchEmitter) writeRow(w io.Writer, key string, raw json.RawMessag
 		if name == "" {
 			name = r.Slug
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.Slug, name, role, r.JoinedAt.Format("2006-01-02"))
-	case watchTransfersPending:
-		var r nsTransferRow
-		if json.Unmarshal(raw, &r) != nil {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
-			return
-		}
+		return fmt.Sprintf("%s\t%s\t%s\t%s", r.Slug, name, role, r.JoinedAt.Format("2006-01-02"))
+	}),
+	watchTransfersPending: watchRowOf(func(r nsTransferRow) string {
 		shortID := r.ID
 		if len(shortID) > 8 {
 			shortID = shortID[:8]
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-			shortID, r.OrgSlug, r.FromUserSlug, r.ExpiresAt.Format("2006-01-02"))
-	case watchAgentTokens:
-		var t token
-		if json.Unmarshal(raw, &t) != nil {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
-			return
-		}
+		return fmt.Sprintf("%s\t%s\t%s\t%s", shortID, r.OrgSlug, r.FromUserSlug, r.ExpiresAt.Format("2006-01-02"))
+	}),
+	watchAgentTokens: watchRowOf(func(t token) string {
 		expires := ""
 		if t.ExpiresAt != nil {
 			expires = t.ExpiresAt.Format(time.RFC3339)
@@ -291,49 +270,35 @@ func (e *tableWatchEmitter) writeRow(w io.Writer, key string, raw json.RawMessag
 		if t.RevokedAt != nil {
 			revoked = t.RevokedAt.Format(time.RFC3339)
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-			t.ID.String(),
-			t.CreatedAt.Format("2006-01-02 15:04:05"),
-			expires,
-			revoked)
-	case watchDeployTokens:
-		var t deployTokenRow
-		if json.Unmarshal(raw, &t) != nil {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
-			return
-		}
+		return fmt.Sprintf("%s\t%s\t%s\t%s", t.ID.String(), t.CreatedAt.Format("2006-01-02 15:04:05"), expires, revoked)
+	}),
+	watchDeployTokens: watchRowOf(func(t deployTokenRow) string {
 		name := t.Name
 		if name == "" {
 			name = "—"
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-			t.ID,
-			name,
-			t.CreatedAt.Format("2006-01-02 15:04:05"),
-			formatTimePtr(t.ExpiresAt),
-			formatTimePtr(t.RevokedAt),
-		)
-	case watchAudit:
-		var r auditEventPayload
-		if json.Unmarshal(raw, &r) != nil {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
-			return
-		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", t.ID, name, t.CreatedAt.Format("2006-01-02 15:04:05"), formatTimePtr(t.ExpiresAt), formatTimePtr(t.RevokedAt))
+	}),
+	watchAudit: watchRowOf(func(r auditEventPayload) string {
+		return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s",
 			r.TS, r.Kind, dashIfEmpty(firstNonEmpty(r.ActorSlug, r.ActorID)), dashIfEmpty(r.NamespaceSlug), dashIfEmpty(r.SubjectID), r.ID)
-	case watchNotifications:
-		var r notifItem
-		if json.Unmarshal(raw, &r) != nil {
-			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
-			return
-		}
+	}),
+	watchNotifications: watchRowOf(func(r notifItem) string {
 		read := "no"
 		if r.ReadAt != nil {
 			read = "yes"
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", r.ID, r.Kind, r.Summary, read, r.CreatedAt.Format("2006-01-02 15:04:05"))
-	default:
-		_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
+		return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", r.ID, r.Kind, r.Summary, read, r.CreatedAt.Format("2006-01-02 15:04:05"))
+	}),
+}
+
+func watchRowOf[T any](format func(T) string) func(string, json.RawMessage) string {
+	return func(key string, raw json.RawMessage) string {
+		var r T
+		if json.Unmarshal(raw, &r) != nil {
+			return key + "\t" + string(raw)
+		}
+		return format(r)
 	}
 }
 
@@ -345,64 +310,9 @@ func dashIfEmpty(s string) string {
 }
 
 func (e *tableWatchEmitter) shortRowLabel(raw json.RawMessage) string {
-	switch e.kind {
-	case watchRepos:
-		var r repoRow
-		if json.Unmarshal(raw, &r) == nil && r.Path != "" {
-			return r.Path
-		}
-	case watchAgents:
-		var r agentRow
-		if json.Unmarshal(raw, &r) == nil && r.Name != "" {
-			return r.Name
-		}
-	case watchOAuthClients:
-		var r oauthClient
-		if json.Unmarshal(raw, &r) == nil && r.ClientID != "" {
-			return r.ClientID
-		}
-	case watchOrgs:
-		var r nsOrgRow
-		if json.Unmarshal(raw, &r) == nil && r.Slug != "" {
-			return r.Slug
-		}
-	case watchOrgMembers:
-		var r nsMemberRow
-		if json.Unmarshal(raw, &r) == nil {
-			if r.Slug != "" {
-				return r.Slug
-			}
-			if r.UserID != "" {
-				return r.UserID
-			}
-		}
-	case watchTransfersPending:
-		var r nsTransferRow
-		if json.Unmarshal(raw, &r) == nil && r.ID != "" {
-			return r.ID
-		}
-	case watchAgentTokens:
-		var t token
-		if json.Unmarshal(raw, &t) == nil {
-			return t.ID.String()
-		}
-	case watchDeployTokens:
-		var t deployTokenRow
-		if json.Unmarshal(raw, &t) == nil && t.ID != "" {
-			if t.Name != "" {
-				return t.Name
-			}
-			return t.ID
-		}
-	case watchAudit:
-		var r auditEventPayload
-		if json.Unmarshal(raw, &r) == nil && r.Kind != "" {
-			return r.Kind + " " + r.ID
-		}
-	case watchNotifications:
-		var r notifItem
-		if json.Unmarshal(raw, &r) == nil && r.Summary != "" {
-			return r.Summary
+	if f, ok := watchLabelers[e.kind]; ok {
+		if l := f(raw); l != "" {
+			return l
 		}
 	}
 	var m map[string]any
@@ -414,6 +324,43 @@ func (e *tableWatchEmitter) shortRowLabel(raw json.RawMessage) string {
 		}
 	}
 	return string(raw)
+}
+
+// watchLabelers return a short human label for a delta line, or "" to fall
+// back to generic field probing.
+var watchLabelers = map[watchListKind]func(json.RawMessage) string{
+	watchRepos:        watchLabelOf(func(r repoRow) string { return r.Path }),
+	watchAgents:       watchLabelOf(func(r agentRow) string { return r.Name }),
+	watchOAuthClients: watchLabelOf(func(r oauthClient) string { return r.ClientID }),
+	watchOrgs:         watchLabelOf(func(r nsOrgRow) string { return r.Slug }),
+	watchOrgMembers: watchLabelOf(func(r nsMemberRow) string {
+		return firstNonEmpty(r.Slug, r.UserID)
+	}),
+	watchTransfersPending: watchLabelOf(func(r nsTransferRow) string { return r.ID }),
+	watchAgentTokens:      watchLabelOf(func(t token) string { return t.ID.String() }),
+	watchDeployTokens: watchLabelOf(func(t deployTokenRow) string {
+		if t.ID == "" {
+			return ""
+		}
+		return firstNonEmpty(t.Name, t.ID)
+	}),
+	watchAudit: watchLabelOf(func(r auditEventPayload) string {
+		if r.Kind == "" {
+			return ""
+		}
+		return r.Kind + " " + r.ID
+	}),
+	watchNotifications: watchLabelOf(func(r notifItem) string { return r.Summary }),
+}
+
+func watchLabelOf[T any](label func(T) string) func(json.RawMessage) string {
+	return func(raw json.RawMessage) string {
+		var r T
+		if json.Unmarshal(raw, &r) != nil {
+			return ""
+		}
+		return label(r)
+	}
 }
 
 func (e *tableWatchEmitter) rowKey(raw json.RawMessage) string {

@@ -218,30 +218,41 @@ func cursorCLIConfigDir() (string, error) {
 	return filepath.Join(home, ".cursor"), nil
 }
 
-// mergeAllowRule adds rule to permissions.allow, or removes it, leaving every
-// other key as is. Cursor refuses to start on a permissions object that lacks
-// either list, so under strictLists an object that stays keeps both.
-func mergeAllowRule(path, rule string, install, strictLists bool) error {
-	cfg := map[string]any{}
-	mode := fs.FileMode(0o600)
+// readJSONSettings loads path as a JSON object. absent reports a missing file;
+// mode is the file's permissions, or 0600 when it will be created. invalid
+// wraps a parse failure so each caller words its own refusal.
+func readJSONSettings(path string, invalid func(error) error) (cfg map[string]any, mode fs.FileMode, absent bool, err error) {
+	cfg = map[string]any{}
+	mode = fs.FileMode(0o600)
 	//nolint:gosec // The settings path is operator-selected.
 	raw, err := os.ReadFile(path)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
-		if !install {
-			return nil
-		}
+		return cfg, mode, true, nil
 	case err != nil:
+		return nil, mode, false, err
+	}
+	if st, serr := os.Stat(path); serr == nil {
+		mode = st.Mode().Perm()
+	}
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &cfg); err != nil {
+			return nil, mode, false, invalid(err)
+		}
+	}
+	return cfg, mode, false, nil
+}
+
+// mergeAllowRule adds rule to permissions.allow, or removes it, leaving every
+// other key as is. Cursor refuses to start on a permissions object that lacks
+// either list, so under strictLists an object that stays keeps both.
+func mergeAllowRule(path, rule string, install, strictLists bool) error {
+	cfg, mode, absent, err := readJSONSettings(path, func(e error) error { return fmt.Errorf("%s: %w", path, e) })
+	if err != nil {
 		return err
-	default:
-		if st, serr := os.Stat(path); serr == nil {
-			mode = st.Mode().Perm()
-		}
-		if len(raw) > 0 {
-			if err := json.Unmarshal(raw, &cfg); err != nil {
-				return fmt.Errorf("%s: %w", path, err)
-			}
-		}
+	}
+	if absent && !install {
+		return nil
 	}
 	perms, _ := cfg["permissions"].(map[string]any)
 	if perms == nil {
@@ -308,26 +319,12 @@ func claudeSettingsPath(scope string) (string, error) {
 // to touch a file it cannot parse, and reports whether the file changed. An
 // existing entry for the same verb with different flags is replaced.
 func mergeClaudeHooks(path string, install bool, commands map[string]string) (bool, error) {
-	settings := map[string]any{}
-	mode := fs.FileMode(0o600)
-	//nolint:gosec // The settings path is operator-selected.
-	raw, err := os.ReadFile(path)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		if !install {
-			return false, nil
-		}
-	case err != nil:
+	settings, mode, absent, err := readJSONSettings(path, func(e error) error { return fmt.Errorf("%s is not valid JSON; fix it and rerun: %w", path, e) })
+	if err != nil {
 		return false, err
-	default:
-		if st, serr := os.Stat(path); serr == nil {
-			mode = st.Mode().Perm()
-		}
-		if len(raw) > 0 {
-			if err := json.Unmarshal(raw, &settings); err != nil {
-				return false, fmt.Errorf("%s is not valid JSON; fix it and rerun: %w", path, err)
-			}
-		}
+	}
+	if absent && !install {
+		return false, nil
 	}
 	hooks, ok := settings["hooks"].(map[string]any)
 	if !ok {
@@ -437,26 +434,12 @@ func stripVerb(groups []any, base string) []any {
 // mergeCursorHooks is mergeClaudeHooks for Cursor's hooks.json: version 1 and a
 // flat entry list per event, no handler groups.
 func mergeCursorHooks(path string, install bool, commands map[string]string) (bool, error) {
-	cfg := map[string]any{}
-	mode := fs.FileMode(0o600)
-	//nolint:gosec // The hooks path is operator-selected.
-	raw, err := os.ReadFile(path)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		if !install {
-			return false, nil
-		}
-	case err != nil:
+	cfg, mode, absent, err := readJSONSettings(path, func(e error) error { return fmt.Errorf("%s is not valid JSON; fix it and rerun: %w", path, e) })
+	if err != nil {
 		return false, err
-	default:
-		if st, serr := os.Stat(path); serr == nil {
-			mode = st.Mode().Perm()
-		}
-		if len(raw) > 0 {
-			if err := json.Unmarshal(raw, &cfg); err != nil {
-				return false, fmt.Errorf("%s is not valid JSON; fix it and rerun: %w", path, err)
-			}
-		}
+	}
+	if absent && !install {
+		return false, nil
 	}
 	hooks, ok := cfg["hooks"].(map[string]any)
 	if !ok {
@@ -467,33 +450,11 @@ func mergeCursorHooks(path string, install bool, commands map[string]string) (bo
 	}
 	changed := false
 	for event, base := range cursorHookEvents {
-		entries, _ := hooks[event].([]any)
-		if _, present := hooks[event]; present && entries == nil {
-			return false, fmt.Errorf("%s: hooks.%s is not an array; fix it and rerun", path, event)
+		ev, err := mergeCursorEvent(path, hooks, event, base, install, commands[event])
+		if err != nil {
+			return false, err
 		}
-		var keep []any
-		had := false
-		for _, e := range entries {
-			em, _ := e.(map[string]any)
-			switch {
-			case !isVerb(em["command"], base):
-				keep = append(keep, e)
-			case install && em["command"] == commands[event]:
-				had = true
-				keep = append(keep, e)
-			}
-		}
-		if install && !had {
-			keep = append(keep, map[string]any{"command": commands[event], "type": "command", "timeout": hookTimeouts[event]})
-		}
-		if len(keep) != len(entries) || (install && !had) {
-			changed = true
-		}
-		if len(keep) == 0 {
-			delete(hooks, event)
-		} else {
-			hooks[event] = keep
-		}
+		changed = changed || ev
 	}
 	if !changed {
 		return false, nil
@@ -512,4 +473,33 @@ func mergeCursorHooks(path string, install bool, commands map[string]string) (bo
 		return false, err
 	}
 	return true, safefs.WriteFileAtomic(path, append(out, '\n'), mode)
+}
+
+// mergeCursorEvent installs or removes this CLI's entry for one hook event.
+func mergeCursorEvent(path string, hooks map[string]any, event, base string, install bool, command string) (bool, error) {
+	entries, _ := hooks[event].([]any)
+	if _, present := hooks[event]; present && entries == nil {
+		return false, fmt.Errorf("%s: hooks.%s is not an array; fix it and rerun", path, event)
+	}
+	var keep []any
+	had := false
+	for _, e := range entries {
+		em, _ := e.(map[string]any)
+		switch {
+		case !isVerb(em["command"], base):
+			keep = append(keep, e)
+		case install && em["command"] == command:
+			had = true
+			keep = append(keep, e)
+		}
+	}
+	if install && !had {
+		keep = append(keep, map[string]any{"command": command, "type": "command", "timeout": hookTimeouts[event]})
+	}
+	if len(keep) == 0 {
+		delete(hooks, event)
+	} else {
+		hooks[event] = keep
+	}
+	return len(keep) != len(entries) || (install && !had), nil
 }

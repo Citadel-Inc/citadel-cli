@@ -70,6 +70,28 @@ func upgradeUnauthorized(err error) error {
 	return err
 }
 
+// kgImpactRepoSlug resolves owner/repo from an optional leading repo argument,
+// --repo, or the current repository, in that order of precedence for 2 args.
+func kgImpactRepoSlug(cmd *cobra.Command, args []string, repoFlag string) (string, error) {
+	if len(args) != 1 && len(args) != 2 {
+		return "", fmt.Errorf("expected 1 or 2 arguments")
+	}
+	if repoFlag == "" && len(args) == 2 {
+		return strings.TrimSpace(args[0]), nil
+	}
+	var ns, rslug string
+	var err error
+	if repoFlag != "" {
+		ns, rslug, err = splitRepoArg(repoFlag)
+	} else {
+		ns, rslug, err = resolveRepoFlag(cmd)
+	}
+	if err != nil {
+		return "", err
+	}
+	return ns + "/" + rslug, nil
+}
+
 func runKgImpact(cmd *cobra.Command, args []string) error {
 	symbol := strings.TrimSpace(args[len(args)-1])
 	if symbol == "" {
@@ -85,34 +107,9 @@ func runKgImpact(cmd *cobra.Command, args []string) error {
 	repoFlag, _ := cmd.Flags().GetString("repo")
 	repoFlag = strings.TrimSpace(repoFlag)
 
-	var slug string
-	switch len(args) {
-	case 1:
-		if repoFlag != "" {
-			ns, rslug, err := splitRepoArg(repoFlag)
-			if err != nil {
-				return err
-			}
-			slug = ns + "/" + rslug
-		} else {
-			ns, rslug, err := resolveRepoFlag(cmd)
-			if err != nil {
-				return err
-			}
-			slug = ns + "/" + rslug
-		}
-	case 2:
-		if repoFlag != "" {
-			ns, rslug, err := splitRepoArg(repoFlag)
-			if err != nil {
-				return err
-			}
-			slug = ns + "/" + rslug
-		} else {
-			slug = strings.TrimSpace(args[0])
-		}
-	default:
-		return fmt.Errorf("expected 1 or 2 arguments")
+	slug, err := kgImpactRepoSlug(cmd, args, repoFlag)
+	if err != nil {
+		return err
 	}
 
 	c, err := newAPIClient(cmd)

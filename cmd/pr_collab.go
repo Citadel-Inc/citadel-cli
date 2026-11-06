@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -250,14 +251,7 @@ func runPRCommentList(cmd *cobra.Command, args []string) error {
 
 	comments := payload.Comments
 	if onlyInline || onlyGeneral {
-		var filtered []prComment
-		for _, c := range comments {
-			isInline := c.DiffFile != nil
-			if (onlyInline && isInline) || (onlyGeneral && !isInline) {
-				filtered = append(filtered, c)
-			}
-		}
-		comments = filtered
+		comments = filterPRComments(comments, onlyInline)
 	}
 	payload.Comments = comments
 	switch output {
@@ -272,49 +266,7 @@ func runPRCommentList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Separate standalone comments from threaded comments.
-	var standalone []prComment
-	threads := make(map[string][]prComment)
-	var threadOrder []string
-	for _, c := range comments {
-		if c.ThreadID != nil {
-			tid := *c.ThreadID
-			if _, exists := threads[tid]; !exists {
-				threadOrder = append(threadOrder, tid)
-			}
-			threads[tid] = append(threads[tid], c)
-		} else {
-			standalone = append(standalone, c)
-		}
-	}
-
-	for _, c := range standalone {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "— %s (%s)\n", c.AuthorID, formatRFC3339UTC(c.CreatedAt))
-		if body := strings.TrimSpace(c.BodyMarkdown); body != "" {
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), body)
-		}
-		_, _ = fmt.Fprintln(cmd.OutOrStdout())
-	}
-
-	for _, tid := range threadOrder {
-		tComments := threads[tid]
-		first := tComments[0]
-		header := "▸ Thread " + tid[:min(8, len(tid))]
-		if first.DiffFile != nil {
-			header += " — " + *first.DiffFile
-			if first.DiffLine != nil {
-				header += ":" + strconv.Itoa(*first.DiffLine)
-			}
-		}
-		_, _ = fmt.Fprintln(cmd.OutOrStdout(), header)
-		for _, c := range tComments {
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  — %s (%s)\n", c.AuthorID, formatRFC3339UTC(c.CreatedAt))
-			if body := strings.TrimSpace(c.BodyMarkdown); body != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  "+body)
-			}
-		}
-		_, _ = fmt.Fprintln(cmd.OutOrStdout())
-	}
+	printPRComments(cmd.OutOrStdout(), comments)
 	return nil
 }
 
@@ -532,44 +484,40 @@ func runPRReview(cmd *cobra.Command, args []string) error {
 	}
 	base := prBasePath(nsPath) + "/" + strconv.FormatInt(num, 10)
 
-	// Post comment if given.
 	if comment != "" {
-		commentPath := base + "/comments"
-		if err := c.Post(cmd.Context(), commentPath, map[string]string{"body_markdown": comment}, nil); err != nil {
+		if err := c.Post(cmd.Context(), base+"/comments", map[string]string{"body_markdown": comment}, nil); err != nil {
 			if apiclient.IsStatus(err, http.StatusNotFound) {
 				return fmt.Errorf("PR %s#%d not found", nsPath, num)
 			}
 			return err
 		}
 	}
-
-	// Submit review status if approve or request-changes given.
-	if approve || requestChanges {
-		status := "approved"
-		if requestChanges {
-			status = "changes_requested"
-		}
-		reviewPath := base + "/reviews/me"
-		if err := c.Put(cmd.Context(), reviewPath, map[string]string{"status": status}, nil); err != nil {
-			if apiclient.IsStatus(err, http.StatusNotFound) {
-				return fmt.Errorf("PR %s#%d not found", nsPath, num)
-			}
-			return prFriendlyError(err)
-		}
-		if output == "json" {
-			result := map[string]any{"status": status}
-			if comment != "" {
-				result["comment_added"] = true
-			}
-			return emitJSON(cmd, result)
-		}
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Review submitted for PR %s#%d: %s.\n", nsPath, num, status)
-	} else {
+	if !approve && !requestChanges {
 		if output == "json" {
 			return emitJSON(cmd, map[string]string{"status": "comment_added"})
 		}
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Comment added to PR %s#%d.\n", nsPath, num)
+		return nil
 	}
+
+	status := "approved"
+	if requestChanges {
+		status = "changes_requested"
+	}
+	if err := c.Put(cmd.Context(), base+"/reviews/me", map[string]string{"status": status}, nil); err != nil {
+		if apiclient.IsStatus(err, http.StatusNotFound) {
+			return fmt.Errorf("PR %s#%d not found", nsPath, num)
+		}
+		return prFriendlyError(err)
+	}
+	if output == "json" {
+		result := map[string]any{"status": status}
+		if comment != "" {
+			result["comment_added"] = true
+		}
+		return emitJSON(cmd, result)
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Review submitted for PR %s#%d: %s.\n", nsPath, num, status)
 	return nil
 }
 
@@ -652,4 +600,62 @@ func registerPRCollabCommands() {
 	prReviewerListCmd.ValidArgsFunction = completeOrgNamespaceSlugs
 	prReviewerAddCmd.ValidArgsFunction = completeOrgNamespaceSlugs
 	prReviewCmd.ValidArgsFunction = completeOrgNamespaceSlugs
+}
+
+// printPRComments prints standalone comments first, then each thread in order of first appearance.
+func printPRComments(w io.Writer, comments []prComment) {
+	// Separate standalone comments from threaded comments.
+	var standalone []prComment
+	threads := make(map[string][]prComment)
+	var threadOrder []string
+	for _, c := range comments {
+		if c.ThreadID != nil {
+			tid := *c.ThreadID
+			if _, exists := threads[tid]; !exists {
+				threadOrder = append(threadOrder, tid)
+			}
+			threads[tid] = append(threads[tid], c)
+		} else {
+			standalone = append(standalone, c)
+		}
+	}
+
+	for _, c := range standalone {
+		_, _ = fmt.Fprintf(w, "— %s (%s)\n", c.AuthorID, formatRFC3339UTC(c.CreatedAt))
+		if body := strings.TrimSpace(c.BodyMarkdown); body != "" {
+			_, _ = fmt.Fprintln(w, body)
+		}
+		_, _ = fmt.Fprintln(w)
+	}
+
+	for _, tid := range threadOrder {
+		tComments := threads[tid]
+		first := tComments[0]
+		header := "▸ Thread " + tid[:min(8, len(tid))]
+		if first.DiffFile != nil {
+			header += " — " + *first.DiffFile
+			if first.DiffLine != nil {
+				header += ":" + strconv.Itoa(*first.DiffLine)
+			}
+		}
+		_, _ = fmt.Fprintln(w, header)
+		for _, c := range tComments {
+			_, _ = fmt.Fprintf(w, "  — %s (%s)\n", c.AuthorID, formatRFC3339UTC(c.CreatedAt))
+			if body := strings.TrimSpace(c.BodyMarkdown); body != "" {
+				_, _ = fmt.Fprintln(w, "  "+body)
+			}
+		}
+		_, _ = fmt.Fprintln(w)
+	}
+}
+
+// filterPRComments keeps inline (diff-anchored) comments, or general ones when inline is false.
+func filterPRComments(comments []prComment, inline bool) []prComment {
+	var out []prComment
+	for _, c := range comments {
+		if (c.DiffFile != nil) == inline {
+			out = append(out, c)
+		}
+	}
+	return out
 }
