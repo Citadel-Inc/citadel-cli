@@ -35,6 +35,7 @@ Examples:
 var issueListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List issues for a namespace path",
+	Long:  "Lists issues for a namespace path. --watch streams list changes over Server-Sent Events until interrupted.",
 	RunE:  runIssueList,
 }
 
@@ -479,6 +480,9 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 	default:
 		return fmt.Errorf("--state must be open, closed, or all")
 	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
@@ -494,6 +498,9 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
+	}
+	if watchFlag(cmd) {
+		return runIssueListWatch(cmd, c, nsPath, state, labels, assignees, limit, cursor, all)
 	}
 	pg := newListPagerCSV(cmd, output, all,
 		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No issues for namespace '%s'.\n", nsPath) },
@@ -1048,6 +1055,7 @@ func registerIssueCommands() {
 		issueCloseCmd, issueReopenCmd, issueLabelCmd, issueCloseRefsCmd,
 	)
 	addPaginationFlags(issueListCmd)
+	addWatchFlag(issueListCmd)
 
 	issueListCmd.Flags().String("state", "open", "Issue state filter: open, closed, or all")
 	issueListCmd.Flags().StringSlice("label", nil, "Filter by one or more label slugs")

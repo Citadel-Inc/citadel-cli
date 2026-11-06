@@ -218,3 +218,25 @@ func runNotificationListWatch(cmd *cobra.Command, c *apiclient.Client, unreadOnl
 	h := newWatchSSEHandler(cmd, watchNotifications, watchTableCtx{})
 	return consumeSSEWatch(cmd, c, path, h)
 }
+
+func runIssueListWatch(cmd *cobra.Command, c *apiclient.Client, nsPath, state string, labels, assignees []string, limit int, cursor string, all bool) error {
+	ex := url.Values{}
+	ex.Set("state", state)
+	for _, l := range labels {
+		ex.Add("label", l)
+	}
+	for _, a := range assignees {
+		ex.Add("assignee", a)
+	}
+	h := newWatchSSEHandler(cmd, watchIssues, watchTableCtx{})
+	return consumeSSEWatch(cmd, c, issueBasePath(nsPath)+"?"+sseWatchQuery(limit, cursor, all, ex), h)
+}
+
+func runPRListWatch(cmd *cobra.Command, c *apiclient.Client, nsPath, state string, limit int, cursor string, all bool) error {
+	ex := url.Values{}
+	if state != "" {
+		ex.Set("state", state)
+	}
+	h := newWatchSSEHandler(cmd, watchPRs, watchTableCtx{})
+	return consumeSSEWatch(cmd, c, prBasePath(nsPath)+"?"+sseWatchQuery(limit, cursor, all, ex), h)
+}

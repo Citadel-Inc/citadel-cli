@@ -46,7 +46,9 @@ var prListCmd = &cobra.Command{
 
 Examples:
   citadel-cli pr list -R myorg/myrepo
-  citadel-cli pr list -R myorg/myrepo --state all --output json`,
+  citadel-cli pr list -R myorg/myrepo --state all --output json
+
+--watch streams list changes over Server-Sent Events until interrupted.`,
 	RunE: runPRList,
 }
 
@@ -269,6 +271,9 @@ func runPRList(cmd *cobra.Command, _ []string) error {
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson or omit --all")
 	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
@@ -282,6 +287,9 @@ func runPRList(cmd *cobra.Command, _ []string) error {
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
+	}
+	if watchFlag(cmd) {
+		return runPRListWatch(cmd, c, nsPath, state, limit, cursor, all)
 	}
 
 	pg := newListPager(cmd, output, all,
@@ -519,6 +527,7 @@ func registerPRCommands() {
 
 	addIssuePathFlag(prListCmd, prViewCmd, prCreateCmd, prCloseCmd, prMergeCmd)
 	addPaginationFlags(prListCmd)
+	addWatchFlag(prListCmd)
 	addOutputFlag(prListCmd, prViewCmd)
 	addYesFlag(prCloseCmd)
 

@@ -214,6 +214,11 @@ citadel-cli issue close-refs -R acme/demo 42 --output json
 `issue list` supports the standard cursor pagination flags (`--limit`,
 `--cursor`, `--all`) and `--output json|yaml|ndjson|csv|table`.
 
+`issue list --watch` streams list changes over Server-Sent Events until
+interrupted, honouring `--state`, `--label` and `--assignee`; use `--output
+ndjson` for JSON lines (`json`, `yaml` and `csv` are rejected). A server that
+does not answer with `text/event-stream` fails immediately with an error.
+
 `issue view` and `issue close-refs` accept `--output json|yaml|table`. `issue
 view --web` opens the canonical browser route for that namespace issue.
 
@@ -934,6 +939,10 @@ citadel-cli pr list -R acme/demo --limit 50 --cursor <cursor>
 ```
 
 Columns: **#**, **Title**, **State**, **Source → Target**, **Author**, **Created**.
+
+`pr list --watch` streams list changes over Server-Sent Events until
+interrupted, honouring `--state`; `--output ndjson` emits JSON lines (`json`,
+`yaml` and `csv` are rejected). A server without SSE support fails immediately.
 
 ### View a pull request
 

@@ -6,20 +6,6 @@ Do **not** restore `account passkey` / `account device` — those verbs are out 
 
 ---
 
-## Server SSE follow-through
-
-### 4. Extend `--watch` to issue and PR lists
-
-**Feature.** Watch is on repo/agent/token/oauth/namespace/audit/notification lists; not on `issue list` or `pr list`.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/issue.go`, `cmd/pr.go`, `cmd/watch.go` / `watch_table.go` |
-| **Server** | Blocked: issues/PR APIs have no listwatch SSE yet (citadel TODO.md Round 12). |
-| **Acceptance** | Documented `--watch` on issue/PR lists once the server supports it; behaviour matches `repo list --watch` |
-
----
-
 ## Deferred
 
 ### 14b. Homebrew formula (optional)

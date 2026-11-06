@@ -132,3 +132,87 @@ func TestAuditListWatch_serverWithoutSSEFailsFast(t *testing.T) {
 		t.Fatal("watch hung against a server without SSE")
 	}
 }
+
+// Row shapes below are what citadel's issue and PR list SSE handlers emit:
+// the same element the JSON list returns, keyed by entity id.
+func TestIssueListWatch_ndjsonCarriesRowAndFilters(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var q string
+	srv := sseServe(t, "/namespaces/acme/issues", `{"id":"11111111-1111-1111-1111-111111111111","number":7,"title":"Broken build","state":"open","updated_at":"2026-01-01T00:00:00Z"}`, cancel, &q)
+	out := runWatchCmdOut(t, ctx, srv.URL, cmd.IssueCmd, "list", "-R", "acme", "--watch", "--output", "ndjson", "--state", "closed", "--label", "bug", "--assignee", "alice", "--limit", "5")
+
+	var line struct {
+		Type    string `json:"type"`
+		Payload struct {
+			Number int64  `json:"number"`
+			Title  string `json:"title"`
+		} `json:"payload"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &line); err != nil {
+		t.Fatalf("stdout %q: %v", out, err)
+	}
+	if line.Type != "init" || line.Payload.Number != 7 || line.Payload.Title != "Broken build" {
+		t.Fatalf("unexpected line %+v", line)
+	}
+	for _, want := range []string{"state=closed", "label=bug", "assignee=alice", "limit=5"} {
+		if !strings.Contains(q, want) {
+			t.Errorf("query %q missing %q", q, want)
+		}
+	}
+}
+
+func TestIssueListWatch_tableRow(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var q string
+	srv := sseServe(t, "/namespaces/acme/issues", `{"id":"11111111-1111-1111-1111-111111111111","number":7,"title":"Broken build","state":"open","updated_at":"2026-01-01T00:00:00Z"}`, cancel, &q)
+	out := runWatchCmdOut(t, ctx, srv.URL, cmd.IssueCmd, "list", "-R", "acme", "--watch")
+	if !strings.Contains(out, "Broken build") || !strings.Contains(out, "STATE") {
+		t.Fatalf("table output %q", out)
+	}
+}
+
+func TestPRListWatch_tableRowAndState(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var q string
+	srv := sseServe(t, "/namespaces/acme/pulls", `{"id":"22222222-2222-2222-2222-222222222222","number":3,"title":"Add feature","state":"open","source_ref":"feat","target_ref":"main","author_id":"33333333-3333-3333-3333-333333333333","created_at":"2026-01-01T00:00:00Z","labels":[],"assignees":[]}`, cancel, &q)
+	out := runWatchCmdOut(t, ctx, srv.URL, cmd.PrCmd, "list", "-R", "acme", "--watch", "--state", "merged")
+	if !strings.Contains(out, "Add feature") || !strings.Contains(out, "feat") {
+		t.Fatalf("table output %q", out)
+	}
+	if !strings.Contains(q, "state=merged") {
+		t.Errorf("query %q missing state=merged", q)
+	}
+}
+
+func TestPRListWatch_ndjson(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var q string
+	srv := sseServe(t, "/namespaces/acme/pulls", `{"id":"22222222-2222-2222-2222-222222222222","number":3,"title":"Add feature","state":"open"}`, cancel, &q)
+	out := runWatchCmdOut(t, ctx, srv.URL, cmd.PrCmd, "list", "-R", "acme", "--watch", "--output", "ndjson")
+	var line struct {
+		Type    string `json:"type"`
+		Payload struct {
+			Number int64 `json:"number"`
+		} `json:"payload"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &line); err != nil {
+		t.Fatalf("stdout %q: %v", out, err)
+	}
+	if line.Type != "init" || line.Payload.Number != 3 {
+		t.Fatalf("unexpected line %+v", line)
+	}
+}
+
+func TestIssueAndPRListWatch_rejectJSONOutput(t *testing.T) {
+	withServer(t, route(t, nil))
+	for _, c := range []*cobra.Command{cmd.IssueCmd, cmd.PrCmd} {
+		err := rootFor(c, "list", "-R", "acme", "--watch", "--output", "json").Execute()
+		if err == nil || !strings.Contains(err.Error(), "cannot be used with --watch") {
+			t.Fatalf("%s: want watch/output error, got %v", c.Name(), err)
+		}
+	}
+}

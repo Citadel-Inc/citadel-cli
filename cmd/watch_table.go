@@ -28,6 +28,8 @@ const (
 	watchDeployTokens
 	watchAudit
 	watchNotifications
+	watchIssues
+	watchPRs
 )
 
 // watchTableCtx carries slug fields needed to interpret partial SSE payloads.
@@ -207,6 +209,10 @@ func (e *tableWatchEmitter) writeHeader(w io.Writer) {
 		_, _ = fmt.Fprintln(w, "TS\tKIND\tACTOR\tNAMESPACE\tSUBJECT\tID")
 	case watchNotifications:
 		_, _ = fmt.Fprintln(w, "ID\tKIND\tSUMMARY\tREAD\tCREATED")
+	case watchIssues:
+		_, _ = fmt.Fprintln(w, "#\tSTATE\tTITLE\tASSIGNEES\tUPDATED")
+	case watchPRs:
+		_, _ = fmt.Fprintln(w, "NUMBER\tTITLE\tSTATE\tSOURCE\tTARGET\tAUTHOR\tCREATED")
 	default:
 		_, _ = fmt.Fprintln(w, "KEY\tJSON")
 	}
@@ -290,6 +296,18 @@ var watchRowFormatters = map[watchListKind]func(key string, raw json.RawMessage)
 		}
 		return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", r.ID, r.Kind, r.Summary, read, r.CreatedAt.Format("2006-01-02 15:04:05"))
 	}),
+	watchIssues: watchRowOf(func(r issueRow) string {
+		return fmt.Sprintf("%d\t%s\t%s\t%s\t%s", r.Number, r.State, r.Title, assigneeSummary(r.Assignees), formatRFC3339UTC(r.UpdatedAt))
+	}),
+	watchPRs: watchRowOf(func(r prRow) string {
+		title := r.Title
+		if len(title) > 50 {
+			title = title[:47] + "..."
+		}
+		return fmt.Sprintf("#%d\t%s\t%s\t%s\t%s\t%s\t%s",
+			r.Number, title, r.State, r.SourceRef, r.TargetRef,
+			r.AuthorID[:min(8, len(r.AuthorID))]+"…", r.CreatedAt.Format("2006-01-02"))
+	}),
 }
 
 func watchRowOf[T any](format func(T) string) func(string, json.RawMessage) string {
@@ -351,6 +369,12 @@ var watchLabelers = map[watchListKind]func(json.RawMessage) string{
 		return r.Kind + " " + r.ID
 	}),
 	watchNotifications: watchLabelOf(func(r notifItem) string { return r.Summary }),
+	watchIssues: watchLabelOf(func(r issueRow) string {
+		return fmt.Sprintf("#%d %s", r.Number, r.Title)
+	}),
+	watchPRs: watchLabelOf(func(r prRow) string {
+		return fmt.Sprintf("#%d %s", r.Number, r.Title)
+	}),
 }
 
 func watchLabelOf[T any](label func(T) string) func(json.RawMessage) string {
@@ -439,7 +463,7 @@ func (e *tableWatchEmitter) rowKey(raw json.RawMessage) string {
 		}
 		_ = json.Unmarshal(raw, &x)
 		return strings.TrimSpace(x.ID)
-	case watchAudit, watchNotifications:
+	case watchAudit, watchNotifications, watchIssues, watchPRs:
 		var x struct {
 			ID string `json:"id"`
 		}
