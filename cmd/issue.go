@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -494,9 +495,18 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	var yamlAccum []issueRow
-	csvHdr := false
-	first := true
+	pg := newListPagerCSV(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No issues for namespace '%s'.\n", nsPath) },
+		func(w *tabwriter.Writer, rows []issueRow) {
+			_, _ = fmt.Fprintln(w, "#\tSTATE\tTITLE\tASSIGNEES\tUPDATED")
+			for _, row := range rows {
+				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n", row.Number, row.State, row.Title, assigneeSummary(row.Assignees), formatRFC3339UTC(row.UpdatedAt))
+			}
+		},
+		func(cmd *cobra.Command, headerWritten *bool, rows []issueRow) error {
+			return emitCSVRows(cmd, headerWritten, issueListRows(rows))
+		},
+		emitCSVHeaderOnly[issueListRow])
 	for {
 		q := url.Values{}
 		q.Set("limit", strconv.Itoa(limit))
@@ -520,72 +530,11 @@ func runIssueList(cmd *cobra.Command, _ []string) error {
 		rows := payload.Issues
 		next := strings.TrimSpace(payload.NextCursor)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []issueRow{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[issueListRow](cmd)
-			case "yaml":
-				return emitYAML(cmd, []issueRow{})
-			default:
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No issues for namespace '%s'.\n", nsPath)
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, issueListRows(rows)); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "#\tSTATE\tTITLE\tASSIGNEES\tUPDATED")
-			for _, row := range rows {
-				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n", row.Number, row.State, row.Title, assigneeSummary(row.Assignees), formatRFC3339UTC(row.UpdatedAt))
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all {
-			if isHumanListOutput(output) && next != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
-			}
-			return nil
-		}
-		if next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-	if all && output == "yaml" {
-		if yamlAccum == nil {
-			yamlAccum = []issueRow{}
-		}
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runIssueView(cmd *cobra.Command, args []string) error {

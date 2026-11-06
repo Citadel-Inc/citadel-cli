@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/url"
 	"strconv"
 	"strings"
@@ -90,6 +91,19 @@ type auditShowPayload struct {
 	CascadeChildren []auditEventPayload `json:"cascade_children,omitempty"`
 }
 
+// auditFilterQuery collects the non-empty filter flags shared by the paged and
+// watch list requests.
+func auditFilterQuery(cmd *cobra.Command) url.Values {
+	f := url.Values{}
+	for _, name := range []string{"since", "until", "kind", "namespace", "actor", "agent"} {
+		v, _ := cmd.Flags().GetString(name)
+		if v = strings.TrimSpace(v); v != "" {
+			f.Set(name, v)
+		}
+	}
+	return f
+}
+
 func runAuditList(cmd *cobra.Command, _ []string) error {
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
 	if err := validateListOutput(output); err != nil {
@@ -114,21 +128,9 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	since, _ := cmd.Flags().GetString("since")
-	until, _ := cmd.Flags().GetString("until")
-	kind, _ := cmd.Flags().GetString("kind")
-	ns, _ := cmd.Flags().GetString("namespace")
-	actor, _ := cmd.Flags().GetString("actor")
-	agent, _ := cmd.Flags().GetString("agent")
-
+	filters := auditFilterQuery(cmd)
 	if watchFlag(cmd) {
-		f := url.Values{}
-		for k, v := range map[string]string{"since": since, "until": until, "kind": kind, "namespace": ns, "actor": actor, "agent": agent} {
-			if v = strings.TrimSpace(v); v != "" {
-				f.Set(k, v)
-			}
-		}
-		return runAuditListWatch(cmd, c, limit, cursor, all, f)
+		return runAuditListWatch(cmd, c, limit, cursor, all, filters)
 	}
 
 	pg := newListPager(cmd, output, all,
@@ -153,27 +155,10 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 		})
 	for {
 		q := url.Values{}
+		maps.Copy(q, filters)
 		q.Set("limit", strconv.Itoa(limit))
 		if cursor != "" {
 			q.Set("cursor", cursor)
-		}
-		if strings.TrimSpace(since) != "" {
-			q.Set("since", strings.TrimSpace(since))
-		}
-		if strings.TrimSpace(until) != "" {
-			q.Set("until", strings.TrimSpace(until))
-		}
-		if strings.TrimSpace(kind) != "" {
-			q.Set("kind", strings.TrimSpace(kind))
-		}
-		if strings.TrimSpace(ns) != "" {
-			q.Set("namespace", strings.TrimSpace(ns))
-		}
-		if strings.TrimSpace(actor) != "" {
-			q.Set("actor", strings.TrimSpace(actor))
-		}
-		if strings.TrimSpace(agent) != "" {
-			q.Set("agent", strings.TrimSpace(agent))
 		}
 
 		var payload struct {
@@ -217,53 +202,61 @@ func runAuditShow(cmd *cobra.Command, args []string) error {
 		return emitYAML(cmd, detail)
 	default:
 		w := newTabWriter(cmd)
-		actor := detail.ActorSlug
-		if actor == "" {
-			actor = detail.ActorID
-		}
-		ns := detail.NamespaceSlug
-		if ns == "" && detail.NamespaceID != "" {
-			ns = detail.NamespaceID
-		}
-		if ns == "" {
-			ns = "-"
-		}
-		_, _ = fmt.Fprintf(w, "ID:\t%s\n", detail.ID)
-		_, _ = fmt.Fprintf(w, "Time:\t%s\n", detail.TS)
-		_, _ = fmt.Fprintf(w, "Kind:\t%s\n", detail.Kind)
-		_, _ = fmt.Fprintf(w, "Actor:\t%s\n", actor)
-		_, _ = fmt.Fprintf(w, "Actor type:\t%s\n", detail.ActorType)
-		_, _ = fmt.Fprintf(w, "Namespace:\t%s\n", ns)
-		if detail.SubjectID != "" {
-			_, _ = fmt.Fprintf(w, "Subject:\t%s\n", detail.SubjectID)
-		}
-		if detail.SessionID != "" {
-			_, _ = fmt.Fprintf(w, "Session:\t%s\n", detail.SessionID)
-		}
-		if detail.RequestID != "" {
-			_, _ = fmt.Fprintf(w, "Request:\t%s\n", detail.RequestID)
-		}
-		if detail.ClientIP != "" {
-			_, _ = fmt.Fprintf(w, "Client IP:\t%s\n", detail.ClientIP)
-		}
-		_, _ = fmt.Fprintln(w, "\nPayload:")
-		pretty := detail.Payload
-		if len(pretty) > 0 {
-			buf := &bytes.Buffer{}
-			if err := json.Indent(buf, pretty, "", "  "); err == nil {
-				for line := range strings.SplitSeq(strings.TrimRight(buf.String(), "\n"), "\n") {
-					_, _ = fmt.Fprintf(w, "  %s\n", line)
-				}
-			} else {
-				_, _ = fmt.Fprintf(w, "  %s\n", string(pretty))
-			}
-		}
-		if len(detail.CascadeChildren) > 0 {
-			_, _ = fmt.Fprintf(w, "\nCascade children (%d):\n", len(detail.CascadeChildren))
-			for _, ch := range detail.CascadeChildren {
-				_, _ = fmt.Fprintf(w, "  - [%s] %s %s\n", ch.ID, ch.TS, ch.Kind)
-			}
-		}
+		writeAuditDetail(w, detail)
 		return w.Flush()
+	}
+}
+
+func writeAuditDetail(w io.Writer, detail auditShowPayload) {
+	actor := detail.ActorSlug
+	if actor == "" {
+		actor = detail.ActorID
+	}
+	ns := detail.NamespaceSlug
+	if ns == "" && detail.NamespaceID != "" {
+		ns = detail.NamespaceID
+	}
+	if ns == "" {
+		ns = "-"
+	}
+	_, _ = fmt.Fprintf(w, "ID:\t%s\n", detail.ID)
+	_, _ = fmt.Fprintf(w, "Time:\t%s\n", detail.TS)
+	_, _ = fmt.Fprintf(w, "Kind:\t%s\n", detail.Kind)
+	_, _ = fmt.Fprintf(w, "Actor:\t%s\n", actor)
+	_, _ = fmt.Fprintf(w, "Actor type:\t%s\n", detail.ActorType)
+	_, _ = fmt.Fprintf(w, "Namespace:\t%s\n", ns)
+	if detail.SubjectID != "" {
+		_, _ = fmt.Fprintf(w, "Subject:\t%s\n", detail.SubjectID)
+	}
+	if detail.SessionID != "" {
+		_, _ = fmt.Fprintf(w, "Session:\t%s\n", detail.SessionID)
+	}
+	if detail.RequestID != "" {
+		_, _ = fmt.Fprintf(w, "Request:\t%s\n", detail.RequestID)
+	}
+	if detail.ClientIP != "" {
+		_, _ = fmt.Fprintf(w, "Client IP:\t%s\n", detail.ClientIP)
+	}
+	writeAuditPayload(w, detail.Payload)
+	if len(detail.CascadeChildren) > 0 {
+		_, _ = fmt.Fprintf(w, "\nCascade children (%d):\n", len(detail.CascadeChildren))
+		for _, ch := range detail.CascadeChildren {
+			_, _ = fmt.Fprintf(w, "  - [%s] %s %s\n", ch.ID, ch.TS, ch.Kind)
+		}
+	}
+}
+
+func writeAuditPayload(w io.Writer, pretty json.RawMessage) {
+	_, _ = fmt.Fprintln(w, "\nPayload:")
+	if len(pretty) == 0 {
+		return
+	}
+	buf := &bytes.Buffer{}
+	if err := json.Indent(buf, pretty, "", "  "); err != nil {
+		_, _ = fmt.Fprintf(w, "  %s\n", string(pretty))
+		return
+	}
+	for line := range strings.SplitSeq(strings.TrimRight(buf.String(), "\n"), "\n") {
+		_, _ = fmt.Fprintf(w, "  %s\n", line)
 	}
 }

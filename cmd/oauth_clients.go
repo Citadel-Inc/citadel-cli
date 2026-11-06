@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -153,9 +155,18 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		return runOAuthClientsListWatch(cmd, c, orgSlug, limit, cursor, all)
 	}
 
-	var yamlAccum []oauthClient
-	csvHdr := false
-	first := true
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintln(w, "No OAuth clients.") },
+		func(w *tabwriter.Writer, clients []oauthClient) {
+			_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tSCOPES")
+			for _, oc := range clients {
+				scopes := strings.Join(oc.AllowedScopes, ",")
+				if scopes == "" {
+					scopes = "—"
+				}
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", oc.ClientID, oc.Name, scopes)
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("limit", strconv.Itoa(limit))
@@ -175,86 +186,15 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 		pageEmpty := len(payload.Clients) == 0
 		clients := payload.Clients
 		if dcr {
-			filtered := clients[:0]
-			for _, client := range clients {
-				if client.Dcr {
-					filtered = append(filtered, client)
-				}
-			}
-			clients = filtered
+			clients = slices.DeleteFunc(clients, func(c oauthClient) bool { return !c.Dcr })
 		}
 		next := strings.TrimSpace(payload.NextCursor)
 
-		if pageEmpty && cursor != "" && next == "" {
-			return nil
-		}
-		if first && pageEmpty && cursor == "" {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []oauthClient{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[oauthClient](cmd)
-			case "yaml":
-				return emitYAML(cmd, []oauthClient{})
-			default:
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No OAuth clients.")
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, clients)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, clients); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, clients); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, clients...)
-			} else {
-				return emitYAML(cmd, clients)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "CLIENT ID\tNAME\tSCOPES")
-			for _, oc := range clients {
-				scopes := strings.Join(oc.AllowedScopes, ",")
-				if scopes == "" {
-					scopes = "—"
-				}
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", oc.ClientID, oc.Name, scopes)
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all {
-			if isHumanListOutput(output) && next != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
-			}
-			return nil
-		}
-		if next == "" {
-			break
+		if stop, err := pg.pageRaw(pageEmpty, clients, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-	if all && output == "yaml" {
-		if yamlAccum == nil {
-			yamlAccum = []oauthClient{}
-		}
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runOAuthClientsCreate(cmd *cobra.Command, _ []string) error {

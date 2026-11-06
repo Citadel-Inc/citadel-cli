@@ -10,13 +10,17 @@ import (
 
 // listPager renders the successive pages of one cursor-paginated list verb in
 // the selected --output format, so each verb supplies only its table layout.
-type listPager[T CSVRow] struct {
+type listPager[T any] struct {
 	cmd    *cobra.Command
 	output string
 	all    bool
 	// empty prints the human message for a first page with no rows.
 	empty func(w io.Writer)
 	table func(w *tabwriter.Writer, rows []T)
+	// csv and csvEmpty differ from the row type's own CSVRow only when a verb
+	// exports a flatter shape than it emits as JSON.
+	csv      func(cmd *cobra.Command, headerWritten *bool, rows []T) error
+	csvEmpty func(cmd *cobra.Command) error
 
 	first     bool
 	csvHdr    bool
@@ -24,16 +28,26 @@ type listPager[T CSVRow] struct {
 }
 
 func newListPager[T CSVRow](cmd *cobra.Command, output string, all bool, empty func(w io.Writer), table func(w *tabwriter.Writer, rows []T)) *listPager[T] {
-	return &listPager[T]{cmd: cmd, output: output, all: all, empty: empty, table: table, first: true}
+	return newListPagerCSV(cmd, output, all, empty, table, emitCSVRows[T], emitCSVHeaderOnly[T])
+}
+
+func newListPagerCSV[T any](cmd *cobra.Command, output string, all bool, empty func(w io.Writer), table func(w *tabwriter.Writer, rows []T), csv func(*cobra.Command, *bool, []T) error, csvEmpty func(*cobra.Command) error) *listPager[T] {
+	return &listPager[T]{cmd: cmd, output: output, all: all, empty: empty, table: table, csv: csv, csvEmpty: csvEmpty, first: true}
 }
 
 // page emits one page. When stop is true the caller returns err; otherwise it
 // continues with cursor = next.
 func (p *listPager[T]) page(rows []T, cursor, next string) (stop bool, err error) {
-	if len(rows) == 0 && cursor != "" && next == "" {
+	return p.pageRaw(len(rows) == 0, rows, cursor, next)
+}
+
+// pageRaw is page for callers that filter rows client-side: emptiness is
+// judged on the server's page (serverEmpty), not on the filtered rows.
+func (p *listPager[T]) pageRaw(serverEmpty bool, rows []T, cursor, next string) (stop bool, err error) {
+	if serverEmpty && cursor != "" && next == "" {
 		return true, p.finish()
 	}
-	if p.first && len(rows) == 0 && cursor == "" {
+	if p.first && serverEmpty && cursor == "" {
 		return true, p.emitEmpty()
 	}
 	p.first = false
@@ -61,7 +75,7 @@ func (p *listPager[T]) emitEmpty() error {
 	case "ndjson":
 		return nil
 	case "csv":
-		return emitCSVHeaderOnly[T](p.cmd)
+		return p.csvEmpty(p.cmd)
 	case "yaml":
 		return emitYAML(p.cmd, []T{})
 	default:
@@ -78,7 +92,7 @@ func (p *listPager[T]) emitRows(rows []T) (stop bool, err error) {
 	case "ndjson":
 		return false, emitNDJSONLines(p.cmd, rows)
 	case "csv":
-		return false, emitCSVRows(p.cmd, &p.csvHdr, rows)
+		return false, p.csv(p.cmd, &p.csvHdr, rows)
 	case "yaml":
 		if !p.all {
 			return true, emitYAML(p.cmd, rows)

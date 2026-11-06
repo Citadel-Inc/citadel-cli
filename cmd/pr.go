@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -282,9 +284,21 @@ func runPRList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	var yamlAccum []prListRow
-	csvHdr := false
-	first := true
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No pull requests found for '%s'.\n", nsPath) },
+		func(w *tabwriter.Writer, rows []prListRow) {
+			_, _ = fmt.Fprintln(w, "NUMBER\tTITLE\tSTATE\tSOURCE\tTARGET\tAUTHOR\tCREATED")
+			for _, r := range rows {
+				title := r.Title
+				if len(title) > 50 {
+					title = title[:47] + "..."
+				}
+				_, _ = fmt.Fprintf(w, "#%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
+					r.Number, title, r.State, r.SourceRef, r.TargetRef,
+					r.AuthorID[:min(8, len(r.AuthorID))]+"…",
+					r.CreatedAt.Format("2006-01-02"))
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("limit", strconv.Itoa(limit))
@@ -307,82 +321,16 @@ func runPRList(cmd *cobra.Command, _ []string) error {
 		rows := page.PullRequests
 		next := strings.TrimSpace(page.NextCursor)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []prListRow{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[prListRow](cmd)
-			case "yaml":
-				return emitYAML(cmd, []prListRow{})
-			default:
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No pull requests found for '%s'.\n", nsPath)
-				return nil
-			}
-		}
-		first = false
-
 		listRows := make([]prListRow, len(rows))
 		for i, pr := range rows {
 			listRows[i] = prToListRow(pr)
 		}
 
-		switch output {
-		case "json":
-			return emitJSON(cmd, listRows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, listRows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, listRows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, listRows...)
-			} else {
-				return emitYAML(cmd, listRows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "NUMBER\tTITLE\tSTATE\tSOURCE\tTARGET\tAUTHOR\tCREATED")
-			for _, r := range listRows {
-				title := r.Title
-				if len(title) > 50 {
-					title = title[:47] + "..."
-				}
-				_, _ = fmt.Fprintf(w, "#%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
-					r.Number, title, r.State, r.SourceRef, r.TargetRef,
-					r.AuthorID[:min(8, len(r.AuthorID))]+"…",
-					r.CreatedAt.Format("2006-01-02"))
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-			if !all && next != "" {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "(use --cursor %s for more, or --all to fetch everything)\n", next)
-			}
-		}
-
-		if !all || next == "" {
-			break
+		if stop, err := pg.pageRaw(len(rows) == 0, listRows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-
-	if all && output == "yaml" {
-		if yamlAccum == nil {
-			yamlAccum = []prListRow{}
-		}
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runPRView(cmd *cobra.Command, args []string) error {
