@@ -202,3 +202,19 @@ func runTokenListWatch(cmd *cobra.Command, c *apiclient.Client, agentID string, 
 	h := newWatchSSEHandler(cmd, watchAgentTokens, watchTableCtx{})
 	return consumeSSEWatch(cmd, c, path, h)
 }
+
+func runAuditListWatch(cmd *cobra.Command, c *apiclient.Client, limit int, cursor string, all bool, filters url.Values) error {
+	path := "/audit/events?" + sseWatchQuery(limit, cursor, all, filters)
+	h := newWatchSSEHandler(cmd, watchAudit, watchTableCtx{})
+	return consumeSSEWatch(cmd, c, path, h)
+}
+
+func runNotificationListWatch(cmd *cobra.Command, c *apiclient.Client, unreadOnly bool, limit int, cursor string, all bool) error {
+	ex := url.Values{}
+	if unreadOnly {
+		ex.Set("unread", "1")
+	}
+	path := "/api/me/notifications?" + sseWatchQuery(limit, cursor, all, ex)
+	h := newWatchSSEHandler(cmd, watchNotifications, watchTableCtx{})
+	return consumeSSEWatch(cmd, c, path, h)
+}

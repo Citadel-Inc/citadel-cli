@@ -23,6 +23,10 @@ const IdleTimeout = 30 * time.Second
 // ErrIdle indicates no SSE traffic within IdleTimeout.
 var ErrIdle = errors.New("sse: idle timeout waiting for event data")
 
+// ErrNotEventStream means the server answered 2xx without an event stream
+// (it ignores Accept: text/event-stream); retrying would loop forever.
+var ErrNotEventStream = errors.New("server does not support --watch (response was not text/event-stream)")
+
 // Event is one logical SSE dispatch (after blank-line framing).
 type Event struct {
 	ID   string
@@ -101,7 +105,7 @@ func (s *Stream) Next(ctx context.Context) (Event, error) {
 		}
 
 		if s.br == nil {
-			resp, err := s.api.GetEventStream(ctx, s.path, s.lastID) //nolint:bodyclose // Stream owns and closes the active response body.
+			resp, err := s.api.GetEventStream(ctx, s.path, s.lastID)
 			if err != nil {
 				if terminalHTTP(err) {
 					return Event{}, err
@@ -112,6 +116,10 @@ func (s *Stream) Next(ctx context.Context) (Event, error) {
 				case <-time.After(s.fail.bump()):
 				}
 				continue
+			}
+			if !strings.HasPrefix(strings.ToLower(resp.Header.Get("Content-Type")), "text/event-stream") {
+				_ = resp.Body.Close()
+				return Event{}, ErrNotEventStream
 			}
 			s.fail.reset()
 			s.body = resp.Body

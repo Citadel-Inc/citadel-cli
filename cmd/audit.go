@@ -29,7 +29,9 @@ var auditListCmd = &cobra.Command{
 	Long: `Lists audit events with optional filters. When --since is omitted, the server
 defaults to the last 24 hours.
 
-Time filters accept Go durations (e.g. 1h, 30m) or RFC3339 timestamps.`,
+Time filters accept Go durations (e.g. 1h, 30m) or RFC3339 timestamps.
+
+--watch streams new events over Server-Sent Events until interrupted.`,
 	RunE: runAuditList,
 }
 
@@ -46,6 +48,7 @@ func registerAuditCommands() {
 	addPaginationFlags(auditListCmd)
 	addOutputFlag(auditListCmd)
 	addOutputFlag(auditShowCmd)
+	addWatchFlag(auditListCmd)
 	auditListCmd.Flags().String("since", "", "Start of window: duration (e.g. 1h) or RFC3339 (server default: 24h when omitted)")
 	auditListCmd.Flags().String("until", "", "End of window: duration or RFC3339 (server default: now when omitted)")
 	auditListCmd.Flags().String("kind", "", "Glob filter on event kind (e.g. repo.*, oauth.**)")
@@ -97,6 +100,9 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson or omit --all")
 	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
 	if err := validateAuditCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
@@ -112,6 +118,16 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 	ns, _ := cmd.Flags().GetString("namespace")
 	actor, _ := cmd.Flags().GetString("actor")
 	agent, _ := cmd.Flags().GetString("agent")
+
+	if watchFlag(cmd) {
+		f := url.Values{}
+		for k, v := range map[string]string{"since": since, "until": until, "kind": kind, "namespace": ns, "actor": actor, "agent": agent} {
+			if v = strings.TrimSpace(v); v != "" {
+				f.Set(k, v)
+			}
+		}
+		return runAuditListWatch(cmd, c, limit, cursor, all, f)
+	}
 
 	var yamlAccum []auditEventPayload
 	csvHdr := false

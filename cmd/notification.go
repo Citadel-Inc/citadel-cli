@@ -108,6 +108,7 @@ type notifPrefsResp struct {
 func registerNotificationCommands() {
 	addPaginationFlags(notificationListCmd)
 	addOutputFlag(notificationListCmd)
+	addWatchFlag(notificationListCmd)
 	notificationListCmd.Flags().Bool("unread", false, "Show only unread notifications")
 
 	addOutputFlag(notificationUnreadCountCmd)
@@ -143,6 +144,9 @@ func runNotificationList(cmd *cobra.Command, _ []string) error {
 	if all && output == "json" {
 		return fmt.Errorf("--all with --output json is not supported; use --output ndjson for streaming JSON")
 	}
+	if err := validateWatchOutput(cmd); err != nil {
+		return err
+	}
 	if err := validateDescCursor(cursor); err != nil {
 		return fmt.Errorf("invalid --cursor: %w", err)
 	}
@@ -152,6 +156,9 @@ func runNotificationList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	unreadOnly, _ := cmd.Flags().GetBool("unread")
+	if watchFlag(cmd) {
+		return runNotificationListWatch(cmd, c, unreadOnly, limit, cursor, all)
+	}
 
 	var yamlAccum []notifItem
 	csvHdr := false

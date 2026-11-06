@@ -26,6 +26,8 @@ const (
 	watchTransfersPending
 	watchAgentTokens
 	watchDeployTokens
+	watchAudit
+	watchNotifications
 )
 
 // watchTableCtx carries slug fields needed to interpret partial SSE payloads.
@@ -201,6 +203,10 @@ func (e *tableWatchEmitter) writeHeader(w io.Writer) {
 		_, _ = fmt.Fprintln(w, "ID\tCREATED\tEXPIRES\tREVOKED")
 	case watchDeployTokens:
 		_, _ = fmt.Fprintln(w, "ID\tNAME\tCREATED\tEXPIRES\tREVOKED")
+	case watchAudit:
+		_, _ = fmt.Fprintln(w, "TS\tKIND\tACTOR\tNAMESPACE\tSUBJECT\tID")
+	case watchNotifications:
+		_, _ = fmt.Fprintln(w, "ID\tKIND\tSUMMARY\tREAD\tCREATED")
 	default:
 		_, _ = fmt.Fprintln(w, "KEY\tJSON")
 	}
@@ -307,9 +313,35 @@ func (e *tableWatchEmitter) writeRow(w io.Writer, key string, raw json.RawMessag
 			formatTimePtr(t.ExpiresAt),
 			formatTimePtr(t.RevokedAt),
 		)
+	case watchAudit:
+		var r auditEventPayload
+		if json.Unmarshal(raw, &r) != nil {
+			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
+			return
+		}
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			r.TS, r.Kind, dashIfEmpty(firstNonEmpty(r.ActorSlug, r.ActorID)), dashIfEmpty(r.NamespaceSlug), dashIfEmpty(r.SubjectID), r.ID)
+	case watchNotifications:
+		var r notifItem
+		if json.Unmarshal(raw, &r) != nil {
+			_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
+			return
+		}
+		read := "no"
+		if r.ReadAt != nil {
+			read = "yes"
+		}
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", r.ID, r.Kind, r.Summary, read, r.CreatedAt.Format("2006-01-02 15:04:05"))
 	default:
 		_, _ = fmt.Fprintf(w, "%s\t%s\n", key, string(raw))
 	}
+}
+
+func dashIfEmpty(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }
 
 func (e *tableWatchEmitter) shortRowLabel(raw json.RawMessage) string {
@@ -361,6 +393,16 @@ func (e *tableWatchEmitter) shortRowLabel(raw json.RawMessage) string {
 				return t.Name
 			}
 			return t.ID
+		}
+	case watchAudit:
+		var r auditEventPayload
+		if json.Unmarshal(raw, &r) == nil && r.Kind != "" {
+			return r.Kind + " " + r.ID
+		}
+	case watchNotifications:
+		var r notifItem
+		if json.Unmarshal(raw, &r) == nil && r.Summary != "" {
+			return r.Summary
 		}
 	}
 	var m map[string]any
@@ -445,6 +487,12 @@ func (e *tableWatchEmitter) rowKey(raw json.RawMessage) string {
 			return x.ID.String()
 		}
 	case watchDeployTokens:
+		var x struct {
+			ID string `json:"id"`
+		}
+		_ = json.Unmarshal(raw, &x)
+		return strings.TrimSpace(x.ID)
+	case watchAudit, watchNotifications:
 		var x struct {
 			ID string `json:"id"`
 		}

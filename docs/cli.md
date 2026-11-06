@@ -678,6 +678,18 @@ combined with `--output json` (use `--output ndjson` to stream every row).
 `--output table` renders stable columns for search/symbols (and related list
 shapes). Machine output also supports **`json`**, **`yaml`**, and **`ndjson`**.
 
+### Watch audit events
+
+```bash
+citadel-cli audit list --watch                       # live table
+citadel-cli audit list --watch --kind 'repo.*' -n myorg --output ndjson
+```
+
+`--watch` streams over Server-Sent Events until interrupted, honouring the same
+filters as `audit list`. Use `--output ndjson` for JSON lines (`json`, `yaml`
+and `csv` are rejected). A server that does not answer with `text/event-stream`
+fails immediately with an error.
+
 ## Audit sessions
 
 Inspect grouped audit **sessions** for a namespace (distinct from **`citadel-cli audit list`**, which lists raw events with cursor pagination).
@@ -854,6 +866,9 @@ citadel-cli notification list --limit 50 --cursor <cursor>
 
 # Machine-readable
 citadel-cli notification list --output json
+
+# Live inbox over Server-Sent Events (table, or --output ndjson); honours --unread
+citadel-cli notification list --watch
 citadel-cli notification list --output csv
 ```
 

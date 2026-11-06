@@ -8,25 +8,15 @@ Do **not** restore `account passkey` / `account device` — those verbs are out 
 
 ## Server SSE follow-through
 
-### 3. Audit event tail / `--watch`
+### 4. Extend `--watch` to issue and PR lists
 
-**Feature.** `cli-watch` owns SSE for many list verbs, but `audit list` has no `--watch` flag yet.
-
-| | |
-| --- | --- |
-| **Packages / files** | `cmd/audit.go`, `cmd/watch.go`, `internal/sseclient`, `docs/cli.md` / `HUMANS.md` (audit) |
-| **Server** | Ready: `auditapi` serves `Accept: text/event-stream` (`handleEventsSSE`, Citadel-Inc/citadel `internal/api/auditapi/events.go`). |
-| **Acceptance** | `audit list --watch` (and ndjson mode) streams events until interrupt; missing server SSE fails with a clear error, not a hang |
-
-### 4. Extend `--watch` to high-churn workflow lists
-
-**Feature.** Watch is on repo/agent/token/oauth/namespace lists; not on `issue list`, `pr list`, or `notification list`.
+**Feature.** Watch is on repo/agent/token/oauth/namespace/audit/notification lists; not on `issue list` or `pr list`.
 
 | | |
 | --- | --- |
-| **Packages / files** | `cmd/issue.go`, `cmd/pr.go`, `cmd/notification.go`, `cmd/watch.go` / `watch_table.go` |
-| **Server** | `notification list` ready (`handleListSSE`, `internal/api/notifapi/handler.go`). `issue list` / `pr list` blocked: issues/PR APIs have no listwatch SSE yet (citadel TODO.md Round 12). |
-| **Acceptance** | Documented `--watch` on issue/PR/notification lists when server supports them; behaviour matches `repo list --watch` |
+| **Packages / files** | `cmd/issue.go`, `cmd/pr.go`, `cmd/watch.go` / `watch_table.go` |
+| **Server** | Blocked: issues/PR APIs have no listwatch SSE yet (citadel TODO.md Round 12). |
+| **Acceptance** | Documented `--watch` on issue/PR lists once the server supports it; behaviour matches `repo list --watch` |
 
 ---
 
