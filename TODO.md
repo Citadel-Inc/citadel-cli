@@ -18,17 +18,6 @@ Do **not** restore `account passkey` / `account device` — those verbs are out 
 | **Traps** | Do not force tap early; keep docs demand-gated |
 | **Acceptance** | Formula installs current release binary; docs link the tap when published |
 
-### 21. Optional migrate MCP client to official go-sdk
-
-**Feature.** The hand-rolled client retries; SDK `StreamableClientTransport` + `ReconnectOptions` is a larger swap.
-
-| | |
-| --- | --- |
-| **Packages / files** | `internal/mcpclient`, `cmd/mcp.go`, `cmd/doctor.go` |
-| **Refs** | Context7 `/modelcontextprotocol/go-sdk` |
-| **Traps** | Keep protocol pin; never auto-retry `tools/call`; doctor must still initialize |
-| **Acceptance** | Behaviour parity with current client + reconnection options documented |
-
 ---
 
 ## Explicitly not tracked here

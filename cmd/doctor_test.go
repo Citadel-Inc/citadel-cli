@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
@@ -13,7 +12,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
-	"github.com/Citadel-Inc/citadel-cli/internal/mcpclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/mcptest"
 )
 
 func TestCheckServer_Healthy(t *testing.T) {
@@ -188,39 +187,14 @@ func makeJWT(t *testing.T, claims jwt.MapClaims) string {
 
 func doctorTestMux(t *testing.T) http.HandlerFunc {
 	t.Helper()
+	mcpHandler := mcptest.Handler(mcptest.NewServer())
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/healthz"):
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("ok"))
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/mcp"):
-			var req struct {
-				ID     int             `json:"id"`
-				Method string          `json:"method"`
-				Params json.RawMessage `json:"params"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				t.Errorf("mcp decode: %v", err)
-				http.Error(w, "bad json", http.StatusBadRequest)
-				return
-			}
-			if req.Method != "initialize" {
-				t.Errorf("unexpected MCP method %q", req.Method)
-				http.Error(w, "nope", http.StatusBadRequest)
-				return
-			}
-			w.Header().Set("Mcp-Session-Id", "sess-doctor-test")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			body := map[string]any{
-				"jsonrpc": "2.0",
-				"id":      req.ID,
-				"result": map[string]any{
-					"protocolVersion": mcpclient.ProtocolVersion,
-					"serverInfo":      map[string]any{"name": "test-mcp", "version": "0"},
-				},
-			}
-			_ = json.NewEncoder(w).Encode(body)
+		case strings.HasSuffix(r.URL.Path, "/mcp"):
+			mcpHandler.ServeHTTP(w, r)
 		default:
 			t.Errorf("unhandled doctor test request %s %s", r.Method, r.URL.Path)
 			http.NotFound(w, r)

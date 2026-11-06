@@ -1,13 +1,15 @@
-// Package mcpclient is a tiny Streamable-HTTP client for MCP servers.
+// Package mcpclient is the CLI's MCP client, a thin layer over the official
+// go-sdk Streamable HTTP transport.
 //
-// One Client instance corresponds to one logical CLI invocation: callers
-// must Initialize() before issuing ToolsList / ToolsCall / ResourcesList /
-// ResourcesRead / PromptsList / PromptsGet (the server rejects non-initialize
-// requests without an Mcp-Session-Id header that is only minted on initialize).
+// One Client corresponds to one CLI invocation: Initialize before any other
+// call. List/read/get methods are retried (each retry on a fresh session,
+// because the SDK closes a session after a non-transient server failure);
+// tools/call and initialize are single-shot. The SDK's own SSE resumption is
+// disabled so a tool call is never replayed, and the standalone server-push
+// stream is not opened because no CLI command consumes server messages.
 package mcpclient
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -15,141 +17,40 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/httpx"
 )
 
-// ProtocolVersion is the MCP version this client speaks. Must match the
-// server's accepted version per the handshake contract; mismatch is
-// surfaced as a typed Error from Initialize.
+// ProtocolVersion is the MCP version this client speaks. A server that
+// negotiates a different version is surfaced as KindVersionMismatch.
 const ProtocolVersion = "2025-11-25"
 
 const (
 	clientName    = "citadel-cli"
 	clientVersion = "1"
-	sessionHeader = "Mcp-Session-Id"
+	maxAttempts   = 3
 )
 
-// Client holds the per-invocation MCP session.
-type Client struct {
-	ServerURL string
-	Token     string
-	HTTP      *http.Client
-
-	sessionID   string
-	serverProto string
-	serverInfo  ServerInfo
-	nextID      int
-}
-
-// ServerInfo mirrors the server's `serverInfo` block.
-type ServerInfo struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-// Tool mirrors a single entry in tools/list.
-type Tool struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
-	InputSchema map[string]any `json:"inputSchema,omitempty"`
-}
-
-// MCPResource is one row from resources/list.
-type MCPResource struct {
-	URI         string `json:"uri"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	MimeType    string `json:"mimeType,omitempty"`
-}
-
-// MCPPrompt is one row from prompts/list.
-type MCPPrompt struct {
-	Name        string              `json:"name"`
-	Description string              `json:"description,omitempty"`
-	Arguments   []MCPPromptArgument `json:"arguments,omitempty"`
-}
-
-// MCPPromptArgument mirrors prompts/list argument metadata.
-type MCPPromptArgument struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Required    *bool  `json:"required,omitempty"`
-}
-
-// Options are the per-invocation knobs surfaced from the CLI persistent
-// flags. JSON-RPC retries are fixed to the idempotent list/read methods in
-// call; tools/call and initialize remain single-shot.
+// Options are the per-invocation knobs surfaced from the CLI persistent flags.
 type Options struct {
 	Verbose   bool
 	DebugHTTP bool
 }
 
-// New constructs a Client with the given timeout and observability options.
-// Pass 0 timeout for the 60s default (per spec R2).
-func New(serverURL, token string, timeout time.Duration, opts Options) *Client {
-	if timeout <= 0 {
-		timeout = 60 * time.Second
-	}
-	return &Client{
-		ServerURL: serverURL,
-		Token:     token,
-		HTTP: &http.Client{
-			Timeout:   timeout,
-			Transport: httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP}),
-		},
-	}
-}
-
-// Initialize performs the MCP initialize handshake. On success the client
-// captures Mcp-Session-Id + the server's protocolVersion. Mismatch with
-// our advertised ProtocolVersion produces an ErrVersionMismatch.
-func (c *Client) Initialize(ctx context.Context) error {
-	params := map[string]any{
-		"protocolVersion": ProtocolVersion,
-		"capabilities":    map[string]any{},
-		"clientInfo":      map[string]any{"name": clientName, "version": clientVersion},
-	}
-	var out struct {
-		ProtocolVersion string     `json:"protocolVersion"`
-		ServerInfo      ServerInfo `json:"serverInfo"`
-	}
-	sessionID, err := c.call(ctx, "initialize", params, &out)
-	if err != nil {
-		return err
-	}
-	if sessionID == "" {
-		return fmt.Errorf("server did not return %s header on initialize", sessionHeader)
-	}
-	c.sessionID = sessionID
-	c.serverProto = out.ProtocolVersion
-	c.serverInfo = out.ServerInfo
-	if out.ProtocolVersion != "" && out.ProtocolVersion != ProtocolVersion {
-		return &Error{
-			Kind:    KindVersionMismatch,
-			Message: fmt.Sprintf("MCP protocol mismatch: client speaks %s, server speaks %s", ProtocolVersion, out.ProtocolVersion),
-		}
-	}
-	return nil
-}
-
-// ServerInfoValue returns the negotiated server identity (post-Initialize).
-func (c *Client) ServerInfoValue() ServerInfo { return c.serverInfo }
-
-// ToolsList calls tools/list. Initialize must have run first.
-func (c *Client) ToolsList(ctx context.Context) ([]Tool, error) {
-	if c.sessionID == "" {
-		return nil, fmt.Errorf("ToolsList: client not initialized")
-	}
-	var out struct {
-		Tools []Tool `json:"tools"`
-	}
-	if _, err := c.call(ctx, "tools/list", map[string]any{}, &out); err != nil {
-		return nil, err
-	}
-	return out.Tools, nil
+// Client holds the per-invocation MCP session.
+type Client struct {
+	url     string
+	http    *http.Client
+	tap     *authTransport
+	sdk     *mcp.Client
+	session *mcp.ClientSession
 }
 
 // ToolCallResult is the shape returned by tools/call: a content array +
@@ -161,16 +62,110 @@ type ToolCallResult struct {
 	Raw     json.RawMessage  `json:"-"`
 }
 
-// ToolsCall calls tools/call with the given tool name + arguments.
-// Initialize must have run first.
-func (c *Client) ToolsCall(ctx context.Context, name string, args map[string]any) (*ToolCallResult, error) {
-	if c.sessionID == "" {
-		return nil, fmt.Errorf("ToolsCall: client not initialized")
+// New constructs a Client with the given timeout and observability options.
+// Pass 0 timeout for the 60s default (per spec R2).
+func New(serverURL, token string, timeout time.Duration, opts Options) *Client {
+	if timeout <= 0 {
+		timeout = 60 * time.Second
 	}
-	params := map[string]any{"name": name, "arguments": args}
-	var raw json.RawMessage
-	if _, err := c.call(ctx, "tools/call", params, &raw); err != nil {
+	tap := &authTransport{
+		base:  httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP}),
+		token: token,
+	}
+	return &Client{
+		url:  serverURL,
+		http: &http.Client{Timeout: timeout, Transport: tap},
+		tap:  tap,
+		sdk: mcp.NewClient(
+			&mcp.Implementation{Name: clientName, Version: clientVersion},
+			&mcp.ClientOptions{Capabilities: &mcp.ClientCapabilities{}},
+		),
+	}
+}
+
+// authTransport adds the bearer token and records the last HTTP status, which
+// is the only reliable signal for 401 and for retryable 5xx: the SDK folds
+// both into opaque errors.
+type authTransport struct {
+	base   http.RoundTripper
+	token  string
+	status atomic.Int64
+}
+
+func (a *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set("Authorization", "Bearer "+a.token)
+	resp, err := a.base.RoundTrip(req)
+	if req.Method == http.MethodDelete {
+		// The SDK's session teardown follows a failed call; its status would mask the failure.
+		return resp, err
+	}
+	if err != nil {
+		a.status.Store(0)
 		return nil, err
+	}
+	a.status.Store(int64(resp.StatusCode))
+	return resp, nil
+}
+
+// Initialize performs the MCP initialize handshake. A server that settles on a
+// protocol version other than ProtocolVersion produces KindVersionMismatch.
+func (c *Client) Initialize(ctx context.Context) error {
+	c.tap.status.Store(0)
+	session, err := c.sdk.Connect(ctx, &mcp.StreamableClientTransport{
+		Endpoint:             c.url,
+		HTTPClient:           c.http,
+		DisableStandaloneSSE: true,
+		MaxRetries:           -1,
+	}, &mcp.ClientSessionOptions{ProtocolVersion: ProtocolVersion})
+	if err != nil {
+		return c.classify(err)
+	}
+	if v := session.InitializeResult().ProtocolVersion; v != "" && v != ProtocolVersion {
+		_ = session.Close()
+		return versionMismatch(v)
+	}
+	c.session = session
+	return nil
+}
+
+// Close ends the session (best effort; the server may already have dropped it).
+func (c *Client) Close() error {
+	if c.session == nil {
+		return nil
+	}
+	s := c.session
+	c.session = nil
+	return s.Close()
+}
+
+// ToolsList calls tools/list (first page).
+func (c *Client) ToolsList(ctx context.Context) ([]*mcp.Tool, error) {
+	res, err := retry(ctx, c, func() (*mcp.ListToolsResult, error) {
+		return c.session.ListTools(ctx, nil)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.Tools, nil
+}
+
+// ToolsCall calls tools/call exactly once.
+func (c *Client) ToolsCall(ctx context.Context, name string, args map[string]any) (*ToolCallResult, error) {
+	if c.session == nil {
+		return nil, errors.New("ToolsCall: client not initialized")
+	}
+	params := &mcp.CallToolParams{Name: name}
+	if args != nil {
+		params.Arguments = args
+	}
+	res, err := c.session.CallTool(ctx, params)
+	if err != nil {
+		return nil, c.classify(err)
+	}
+	raw, err := json.Marshal(res)
+	if err != nil {
+		return nil, fmt.Errorf("encode tools/call result: %w", err)
 	}
 	var parsed ToolCallResult
 	if err := json.Unmarshal(raw, &parsed); err != nil {
@@ -180,160 +175,101 @@ func (c *Client) ToolsCall(ctx context.Context, name string, args map[string]any
 	return &parsed, nil
 }
 
-// ResourcesList calls resources/list.
-func (c *Client) ResourcesList(ctx context.Context) ([]MCPResource, error) {
-	if c.sessionID == "" {
-		return nil, fmt.Errorf("ResourcesList: client not initialized")
-	}
-	var out struct {
-		Resources []MCPResource `json:"resources"`
-	}
-	if _, err := c.call(ctx, "resources/list", map[string]any{}, &out); err != nil {
+// ResourcesList calls resources/list (first page).
+func (c *Client) ResourcesList(ctx context.Context) ([]*mcp.Resource, error) {
+	res, err := retry(ctx, c, func() (*mcp.ListResourcesResult, error) {
+		return c.session.ListResources(ctx, nil)
+	})
+	if err != nil {
 		return nil, err
 	}
-	return out.Resources, nil
+	return res.Resources, nil
 }
 
 // ResourcesRead calls resources/read for a URI (citadel:// or repo://).
 func (c *Client) ResourcesRead(ctx context.Context, uri string) (json.RawMessage, error) {
-	if c.sessionID == "" {
-		return nil, fmt.Errorf("ResourcesRead: client not initialized")
-	}
-	var raw json.RawMessage
-	if _, err := c.call(ctx, "resources/read", map[string]any{"uri": uri}, &raw); err != nil {
-		return nil, err
-	}
-	return raw, nil
-}
-
-// PromptsList calls prompts/list.
-func (c *Client) PromptsList(ctx context.Context) ([]MCPPrompt, error) {
-	if c.sessionID == "" {
-		return nil, fmt.Errorf("PromptsList: client not initialized")
-	}
-	var out struct {
-		Prompts []MCPPrompt `json:"prompts"`
-	}
-	if _, err := c.call(ctx, "prompts/list", map[string]any{}, &out); err != nil {
-		return nil, err
-	}
-	return out.Prompts, nil
-}
-
-// PromptsGet calls prompts/get.
-func (c *Client) PromptsGet(ctx context.Context, name string, arguments map[string]any) (json.RawMessage, error) {
-	if c.sessionID == "" {
-		return nil, fmt.Errorf("PromptsGet: client not initialized")
-	}
-	params := map[string]any{"name": name}
-	if len(arguments) > 0 {
-		params["arguments"] = arguments
-	}
-	var raw json.RawMessage
-	if _, err := c.call(ctx, "prompts/get", params, &raw); err != nil {
-		return nil, err
-	}
-	return raw, nil
-}
-
-// call is the JSON-RPC round-trip primitive. Returns the session id from
-// the response (only meaningful on initialize). The result is decoded
-// into out (any encoding/json target).
-func (c *Client) call(ctx context.Context, method string, params, out any) (string, error) {
-	c.nextID++
-	reqBody := map[string]any{
-		"jsonrpc": "2.0",
-		"id":      c.nextID,
-		"method":  method,
-	}
-	if params != nil {
-		reqBody["params"] = params
-	}
-	bodyBytes, err := json.Marshal(reqBody)
+	res, err := retry(ctx, c, func() (*mcp.ReadResourceResult, error) {
+		return c.session.ReadResource(ctx, &mcp.ReadResourceParams{URI: uri})
+	})
 	if err != nil {
-		return "", fmt.Errorf("marshal %s: %w", method, err)
+		return nil, err
+	}
+	return json.Marshal(res)
+}
+
+// PromptsList calls prompts/list (first page).
+func (c *Client) PromptsList(ctx context.Context) ([]*mcp.Prompt, error) {
+	res, err := retry(ctx, c, func() (*mcp.ListPromptsResult, error) {
+		return c.session.ListPrompts(ctx, nil)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.Prompts, nil
+}
+
+// PromptsGet calls prompts/get. The protocol carries prompt arguments as
+// strings, so non-string values are rendered with their JSON encoding.
+func (c *Client) PromptsGet(ctx context.Context, name string, arguments map[string]any) (json.RawMessage, error) {
+	var args map[string]string
+	if len(arguments) > 0 {
+		args = make(map[string]string, len(arguments))
+		for k, v := range arguments {
+			if s, ok := v.(string); ok {
+				args[k] = s
+				continue
+			}
+			b, err := json.Marshal(v)
+			if err != nil {
+				return nil, fmt.Errorf("encode prompt argument %q: %w", k, err)
+			}
+			args[k] = string(b)
+		}
+	}
+	res, err := retry(ctx, c, func() (*mcp.GetPromptResult, error) {
+		return c.session.GetPrompt(ctx, &mcp.GetPromptParams{Name: name, Arguments: args})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(res)
+}
+
+// retry runs an idempotent call, repeating it on a fresh session after a
+// transient failure.
+func retry[T any](ctx context.Context, c *Client, fn func() (T, error)) (T, error) {
+	var zero T
+	if c.session == nil {
+		return zero, errors.New("client not initialized")
 	}
 	for attempt := range maxAttempts {
-		sid, retry, err := c.callOnce(ctx, method, bodyBytes, out, retryableMethod(method) && attempt < maxAttempts-1)
-		if !retry {
-			return sid, err
+		c.tap.status.Store(0)
+		out, err := fn()
+		if err == nil {
+			return out, nil
+		}
+		if attempt == maxAttempts-1 || !c.transient(ctx, err) {
+			return zero, c.classify(err)
 		}
 		if err := waitRetry(ctx, attempt); err != nil {
-			return "", fmt.Errorf("%s: %w", method, err)
+			return zero, err
+		}
+		_ = c.session.Close()
+		c.session = nil
+		if err := c.Initialize(ctx); err != nil {
+			return zero, err
 		}
 	}
-	return "", fmt.Errorf("%s: retry attempts exhausted", method)
+	return zero, errors.New("retry attempts exhausted")
 }
 
-// callOnce performs one HTTP attempt. retry reports a transient failure that
-// the caller should repeat; it is only set when canRetry allows it.
-func (c *Client) callOnce(ctx context.Context, method string, bodyBytes []byte, out any, canRetry bool) (sid string, retry bool, err error) {
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.ServerURL, bytes.NewReader(bodyBytes))
-	if err != nil {
-		return "", false, fmt.Errorf("new request: %w", err)
+func (c *Client) transient(ctx context.Context, err error) bool {
+	if ctx.Err() != nil || c.tap.status.Load() == http.StatusUnauthorized {
+		return false
 	}
-	httpReq.Header.Set("Authorization", "Bearer "+c.Token)
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Accept", "application/json")
-	if c.sessionID != "" {
-		httpReq.Header.Set(sessionHeader, c.sessionID)
-	}
-
-	resp, err := c.HTTP.Do(httpReq)
-	if err != nil {
-		return "", canRetry && transientTransportError(ctx, err), fmt.Errorf("%s: %w", method, err)
-	}
-	respBytes, readErr := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	if readErr != nil {
-		return "", canRetry && transientTransportError(ctx, readErr), fmt.Errorf("%s: read response: %w", method, readErr)
-	}
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return "", false, &Error{Kind: KindUnauthorized, Message: "unauthorized"}
-	}
-
-	var rpc struct {
-		Result json.RawMessage `json:"result"`
-		Error  *struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	serverFault := canRetry && resp.StatusCode >= http.StatusInternalServerError
-	if len(respBytes) > 0 {
-		if err := json.Unmarshal(respBytes, &rpc); err != nil {
-			return "", serverFault, fmt.Errorf("%s: decode response (HTTP %d): %w", method, resp.StatusCode, err)
-		}
-	}
-	if rpc.Error != nil {
-		return "", false, classifyJSONRPCError(rpc.Error.Code, rpc.Error.Message)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", serverFault, fmt.Errorf("%s: HTTP %d", method, resp.StatusCode)
-	}
-	if out != nil && len(rpc.Result) > 0 {
-		if err := json.Unmarshal(rpc.Result, out); err != nil {
-			return "", false, fmt.Errorf("%s: decode result: %w", method, err)
-		}
-	}
-	return resp.Header.Get(sessionHeader), false, nil
-}
-
-const maxAttempts = 3
-
-func retryableMethod(method string) bool {
-	switch method {
-	case "tools/list", "resources/list", "resources/read", "prompts/list", "prompts/get":
+	switch c.tap.status.Load() {
+	case 408, 425, 429, 500, 502, 503, 504:
 		return true
-	default:
-		return false
-	}
-}
-
-func transientTransportError(ctx context.Context, err error) bool {
-	if err == nil || ctx.Err() != nil {
-		return false
 	}
 	var netErr net.Error
 	if errors.As(err, &netErr) && netErr.Timeout() {
@@ -354,5 +290,28 @@ func waitRetry(ctx context.Context, attempt int) error {
 		return ctx.Err()
 	case <-timer.C:
 		return nil
+	}
+}
+
+// classify maps SDK and transport failures onto the typed Error surface.
+func (c *Client) classify(err error) error {
+	if c.tap.status.Load() == http.StatusUnauthorized {
+		return &Error{Kind: KindUnauthorized, Message: "unauthorized"}
+	}
+	if je, ok := errors.AsType[*jsonrpc.Error](err); ok {
+		return classifyJSONRPCError(int(je.Code), je.Message)
+	}
+	// The SDK reports a server's unsupported version only as an unexported
+	// error type, so its message is the one carrier of the offending version.
+	if _, v, ok := strings.Cut(err.Error(), "unsupported protocol version: "); ok {
+		return versionMismatch(strings.Trim(v, `"`))
+	}
+	return err
+}
+
+func versionMismatch(server string) *Error {
+	return &Error{
+		Kind:    KindVersionMismatch,
+		Message: fmt.Sprintf("MCP protocol mismatch: client speaks %s, server speaks %s", ProtocolVersion, server),
 	}
 }

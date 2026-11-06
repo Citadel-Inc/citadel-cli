@@ -97,6 +97,7 @@ func runMcpTools(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = c.Close() }()
 	tools, err := c.ToolsList(cmd.Context())
 	if err != nil {
 		return surfaceErr(err)
@@ -130,6 +131,7 @@ func runMcpCall(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = c.Close() }()
 	res, err := c.ToolsCall(cmd.Context(), toolName, toolArgs)
 	if err != nil {
 		return surfaceErr(err)
@@ -183,6 +185,7 @@ func runMcpResourcesList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = c.Close() }()
 	rows, err := c.ResourcesList(cmd.Context())
 	if err != nil {
 		return surfaceErr(err)
@@ -208,6 +211,7 @@ func runMcpResourcesRead(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = c.Close() }()
 	raw, err := c.ResourcesRead(cmd.Context(), uri)
 	if err != nil {
 		return surfaceErr(err)
@@ -232,6 +236,7 @@ func runMcpPromptsList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = c.Close() }()
 	rows, err := c.PromptsList(cmd.Context())
 	if err != nil {
 		return surfaceErr(err)
@@ -265,6 +270,7 @@ func runMcpPromptsGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = c.Close() }()
 	raw, err := c.PromptsGet(cmd.Context(), name, promptArgs)
 	if err != nil {
 		return surfaceErr(err)

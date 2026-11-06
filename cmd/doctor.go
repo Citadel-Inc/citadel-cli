@@ -184,6 +184,7 @@ func checkMCP(ctx context.Context, cfg clicfg.Config, server string, opts mcpcli
 		}
 		return checkResult{name, statusFail, fmt.Sprintf("%s unreachable: %v", mcpURL, err)}
 	}
+	_ = c.Close()
 	return checkResult{name, statusPass, fmt.Sprintf("%s initialized", mcpURL)}
 }
 

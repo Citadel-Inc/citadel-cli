@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -23,10 +24,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	"github.com/Citadel-Inc/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/internal/mcptest"
 	"github.com/Citadel-Inc/citadel-cli/internal/pagination"
 )
 
@@ -1227,146 +1230,162 @@ func TestAuthLogout_TruncatesConfig(t *testing.T) {
 	}
 }
 
-// ── mcp (JSON-RPC mock) ──────────────────────────────────────────────────────
+// ── mcp (real go-sdk server) ─────────────────────────────────────────────────
 
-// mcpRPCMock dispatches incoming JSON-RPC requests by method name.
-// Each handler returns a result payload to be wrapped in a {"result": ...}
-// envelope. Returning nil from the handler skips writing (test-only).
-func mcpRPCMock(t *testing.T, byMethod map[string]func() any) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			JSONRPC string `json:"jsonrpc"`
-			ID      int    `json:"id"`
-			Method  string `json:"method"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			t.Fatalf("decode rpc req: %v", err)
-		}
-		fn, ok := byMethod[req.Method]
-		if !ok {
-			t.Errorf("unrouted MCP method: %s", req.Method)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Mcp-Session-Id", "test-sess")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"jsonrpc": "2.0",
-			"id":      req.ID,
-			"result":  fn(),
-		})
-	}
-}
-
-// withMCPServer wires the test server's /mcp endpoint to a JSON-RPC mock.
-// Initialize is auto-mocked to return ProtocolVersion 2025-11-25 (matching
-// internal/mcpclient.ProtocolVersion).
-func withMCPServer(t *testing.T, byMethod map[string]func() any) {
+// withMCPServer serves a real go-sdk MCP server at /mcp and points the CLI at
+// it. setup registers the tools, resources and prompts the test needs.
+func withMCPServer(t *testing.T, setup func(s *mcp.Server)) {
 	t.Helper()
-	if _, ok := byMethod["initialize"]; !ok {
-		byMethod["initialize"] = func() any {
-			return map[string]any{
-				"protocolVersion": "2025-11-25",
-				"serverInfo":      map[string]any{"name": "citadel-mcp-test", "version": "1"},
-			}
-		}
-	}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/mcp" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-			http.NotFound(w, r)
-			return
-		}
-		mcpRPCMock(t, byMethod)(w, r)
-	}))
-	t.Cleanup(srv.Close)
+	s := mcptest.NewServer()
+	setup(s)
+	srv := mcptest.Serve(t, s, nil)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_SERVER", srv.URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
 	t.Setenv("CITADEL_AGENT_TOKEN", "")
 }
 
-func TestMcpTools_Happy(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"tools/list": func() any {
-			return map[string]any{"tools": []map[string]any{
-				{"name": "get_namespace", "description": "Look up a namespace"},
-			}}
-		},
+func textTool(s *mcp.Server, name, text string) {
+	mcptest.Tool(s, name, "", func(map[string]any) (*mcp.CallToolResult, error) {
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}}, nil
 	})
-	if err := rootFor(cmd.McpCmd, "tools").Execute(); err != nil {
+}
+
+// captureStdout runs fn with os.Stdout redirected and returns what it wrote.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
 		t.Fatal(err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = orig }()
+	fn()
+	_ = w.Close()
+	out, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(out)
+}
+
+func TestMcpTools_Happy(t *testing.T) {
+	withMCPServer(t, func(s *mcp.Server) {
+		mcptest.Tool(s, "get_namespace", "Look up a namespace", func(map[string]any) (*mcp.CallToolResult, error) {
+			return &mcp.CallToolResult{}, nil
+		})
+	})
+	var out strings.Builder
+	if err := rootForOut(cmd.McpCmd, &out, "tools").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	if want := "get_namespace  Look up a namespace\n"; got != want {
+		t.Fatalf("tools output = %q want %q", got, want)
 	}
 }
 
 func TestMcpCall_Happy(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"tools/call": func() any {
-			return map[string]any{
-				"content": []map[string]any{
-					{"type": "text", "text": "hello"},
-				},
-			}
-		},
+	withMCPServer(t, func(s *mcp.Server) {
+		mcptest.Tool(s, "get_namespace", "", func(args map[string]any) (*mcp.CallToolResult, error) {
+			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "hello " + fmt.Sprint(args["path"])}}}, nil
+		})
 	})
-	if err := rootFor(cmd.McpCmd, "call", "get_namespace", "--arg", "path=damon").Execute(); err != nil {
-		t.Fatal(err)
+	got := captureStdout(t, func() {
+		if err := rootFor(cmd.McpCmd, "call", "get_namespace", "--arg", "path=damon").Execute(); err != nil {
+			t.Error(err)
+		}
+	})
+	if got != "hello damon\n" {
+		t.Fatalf("stdout = %q", got)
 	}
 }
 
 func TestMcpResourcesList_Happy(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"resources/list": func() any {
-			return map[string]any{"resources": []map[string]any{
-				{"uri": "citadel://ns/x", "name": "x"},
-			}}
-		},
+	withMCPServer(t, func(s *mcp.Server) {
+		s.AddResource(&mcp.Resource{URI: "citadel://ns/x", Name: "x"}, func(context.Context, *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+			return &mcp.ReadResourceResult{}, nil
+		})
 	})
-	if err := rootFor(cmd.McpCmd, "resources", "list").Execute(); err != nil {
+	var out strings.Builder
+	if err := rootForOut(cmd.McpCmd, &out, "resources", "list").Execute(); err != nil {
 		t.Fatal(err)
 	}
+	got := out.String()
+	if want := "citadel://ns/x  x\n"; got != want {
+		t.Fatalf("resources output = %q want %q", got, want)
+	}
+}
+
+func resourceServer(s *mcp.Server) {
+	s.AddResource(&mcp.Resource{URI: "citadel://ns/x", Name: "x"}, func(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+		return &mcp.ReadResourceResult{Contents: []*mcp.ResourceContents{{URI: req.Params.URI, MIMEType: "application/json", Text: "{}"}}}, nil
+	})
 }
 
 func TestMcpResourcesRead_Happy(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"resources/read": func() any {
-			return map[string]any{
-				"contents": []map[string]any{
-					{"uri": "citadel://ns/x", "mimeType": "application/json", "text": "{}"},
-				},
-			}
-		},
+	withMCPServer(t, resourceServer)
+	got := captureStdout(t, func() {
+		if err := rootFor(cmd.McpCmd, "resources", "read", "citadel://ns/x").Execute(); err != nil {
+			t.Error(err)
+		}
 	})
-	if err := rootFor(cmd.McpCmd, "resources", "read", "citadel://ns/x").Execute(); err != nil {
+	if !strings.Contains(got, `"text": "{}"`) {
+		t.Fatalf("stdout = %q", got)
+	}
+}
+
+func TestMcpResourcesRead_JSON(t *testing.T) {
+	withMCPServer(t, resourceServer)
+	var out strings.Builder
+	if err := rootForOut(cmd.McpCmd, &out, "resources", "read", "citadel://ns/x", "--json").Execute(); err != nil {
 		t.Fatal(err)
 	}
+	got := out.String()
+	var parsed struct {
+		Contents []struct {
+			URI  string `json:"uri"`
+			Text string `json:"text"`
+		} `json:"contents"`
+	}
+	if err := json.Unmarshal([]byte(got), &parsed); err != nil || len(parsed.Contents) != 1 || parsed.Contents[0].URI != "citadel://ns/x" {
+		t.Fatalf("stdout = %q (%v)", got, err)
+	}
+}
+
+func promptServer(s *mcp.Server) {
+	s.AddPrompt(&mcp.Prompt{Name: "issue_template", Description: "Open an issue"}, func(_ context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		return &mcp.GetPromptResult{
+			Description: "Open an issue",
+			Messages: []*mcp.PromptMessage{
+				{Role: "user", Content: &mcp.TextContent{Text: "Title? " + req.Params.Arguments["topic"]}},
+			},
+		}, nil
+	})
 }
 
 func TestMcpPromptsList_Happy(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"prompts/list": func() any {
-			return map[string]any{"prompts": []map[string]any{
-				{"name": "issue_template", "description": "Open an issue"},
-			}}
-		},
-	})
-	if err := rootFor(cmd.McpCmd, "prompts", "list").Execute(); err != nil {
+	withMCPServer(t, promptServer)
+	var out strings.Builder
+	if err := rootForOut(cmd.McpCmd, &out, "prompts", "list").Execute(); err != nil {
 		t.Fatal(err)
+	}
+	got := out.String()
+	if want := "issue_template  Open an issue\n"; got != want {
+		t.Fatalf("prompts output = %q want %q", got, want)
 	}
 }
 
-func TestMcpPromptsGet_Happy(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"prompts/get": func() any {
-			return map[string]any{
-				"description": "Open an issue",
-				"messages": []map[string]any{
-					{"role": "user", "content": map[string]any{"type": "text", "text": "Title?"}},
-				},
-			}
-		},
+func TestMcpPromptsGet_WithArgs(t *testing.T) {
+	withMCPServer(t, promptServer)
+	got := captureStdout(t, func() {
+		if err := rootFor(cmd.McpCmd, "prompts", "get", "issue_template", "--arg", "topic=auth").Execute(); err != nil {
+			t.Error(err)
+		}
 	})
-	if err := rootFor(cmd.McpCmd, "prompts", "get", "issue_template").Execute(); err != nil {
-		t.Fatal(err)
+	if want := "Open an issue\n\n[user]\nTitle? auth\n"; got != want {
+		t.Fatalf("stdout = %q want %q", got, want)
 	}
 }
 
@@ -1382,54 +1401,33 @@ func TestMcpCall_NoAuth(t *testing.T) {
 }
 
 func TestMcpCall_JSON(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"tools/call": func() any {
-			return map[string]any{"content": []map[string]any{{"type": "text", "text": "ok"}}}
-		},
-	})
-	if err := rootFor(cmd.McpCmd, "call", "x", "--json").Execute(); err != nil {
+	withMCPServer(t, func(s *mcp.Server) { textTool(s, "x", "ok") })
+	var out strings.Builder
+	if err := rootForOut(cmd.McpCmd, &out, "call", "x", "--json").Execute(); err != nil {
 		t.Fatal(err)
+	}
+	got := out.String()
+	var parsed struct {
+		Content []map[string]any `json:"content"`
+	}
+	if err := json.Unmarshal([]byte(got), &parsed); err != nil || len(parsed.Content) != 1 || parsed.Content[0]["text"] != "ok" {
+		t.Fatalf("stdout = %q (%v)", got, err)
 	}
 }
 
 func TestMcpCall_NonTextContent(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"tools/call": func() any {
-			return map[string]any{"content": []map[string]any{
-				{"type": "image", "data": "base64..."},
-			}}
-		},
+	withMCPServer(t, func(s *mcp.Server) {
+		mcptest.Tool(s, "x", "", func(map[string]any) (*mcp.CallToolResult, error) {
+			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.ImageContent{Data: []byte("img"), MIMEType: "image/png"}}}, nil
+		})
 	})
-	if err := rootFor(cmd.McpCmd, "call", "x").Execute(); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// TestMcpCall_ToolError omitted: runMcpCall calls os.Exit(2) on isError,
-// which aborts the test process. Coverage of that branch requires a
-// refactor to return an error instead of calling Exit directly.
-
-func TestMcpResourcesRead_JSON(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"resources/read": func() any {
-			return map[string]any{"contents": []map[string]any{{"uri": "x", "text": "{}"}}}
-		},
+	got := captureStdout(t, func() {
+		if err := rootFor(cmd.McpCmd, "call", "x").Execute(); err != nil {
+			t.Error(err)
+		}
 	})
-	if err := rootFor(cmd.McpCmd, "resources", "read", "x", "--json").Execute(); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestMcpPromptsGet_WithArgs(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"prompts/get": func() any {
-			return map[string]any{"messages": []map[string]any{
-				{"role": "system", "content": map[string]any{"type": "text", "text": "be brief"}},
-			}}
-		},
-	})
-	if err := rootFor(cmd.McpCmd, "prompts", "get", "x", "--arg", "topic=auth").Execute(); err != nil {
-		t.Fatal(err)
+	if !strings.Contains(got, `"type": "image"`) || !strings.Contains(got, `"mimeType": "image/png"`) {
+		t.Fatalf("stdout = %q", got)
 	}
 }
 
@@ -1971,10 +1969,10 @@ func TestAgentDelete_DryRun_Hermetic(t *testing.T) {
 }
 
 func TestMcpCall_ToolError(t *testing.T) {
-	withMCPServer(t, map[string]func() any{
-		"tools/call": func() any {
-			return map[string]any{"isError": true, "content": []map[string]any{{"type": "text", "text": "boom"}}}
-		},
+	withMCPServer(t, func(s *mcp.Server) {
+		mcptest.Tool(s, "x", "", func(map[string]any) (*mcp.CallToolResult, error) {
+			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "boom"}}}, nil
+		})
 	})
 	err := rootFor(cmd.McpCmd, "call", "x").Execute()
 	if err == nil || !errors.Is(err, cmd.ErrToolCallFailed) {

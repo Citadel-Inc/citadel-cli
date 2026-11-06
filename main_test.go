@@ -9,7 +9,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/Citadel-Inc/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/internal/mcptest"
 )
 
 func TestRun_HelpExitsZero(t *testing.T) {
@@ -190,53 +193,19 @@ func TestRunWriters_JSONThenHuman_NoStaleOutputFlag(t *testing.T) {
 	}
 }
 
-func mcpJSONRPCHandler(t *testing.T, byMethod map[string]func() any) http.HandlerFunc {
-	t.Helper()
-	if _, ok := byMethod["initialize"]; !ok {
-		byMethod["initialize"] = func() any {
-			return map[string]any{
-				"protocolVersion": "2025-11-25",
-				"serverInfo":      map[string]any{"name": "citadel-mcp-test", "version": "1"},
-			}
-		}
-	}
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			ID     int    `json:"id"`
-			Method string `json:"method"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			t.Fatalf("decode MCP request: %v", err)
-		}
-		fn, ok := byMethod[req.Method]
-		if !ok {
-			t.Fatalf("unhandled MCP method %q", req.Method)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Mcp-Session-Id", "test-sess")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"jsonrpc": "2.0",
-			"id":      req.ID,
-			"result":  fn(),
-		})
-	}
-}
-
 // tools/call with isError=true is a normal server outcome; main maps it to exit 2.
 func TestRunWriters_McpToolCallError_ExitCode2(t *testing.T) {
+	mcpServer := mcptest.NewServer()
+	mcptest.Tool(mcpServer, "x", "", func(map[string]any) (*mcp.CallToolResult, error) {
+		return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "boom"}}}, nil
+	})
+	mcpHandler := mcptest.Handler(mcpServer)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/mcp" {
 			http.NotFound(w, r)
 			return
 		}
-		mcpJSONRPCHandler(t, map[string]func() any{
-			"tools/call": func() any {
-				return map[string]any{
-					"isError": true,
-					"content": []map[string]any{{"type": "text", "text": "boom"}},
-				}
-			},
-		})(w, r)
+		mcpHandler.ServeHTTP(w, r)
 	}))
 	t.Cleanup(srv.Close)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())

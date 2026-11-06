@@ -8,7 +8,7 @@ LLMs: read this first. Humans: [HUMANS.md](HUMANS.md). Commits: [CONTRIBUTING.md
 main.go              Cobra entry
 cmd/                 Subcommands
 internal/            apiclient, clicfg (XDG config), completion (cache), httpx,
-                     mcpclient, pager, pagination, selfhost, sseclient, term
+                     mcpclient (go-sdk), mcptest, pager, pagination, selfhost, sseclient, term
 specs/active|parked/ SDD specs
 .github/workflows/   ci.yml, cli-release.yml
 Makefile             build / verify
