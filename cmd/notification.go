@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
 	"text/tabwriter"
@@ -160,10 +161,26 @@ func runNotificationList(cmd *cobra.Command, _ []string) error {
 		return runNotificationListWatch(cmd, c, unreadOnly, limit, cursor, all)
 	}
 
-	var yamlAccum []notifItem
-	csvHdr := false
-	first := true
-
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintln(w, "No notifications.") },
+		func(w *tabwriter.Writer, rows []notifItem) {
+			_, _ = fmt.Fprintln(w, "ID\tKIND\tSTATUS\tNAMESPACE\tSUMMARY")
+			for _, n := range rows {
+				status := "unread"
+				if n.ReadAt != nil {
+					status = "read"
+				}
+				ns := n.NamespaceSlug
+				if ns == "" {
+					ns = "-"
+				}
+				summary := n.Summary
+				if len(summary) > 72 {
+					summary = summary[:69] + "..."
+				}
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", n.ID, n.Kind, status, ns, summary)
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("limit", fmt.Sprintf("%d", limit))
@@ -181,85 +198,11 @@ func runNotificationList(cmd *cobra.Command, _ []string) error {
 		rows := page.Items
 		next := strings.TrimSpace(page.NextCursor)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []notifItem{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[notifItem](cmd)
-			case "yaml":
-				return emitYAML(cmd, []notifItem{})
-			default:
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No notifications.")
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "ID\tKIND\tSTATUS\tNAMESPACE\tSUMMARY")
-			for _, n := range rows {
-				status := "unread"
-				if n.ReadAt != nil {
-					status = "read"
-				}
-				ns := n.NamespaceSlug
-				if ns == "" {
-					ns = "-"
-				}
-				summary := n.Summary
-				if len(summary) > 72 {
-					summary = summary[:69] + "..."
-				}
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", n.ID, n.Kind, status, ns, summary)
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all {
-			if isHumanListOutput(output) && next != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
-			}
-			return nil
-		}
-		if next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-
-	if all && output == "yaml" {
-		if yamlAccum == nil {
-			yamlAccum = []notifItem{}
-		}
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 // ── read ──────────────────────────────────────────────────────────────────────

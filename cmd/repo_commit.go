@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -115,9 +116,19 @@ func runRepoCommitList(cmd *cobra.Command, args []string) error {
 	ref, _ := cmd.Flags().GetString("ref")
 	pathFilter, _ := cmd.Flags().GetString("path")
 
-	var yamlAccum []commitItem
-	csvHdr := false
-	first := true
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No commits in repository '%s/%s'.\n", ns, slug) },
+		func(w *tabwriter.Writer, rows []commitItem) {
+			_, _ = fmt.Fprintln(w, "SHA\tAUTHOR\tDATE\tSUBJECT")
+			for _, row := range rows {
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+					shortSHA(row.SHA),
+					row.Author,
+					formatCommitDate(row.Timestamp),
+					truncateSubject(row.subject(), 72),
+				)
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("limit", strconv.Itoa(limit))
@@ -142,77 +153,11 @@ func runRepoCommitList(cmd *cobra.Command, args []string) error {
 		rows := payload.Commits
 		next := strings.TrimSpace(payload.NextCursor)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []commitItem{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[commitItem](cmd)
-			case "yaml":
-				return emitYAML(cmd, []commitItem{})
-			default:
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No commits in repository '%s/%s'.\n", ns, slug)
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "SHA\tAUTHOR\tDATE\tSUBJECT")
-			for _, row := range rows {
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-					shortSHA(row.SHA),
-					row.Author,
-					formatCommitDate(row.Timestamp),
-					truncateSubject(row.subject(), 72),
-				)
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all {
-			if isHumanListOutput(output) && next != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
-			}
-			return nil
-		}
-		if next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-	if all && output == "yaml" {
-		if yamlAccum == nil {
-			yamlAccum = []commitItem{}
-		}
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 // ── get ───────────────────────────────────────────────────────────────────────

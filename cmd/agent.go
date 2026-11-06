@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"slices"
 	"strconv"
@@ -171,9 +172,18 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 		return runAgentListWatch(cmd, c, limit, cursor, all)
 	}
 
-	var yamlAccum []agentRow
-	csvHdr := false
-	first := true
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintln(w, "No agents found.") },
+		func(w *tabwriter.Writer, rows []agentRow) {
+			_, _ = fmt.Fprintln(w, "NAME\tID\tMODEL HINT")
+			for _, a := range rows {
+				hint := ""
+				if a.ModelHint != nil {
+					hint = *a.ModelHint
+				}
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, a.ID, hint)
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("limit", strconv.Itoa(limit))
@@ -190,76 +200,11 @@ func runAgentList(cmd *cobra.Command, _ []string) error {
 		rows := payload.Agents
 		next := strings.TrimSpace(payload.Next)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []agentRow{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[agentRow](cmd)
-			case "yaml":
-				return emitYAML(cmd, []agentRow{})
-			default:
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No agents found.")
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "NAME\tID\tMODEL HINT")
-			for _, a := range rows {
-				hint := ""
-				if a.ModelHint != nil {
-					hint = *a.ModelHint
-				}
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, a.ID, hint)
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all {
-			if isHumanListOutput(output) && next != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
-			}
-			return nil
-		}
-		if next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-	if all && output == "yaml" {
-		if yamlAccum == nil {
-			yamlAccum = []agentRow{}
-		}
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runAgentGet(cmd *cobra.Command, args []string) error {

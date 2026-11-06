@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -194,9 +195,14 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 		return runRepoListWatch(cmd, c, ns, limit, cursor, all)
 	}
 
-	var yamlAccum []repoRow
-	csvHdr := false
-	first := true
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No repositories in namespace '%s'\n", ns) },
+		func(w *tabwriter.Writer, rows []repoRow) {
+			_, _ = fmt.Fprintln(w, "PATH\tVISIBILITY\tBRANCH\tCREATED")
+			for _, r := range rows {
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.Path, r.Visibility, r.DefaultBranch, r.CreatedAt)
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("limit", strconv.Itoa(limit))
@@ -214,73 +220,11 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 		rows := payload.Repos
 		next := strings.TrimSpace(payload.NextCursor)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			empty := fmt.Sprintf("No repositories in namespace '%s'", ns)
-			switch output {
-			case "json":
-				return emitJSON(cmd, []repoRow{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[repoRow](cmd)
-			case "yaml":
-				return emitYAML(cmd, []repoRow{})
-			default:
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), empty)
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "PATH\tVISIBILITY\tBRANCH\tCREATED")
-			for _, r := range rows {
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.Path, r.Visibility, r.DefaultBranch, r.CreatedAt)
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all {
-			if isHumanListOutput(output) && next != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
-			}
-			return nil
-		}
-		if next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-	if all && output == "yaml" {
-		if yamlAccum == nil {
-			yamlAccum = []repoRow{}
-		}
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runRepoGet(cmd *cobra.Command, args []string) error {

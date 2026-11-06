@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -189,67 +191,9 @@ func runOrgMemberList(cmd *cobra.Command, args []string) error {
 	}
 	orgSlug := strings.TrimSpace(args[0])
 
-	var yamlAccum []nsMemberRow
-	csvHdr := false
-	first := true
-	for {
-		q := url.Values{}
-		q.Set("limit", strconv.Itoa(limit))
-		if cursor != "" {
-			q.Set("cursor", cursor)
-		}
-		var page struct {
-			Members    []nsMemberRow `json:"members"`
-			NextCursor string        `json:"next_cursor"`
-		}
-		if err := c.Get(cmd.Context(), "/orgs/"+url.PathEscape(orgSlug)+"/members?"+q.Encode(), &page); err != nil {
-			if apiclient.IsStatus(err, http.StatusNotFound) {
-				return fmt.Errorf("org '%s' not found", orgSlug)
-			}
-			return err
-		}
-		rows := page.Members
-		next := strings.TrimSpace(page.NextCursor)
-
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []nsMemberRow{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[nsMemberRow](cmd)
-			case "yaml":
-				return emitYAML(cmd, []nsMemberRow{})
-			default:
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No members found for org '%s'.\n", orgSlug)
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No members found for org '%s'.\n", orgSlug) },
+		func(w *tabwriter.Writer, rows []nsMemberRow) {
 			_, _ = fmt.Fprintln(w, "USER_ID\tSLUG\tDISPLAY_NAME\tROLE\tPERMISSIONS\tJOINED")
 			for _, m := range rows {
 				role := "member"
@@ -269,27 +213,31 @@ func runOrgMemberList(cmd *cobra.Command, args []string) error {
 					strings.Join(m.Permissions, ","),
 					m.JoinedAt.Format("2006-01-02"))
 			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-			if !all && next != "" {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "(use --cursor %s for more, or --all to fetch everything)\n", next)
-			}
+		})
+	for {
+		q := url.Values{}
+		q.Set("limit", strconv.Itoa(limit))
+		if cursor != "" {
+			q.Set("cursor", cursor)
 		}
+		var page struct {
+			Members    []nsMemberRow `json:"members"`
+			NextCursor string        `json:"next_cursor"`
+		}
+		if err := c.Get(cmd.Context(), "/orgs/"+url.PathEscape(orgSlug)+"/members?"+q.Encode(), &page); err != nil {
+			if apiclient.IsStatus(err, http.StatusNotFound) {
+				return fmt.Errorf("org '%s' not found", orgSlug)
+			}
+			return err
+		}
+		rows := page.Members
+		next := strings.TrimSpace(page.NextCursor)
 
-		if !all || next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-
-	if all && output == "yaml" {
-		if yamlAccum == nil {
-			yamlAccum = []nsMemberRow{}
-		}
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runOrgMemberSetPermissions(cmd *cobra.Command, args []string) error {

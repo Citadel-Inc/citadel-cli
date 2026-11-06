@@ -3,9 +3,11 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/google/uuid"
@@ -121,9 +123,26 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 		return runTokenListWatch(cmd, c, a.ID.String(), limit, cursor, all)
 	}
 
-	var yamlAccum []token
-	csvHdr := false
-	first := true
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No tokens for agent '%s'\n", agentName) },
+		func(w *tabwriter.Writer, rows []token) {
+			_, _ = fmt.Fprint(w, "ID\tCREATED\tEXPIRES\tREVOKED\n")
+			for _, t := range rows {
+				expires := ""
+				if t.ExpiresAt != nil {
+					expires = t.ExpiresAt.Format(time.RFC3339)
+				}
+				revoked := ""
+				if t.RevokedAt != nil {
+					revoked = t.RevokedAt.Format(time.RFC3339)
+				}
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+					t.ID.String(),
+					t.CreatedAt.Format("2006-01-02 15:04:05"),
+					expires,
+					revoked)
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("agent_id", a.ID.String())
@@ -141,85 +160,11 @@ func runTokenList(cmd *cobra.Command, _ []string) error {
 		rows := payload.Tokens
 		next := strings.TrimSpace(payload.Next)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			empty := fmt.Sprintf("No tokens for agent '%s'", agentName)
-			switch output {
-			case "json":
-				return emitJSON(cmd, []token{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[token](cmd)
-			case "yaml":
-				return emitYAML(cmd, []token{})
-			default:
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), empty)
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprint(w, "ID\tCREATED\tEXPIRES\tREVOKED\n")
-			for _, t := range rows {
-				expires := ""
-				if t.ExpiresAt != nil {
-					expires = t.ExpiresAt.Format(time.RFC3339)
-				}
-				revoked := ""
-				if t.RevokedAt != nil {
-					revoked = t.RevokedAt.Format(time.RFC3339)
-				}
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-					t.ID.String(),
-					t.CreatedAt.Format("2006-01-02 15:04:05"),
-					expires,
-					revoked)
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all {
-			if isHumanListOutput(output) && next != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
-			}
-			return nil
-		}
-		if next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-	if all && output == "yaml" {
-		if yamlAccum == nil {
-			yamlAccum = []token{}
-		}
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runTokenIssue(cmd *cobra.Command, _ []string) error {

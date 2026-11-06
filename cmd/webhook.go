@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/google/uuid"
@@ -362,9 +364,25 @@ func runWebhookList(cmd *cobra.Command, namespacePath string) error {
 		return err
 	}
 
-	var yamlAccum []webhookRow
-	csvHdr := false
-	first := true
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No webhooks for namespace '%s'.\n", namespacePath) },
+		func(w *tabwriter.Writer, rows []webhookRow) {
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tACTIVE\tEVENTS\tTARGET\tLAST")
+			for _, row := range rows {
+				name := strings.TrimSpace(row.Name)
+				if name == "" {
+					name = "-"
+				}
+				last := strings.TrimSpace(row.LastDeliveryState)
+				if last == "" {
+					last = "-"
+				}
+				_, _ = fmt.Fprintf(
+					w, "%s\t%s\t%t\t%s\t%s\t%s\n",
+					row.ID, name, row.Active, strings.Join(row.EventKinds, ","), row.TargetURL, last,
+				)
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("limit", strconv.Itoa(limit))
@@ -381,81 +399,11 @@ func runWebhookList(cmd *cobra.Command, namespacePath string) error {
 		rows := payload.Webhooks
 		next := strings.TrimSpace(payload.Next)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []webhookRow{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[webhookRow](cmd)
-			case "yaml":
-				return emitYAML(cmd, []webhookRow{})
-			default:
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No webhooks for namespace '%s'.\n", namespacePath)
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "ID\tNAME\tACTIVE\tEVENTS\tTARGET\tLAST")
-			for _, row := range rows {
-				name := strings.TrimSpace(row.Name)
-				if name == "" {
-					name = "-"
-				}
-				last := strings.TrimSpace(row.LastDeliveryState)
-				if last == "" {
-					last = "-"
-				}
-				_, _ = fmt.Fprintf(
-					w, "%s\t%s\t%t\t%s\t%s\t%s\n",
-					row.ID, name, row.Active, strings.Join(row.EventKinds, ","), row.TargetURL, last,
-				)
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all {
-			if isHumanListOutput(output) && next != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
-			}
-			return nil
-		}
-		if next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-
-	if output == "yaml" {
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runRepoWebhookCreate(cmd *cobra.Command, args []string) error {
@@ -678,9 +626,21 @@ func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
 		return err
 	}
 
-	var yamlAccum []webhookDeliveryRow
-	csvHdr := false
-	first := true
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No deliveries for namespace '%s'.\n", namespacePath) },
+		func(w *tabwriter.Writer, rows []webhookDeliveryRow) {
+			_, _ = fmt.Fprintln(w, "ID\tEVENT_KIND\tSTATE\tATTEMPT_COUNT\tHTTP_STATUS\tCREATED_AT")
+			for _, row := range rows {
+				httpStatus := "-"
+				if row.HTTPStatus != nil {
+					httpStatus = fmt.Sprintf("%d", *row.HTTPStatus)
+				}
+				_, _ = fmt.Fprintf(
+					w, "%s\t%s\t%s\t%d\t%s\t%s\n",
+					row.ID, row.EventKind, row.State, row.AttemptCount, httpStatus, row.CreatedAt.Format(time.RFC3339),
+				)
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("limit", strconv.Itoa(limit))
@@ -706,77 +666,11 @@ func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
 		rows := payload.Deliveries
 		next := strings.TrimSpace(payload.Next)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []webhookDeliveryRow{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[webhookDeliveryRow](cmd)
-			case "yaml":
-				return emitYAML(cmd, []webhookDeliveryRow{})
-			default:
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No deliveries for namespace '%s'.\n", namespacePath)
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "ID\tEVENT_KIND\tSTATE\tATTEMPT_COUNT\tHTTP_STATUS\tCREATED_AT")
-			for _, row := range rows {
-				httpStatus := "-"
-				if row.HTTPStatus != nil {
-					httpStatus = fmt.Sprintf("%d", *row.HTTPStatus)
-				}
-				_, _ = fmt.Fprintf(
-					w, "%s\t%s\t%s\t%d\t%s\t%s\n",
-					row.ID, row.EventKind, row.State, row.AttemptCount, httpStatus, row.CreatedAt.Format(time.RFC3339),
-				)
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all {
-			if isHumanListOutput(output) && next != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
-			}
-			return nil
-		}
-		if next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-
-	if output == "yaml" {
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runRepoWebhookDeliveryGet(cmd *cobra.Command, args []string) error {

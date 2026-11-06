@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -224,9 +226,24 @@ func runDeployTokenList(cmd *cobra.Command, namespacePath string) error {
 		return runDeployTokenListWatch(cmd, c, namespacePath, limit, cursor, all)
 	}
 
-	var yamlAccum []deployTokenRow
-	csvHdr := false
-	first := true
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No deploy tokens for namespace '%s'.\n", namespacePath) },
+		func(w *tabwriter.Writer, rows []deployTokenRow) {
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tCREATED\tEXPIRES\tREVOKED")
+			for _, row := range rows {
+				name := row.Name
+				if name == "" {
+					name = "—"
+				}
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+					row.ID,
+					name,
+					row.CreatedAt.Format("2006-01-02 15:04:05"),
+					formatTimePtr(row.ExpiresAt),
+					formatTimePtr(row.RevokedAt),
+				)
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("limit", strconv.Itoa(limit))
@@ -243,82 +260,11 @@ func runDeployTokenList(cmd *cobra.Command, namespacePath string) error {
 		rows := payload.Tokens
 		next := strings.TrimSpace(payload.Next)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []deployTokenRow{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[deployTokenRow](cmd)
-			case "yaml":
-				return emitYAML(cmd, []deployTokenRow{})
-			default:
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "No deploy tokens for namespace '%s'.\n", namespacePath)
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "ID\tNAME\tCREATED\tEXPIRES\tREVOKED")
-			for _, row := range rows {
-				name := row.Name
-				if name == "" {
-					name = "—"
-				}
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-					row.ID,
-					name,
-					row.CreatedAt.Format("2006-01-02 15:04:05"),
-					formatTimePtr(row.ExpiresAt),
-					formatTimePtr(row.RevokedAt),
-				)
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all {
-			if isHumanListOutput(output) && next != "" {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "(use --cursor "+next+" for more, or --all to fetch everything)")
-			}
-			return nil
-		}
-		if next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-	if all && output == "yaml" {
-		if yamlAccum == nil {
-			yamlAccum = []deployTokenRow{}
-		}
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runRepoDeployTokenCreate(cmd *cobra.Command, args []string) error {

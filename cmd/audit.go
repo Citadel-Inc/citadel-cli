@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 )
@@ -129,9 +131,26 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 		return runAuditListWatch(cmd, c, limit, cursor, all, f)
 	}
 
-	var yamlAccum []auditEventPayload
-	csvHdr := false
-	first := true
+	pg := newListPager(cmd, output, all,
+		func(w io.Writer) { _, _ = fmt.Fprintln(w, "No audit events found.") },
+		func(w *tabwriter.Writer, rows []auditEventPayload) {
+			_, _ = fmt.Fprintln(w, "TS\tKIND\tACTOR\tNAMESPACE\tSUBJECT\tID")
+			for _, e := range rows {
+				actorCol := e.ActorSlug
+				if actorCol == "" {
+					actorCol = e.ActorID
+				}
+				nsCol := e.NamespaceSlug
+				if nsCol == "" {
+					nsCol = "-"
+				}
+				subj := e.SubjectID
+				if subj == "" {
+					subj = "-"
+				}
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", e.TS, e.Kind, actorCol, nsCol, subj, e.ID)
+			}
+		})
 	for {
 		q := url.Values{}
 		q.Set("limit", strconv.Itoa(limit))
@@ -167,76 +186,11 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 		rows := payload.Events
 		next := strings.TrimSpace(payload.NextCursor)
 
-		if len(rows) == 0 && cursor != "" && next == "" {
-			return nil
-		}
-		if first && len(rows) == 0 && cursor == "" {
-			switch output {
-			case "json":
-				return emitJSON(cmd, []auditEventPayload{})
-			case "ndjson":
-				return nil
-			case "csv":
-				return emitCSVHeaderOnly[auditEventPayload](cmd)
-			case "yaml":
-				return emitYAML(cmd, []auditEventPayload{})
-			default:
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No audit events found.")
-				return nil
-			}
-		}
-		first = false
-
-		switch output {
-		case "json":
-			return emitJSON(cmd, rows)
-		case "ndjson":
-			if err := emitNDJSONLines(cmd, rows); err != nil {
-				return err
-			}
-		case "csv":
-			if err := emitCSVRows(cmd, &csvHdr, rows); err != nil {
-				return err
-			}
-		case "yaml":
-			if all {
-				yamlAccum = append(yamlAccum, rows...)
-			} else {
-				return emitYAML(cmd, rows)
-			}
-		default:
-			w := newTabWriter(cmd)
-			_, _ = fmt.Fprintln(w, "TS\tKIND\tACTOR\tNAMESPACE\tSUBJECT\tID")
-			for _, e := range rows {
-				actorCol := e.ActorSlug
-				if actorCol == "" {
-					actorCol = e.ActorID
-				}
-				nsCol := e.NamespaceSlug
-				if nsCol == "" {
-					nsCol = "-"
-				}
-				subj := e.SubjectID
-				if subj == "" {
-					subj = "-"
-				}
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", e.TS, e.Kind, actorCol, nsCol, subj, e.ID)
-			}
-			if err := w.Flush(); err != nil {
-				return err
-			}
-		}
-
-		if !all || next == "" {
-			break
+		if stop, err := pg.page(rows, cursor, next); stop {
+			return err
 		}
 		cursor = next
 	}
-
-	if all && output == "yaml" {
-		return emitYAML(cmd, yamlAccum)
-	}
-	return nil
 }
 
 func runAuditShow(cmd *cobra.Command, args []string) error {
