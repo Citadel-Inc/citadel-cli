@@ -1,7 +1,6 @@
 package completion
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -31,7 +30,7 @@ func TestFetchRepoSlugs_DecodesReposPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := FetchRepoSlugs(context.Background(), c, "acme")
+	got, err := FetchRepoSlugs(t.Context(), c, "acme")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +45,7 @@ func TestFetchRepoSlugs_RejectsEmptyNamespace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = FetchRepoSlugs(context.Background(), c, "  ")
+	_, err = FetchRepoSlugs(t.Context(), c, "  ")
 	if err == nil {
 		t.Fatal("expected error for empty namespace")
 	}
@@ -71,7 +70,7 @@ func TestFetchAgentNames_DecodesAgentArray(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := FetchAgentNames(context.Background(), c)
+	got, err := FetchAgentNames(t.Context(), c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +98,7 @@ func TestFetchOAuthClientIDs_DecodesClientList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := FetchOAuthClientIDs(context.Background(), c)
+	got, err := FetchOAuthClientIDs(t.Context(), c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +124,7 @@ func TestFetchAgentTokenIDs_DecodesTokenList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := FetchAgentTokenIDs(context.Background(), c)
+	got, err := FetchAgentTokenIDs(t.Context(), c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +152,7 @@ func TestFetchSSHKeyIDs_DecodesKeyList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := FetchSSHKeyIDs(context.Background(), c)
+	got, err := FetchSSHKeyIDs(t.Context(), c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +197,7 @@ func TestFetchNamespaceDeployTokenIDs_DecodesList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := FetchNamespaceDeployTokenIDs(context.Background(), c, "acme/ops")
+	got, err := FetchNamespaceDeployTokenIDs(t.Context(), c, "acme/ops")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +215,7 @@ func TestFetchNamespaceDeployTokenIDs_EmptyNamespace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := FetchNamespaceDeployTokenIDs(context.Background(), c, "  "); err == nil {
+	if _, err := FetchNamespaceDeployTokenIDs(t.Context(), c, "  "); err == nil {
 		t.Fatal("expected error for empty namespace, got nil")
 	}
 }

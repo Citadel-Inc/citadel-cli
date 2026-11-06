@@ -1,7 +1,6 @@
 package completion
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -30,7 +29,7 @@ func TestFetchRepoBranchNames_DecodesRefsPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := FetchRepoBranchNames(context.Background(), c, "acme", "demo")
+	got, err := FetchRepoBranchNames(t.Context(), c, "acme", "demo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +57,7 @@ func TestFetchRepoTagNames_DecodesRefsPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := FetchRepoTagNames(context.Background(), c, "acme", "demo")
+	got, err := FetchRepoTagNames(t.Context(), c, "acme", "demo")
 	if err != nil {
 		t.Fatal(err)
 	}

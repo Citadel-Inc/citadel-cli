@@ -1,7 +1,6 @@
 package completion
 
 import (
-	"context"
 	"testing"
 )
 
@@ -10,7 +9,7 @@ func TestLookup_NotAuthenticated(t *testing.T) {
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
 	t.Setenv("CITADEL_SERVER", "http://127.0.0.1:9")
 
-	_, err := Lookup(context.Background(), "", KeyOrgs, FetchOrgNamespaceSlugs)
+	_, err := Lookup(t.Context(), "", KeyOrgs, FetchOrgNamespaceSlugs)
 	if err == nil {
 		t.Fatal("expected error without access token")
 	}

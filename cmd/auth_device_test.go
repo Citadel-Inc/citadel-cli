@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -40,7 +39,7 @@ func TestRequestDeviceAuthorization_Print(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	got, err := requestDeviceAuthorization(context.Background(), srv.URL)
+	got, err := requestDeviceAuthorization(t.Context(), srv.URL)
 	if err != nil {
 		t.Fatalf("requestDeviceAuthorization: %v", err)
 	}
@@ -177,7 +176,7 @@ func TestPollDeviceToken_DeniedAndExpired(t *testing.T) {
 			}))
 			t.Cleanup(srv.Close)
 
-			_, err := pollDeviceTokenWithInterval(context.Background(), srv.URL, deviceAuthorizationResponse{
+			_, err := pollDeviceTokenWithInterval(t.Context(), srv.URL, deviceAuthorizationResponse{
 				DeviceCode: "device-secret",
 			}, time.Nanosecond)
 			if err == nil || !strings.Contains(err.Error(), tt.code) || !strings.Contains(err.Error(), tt.description) {
@@ -194,7 +193,7 @@ func TestPollDeviceToken_Expires(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	_, err := pollDeviceTokenWithInterval(context.Background(), srv.URL, deviceAuthorizationResponse{
+	_, err := pollDeviceTokenWithInterval(t.Context(), srv.URL, deviceAuthorizationResponse{
 		DeviceCode: "device-secret",
 		ExpiresIn:  1,
 	}, 2*time.Second)
@@ -216,7 +215,7 @@ func TestPollDeviceToken_RetriesTransientHTTPBody(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	got, err := pollDeviceTokenWithInterval(context.Background(), srv.URL, deviceAuthorizationResponse{
+	got, err := pollDeviceTokenWithInterval(t.Context(), srv.URL, deviceAuthorizationResponse{
 		DeviceCode: "device-secret",
 		ExpiresIn:  1,
 	}, time.Nanosecond)

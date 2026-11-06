@@ -73,7 +73,7 @@ func TestRepoClone_InvokesGitCloneWithSSHRemote(t *testing.T) {
 	root.SetErr(&errBuf)
 	setOutRecursiveTest(root, &out, &errBuf)
 	root.SetArgs([]string{"repo", "clone", "myorg/r1"})
-	if err := root.ExecuteContext(context.Background()); err != nil {
+	if err := root.ExecuteContext(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if got := out.String(); !strings.Contains(got, "r1\n") {
@@ -110,7 +110,7 @@ func TestRepoCloneIsBloblessForAgentSessions(t *testing.T) {
 	root.SetErr(&errBuf)
 	setOutRecursiveTest(root, &out, &errBuf)
 	root.SetArgs([]string{"repo", "clone", "myorg/r1"})
-	if err := root.ExecuteContext(context.Background()); err != nil {
+	if err := root.ExecuteContext(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if got := out.String(); !strings.Contains(got, "r1\n") {
@@ -144,7 +144,7 @@ func TestRepoClone_InvalidPathFailsBeforeAuthAndGit(t *testing.T) {
 
 	root := repoTestRoot(t)
 	root.SetArgs([]string{"repo", "clone", "nopath"})
-	err := root.ExecuteContext(context.Background())
+	err := root.ExecuteContext(t.Context())
 	if err == nil || err.Error() != "argument must be <namespace>/<repo>" {
 		t.Fatalf("err=%v", err)
 	}
@@ -162,7 +162,7 @@ func TestRepoClone_WhitespaceOnlyArg_Hermetic(t *testing.T) {
 
 	root := repoTestRoot(t)
 	root.SetArgs([]string{"repo", "clone", " "})
-	err := root.ExecuteContext(context.Background())
+	err := root.ExecuteContext(t.Context())
 	if err == nil || err.Error() != "argument must be <namespace>/<repo>" {
 		t.Fatalf("err=%v", err)
 	}
@@ -209,7 +209,7 @@ func TestRepoPush_CreateFlagCreatesMissingRepoThenPushesOrigin(t *testing.T) {
 	root.SetErr(&errBuf)
 	setOutRecursiveTest(root, &out, &errBuf)
 	root.SetArgs([]string{"repo", "push", "--create"})
-	if err := root.ExecuteContext(context.Background()); err != nil {
+	if err := root.ExecuteContext(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if createdBranch != "feature" {
@@ -248,7 +248,7 @@ func TestRepoPush_MissingRepoWithoutCreateFailsNonInteractive(t *testing.T) {
 
 	root := repoTestRoot(t)
 	root.SetArgs([]string{"repo", "push"})
-	err := root.ExecuteContext(context.Background())
+	err := root.ExecuteContext(t.Context())
 	if err == nil || !strings.Contains(err.Error(), "--create") {
 		t.Fatalf("err=%v", err)
 	}
@@ -282,7 +282,7 @@ func TestRepoPush_ExplicitRepoSetsUpstreamBranch(t *testing.T) {
 
 	root := repoTestRoot(t)
 	root.SetArgs([]string{"repo", "push", "myorg/r1"})
-	if err := root.ExecuteContext(context.Background()); err != nil {
+	if err := root.ExecuteContext(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	invocations := readGitLog(t, logPath)
@@ -305,7 +305,7 @@ func TestRepoPull_ExplicitRepoUsesCurrentBranch(t *testing.T) {
 
 	root := repoTestRoot(t)
 	root.SetArgs([]string{"repo", "pull", "myorg/r1"})
-	if err := root.ExecuteContext(context.Background()); err != nil {
+	if err := root.ExecuteContext(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	invocations := readGitLog(t, logPath)
@@ -327,7 +327,7 @@ func TestRepoClone_GitMissingFriendlyError(t *testing.T) {
 
 	root := repoTestRoot(t)
 	root.SetArgs([]string{"repo", "clone", "myorg/r1"})
-	err := root.ExecuteContext(context.Background())
+	err := root.ExecuteContext(t.Context())
 	if err == nil || !strings.Contains(err.Error(), "git is not available on PATH") {
 		t.Fatalf("err=%v", err)
 	}
@@ -415,7 +415,7 @@ func readGitLog(t *testing.T, logPath string) []fakeGitInvocation {
 func repoTestRoot(t *testing.T) *cobra.Command {
 	t.Helper()
 	root := NewRootCmd()
-	resetFlagsRecursiveTest(root)
+	resetCommandStateRecursiveTest(root)
 	t.Cleanup(func() {
 		resetCommandStateRecursiveTest(root)
 	})
@@ -440,6 +440,10 @@ func resetCommandStateRecursiveTest(c *cobra.Command) {
 	c.SetArgs(nil)
 	c.SetOut(nil)
 	c.SetErr(nil)
+	// Subcommands are shared across roots and cobra keeps the first context it sees, so a
+	// completion test's cancelled t.Context() would otherwise leak into later Execute calls.
+	var noCtx context.Context
+	c.SetContext(noCtx)
 	resetFlagsRecursiveTest(c)
 	for _, child := range c.Commands() {
 		resetCommandStateRecursiveTest(child)

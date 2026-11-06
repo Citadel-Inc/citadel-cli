@@ -95,7 +95,7 @@ func runWatchCmdOut(t *testing.T, ctx context.Context, srvURL string, verb *cobr
 // ── agent list --watch ────────────────────────────────────────────────────────
 
 func TestAgentListWatch_smokeNdjson(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	const data = `{"id":"00000000-0000-0000-0000-000000000001","name":"bot","owner_user_id":"u1"}`
 	srv := sseOnce(t, "/agents", data, cancel)
@@ -103,7 +103,7 @@ func TestAgentListWatch_smokeNdjson(t *testing.T) {
 }
 
 func TestAgentListWatch_smokeTable(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	const data = `{"id":"00000000-0000-0000-0000-000000000001","name":"bot","owner_user_id":"u1"}`
 	srv := sseOnce(t, "/agents", data, cancel)
@@ -113,7 +113,7 @@ func TestAgentListWatch_smokeTable(t *testing.T) {
 // ── oauth clients list --watch ────────────────────────────────────────────────
 
 func TestOAuthClientsListWatch_smokeNdjson(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	const data = `{"id":"11111111-1111-1111-1111-111111111111","client_id":"cid","name":"App","allowed_scopes":["openid"],"redirect_uris":["https://x"],"is_public":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}`
 	srv := sseOnce(t, "/oauth/clients", data, cancel)
@@ -121,7 +121,7 @@ func TestOAuthClientsListWatch_smokeNdjson(t *testing.T) {
 }
 
 func TestOAuthClientsListWatch_withOrg(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	const data = `{"id":"11111111-1111-1111-1111-111111111111","client_id":"cid","name":"App","allowed_scopes":[],"redirect_uris":["https://x"],"is_public":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}`
 	srv := sseOnce(t, "/oauth/clients", data, cancel)
@@ -131,7 +131,7 @@ func TestOAuthClientsListWatch_withOrg(t *testing.T) {
 // ── namespace list --watch ────────────────────────────────────────────────────
 
 func TestNsListWatch_smokeNdjson(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	const data = `{"slug":"myorg","display_name":"My Org","created_at":"2026-01-01T00:00:00Z"}`
 	srv := sseOnce(t, "/orgs", data, cancel)
@@ -139,7 +139,7 @@ func TestNsListWatch_smokeNdjson(t *testing.T) {
 }
 
 func TestNsListWatch_smokeTable(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	const data = `{"slug":"myorg","display_name":"My Org","created_at":"2026-01-01T00:00:00Z"}`
 	srv := sseOnce(t, "/orgs", data, cancel)
@@ -149,7 +149,7 @@ func TestNsListWatch_smokeTable(t *testing.T) {
 // ── namespace members --watch ─────────────────────────────────────────────────
 
 func TestNsMembersWatch_smokeNdjson(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	const data = `{"user_id":"u1","slug":"alice","display_name":"Alice","is_owner":true,"permissions":[],"joined_at":"2026-01-01T00:00:00Z"}`
 	srv := sseOnce(t, "/orgs/myorg/members", data, cancel)
@@ -159,7 +159,7 @@ func TestNsMembersWatch_smokeNdjson(t *testing.T) {
 // ── namespace transfer list-pending --watch ───────────────────────────────────
 
 func TestNsTransferListPendingWatch_smokeNdjson(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	const data = `{"id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","org_namespace_id":"x","org_slug":"o","from_user_id":"a","from_user_slug":"fs","to_user_id":"b","to_user_slug":"ts","expires_at":"2026-02-01T00:00:00Z","created_at":"2026-01-01T00:00:00Z"}`
 	srv := sseOnce(t, "/transfers/pending", data, cancel)
@@ -170,7 +170,7 @@ func TestNsTransferListPendingWatch_smokeNdjson(t *testing.T) {
 
 func TestTokenListWatch_smokeNdjson(t *testing.T) {
 	const agentID = "00000000-0000-0000-0000-000000000001"
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -225,7 +225,7 @@ func TestNamespaceDeployTokenListWatch_smokeNdjson(t *testing.T) {
 
 func assertDeployTokenListWatch(t *testing.T, path, jsonData, wantID string, verb *cobra.Command, args ...string) {
 	t.Helper()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	var gotQuery string

@@ -41,7 +41,7 @@ func sseServe(t *testing.T, path, data string, cancel context.CancelFunc, gotQue
 }
 
 func TestAuditListWatch_ndjsonCarriesEventAndFilters(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
 	srv := sseServe(t, "/audit/events", `{"id":"42","ts":"2026-01-01T00:00:00Z","kind":"repo.create","actor_type":"user","payload":{}}`, cancel, &q)
@@ -68,7 +68,7 @@ func TestAuditListWatch_ndjsonCarriesEventAndFilters(t *testing.T) {
 }
 
 func TestAuditListWatch_tableRow(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
 	srv := sseServe(t, "/audit/events", `{"id":"42","ts":"2026-01-01T00:00:00Z","kind":"repo.create","actor_slug":"alice","actor_type":"user","payload":{}}`, cancel, &q)
@@ -79,7 +79,7 @@ func TestAuditListWatch_tableRow(t *testing.T) {
 }
 
 func TestNotificationListWatch_unreadTable(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
 	srv := sseServe(t, "/api/me/notifications", `{"id":"n1","kind":"issue.comment","summary":"New comment","created_at":"2026-01-01T00:00:00Z"}`, cancel, &q)
@@ -111,7 +111,7 @@ func TestAuditListWatch_serverWithoutSSEFailsFast(t *testing.T) {
 	t.Setenv("CITADEL_ACCESS_TOKEN", "tok")
 
 	resetFlagsRecursive(cmd.AuditCmd)
-	resetCtxRecursive(cmd.AuditCmd, context.Background())
+	resetCtxRecursive(cmd.AuditCmd, t.Context())
 	root := &cobra.Command{Use: "test"}
 	addTestRootGroups(root)
 	root.AddCommand(cmd.AuditCmd)
@@ -136,7 +136,7 @@ func TestAuditListWatch_serverWithoutSSEFailsFast(t *testing.T) {
 // Row shapes below are what citadel's issue and PR list SSE handlers emit:
 // the same element the JSON list returns, keyed by entity id.
 func TestIssueListWatch_ndjsonCarriesRowAndFilters(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
 	srv := sseServe(t, "/namespaces/acme/issues", `{"id":"11111111-1111-1111-1111-111111111111","number":7,"title":"Broken build","state":"open","updated_at":"2026-01-01T00:00:00Z"}`, cancel, &q)
@@ -163,7 +163,7 @@ func TestIssueListWatch_ndjsonCarriesRowAndFilters(t *testing.T) {
 }
 
 func TestIssueListWatch_tableRow(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
 	srv := sseServe(t, "/namespaces/acme/issues", `{"id":"11111111-1111-1111-1111-111111111111","number":7,"title":"Broken build","state":"open","updated_at":"2026-01-01T00:00:00Z"}`, cancel, &q)
@@ -174,7 +174,7 @@ func TestIssueListWatch_tableRow(t *testing.T) {
 }
 
 func TestPRListWatch_tableRowAndState(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
 	srv := sseServe(t, "/namespaces/acme/pulls", `{"id":"22222222-2222-2222-2222-222222222222","number":3,"title":"Add feature","state":"open","source_ref":"feat","target_ref":"main","author_id":"33333333-3333-3333-3333-333333333333","created_at":"2026-01-01T00:00:00Z","labels":[],"assignees":[]}`, cancel, &q)
@@ -188,7 +188,7 @@ func TestPRListWatch_tableRowAndState(t *testing.T) {
 }
 
 func TestPRListWatch_ndjson(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
 	srv := sseServe(t, "/namespaces/acme/pulls", `{"id":"22222222-2222-2222-2222-222222222222","number":3,"title":"Add feature","state":"open"}`, cancel, &q)

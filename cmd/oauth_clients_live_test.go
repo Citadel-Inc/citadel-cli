@@ -53,7 +53,7 @@ func TestLiveOAuthClients_create_list_show_rotate_revoke(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, base+"/api/oauth/clients", bytes.NewReader(raw))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, base+"/api/oauth/clients", bytes.NewReader(raw))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestLiveOAuthClients_create_list_show_rotate_revoke(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		reqDel, _ := http.NewRequestWithContext(context.Background(), http.MethodDelete, base+"/api/oauth/clients/"+created.ID, nil)
+		reqDel, _ := http.NewRequestWithContext(context.WithoutCancel(t.Context()), http.MethodDelete, base+"/api/oauth/clients/"+created.ID, nil)
 		reqDel.Header.Set("Authorization", "Bearer "+token)
 		respDel, err := hc.Do(reqDel)
 		if err == nil && respDel != nil {
@@ -94,7 +94,7 @@ func TestLiveOAuthClients_create_list_show_rotate_revoke(t *testing.T) {
 	})
 
 	// List (personal scope)
-	reqList, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, base+"/api/oauth/clients", nil)
+	reqList, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, base+"/api/oauth/clients", nil)
 	reqList.Header.Set("Authorization", "Bearer "+token)
 	respList, err := hc.Do(reqList)
 	if err != nil {
@@ -110,7 +110,7 @@ func TestLiveOAuthClients_create_list_show_rotate_revoke(t *testing.T) {
 	}
 
 	// Show
-	reqGet, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, base+"/api/oauth/clients/"+created.ID, nil)
+	reqGet, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, base+"/api/oauth/clients/"+created.ID, nil)
 	reqGet.Header.Set("Authorization", "Bearer "+token)
 	respGet, err := hc.Do(reqGet)
 	if err != nil {
@@ -130,7 +130,7 @@ func TestLiveOAuthClients_create_list_show_rotate_revoke(t *testing.T) {
 	}
 
 	// rotate-secret — 412 (mfa_required) or 200 (recent aal2 / marker)
-	reqRot, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, base+"/api/oauth/clients/"+created.ID+"/rotate-secret", nil)
+	reqRot, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, base+"/api/oauth/clients/"+created.ID+"/rotate-secret", nil)
 	reqRot.Header.Set("Authorization", "Bearer "+token)
 	respRot, err := hc.Do(reqRot)
 	if err != nil {
@@ -157,7 +157,7 @@ func TestLiveOAuthClients_create_list_show_rotate_revoke(t *testing.T) {
 	}
 
 	// Revoke
-	reqDel, _ := http.NewRequestWithContext(context.Background(), http.MethodDelete, base+"/api/oauth/clients/"+created.ID, nil)
+	reqDel, _ := http.NewRequestWithContext(t.Context(), http.MethodDelete, base+"/api/oauth/clients/"+created.ID, nil)
 	reqDel.Header.Set("Authorization", "Bearer "+token)
 	respDel, err := hc.Do(reqDel)
 	if err != nil {

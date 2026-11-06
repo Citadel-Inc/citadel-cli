@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"os/exec"
 	"strings"
 	"testing"
@@ -145,11 +144,11 @@ func TestGitOriginIntegration(t *testing.T) {
 	}
 	dir := t.TempDir()
 	//nolint:gosec // The test creates the directory and passes fixed git arguments.
-	if err := exec.CommandContext(context.Background(), "git", "-C", dir, "init").Run(); err != nil {
+	if err := exec.CommandContext(t.Context(), "git", "-C", dir, "init").Run(); err != nil {
 		t.Fatal(err)
 	}
 	//nolint:gosec // The test creates the directory and passes fixed git arguments.
-	if err := exec.CommandContext(context.Background(), "git", "-C", dir, "remote", "add", "origin", "git@src.land:testns/testslug.git").Run(); err != nil {
+	if err := exec.CommandContext(t.Context(), "git", "-C", dir, "remote", "add", "origin", "git@src.land:testns/testslug.git").Run(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -157,7 +156,7 @@ func TestGitOriginIntegration(t *testing.T) {
 	cmd.Flags().StringP("repo", "R", "", "")
 	cmd.Flags().Bool("no-cwd-repo", false, "")
 	cmd.PersistentFlags().BoolP("quiet", "q", false, "")
-	cmd.SetContext(context.Background())
+	cmd.SetContext(t.Context())
 
 	t.Chdir(dir)
 
@@ -176,11 +175,11 @@ func TestInferenceHintSkippedWhenStderrNotTTYFile(t *testing.T) {
 	}
 	dir := t.TempDir()
 	//nolint:gosec // The test creates the directory and passes fixed git arguments.
-	if err := exec.CommandContext(context.Background(), "git", "-C", dir, "init").Run(); err != nil {
+	if err := exec.CommandContext(t.Context(), "git", "-C", dir, "init").Run(); err != nil {
 		t.Fatal(err)
 	}
 	//nolint:gosec // The test creates the directory and passes fixed git arguments.
-	if err := exec.CommandContext(context.Background(), "git", "-C", dir, "remote", "add", "origin", "https://src.land/hintns/hintslug").Run(); err != nil {
+	if err := exec.CommandContext(t.Context(), "git", "-C", dir, "remote", "add", "origin", "https://src.land/hintns/hintslug").Run(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -188,7 +187,7 @@ func TestInferenceHintSkippedWhenStderrNotTTYFile(t *testing.T) {
 	cmd.Flags().StringP("repo", "R", "", "")
 	cmd.Flags().Bool("no-cwd-repo", false, "")
 	cmd.PersistentFlags().BoolP("quiet", "q", false, "")
-	cmd.SetContext(context.Background())
+	cmd.SetContext(t.Context())
 	cmd.SetErr(&bytes.Buffer{}) // non-TTY stderr → no hint
 
 	t.Chdir(dir)

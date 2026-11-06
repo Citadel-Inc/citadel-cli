@@ -72,7 +72,7 @@ func TestLiveSelfHost_chain_optIn(t *testing.T) {
 			AdminKey:    adminKey,
 			JWTSecret:   jwtSecret,
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 		defer cancel()
 
 		report := selfhost.CheckHealth(ctx, cfg)
@@ -184,7 +184,7 @@ func TestLiveSelfHost_health_amber_optIn(t *testing.T) {
 		AdminKey:    "test-key",
 		JWTSecret:   "test-secret-32-bytes-padded-xxxx",
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	report := selfhost.CheckHealth(ctx, cfg)

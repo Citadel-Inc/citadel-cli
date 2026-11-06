@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +23,7 @@ func TestCheckServer_Healthy(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
-	got := checkServer(context.Background(), srv.URL)
+	got := checkServer(t.Context(), srv.URL)
 	if got.status != statusPass {
 		t.Errorf("server reachable: %s", got)
 	}
@@ -41,7 +40,7 @@ func TestCheckServer_5xxFails(t *testing.T) {
 		w.WriteHeader(http.StatusBadGateway)
 	}))
 	defer srv.Close()
-	got := checkServer(context.Background(), srv.URL)
+	got := checkServer(t.Context(), srv.URL)
 	if got.status != statusFail {
 		t.Errorf("5xx must FAIL: %s", got)
 	}
@@ -53,14 +52,14 @@ func TestCheckServer_401Passes(t *testing.T) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	defer srv.Close()
-	got := checkServer(context.Background(), srv.URL)
+	got := checkServer(t.Context(), srv.URL)
 	if got.status != statusPass {
 		t.Errorf("401 means reachable; want PASS: %s", got)
 	}
 }
 
 func TestCheckServer_NoURL(t *testing.T) {
-	got := checkServer(context.Background(), "")
+	got := checkServer(t.Context(), "")
 	if got.status != statusFail {
 		t.Errorf("empty URL must FAIL: %s", got)
 	}
@@ -81,7 +80,7 @@ func TestCheckServerBases_ReportsRESTAndMCPBases(t *testing.T) {
 
 func TestCheckGitOrigin_NonCitadelWarns(t *testing.T) {
 	dir := newDoctorGitRepo(t, "https://github.com/example/project.git")
-	got := checkGitOrigin(context.Background(), dir)
+	got := checkGitOrigin(t.Context(), dir)
 	if got.status != statusWarn {
 		t.Fatalf("non-Citadel origin must WARN: %s", got)
 	}
@@ -92,7 +91,7 @@ func TestCheckGitOrigin_NonCitadelWarns(t *testing.T) {
 
 func TestCheckGitOrigin_MissingRemoteWarns(t *testing.T) {
 	dir := newDoctorGitRepo(t, "")
-	got := checkGitOrigin(context.Background(), dir)
+	got := checkGitOrigin(t.Context(), dir)
 	if got.status != statusWarn {
 		t.Fatalf("missing origin must WARN: %s", got)
 	}
@@ -103,7 +102,7 @@ func TestCheckGitOrigin_MissingRemoteWarns(t *testing.T) {
 
 func TestCheckGitRemote_RepoOverrideSkipsOrigin(t *testing.T) {
 	t.Setenv(citadelRepoEnv, "acme/project")
-	got := checkGitRemote(context.Background())
+	got := checkGitRemote(t.Context())
 	if got.status != statusPass {
 		t.Fatalf("CITADEL_REPO override: %s", got)
 	}
@@ -250,7 +249,7 @@ func TestRunDoctor_allChecksGreen(t *testing.T) {
 	root.SetErr(&out)
 	root.SilenceErrors = true
 	root.SilenceUsage = true
-	if err := root.ExecuteContext(context.Background()); err != nil {
+	if err := root.ExecuteContext(t.Context()); err != nil {
 		t.Fatalf("doctor: %v", err)
 	}
 	s := out.String()
@@ -280,7 +279,7 @@ func TestAnyFailed_falseWithoutFail(t *testing.T) {
 func newDoctorGitRepo(t *testing.T, origin string) string {
 	t.Helper()
 	dir := t.TempDir()
-	cmd := exec.CommandContext(context.Background(), "git", "init", "--quiet")
+	cmd := exec.CommandContext(t.Context(), "git", "init", "--quiet")
 	cmd.Dir = dir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v\n%s", err, output)
@@ -289,7 +288,7 @@ func newDoctorGitRepo(t *testing.T, origin string) string {
 		return dir
 	}
 	//nolint:gosec // The test supplies the origin fixture and controls the git command.
-	cmd = exec.CommandContext(context.Background(), "git", "remote", "add", "origin", origin)
+	cmd = exec.CommandContext(t.Context(), "git", "remote", "add", "origin", origin)
 	cmd.Dir = dir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git remote add: %v\n%s", err, output)
@@ -306,7 +305,7 @@ func TestCheckServer_APISuffixFallsBackToRootHealthz(t *testing.T) {
 		_, _ = w.Write([]byte("ok"))
 	}))
 	defer srv.Close()
-	got := checkServer(context.Background(), srv.URL+"/api")
+	got := checkServer(t.Context(), srv.URL+"/api")
 	if got.status != statusPass || !strings.Contains(got.detail, srv.URL+" reachable") {
 		t.Fatalf("got %+v", got)
 	}

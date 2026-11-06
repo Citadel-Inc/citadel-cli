@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/url"
 	"strconv"
@@ -41,7 +40,7 @@ func TestFlushOut_nonFile(t *testing.T) {
 }
 
 func TestNotifyWatchContext_smoke(t *testing.T) {
-	ctx, stop := notifyWatchContext(context.Background())
+	ctx, stop := notifyWatchContext(t.Context())
 	defer stop()
 	if ctx.Err() != nil {
 		t.Fatal(ctx.Err())

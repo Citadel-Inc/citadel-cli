@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -294,7 +293,7 @@ func TestCompleteAgentNames_HappyPath(t *testing.T) {
 	})
 	root := NewRootCmd()
 	agentGet := findAgentGet(t, root)
-	agentGet.SetContext(context.Background())
+	agentGet.SetContext(t.Context())
 	vals, d := completeAgentNames(agentGet, []string{}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -323,7 +322,7 @@ func TestCompleteAuthProviderIDs_PublicHappyPath(t *testing.T) {
 
 	root := NewRootCmd()
 	link := authProviderLinkFromRoot(t, root)
-	link.SetContext(context.Background())
+	link.SetContext(t.Context())
 	vals, d := completeAuthProviderIDs(link, []string{}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -359,7 +358,7 @@ func TestCompleteOrgNamespaceSlugs_HappyPath(t *testing.T) {
 	})
 	root := NewRootCmd()
 	nsGet := findNsGet(t, root)
-	nsGet.SetContext(context.Background())
+	nsGet.SetContext(t.Context())
 	vals, d := completeOrgNamespaceSlugs(nsGet, []string{}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -397,7 +396,7 @@ func TestCompleteOAuthClientIDs_HappyPath(t *testing.T) {
 	})
 	root := NewRootCmd()
 	show := findOauthShow(t, root)
-	show.SetContext(context.Background())
+	show.SetContext(t.Context())
 	vals, d := completeOAuthClientIDs(show, []string{}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -438,7 +437,7 @@ func TestCompleteTokenIDs_HappyPath(t *testing.T) {
 	})
 	root := NewRootCmd()
 	revoke := findTokenRevoke(t, root)
-	revoke.SetContext(context.Background())
+	revoke.SetContext(t.Context())
 	vals, d := completeTokenIDs(revoke, []string{}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -476,7 +475,7 @@ func TestCompleteSSHKeyIDs_HappyPath(t *testing.T) {
 	})
 	root := NewRootCmd()
 	del := findSSHKeyDelete(t, root)
-	del.SetContext(context.Background())
+	del.SetContext(t.Context())
 	vals, d := completeSSHKeyIDs(del, []string{}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -534,7 +533,7 @@ func TestCompleteRepoBranchNames_HappyPath(t *testing.T) {
 	if err := del.Flags().Set("repo", "acme/demo"); err != nil {
 		t.Fatal(err)
 	}
-	del.SetContext(context.Background())
+	del.SetContext(t.Context())
 	vals, d := completeRepoBranchNames(del, []string{}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -560,7 +559,7 @@ func TestCompleteRepoTagNames_HappyPath(t *testing.T) {
 	if err := del.Flags().Set("repo", "acme/demo"); err != nil {
 		t.Fatal(err)
 	}
-	del.SetContext(context.Background())
+	del.SetContext(t.Context())
 	vals, d := completeRepoTagNames(del, []string{}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -588,7 +587,7 @@ func TestCompleteRepoSlugs_HappyPath(t *testing.T) {
 	if err := get.Flags().Set("repo", "myorg/existing"); err != nil {
 		t.Fatal(err)
 	}
-	get.SetContext(context.Background())
+	get.SetContext(t.Context())
 	vals, d := completeRepoSlugs(get, []string{}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -601,7 +600,7 @@ func TestCompleteRepoSlugs_HappyPath(t *testing.T) {
 func TestCompleteRepoSlugs_PositionalAlreadyPresent_NoCompletion(t *testing.T) {
 	root := NewRootCmd()
 	get := repoGetFromRoot(t, root)
-	get.SetContext(context.Background())
+	get.SetContext(t.Context())
 	vals, d := completeRepoSlugs(get, []string{"already"}, "")
 	if len(vals) != 0 {
 		t.Fatalf("got %v", vals)
@@ -626,7 +625,7 @@ func TestCompleteRepoPaths_NamespacePrefix(t *testing.T) {
 	})
 	root := NewRootCmd()
 	clone := repoCloneFromRoot(t, root)
-	clone.SetContext(context.Background())
+	clone.SetContext(t.Context())
 	vals, d := completeRepoPaths(clone, []string{}, "a")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -651,7 +650,7 @@ func TestCompleteRepoPaths_RepoPrefix(t *testing.T) {
 	})
 	root := NewRootCmd()
 	clone := repoCloneFromRoot(t, root)
-	clone.SetContext(context.Background())
+	clone.SetContext(t.Context())
 	vals, d := completeRepoPaths(clone, []string{}, "myorg/a")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -676,7 +675,7 @@ func TestCompleteRepoWebhookIDs_UsesRepoContext(t *testing.T) {
 	})
 	root := NewRootCmd()
 	get := repoWebhookGetFromRoot(t, root)
-	get.SetContext(context.Background())
+	get.SetContext(t.Context())
 	if err := get.Flags().Set("repo", "acme/demo"); err != nil {
 		t.Fatal(err)
 	}
@@ -703,7 +702,7 @@ func TestCompleteNamespaceWebhookIDs_UsesNamespaceArg(t *testing.T) {
 	})
 	root := NewRootCmd()
 	get := namespaceWebhookGetFromRoot(t, root)
-	get.SetContext(context.Background())
+	get.SetContext(t.Context())
 	vals, d := completeNamespaceWebhookIDs(get, []string{"acme"}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -731,7 +730,7 @@ func TestCompleteRepoWebhookDeliveryIDs_UsesRepoContext(t *testing.T) {
 	})
 	root := NewRootCmd()
 	get := repoWebhookDeliveryGetFromRoot(t, root)
-	get.SetContext(context.Background())
+	get.SetContext(t.Context())
 	if err := get.Flags().Set("repo", "acme/demo"); err != nil {
 		t.Fatal(err)
 	}
@@ -744,7 +743,7 @@ func TestCompleteRepoWebhookDeliveryIDs_UsesRepoContext(t *testing.T) {
 	}
 
 	redeliver := repoWebhookDeliveryRedeliverFromRoot(t, root)
-	redeliver.SetContext(context.Background())
+	redeliver.SetContext(t.Context())
 	if err := redeliver.Flags().Set("repo", "acme/demo"); err != nil {
 		t.Fatal(err)
 	}
@@ -775,7 +774,7 @@ func TestCompleteRepoWebhookDeliveryIDs_UsesPositionalRepo(t *testing.T) {
 	})
 	root := NewRootCmd()
 	get := repoWebhookDeliveryGetFromRoot(t, root)
-	get.SetContext(context.Background())
+	get.SetContext(t.Context())
 	vals, d := completeRepoWebhookDeliveryIDs(get, []string{"acme/demo"}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -785,7 +784,7 @@ func TestCompleteRepoWebhookDeliveryIDs_UsesPositionalRepo(t *testing.T) {
 	}
 
 	redeliver := repoWebhookDeliveryRedeliverFromRoot(t, root)
-	redeliver.SetContext(context.Background())
+	redeliver.SetContext(t.Context())
 	redeliverVals, redeliverDir := completeRepoWebhookDeliveryIDs(redeliver, []string{"acme/demo"}, "")
 	if redeliverDir != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("redeliver directive %v", redeliverDir)
@@ -809,7 +808,7 @@ func TestCompleteNamespaceWebhookDeliveryIDs_UsesNamespaceArg(t *testing.T) {
 	})
 	root := NewRootCmd()
 	get := namespaceWebhookDeliveryGetFromRoot(t, root)
-	get.SetContext(context.Background())
+	get.SetContext(t.Context())
 	vals, d := completeNamespaceWebhookDeliveryIDs(get, []string{"acme"}, "")
 	if d != cobra.ShellCompDirectiveNoFileComp {
 		t.Fatalf("directive %v", d)
@@ -834,7 +833,7 @@ func TestCompleteIssueMilestoneIDs_UsesRepoFlag(t *testing.T) {
 	})
 	root := NewRootCmd()
 	view := issueMilestoneViewFromRoot(t, root)
-	view.SetContext(context.Background())
+	view.SetContext(t.Context())
 	if err := view.Flags().Set("repo", "acme/demo"); err != nil {
 		t.Fatal(err)
 	}

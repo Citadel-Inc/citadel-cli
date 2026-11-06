@@ -43,7 +43,7 @@ func TestStream_Next_contextAlreadyCanceled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	s := Open(c, "/p")
 	_, err = s.Next(ctx)
@@ -69,7 +69,7 @@ func TestStream_Next_singleEventThenCancel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	s := Open(c, "/stream")
@@ -120,7 +120,7 @@ func TestStream_Next_reconnectEOFPreservesLastEventID(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := apiclient.New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, apiclient.Options{})
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	s := Open(c, "/s")
@@ -154,7 +154,7 @@ func TestStream_Next_HTTP401(t *testing.T) {
 	s := Open(c, "/x")
 	defer func() { _ = s.Close() }()
 
-	_, err := s.Next(context.Background())
+	_, err := s.Next(t.Context())
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -197,7 +197,7 @@ func TestStream_Next_defaultMessageEventType(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := apiclient.New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, apiclient.Options{})
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	s := Open(c, "/s")

@@ -91,7 +91,7 @@ func TestRepoListWatch_scriptedSSESequence_ndjson(t *testing.T) {
 	t.Setenv("CITADEL_SERVER", srv.URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "tok")
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	out := &safeStdout{}
 	resetFlagsRecursive(cmd.RepoCmd)
 	resetCtxRecursive(cmd.RepoCmd, ctx)

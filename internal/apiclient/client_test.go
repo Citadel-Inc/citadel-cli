@@ -55,7 +55,7 @@ func TestClient_GetDecodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out struct{ Name string }
-	if err := c.Get(context.Background(), "/whoami", &out); err != nil {
+	if err := c.Get(t.Context(), "/whoami", &out); err != nil {
 		t.Fatal(err)
 	}
 	if out.Name != "alice" {
@@ -93,7 +93,7 @@ func TestClient_Get401RetryAfterHook(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out struct{ Name string }
-	if err := c.Get(context.Background(), "/v", &out); err != nil {
+	if err := c.Get(t.Context(), "/v", &out); err != nil {
 		t.Fatal(err)
 	}
 	if out.Name != "alice" {
@@ -124,7 +124,7 @@ func TestClient_Get401TwiceAfterHookReturnsHTTPError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = c.Get(context.Background(), "/v", nil)
+	err = c.Get(t.Context(), "/v", nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -157,7 +157,7 @@ func TestClient_PostSendsJSON(t *testing.T) {
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
 	var out struct{ ID string }
-	if err := c.Post(context.Background(), "/things", map[string]int{"x": 42}, &out); err != nil {
+	if err := c.Post(t.Context(), "/things", map[string]int{"x": 42}, &out); err != nil {
 		t.Fatal(err)
 	}
 	if out.ID != "abc" {
@@ -172,7 +172,7 @@ func TestClient_DeleteAcceptsNoContent(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
-	if err := c.Delete(context.Background(), "/things/1"); err != nil {
+	if err := c.Delete(t.Context(), "/things/1"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -185,7 +185,7 @@ func TestClient_NonSuccessReturnsHTTPError(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
-	err := c.Get(context.Background(), "/x", nil)
+	err := c.Get(t.Context(), "/x", nil)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -211,7 +211,7 @@ func TestClient_NonSuccessCapturesRetryAfter(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
-	err := c.Get(context.Background(), "/x", nil)
+	err := c.Get(t.Context(), "/x", nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -234,7 +234,7 @@ func TestClient_Post429CapturesRetryAfterSeconds(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
-	err := c.Post(context.Background(), "/x", map[string]string{"k": "v"}, nil)
+	err := c.Post(t.Context(), "/x", map[string]string{"k": "v"}, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -323,7 +323,7 @@ func TestClient_PatchSendsJSON(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
-	if err := c.Patch(context.Background(), "/things/1", map[string]string{"name": "x"}, nil); err != nil {
+	if err := c.Patch(t.Context(), "/things/1", map[string]string{"name": "x"}, nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -349,7 +349,7 @@ func TestClient_PutSendsJSON(t *testing.T) {
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
 	var out struct{ OK bool }
-	if err := c.Put(context.Background(), "/things/1", map[string]int{"y": 7}, &out); err != nil {
+	if err := c.Put(t.Context(), "/things/1", map[string]int{"y": 7}, &out); err != nil {
 		t.Fatal(err)
 	}
 	if !out.OK {
@@ -364,7 +364,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if err := c.Get(ctx, "/x", nil); err == nil || !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected ctx.Canceled, got %v", err)
@@ -391,7 +391,7 @@ func TestClient_GetEventStream_success(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := c.GetEventStream(context.Background(), "/stream", "42")
+	resp, err := c.GetEventStream(t.Context(), "/stream", "42")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -425,7 +425,7 @@ func TestClient_GetEventStream_IgnoresRequestTimeoutWhileBodyStreams(t *testing.
 	}
 	c.http.Timeout = 25 * time.Millisecond
 
-	resp, err := c.GetEventStream(context.Background(), "/stream", "")
+	resp, err := c.GetEventStream(t.Context(), "/stream", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +448,7 @@ func TestClient_GetEventStream_nonSuccessDrainsBody(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
-	resp, err := c.GetEventStream(context.Background(), "/nope", "")
+	resp, err := c.GetEventStream(t.Context(), "/nope", "")
 	if err == nil {
 		if resp != nil {
 			_ = resp.Body.Close()
@@ -470,7 +470,7 @@ func TestClient_GetEventStream_retryAfterOnError(t *testing.T) {
 	defer srv.Close()
 
 	c, _ := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
-	resp, err := c.GetEventStream(context.Background(), "/gone", "")
+	resp, err := c.GetEventStream(t.Context(), "/gone", "")
 	if resp != nil {
 		if closeErr := resp.Body.Close(); closeErr != nil {
 			t.Fatalf("close response body: %v", closeErr)
@@ -508,7 +508,7 @@ func TestGetEventStream_401_RetryOn401_Succeeds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := c.GetEventStream(context.Background(), "/stream", "")
+	resp, err := c.GetEventStream(t.Context(), "/stream", "")
 	if err != nil {
 		t.Fatalf("GetEventStream: %v", err)
 	}
@@ -537,7 +537,7 @@ func TestGetEventStream_401_RetryOn401_HookError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, got := c.GetEventStream(context.Background(), "/stream", "")
+	resp, got := c.GetEventStream(t.Context(), "/stream", "")
 	if resp != nil {
 		if closeErr := resp.Body.Close(); closeErr != nil {
 			t.Fatalf("close response body: %v", closeErr)

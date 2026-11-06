@@ -1,7 +1,6 @@
 package completion
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,7 +32,7 @@ func TestLookupSecondCallUsesCache(t *testing.T) {
 	now = func() time.Time { return start }
 	t.Cleanup(func() { now = origNow })
 
-	ctx := context.Background()
+	ctx := t.Context()
 	if _, err := Lookup(ctx, "", KeyOrgs, FetchOrgNamespaceSlugs); err != nil {
 		t.Fatal(err)
 	}

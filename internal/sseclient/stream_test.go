@@ -2,14 +2,13 @@ package sseclient
 
 import (
 	"bufio"
-	"context"
 	"strings"
 	"testing"
 )
 
 func TestReadEvent_basic(t *testing.T) {
 	raw := "event: init\nid: 42\ndata: {\"a\":1}\n\n"
-	ev, err := readEvent(context.Background(), bufio.NewReader(strings.NewReader(raw)))
+	ev, err := readEvent(t.Context(), bufio.NewReader(strings.NewReader(raw)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +19,7 @@ func TestReadEvent_basic(t *testing.T) {
 
 func TestReadEvent_keepaliveSkipped(t *testing.T) {
 	raw := ":keepalive\n\nevent: add\nid: 7\ndata: {}\n\n"
-	ev, err := readEvent(context.Background(), bufio.NewReader(strings.NewReader(raw)))
+	ev, err := readEvent(t.Context(), bufio.NewReader(strings.NewReader(raw)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +30,7 @@ func TestReadEvent_keepaliveSkipped(t *testing.T) {
 
 func TestReadEvent_unknownFieldIgnored(t *testing.T) {
 	raw := "retry: 5000\nevent: x\ndata: z\n\n"
-	ev, err := readEvent(context.Background(), bufio.NewReader(strings.NewReader(raw)))
+	ev, err := readEvent(t.Context(), bufio.NewReader(strings.NewReader(raw)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +41,7 @@ func TestReadEvent_unknownFieldIgnored(t *testing.T) {
 
 func TestReadEvent_multiDataLines(t *testing.T) {
 	raw := "event: msg\ndata: line1\ndata: line2\n\n"
-	ev, err := readEvent(context.Background(), bufio.NewReader(strings.NewReader(raw)))
+	ev, err := readEvent(t.Context(), bufio.NewReader(strings.NewReader(raw)))
 	if err != nil {
 		t.Fatal(err)
 	}

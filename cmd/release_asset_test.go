@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -40,7 +39,7 @@ func TestRunReleaseAssetDownload_RefusesBinaryTTY(t *testing.T) {
 
 	var out bytes.Buffer
 	command := &cobra.Command{}
-	command.SetContext(context.Background())
+	command.SetContext(t.Context())
 	command.SetOut(&out)
 	command.SetErr(io.Discard)
 	command.Flags().String("repo", "", "")

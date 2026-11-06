@@ -1,7 +1,6 @@
 package selfhost
 
 import (
-	"context"
 	"os"
 	"strings"
 	"testing"
@@ -46,7 +45,7 @@ func TestCountApplied(t *testing.T) {
 }
 
 func TestApplyMigrations_EmptyURL(t *testing.T) {
-	_, err := ApplyMigrations(context.Background(), Config{})
+	_, err := ApplyMigrations(t.Context(), Config{})
 	if err == nil || !strings.Contains(err.Error(), "supabase_url") {
 		t.Fatalf("expected supabase_url error, got %v", err)
 	}
@@ -54,7 +53,7 @@ func TestApplyMigrations_EmptyURL(t *testing.T) {
 
 func TestApplyMigrations_NoBinary(t *testing.T) {
 	t.Setenv("PATH", t.TempDir()) // empty PATH — supabase not found
-	_, err := ApplyMigrations(context.Background(), Config{SupabaseURL: "https://abc.supabase.co"})
+	_, err := ApplyMigrations(t.Context(), Config{SupabaseURL: "https://abc.supabase.co"})
 	if err == nil || !strings.Contains(err.Error(), "supabase CLI not found") {
 		t.Fatalf("expected not-found error, got %v", err)
 	}
@@ -69,7 +68,7 @@ func TestApplyMigrations_BinaryFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir)
-	_, err := ApplyMigrations(context.Background(), Config{SupabaseURL: "https://abc.supabase.co"})
+	_, err := ApplyMigrations(t.Context(), Config{SupabaseURL: "https://abc.supabase.co"})
 	if err == nil {
 		t.Fatal("expected error when supabase exits non-zero")
 	}

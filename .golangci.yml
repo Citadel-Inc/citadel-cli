@@ -64,6 +64,10 @@ linters:
     # canon go-golangci-lint-00017
     gocognit:
       min-complexity: 30
+    # canon go-golangci-lint-00016
+    usetesting:
+      context-background: true
+      context-todo: true
     # canon go-golangci-lint-00008
     govet:
       enable-all: true

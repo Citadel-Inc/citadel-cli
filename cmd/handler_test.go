@@ -624,7 +624,7 @@ outer:
 	if err := getCmd.Flags().Set("repo", uniqNS+"/existing"); err != nil {
 		t.Fatal(err)
 	}
-	getCmd.SetContext(context.Background())
+	getCmd.SetContext(t.Context())
 	fn := getCmd.ValidArgsFunction
 	if fn == nil {
 		t.Fatal("repo get: ValidArgsFunction not set")

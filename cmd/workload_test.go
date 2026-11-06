@@ -2,7 +2,6 @@ package cmd_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -68,7 +67,7 @@ func TestWorkloadLoginNeedsExactlyOneProof(t *testing.T) {
 }
 
 func TestBuildAWSProofSignsAudienceAndHost(t *testing.T) {
-	p, err := cmd.BuildAWSProofForTest(context.Background(), aws.Credentials{AccessKeyID: "AKIATEST", SecretAccessKey: "s", SessionToken: "tok"},
+	p, err := cmd.BuildAWSProofForTest(t.Context(), aws.Credentials{AccessKeyID: "AKIATEST", SecretAccessKey: "s", SessionToken: "tok"},
 		"eu-west-1", "citadel-aud", time.Date(2026, 11, 3, 1, 2, 3, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)

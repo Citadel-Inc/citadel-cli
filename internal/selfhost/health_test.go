@@ -1,7 +1,6 @@
 package selfhost_test
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -45,7 +44,7 @@ func TestHealthAllGreen(t *testing.T) {
 	defer supSrv.Close()
 
 	cfg := buildCfg(apiSrv.URL, supSrv.URL)
-	report := selfhost.CheckHealth(context.Background(), cfg)
+	report := selfhost.CheckHealth(t.Context(), cfg)
 	if report.Overall() != selfhost.HealthGreen {
 		for _, p := range report.Probes {
 			t.Logf("probe: %s", p)
@@ -57,7 +56,7 @@ func TestHealthAllGreen(t *testing.T) {
 func TestHealthAPIDown(t *testing.T) {
 	// Non-routable address to simulate unreachable API.
 	cfg := buildCfg("http://127.0.0.1:1", "http://127.0.0.1:1")
-	report := selfhost.CheckHealth(context.Background(), cfg)
+	report := selfhost.CheckHealth(t.Context(), cfg)
 	if report.Overall() != selfhost.HealthRed {
 		t.Errorf("Overall = %s; want RED when API is down", report.Overall())
 	}
@@ -86,7 +85,7 @@ func TestHealthMigrationsMissing(t *testing.T) {
 	defer supSrv.Close()
 
 	cfg := buildCfg(apiSrv.URL, supSrv.URL)
-	report := selfhost.CheckHealth(context.Background(), cfg)
+	report := selfhost.CheckHealth(t.Context(), cfg)
 	overall := report.Overall()
 	if overall != selfhost.HealthAmber && overall != selfhost.HealthRed {
 		t.Errorf("Overall = %s; want AMBER or RED when migrations missing", overall)
@@ -105,7 +104,7 @@ func TestHealthAPIServerError(t *testing.T) {
 	defer supSrv.Close()
 
 	cfg := buildCfg(apiSrv.URL, supSrv.URL)
-	report := selfhost.CheckHealth(context.Background(), cfg)
+	report := selfhost.CheckHealth(t.Context(), cfg)
 	if report.Overall() != selfhost.HealthRed {
 		t.Errorf("Overall = %s; want RED on API 500", report.Overall())
 	}
@@ -139,7 +138,7 @@ func TestHealthWebPageInPlaceOfPostgREST(t *testing.T) {
 		_, _ = w.Write([]byte("<!doctype html>"))
 	}))
 	defer web.Close()
-	report := selfhost.CheckHealth(context.Background(), buildCfg(web.URL, web.URL))
+	report := selfhost.CheckHealth(t.Context(), buildCfg(web.URL, web.URL))
 	if report.Overall() != selfhost.HealthAmber {
 		t.Fatalf("Overall = %v, want AMBER: %+v", report.Overall(), report.Probes)
 	}

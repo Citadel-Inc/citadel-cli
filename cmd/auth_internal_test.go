@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -75,7 +74,7 @@ func TestRandomOAuthState(t *testing.T) {
 }
 
 func TestBootstrapAgentToken_Happy(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	agentID := "10000000-0000-4000-8000-000000000001"
 	exp := time.Now().Add(48 * time.Hour).UTC().Round(time.Second)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -510,7 +509,7 @@ func TestRotateAccessTokenOn401Hook_EmptyAgentID(t *testing.T) {
 	}
 
 	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
-	tok, err := hook(context.Background())
+	tok, err := hook(t.Context())
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -531,7 +530,7 @@ func TestRotateAccessTokenOn401Hook_EnvAccessTokenSkipsRefresh(t *testing.T) {
 	}
 
 	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
-	got, err := hook(context.Background())
+	got, err := hook(t.Context())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -586,7 +585,7 @@ func TestRotateAccessTokenOn401Hook_RefreshSuccess(t *testing.T) {
 	}
 
 	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
-	got, err := hook(context.Background())
+	got, err := hook(t.Context())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -629,7 +628,7 @@ func TestRotateAccessTokenOn401Hook_RefreshFailureClearsSecrets(t *testing.T) {
 	}
 
 	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
-	_, err := hook(context.Background())
+	_, err := hook(t.Context())
 	if err == nil || !errors.Is(err, errSessionExpired) {
 		t.Fatalf("expected session expired error, got %v", err)
 	}
@@ -683,7 +682,7 @@ func TestRotateAccessTokenOn401Hook_RotateSuccess(t *testing.T) {
 	}
 
 	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
-	tok, err := hook(context.Background())
+	tok, err := hook(t.Context())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -720,7 +719,7 @@ func TestRotateAccessTokenOn401Hook_Rotate401(t *testing.T) {
 	}
 
 	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
-	tok, err := hook(context.Background())
+	tok, err := hook(t.Context())
 	if tok != "" {
 		t.Fatalf("expected empty token, got %q", tok)
 	}
@@ -765,7 +764,7 @@ func TestRotateAccessTokenOn401Hook_EmptyToken(t *testing.T) {
 	}
 
 	hook := rotateAccessTokenOn401Hook(&cobra.Command{})
-	_, err := hook(context.Background())
+	_, err := hook(t.Context())
 	if err == nil || !strings.Contains(err.Error(), "empty cleartext_token") {
 		t.Fatalf("expected empty token error, got %v", err)
 	}
@@ -834,7 +833,7 @@ func TestRunLogin_FlowSmoke(t *testing.T) {
 
 	var cfg clicfg.Config
 	co := &cobra.Command{}
-	if err := bootstrapAgentToken(context.Background(), co, &cfg, srv.URL, "", tr.AccessToken); err != nil {
+	if err := bootstrapAgentToken(t.Context(), co, &cfg, srv.URL, "", tr.AccessToken); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	if cfg.AccessToken != "smoke-opaque" {
@@ -878,7 +877,7 @@ func TestRotateAccessTokenOn401Hook_ExpiredAgentTokenRenewedByLogin(t *testing.T
 			http.NotFound(w, r)
 		}
 	})
-	tok, err := rotateAccessTokenOn401Hook(&cobra.Command{})(context.Background())
+	tok, err := rotateAccessTokenOn401Hook(&cobra.Command{})(t.Context())
 	if err != nil || tok != "fresh-agent-token" {
 		t.Fatalf("token %q err %v", tok, err)
 	}
@@ -897,7 +896,7 @@ func TestRotateAccessTokenOn401Hook_ServerErrorKeepsLogin(t *testing.T) {
 	rotateHookFixture(t, agentID, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
-	if _, err := rotateAccessTokenOn401Hook(&cobra.Command{})(context.Background()); err == nil {
+	if _, err := rotateAccessTokenOn401Hook(&cobra.Command{})(t.Context()); err == nil {
 		t.Fatal("expected an error")
 	}
 	loaded, err := clicfg.Load()

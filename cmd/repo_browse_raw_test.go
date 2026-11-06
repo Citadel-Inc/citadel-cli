@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -33,7 +32,7 @@ func TestRunRepoBrowseRaw_RefusesBinaryTTY(t *testing.T) {
 
 	var out bytes.Buffer
 	command := &cobra.Command{}
-	command.SetContext(context.Background())
+	command.SetContext(t.Context())
 	command.SetOut(&out)
 	command.SetErr(io.Discard)
 	command.Flags().String("repo", "", "")

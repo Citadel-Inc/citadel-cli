@@ -66,7 +66,7 @@ func TestStackBaseDefault(t *testing.T) {
 	if rt == nil {
 		t.Fatal("Stack returned nil")
 	}
-	_ = context.Background()
+	_ = t.Context()
 }
 
 func TestRetryAfterDelay_ParseSeconds(t *testing.T) {

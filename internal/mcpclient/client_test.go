@@ -1,7 +1,6 @@
 package mcpclient
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -110,13 +109,13 @@ func TestInitializeAndToolsList(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "tok-123", 5*time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
 	if c.ServerInfoValue().Name != "citadel-mcp" {
 		t.Errorf("ServerInfo.Name = %q", c.ServerInfoValue().Name)
 	}
-	tools, err := c.ToolsList(context.Background())
+	tools, err := c.ToolsList(t.Context())
 	if err != nil {
 		t.Fatalf("ToolsList: %v", err)
 	}
@@ -136,7 +135,7 @@ func TestInitialize_NoRetryOnTransientTransportError(t *testing.T) {
 	c := New(srv.URL, "t", time.Second, Options{})
 	transport := &failFirstRoundTripper{base: http.DefaultTransport}
 	c.HTTP.Transport = transport
-	if err := c.Initialize(context.Background()); err == nil {
+	if err := c.Initialize(t.Context()); err == nil {
 		t.Fatal("Initialize succeeded after transient transport failure")
 	}
 	if transport.calls != 1 {
@@ -165,11 +164,11 @@ func TestToolsList_RetriesTransientTransportError(t *testing.T) {
 	c := New(srv.URL, "t", time.Second, Options{})
 	transport := &failSecondRoundTripper{base: http.DefaultTransport}
 	c.HTTP.Transport = transport
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	start := time.Now()
-	tools, err := c.ToolsList(context.Background())
+	tools, err := c.ToolsList(t.Context())
 	if err != nil {
 		t.Fatalf("ToolsList: %v", err)
 	}
@@ -206,10 +205,10 @@ func TestToolsList_RetriesHTTP500(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "t", time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	tools, err := c.ToolsList(context.Background())
+	tools, err := c.ToolsList(t.Context())
 	if err != nil {
 		t.Fatalf("ToolsList: %v", err)
 	}
@@ -237,10 +236,10 @@ func TestToolsList_NoRetryOnJSONRPCApplicationError(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "t", time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	_, err := c.ToolsList(context.Background())
+	_, err := c.ToolsList(t.Context())
 	var e *Error
 	ok := errors.As(err, &e)
 	if !ok || e.Kind != KindInvalidParams {
@@ -272,10 +271,10 @@ func TestToolsCall(t *testing.T) {
 	})
 	defer srv.Close()
 	c := New(srv.URL, "t", 5*time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	res, err := c.ToolsCall(context.Background(), "get_namespace", map[string]any{"path": "damon"})
+	res, err := c.ToolsCall(t.Context(), "get_namespace", map[string]any{"path": "damon"})
 	if err != nil {
 		t.Fatalf("ToolsCall: %v", err)
 	}
@@ -300,10 +299,10 @@ func TestToolsCall_NoRetryOnHTTP500(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "t", time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	_, err := c.ToolsCall(context.Background(), "get_namespace", nil)
+	_, err := c.ToolsCall(t.Context(), "get_namespace", nil)
 	if err == nil || !strings.Contains(err.Error(), "HTTP 500") {
 		t.Fatalf("want HTTP 500 error, got %v", err)
 	}
@@ -318,7 +317,7 @@ func TestUnauthorizedHTTP401(t *testing.T) {
 	})
 	defer srv.Close()
 	c := New(srv.URL, "bad", time.Second, Options{})
-	err := c.Initialize(context.Background())
+	err := c.Initialize(t.Context())
 	if !IsUnauthorized(err) {
 		t.Fatalf("want unauthorized, got %v", err)
 	}
@@ -349,10 +348,10 @@ func TestMethodNotFound(t *testing.T) {
 	})
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	_, err := c.ToolsCall(context.Background(), "nope", nil)
+	_, err := c.ToolsCall(t.Context(), "nope", nil)
 	var e *Error
 	ok := errors.As(err, &e)
 	if !ok || e.Kind != KindMethodNotFound || !strings.Contains(e.Message, "nope") {
@@ -366,7 +365,7 @@ func TestVersionMismatch(t *testing.T) {
 	})
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
-	err := c.Initialize(context.Background())
+	err := c.Initialize(t.Context())
 	var e *Error
 	ok := errors.As(err, &e)
 	if !ok || e.Kind != KindVersionMismatch {
@@ -384,7 +383,7 @@ func TestNoSessionHeader(t *testing.T) {
 	})
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
-	if err := c.Initialize(context.Background()); err == nil || !strings.Contains(err.Error(), "Mcp-Session-Id") {
+	if err := c.Initialize(t.Context()); err == nil || !strings.Contains(err.Error(), "Mcp-Session-Id") {
 		t.Fatalf("want session-header error, got %v", err)
 	}
 }
@@ -402,10 +401,10 @@ func TestResourcesList(t *testing.T) {
 	})
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	rs, err := c.ResourcesList(context.Background())
+	rs, err := c.ResourcesList(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,10 +426,10 @@ func TestResourcesRead(t *testing.T) {
 	})
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := c.ResourcesRead(context.Background(), "citadel://ns/x")
+	raw, err := c.ResourcesRead(t.Context(), "citadel://ns/x")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -452,10 +451,10 @@ func TestPromptsList(t *testing.T) {
 	})
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	ps, err := c.PromptsList(context.Background())
+	ps, err := c.PromptsList(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -480,10 +479,10 @@ func TestPromptsGet(t *testing.T) {
 	})
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := c.PromptsGet(context.Background(), "issue_template", map[string]any{"k": "v"})
+	raw, err := c.PromptsGet(t.Context(), "issue_template", map[string]any{"k": "v"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -494,16 +493,16 @@ func TestPromptsGet(t *testing.T) {
 
 func TestResourcesList_NotInitialized(t *testing.T) {
 	c := New("http://nope", "t", time.Second, Options{})
-	if _, err := c.ResourcesList(context.Background()); err == nil || !strings.Contains(err.Error(), "not initialized") {
+	if _, err := c.ResourcesList(t.Context()); err == nil || !strings.Contains(err.Error(), "not initialized") {
 		t.Fatalf("want not-initialized, got %v", err)
 	}
-	if _, err := c.ResourcesRead(context.Background(), "x"); err == nil || !strings.Contains(err.Error(), "not initialized") {
+	if _, err := c.ResourcesRead(t.Context(), "x"); err == nil || !strings.Contains(err.Error(), "not initialized") {
 		t.Fatalf("want not-initialized, got %v", err)
 	}
-	if _, err := c.PromptsList(context.Background()); err == nil || !strings.Contains(err.Error(), "not initialized") {
+	if _, err := c.PromptsList(t.Context()); err == nil || !strings.Contains(err.Error(), "not initialized") {
 		t.Fatalf("want not-initialized, got %v", err)
 	}
-	if _, err := c.PromptsGet(context.Background(), "x", nil); err == nil || !strings.Contains(err.Error(), "not initialized") {
+	if _, err := c.PromptsGet(t.Context(), "x", nil); err == nil || !strings.Contains(err.Error(), "not initialized") {
 		t.Fatalf("want not-initialized, got %v", err)
 	}
 }
@@ -537,7 +536,7 @@ func TestNew_DefaultTimeout(t *testing.T) {
 
 func TestToolsList_NotInitialized(t *testing.T) {
 	c := New("http://nope", "t", time.Second, Options{})
-	if _, err := c.ToolsList(context.Background()); err == nil || !strings.Contains(err.Error(), "not initialized") {
+	if _, err := c.ToolsList(t.Context()); err == nil || !strings.Contains(err.Error(), "not initialized") {
 		t.Fatalf("want not-initialized, got %v", err)
 	}
 }
@@ -550,7 +549,7 @@ func TestCall_ResponseBodyInvalidJSON(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
-	err := c.Initialize(context.Background())
+	err := c.Initialize(t.Context())
 	if err == nil || !strings.Contains(err.Error(), "decode response") {
 		t.Fatalf("want decode response error, got %v", err)
 	}
@@ -562,7 +561,7 @@ func TestCall_HTTP500EmptyBody(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
-	err := c.Initialize(context.Background())
+	err := c.Initialize(t.Context())
 	if err == nil || !strings.Contains(err.Error(), "HTTP 500") {
 		t.Fatalf("want HTTP 500 error, got %v", err)
 	}
@@ -580,10 +579,10 @@ func TestCall_ResultDecodeFails(t *testing.T) {
 	})
 	defer srv.Close()
 	c := New(srv.URL, "t", time.Second, Options{})
-	if err := c.Initialize(context.Background()); err != nil {
+	if err := c.Initialize(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	_, err := c.ToolsList(context.Background())
+	_, err := c.ToolsList(t.Context())
 	if err == nil || !strings.Contains(err.Error(), "decode result") {
 		t.Fatalf("want decode result error, got %v", err)
 	}

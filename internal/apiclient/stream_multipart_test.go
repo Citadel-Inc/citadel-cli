@@ -34,7 +34,7 @@ func TestClient_GetStream_PreservesBinaryBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := c.GetStream(context.Background(), "/asset")
+	resp, err := c.GetStream(t.Context(), "/asset")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestClient_GetStream_ReturnsHTTPError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := c.GetStream(context.Background(), "/missing")
+	resp, err := c.GetStream(t.Context(), "/missing")
 	if resp != nil {
 		if closeErr := resp.Body.Close(); closeErr != nil {
 			t.Fatalf("close response body: %v", closeErr)
@@ -100,7 +100,7 @@ func TestClient_GetStream_RetriesAfterTokenRefresh(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := c.GetStream(context.Background(), "/asset")
+	resp, err := c.GetStream(t.Context(), "/asset")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestClient_GetStream_AbsoluteSignedURLOmitsAPIHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := c.GetStream(context.Background(), signed.URL+"/artifact.bin")
+	resp, err := c.GetStream(t.Context(), signed.URL+"/artifact.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestClient_PostMultipart_StreamsFileField(t *testing.T) {
 	var out struct {
 		ID string `json:"id"`
 	}
-	if err := c.PostMultipart(context.Background(), "/assets", "file", "artifact.bin", strings.NewReader(string(payload)), &out); err != nil {
+	if err := c.PostMultipart(t.Context(), "/assets", "file", "artifact.bin", strings.NewReader(string(payload)), &out); err != nil {
 		t.Fatal(err)
 	}
 	if out.ID != "asset-1" {
@@ -209,7 +209,7 @@ func TestClient_PostMultipart_ReturnsHTTPError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = c.PostMultipart(context.Background(), "/assets", "file", "artifact.bin", strings.NewReader("payload"), nil)
+	err = c.PostMultipart(t.Context(), "/assets", "file", "artifact.bin", strings.NewReader("payload"), nil)
 	if !IsStatus(err, http.StatusRequestEntityTooLarge) {
 		t.Fatalf("error = %v", err)
 	}
@@ -219,7 +219,7 @@ func TestNewMultipartUploadBody_UsesMultipartReader(t *testing.T) {
 	body, contentType := newMultipartUploadBody("file", "artifact.bin", strings.NewReader("payload"))
 	defer func() { _ = body.Close() }()
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", body)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", body)
 	req.Header.Set("Content-Type", contentType)
 	mr, err := multipart.NewReader(req.Body, strings.TrimPrefix(contentType, "multipart/form-data; boundary=")).NextPart()
 	if err != nil {
