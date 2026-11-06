@@ -96,6 +96,36 @@ func terminalHTTP(err error) bool {
 	}
 }
 
+// backoff sleeps before the next reconnect attempt.
+func (s *Stream) backoff(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(s.fail.bump()):
+		return nil
+	}
+}
+
+// connect opens the stream. A transient failure backs off and returns nil with
+// s.br still unset so the caller retries; only terminal errors are returned.
+func (s *Stream) connect(ctx context.Context) error {
+	resp, err := s.api.GetEventStream(ctx, s.path, s.lastID)
+	if err != nil {
+		if terminalHTTP(err) {
+			return err
+		}
+		return s.backoff(ctx)
+	}
+	if !strings.HasPrefix(strings.ToLower(resp.Header.Get("Content-Type")), "text/event-stream") {
+		_ = resp.Body.Close()
+		return ErrNotEventStream
+	}
+	s.fail.reset()
+	s.body = resp.Body
+	s.br = bufio.NewReader(resp.Body)
+	return nil
+}
+
 // Next blocks until one SSE event is decoded, the context is canceled, or a
 // terminal server error is returned. Transient disconnects reconnect internally.
 func (s *Stream) Next(ctx context.Context) (Event, error) {
@@ -105,48 +135,22 @@ func (s *Stream) Next(ctx context.Context) (Event, error) {
 		}
 
 		if s.br == nil {
-			resp, err := s.api.GetEventStream(ctx, s.path, s.lastID)
-			if err != nil {
-				if terminalHTTP(err) {
-					return Event{}, err
-				}
-				select {
-				case <-ctx.Done():
-					return Event{}, ctx.Err()
-				case <-time.After(s.fail.bump()):
-				}
+			if err := s.connect(ctx); err != nil {
+				return Event{}, err
+			}
+			if s.br == nil {
 				continue
 			}
-			if !strings.HasPrefix(strings.ToLower(resp.Header.Get("Content-Type")), "text/event-stream") {
-				_ = resp.Body.Close()
-				return Event{}, ErrNotEventStream
-			}
-			s.fail.reset()
-			s.body = resp.Body
-			s.br = bufio.NewReader(resp.Body)
 		}
 
 		ev, err := readEvent(ctx, s.br)
 		if err != nil {
 			s.closeBody()
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || terminalHTTP(err) {
 				return Event{}, err
 			}
-			if terminalHTTP(err) {
-				return Event{}, err
-			}
-			if errors.Is(err, io.EOF) || errors.Is(err, ErrIdle) {
-				select {
-				case <-ctx.Done():
-					return Event{}, ctx.Err()
-				case <-time.After(s.fail.bump()):
-				}
-				continue
-			}
-			select {
-			case <-ctx.Done():
-				return Event{}, ctx.Err()
-			case <-time.After(s.fail.bump()):
+			if berr := s.backoff(ctx); berr != nil {
+				return Event{}, berr
 			}
 			continue
 		}

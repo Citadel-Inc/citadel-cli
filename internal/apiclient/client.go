@@ -298,15 +298,10 @@ func (c *Client) GetEventStream(ctx context.Context, path, lastEventID string) (
 		}
 		b := ReadErrorBody(resp.Body)
 		_ = resp.Body.Close()
-		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 && c.retryOn401 != nil {
-			newTok, rerr := c.retryOn401(ctx)
-			if rerr != nil {
-				return nil, rerr
-			}
-			if newTok != "" {
-				c.token = newTok
-				continue
-			}
+		if retry, rerr := c.refreshOn401(ctx, resp.StatusCode, attempt); rerr != nil {
+			return nil, rerr
+		} else if retry {
+			continue
 		}
 		return nil, &HTTPError{
 			StatusCode: resp.StatusCode,
@@ -354,33 +349,14 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 			if ignored != "" {
 				_, _ = fmt.Fprintf(os.Stderr, "warning: %s\n", &TokenIgnoredError{Reason: ignored})
 			}
-			if out == nil || resp.StatusCode == http.StatusNoContent {
-				return nil
-			}
-			if raw, ok := out.(*json.RawMessage); ok {
-				b, err := io.ReadAll(resp.Body)
-				if err != nil {
-					return fmt.Errorf("read response: %w", err)
-				}
-				*raw = b
-				return nil
-			}
-			if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-				return fmt.Errorf("decode response: %w", err)
-			}
-			return nil
+			return decodeResponse(resp, out)
 		}
 		b := ReadErrorBody(resp.Body)
 		_ = resp.Body.Close()
-		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 && c.retryOn401 != nil {
-			newTok, rerr := c.retryOn401(ctx)
-			if rerr != nil {
-				return rerr
-			}
-			if newTok != "" {
-				c.token = newTok
-				continue
-			}
+		if retry, rerr := c.refreshOn401(ctx, resp.StatusCode, attempt); rerr != nil {
+			return rerr
+		} else if retry {
+			continue
 		}
 		return &HTTPError{
 			StatusCode: resp.StatusCode,
@@ -389,4 +365,39 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 		}
 	}
 	return errors.New("api client: exhausted 401 retries")
+}
+
+// refreshOn401 asks the retry hook for a new token after the first 401 and
+// reports whether the request should be sent again with it.
+func (c *Client) refreshOn401(ctx context.Context, status, attempt int) (bool, error) {
+	if status != http.StatusUnauthorized || attempt != 0 || c.retryOn401 == nil {
+		return false, nil
+	}
+	newTok, err := c.retryOn401(ctx)
+	if err != nil {
+		return false, err
+	}
+	if newTok == "" {
+		return false, nil
+	}
+	c.token = newTok
+	return true, nil
+}
+
+func decodeResponse(resp *http.Response, out any) error {
+	if out == nil || resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	if raw, ok := out.(*json.RawMessage); ok {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("read response: %w", err)
+		}
+		*raw = b
+		return nil
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("decode response: %w", err)
+	}
+	return nil
 }
