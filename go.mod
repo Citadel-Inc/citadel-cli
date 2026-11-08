@@ -3,9 +3,9 @@ module github.com/Citadel-Inc/citadel-cli
 go 1.27.3
 
 require (
-	github.com/Rethunk-Tech/go-httpkit v0.1.0
-	github.com/Rethunk-Tech/go-keyring v0.1.0
-	github.com/Rethunk-Tech/go-safefs v0.7.1
+	github.com/Rethunk-Tech/go-httpkit v0.3.0
+	github.com/Rethunk-Tech/go-keyring v0.2.0
+	github.com/Rethunk-Tech/go-safefs v0.9.0
 	github.com/aws/aws-sdk-go-v2 v1.47.8
 	github.com/aws/aws-sdk-go-v2/config v1.33.16
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -22,7 +22,7 @@ require (
 )
 
 require (
-	github.com/Rethunk-Tech/go-desktopenv v0.6.0 // indirect
+	github.com/Rethunk-Tech/go-desktopenv v0.9.0 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.16 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.8 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.11 // indirect
