@@ -4,8 +4,8 @@ go 1.27.3
 
 require (
 	github.com/Rethunk-Tech/go-httpkit v0.3.0
-	github.com/Rethunk-Tech/go-keyring v0.2.0
 	github.com/Rethunk-Tech/go-safefs v0.9.0
+	github.com/Totative/go-keyring v0.3.0
 	github.com/aws/aws-sdk-go-v2 v1.47.8
 	github.com/aws/aws-sdk-go-v2/config v1.33.16
 	github.com/golang-jwt/jwt/v5 v5.3.1

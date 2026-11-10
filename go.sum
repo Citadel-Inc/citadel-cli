@@ -2,10 +2,10 @@ github.com/Rethunk-Tech/go-desktopenv v0.9.0 h1:uME9J1cf6cLBLoSsitxWqfWLq+X/hKuM
 github.com/Rethunk-Tech/go-desktopenv v0.9.0/go.mod h1:g3n7aV6s+I9RwrTkMyRKywK6HJy5hdSjItaSf2evl08=
 github.com/Rethunk-Tech/go-httpkit v0.3.0 h1:WifczPJg6anrZ+LTr0UwqnxihJnZIdgm6A+n6d6Uj54=
 github.com/Rethunk-Tech/go-httpkit v0.3.0/go.mod h1:qJZZfD+ejjWm6LwjEXGAUOKEjak1Nx6W3vuZloeZBLM=
-github.com/Rethunk-Tech/go-keyring v0.2.0 h1:8g03JoWs5/Ja4DTQgyJJ7fW5+fH2HZKQDDBjBWoa8jE=
-github.com/Rethunk-Tech/go-keyring v0.2.0/go.mod h1:tKXnfpXNrHBBDokHCl5bXtf9N+bjc3YkkMqXZI8MQx0=
 github.com/Rethunk-Tech/go-safefs v0.9.0 h1:8N3h1QCeRDL/xK4ZjG11Fj/rr0KL5eKS0D+KKTaTNkA=
 github.com/Rethunk-Tech/go-safefs v0.9.0/go.mod h1:au7iteKy+uWtmmbGw58R46RJ6tVmcTMeKFLSDyhFZdw=
+github.com/Totative/go-keyring v0.3.0 h1:5VYcyTd10unpGjuhJgP2EjBsIOItbtipj1qn+MBOwOw=
+github.com/Totative/go-keyring v0.3.0/go.mod h1:q1h9jXCz+ivzMCpqkqywE88CqEIsnGcv0Svr5rR+pXc=
 github.com/aws/aws-sdk-go-v2 v1.47.8 h1:fuClo7Un+Bi0EDTnSIPWxVEoJcze+wkGzNA4Vo3jRcQ=
 github.com/aws/aws-sdk-go-v2 v1.47.8/go.mod h1:I8lFSH4MGrZiw2m7miCrRYHsgpC1+HW8uiVGOiPYPcw=
 github.com/aws/aws-sdk-go-v2/config v1.33.16 h1:fKRsu9Pj2IPIHzTcUdWB7JHY34q9+4XEGCy7WfZaLV4=

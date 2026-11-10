@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/Rethunk-Tech/go-keyring"
+	"github.com/Totative/go-keyring"
 )
 
 const (

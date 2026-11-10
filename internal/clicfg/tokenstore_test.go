@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Rethunk-Tech/go-keyring"
 	"github.com/Rethunk-Tech/go-safefs"
+	"github.com/Totative/go-keyring"
 )
 
 type fakeBackend struct {
