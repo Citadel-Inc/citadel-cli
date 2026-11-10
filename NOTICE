@@ -30,7 +30,7 @@ see each module's repository for the full license text.
 | golang.org/x/* (crypto, sys, term) | BSD-3-Clause | Copyright © The Go Authors |
 | github.com/Rethunk-Tech/go-httpkit | MIT | Copyright © Rethunk.Tech, LLC |
 | github.com/Rethunk-Tech/go-safefs | MIT | Copyright © Rethunk.Tech, LLC |
-| github.com/Totative/go-keyring | Apache-2.0 | Copyright © Rethunk.Tech, LLC |
+| github.com/Totative/go-keyring | Apache-2.0 | Copyright © Damon Blais |
 | github.com/Rethunk-Tech/go-desktopenv | MIT | Copyright © Rethunk.Tech, LLC |
 | github.com/zalando/go-keyring | MIT | Copyright © Zalando SE |
 | github.com/godbus/dbus/v5 | BSD-2-Clause | Copyright © Georg Reinke and contributors |
