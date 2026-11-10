@@ -16,8 +16,9 @@ import (
 	"github.com/Citadel-Inc/citadel-cli/cmd"
 )
 
-// sseServe emits one init event then cancels after the client has had time to read it.
-func sseServe(t *testing.T, path, data string, cancel context.CancelFunc, gotQuery *string) *httptest.Server {
+// sseServe emits one init event and then holds the connection open until the
+// client goes away; the watch helper cancels once the row is printed.
+func sseServe(t *testing.T, path, data string, gotQuery *string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != path {
@@ -33,7 +34,6 @@ func sseServe(t *testing.T, path, data string, cancel context.CancelFunc, gotQue
 			return
 		}
 		fl.Flush()
-		time.AfterFunc(300*time.Millisecond, cancel)
 		<-r.Context().Done()
 	}))
 	t.Cleanup(srv.Close)
@@ -44,7 +44,7 @@ func TestAuditListWatch_ndjsonCarriesEventAndFilters(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
-	srv := sseServe(t, "/audit/events", `{"id":"42","ts":"2026-01-01T00:00:00Z","kind":"repo.create","actor_type":"user","payload":{}}`, cancel, &q)
+	srv := sseServe(t, "/audit/events", `{"id":"42","ts":"2026-01-01T00:00:00Z","kind":"repo.create","actor_type":"user","payload":{}}`, &q)
 	out := runWatchCmdOut(t, ctx, srv.URL, cmd.AuditCmd, "list", "--watch", "--output", "ndjson", "--kind", "repo.*", "--namespace", "acme", "--limit", "5")
 
 	var line struct {
@@ -71,7 +71,7 @@ func TestAuditListWatch_tableRow(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
-	srv := sseServe(t, "/audit/events", `{"id":"42","ts":"2026-01-01T00:00:00Z","kind":"repo.create","actor_slug":"alice","actor_type":"user","payload":{}}`, cancel, &q)
+	srv := sseServe(t, "/audit/events", `{"id":"42","ts":"2026-01-01T00:00:00Z","kind":"repo.create","actor_slug":"alice","actor_type":"user","payload":{}}`, &q)
 	out := runWatchCmdOut(t, ctx, srv.URL, cmd.AuditCmd, "list", "--watch")
 	if !strings.Contains(out, "repo.create") || !strings.Contains(out, "alice") {
 		t.Fatalf("table output %q", out)
@@ -82,7 +82,7 @@ func TestNotificationListWatch_unreadTable(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
-	srv := sseServe(t, "/api/me/notifications", `{"id":"n1","kind":"issue.comment","summary":"New comment","created_at":"2026-01-01T00:00:00Z"}`, cancel, &q)
+	srv := sseServe(t, "/api/me/notifications", `{"id":"n1","kind":"issue.comment","summary":"New comment","created_at":"2026-01-01T00:00:00Z"}`, &q)
 	out := runWatchCmdOut(t, ctx, srv.URL, cmd.NotificationCmd, "list", "--watch", "--unread")
 	if !strings.Contains(out, "New comment") {
 		t.Fatalf("table output %q", out)
@@ -139,7 +139,7 @@ func TestIssueListWatch_ndjsonCarriesRowAndFilters(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
-	srv := sseServe(t, "/namespaces/acme/issues", `{"id":"11111111-1111-1111-1111-111111111111","number":7,"title":"Broken build","state":"open","updated_at":"2026-01-01T00:00:00Z"}`, cancel, &q)
+	srv := sseServe(t, "/namespaces/acme/issues", `{"id":"11111111-1111-1111-1111-111111111111","number":7,"title":"Broken build","state":"open","updated_at":"2026-01-01T00:00:00Z"}`, &q)
 	out := runWatchCmdOut(t, ctx, srv.URL, cmd.IssueCmd, "list", "-R", "acme", "--watch", "--output", "ndjson", "--state", "closed", "--label", "bug", "--assignee", "alice", "--limit", "5")
 
 	var line struct {
@@ -166,7 +166,7 @@ func TestIssueListWatch_tableRow(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
-	srv := sseServe(t, "/namespaces/acme/issues", `{"id":"11111111-1111-1111-1111-111111111111","number":7,"title":"Broken build","state":"open","updated_at":"2026-01-01T00:00:00Z"}`, cancel, &q)
+	srv := sseServe(t, "/namespaces/acme/issues", `{"id":"11111111-1111-1111-1111-111111111111","number":7,"title":"Broken build","state":"open","updated_at":"2026-01-01T00:00:00Z"}`, &q)
 	out := runWatchCmdOut(t, ctx, srv.URL, cmd.IssueCmd, "list", "-R", "acme", "--watch")
 	if !strings.Contains(out, "Broken build") || !strings.Contains(out, "STATE") {
 		t.Fatalf("table output %q", out)
@@ -177,7 +177,7 @@ func TestPRListWatch_tableRowAndState(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
-	srv := sseServe(t, "/namespaces/acme/pulls", `{"id":"22222222-2222-2222-2222-222222222222","number":3,"title":"Add feature","state":"open","source_ref":"feat","target_ref":"main","author_id":"33333333-3333-3333-3333-333333333333","created_at":"2026-01-01T00:00:00Z","labels":[],"assignees":[]}`, cancel, &q)
+	srv := sseServe(t, "/namespaces/acme/pulls", `{"id":"22222222-2222-2222-2222-222222222222","number":3,"title":"Add feature","state":"open","source_ref":"feat","target_ref":"main","author_id":"33333333-3333-3333-3333-333333333333","created_at":"2026-01-01T00:00:00Z","labels":[],"assignees":[]}`, &q)
 	out := runWatchCmdOut(t, ctx, srv.URL, cmd.PrCmd, "list", "-R", "acme", "--watch", "--state", "merged")
 	if !strings.Contains(out, "Add feature") || !strings.Contains(out, "feat") {
 		t.Fatalf("table output %q", out)
@@ -191,7 +191,7 @@ func TestPRListWatch_ndjson(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var q string
-	srv := sseServe(t, "/namespaces/acme/pulls", `{"id":"22222222-2222-2222-2222-222222222222","number":3,"title":"Add feature","state":"open"}`, cancel, &q)
+	srv := sseServe(t, "/namespaces/acme/pulls", `{"id":"22222222-2222-2222-2222-222222222222","number":3,"title":"Add feature","state":"open"}`, &q)
 	out := runWatchCmdOut(t, ctx, srv.URL, cmd.PrCmd, "list", "-R", "acme", "--watch", "--output", "ndjson")
 	var line struct {
 		Type    string `json:"type"`

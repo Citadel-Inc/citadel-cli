@@ -330,11 +330,7 @@ func TestHookSessionStart_HTTPSCredential_Hermetic(t *testing.T) {
 	}
 
 	// The helper is the test binary here; point it at a real build of the CLI.
-	bin := filepath.Join(t.TempDir(), "citadel-cli")
-	build := exec.CommandContext(t.Context(), "go", "build", "-o", bin, "..") //nolint:gosec // fixed go verb, test-owned path
-	if b, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("go build: %v %s", err, b)
-	}
+	bin := buildCLI(t)
 	self, _ := os.Executable()
 	script := strings.ReplaceAll(string(env), "'"+self+"'", "'"+bin+"'")
 	fill := exec.CommandContext(t.Context(), "bash", "-c", `set -e; eval "$ENVSCRIPT"; printf 'protocol=https\nhost=git.src.land\n\n' | git credential fill`)
@@ -368,14 +364,14 @@ func TestEveryBinaryHarnessUsesCLIEnv(t *testing.T) {
 	}
 }
 
+// buildCLI is the CLI binary built once for the whole test binary; a few tests
+// launch the real CLI, and rebuilding it per test cost more than they assert.
 func buildCLI(t *testing.T) string {
 	t.Helper()
-	bin := filepath.Join(t.TempDir(), "citadel-cli")
-	build := exec.CommandContext(t.Context(), "go", "build", "-o", bin, "..") //nolint:gosec // fixed go verb, test-owned path
-	if b, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("go build: %v %s", err, b)
+	if cliBinErr != nil {
+		t.Fatalf("%v", cliBinErr)
 	}
-	return bin
+	return cliBinPath
 }
 
 // The ssh wrapper offers the session key to a Citadel host only; any other

@@ -57,14 +57,19 @@ func runWatchCmd(t *testing.T, ctx context.Context, srvURL string, verb *cobra.C
 	_ = runWatchCmdOut(t, ctx, srvURL, verb, args...)
 }
 
-// runWatchCmdOut is runWatchCmd that also returns captured stdout.
+// runWatchCmdOut is runWatchCmd that also returns captured stdout. The watch is
+// cancelled as soon as the command writes its first line, which is proof it has
+// read the event; a fixed delay would otherwise dominate these tests.
 func runWatchCmdOut(t *testing.T, ctx context.Context, srvURL string, verb *cobra.Command, args ...string) string {
 	t.Helper()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_SERVER", srvURL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
 
-	var out bytes.Buffer
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var out writtenBuffer
+	out.onWrite = cancel
 	resetFlagsRecursive(verb)
 	resetCtxRecursive(verb, ctx)
 	setOutRecursive(verb, &out, io.Discard)
@@ -90,6 +95,21 @@ func runWatchCmdOut(t *testing.T, ctx context.Context, srvURL string, verb *cobr
 		t.Fatal("timed out waiting for watch command to exit")
 	}
 	return out.String()
+}
+
+// writtenBuffer is a bytes.Buffer that calls onWrite once, on its first write.
+type writtenBuffer struct {
+	bytes.Buffer
+	onWrite func()
+}
+
+func (b *writtenBuffer) Write(p []byte) (int, error) {
+	n, err := b.Buffer.Write(p)
+	if b.onWrite != nil {
+		b.onWrite()
+		b.onWrite = nil
+	}
+	return n, err
 }
 
 // ── agent list --watch ────────────────────────────────────────────────────────

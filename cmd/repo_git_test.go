@@ -64,7 +64,7 @@ func TestRepoClone_InvokesGitCloneWithSSHRemote(t *testing.T) {
 	defer cleanup()
 
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	t.Setenv("CITADEL_SERVER", "https://mcp.src.land")
+	t.Setenv("CITADEL_SERVER", repoAPIServer(t).URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
 
 	root := repoTestRoot(t)
@@ -101,7 +101,7 @@ func TestRepoCloneIsBloblessForAgentSessions(t *testing.T) {
 	defer cleanup()
 
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	t.Setenv("CITADEL_SERVER", "https://mcp.src.land")
+	t.Setenv("CITADEL_SERVER", repoAPIServer(t).URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
 
 	root := repoTestRoot(t)
@@ -300,7 +300,7 @@ func TestRepoPull_ExplicitRepoUsesCurrentBranch(t *testing.T) {
 	defer cleanup()
 
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	t.Setenv("CITADEL_SERVER", "https://mcp.src.land")
+	t.Setenv("CITADEL_SERVER", repoAPIServer(t).URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
 
 	root := repoTestRoot(t)
@@ -369,9 +369,11 @@ func patchGitExec(t *testing.T) (string, func()) {
 		cmdArgs := append([]string{"-test.run=TestHelperProcessGit", "--", name}, args...)
 		//nolint:gosec // The test helper re-executes the current binary with controlled arguments.
 		cmd := exec.CommandContext(ctx, os.Args[0], cmdArgs...)
+		// atexit_sleep_ms=0: a race binary otherwise sleeps a second per git call.
 		cmd.Env = append(os.Environ(),
 			"GO_WANT_HELPER_PROCESS_GIT=1",
 			"CITADEL_GIT_TEST_LOG="+logPath,
+			"GORACE=atexit_sleep_ms=0",
 		)
 		return cmd
 	}
@@ -380,6 +382,27 @@ func patchGitExec(t *testing.T) (string, func()) {
 		execCommandContext = oldExec
 		execLookPath = oldLookPath
 	}
+}
+
+// repoAPIServer answers the repo lookup `repo clone` and `repo pull` make before
+// they run git. Pointing them at the real host made these tests pay a network
+// round trip for an answer they never assert on.
+func repoAPIServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/namespaces/") {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"parent_slug":    "myorg",
+				"slug":           "r1",
+				"visibility":     "private",
+				"git_ssh_remote": "git@src.land:myorg/r1.git",
+			})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	return srv
 }
 
 func readGitLog(t *testing.T, logPath string) []fakeGitInvocation {

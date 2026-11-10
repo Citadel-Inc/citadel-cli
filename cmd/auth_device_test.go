@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -114,6 +115,7 @@ func TestRunDeviceLogin_SuccessStoresAgentToken(t *testing.T) {
 
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	stubDevicePollClock(t, 0) // the advertised interval would otherwise be a real one-second wait
 	var cfg clicfg.Config
 	var out bytes.Buffer
 	cmd := &cobra.Command{}
@@ -193,11 +195,47 @@ func TestPollDeviceToken_Expires(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
+	// The clock jumps past the one-second window on the first sleep, so the
+	// deadline is reached without the test waiting for it.
+	stubDevicePollClock(t, 2*time.Second)
+
 	_, err := pollDeviceTokenWithInterval(t.Context(), srv.URL, deviceAuthorizationResponse{
 		DeviceCode: "device-secret",
 		ExpiresIn:  1,
 	}, 2*time.Second)
 	if err == nil || !strings.Contains(err.Error(), "device authorization expired") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+// stubDevicePollClock makes each device poll sleep advance the clock by step
+// instead of waiting, and restores real time when the test ends.
+func stubDevicePollClock(t *testing.T, step time.Duration) {
+	t.Helper()
+	clock := time.Now()
+	oldNow, oldSleep := devicePollNow, devicePollSleep
+	devicePollNow = func() time.Time { return clock }
+	devicePollSleep = func(context.Context, time.Duration) error {
+		clock = clock.Add(step)
+		return nil
+	}
+	t.Cleanup(func() { devicePollNow, devicePollSleep = oldNow, oldSleep })
+}
+
+func TestPollDeviceToken_StopsOnCanceledContext(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("token endpoint called after the poll was canceled: %s %s", r.Method, r.URL.Path)
+		http.Error(w, "unexpected poll", http.StatusBadRequest)
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err := pollDeviceTokenWithInterval(ctx, srv.URL, deviceAuthorizationResponse{
+		DeviceCode: "device-secret",
+		ExpiresIn:  60,
+	}, time.Hour)
+	if err == nil || !strings.Contains(err.Error(), "context canceled") {
 		t.Fatalf("error = %v", err)
 	}
 }

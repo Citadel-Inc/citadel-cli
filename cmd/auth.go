@@ -586,32 +586,38 @@ func pollDeviceToken(ctx context.Context, citadelBaseURL string, device deviceAu
 	return pollDeviceTokenWithInterval(ctx, citadelBaseURL, device, interval)
 }
 
+// devicePollNow and devicePollSleep are replaced by this package's tests so the
+// approval deadline is checked without waiting it out.
+var (
+	devicePollNow   = time.Now
+	devicePollSleep = func(ctx context.Context, d time.Duration) error {
+		timer := time.NewTimer(d)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+			return nil
+		}
+	}
+)
+
 func pollDeviceTokenWithInterval(ctx context.Context, citadelBaseURL string, device deviceAuthorizationResponse, interval time.Duration) (pkceTokenResponse, error) {
 	expiresIn := time.Duration(device.ExpiresIn) * time.Second
 	if expiresIn <= 0 {
 		expiresIn = 30 * time.Minute
 	}
-	deadline := time.Now().Add(expiresIn)
+	deadline := devicePollNow().Add(expiresIn)
 
 	for {
-		remaining := time.Until(deadline)
+		remaining := deadline.Sub(devicePollNow())
 		if remaining <= 0 {
 			return pkceTokenResponse{}, errors.New("device authorization expired while waiting for approval")
 		}
-		wait := min(interval, remaining)
-		timer := time.NewTimer(wait)
-		select {
-		case <-ctx.Done():
-			if !timer.Stop() {
-				select {
-				case <-timer.C:
-				default:
-				}
-			}
-			return pkceTokenResponse{}, fmt.Errorf("device token poll: %w", ctx.Err())
-		case <-timer.C:
+		if err := devicePollSleep(ctx, min(interval, remaining)); err != nil {
+			return pkceTokenResponse{}, fmt.Errorf("device token poll: %w", err)
 		}
-		if time.Now().After(deadline) {
+		if !devicePollNow().Before(deadline) {
 			return pkceTokenResponse{}, errors.New("device authorization expired while waiting for approval")
 		}
 
