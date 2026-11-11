@@ -1,6 +1,6 @@
 module github.com/Citadel-Inc/citadel-cli
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/Rethunk-Tech/go-httpkit v0.3.0
