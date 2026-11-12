@@ -1,5 +1,5 @@
-github.com/Rethunk-Tech/go-desktopenv v0.9.0 h1:uME9J1cf6cLBLoSsitxWqfWLq+X/hKuMYNl12mrhZIA=
-github.com/Rethunk-Tech/go-desktopenv v0.9.0/go.mod h1:g3n7aV6s+I9RwrTkMyRKywK6HJy5hdSjItaSf2evl08=
+github.com/Rethunk-Tech/go-desktopenv v0.9.1 h1:1VUkePShCoBSBH3FGz5E4FpEj1IG9hfjGs+t1K5DvkE=
+github.com/Rethunk-Tech/go-desktopenv v0.9.1/go.mod h1:Hr0/FZV8xWHGtSEIDrI+NwdpyTn43B2LWqrh+POcHik=
 github.com/Rethunk-Tech/go-httpkit v0.3.0 h1:WifczPJg6anrZ+LTr0UwqnxihJnZIdgm6A+n6d6Uj54=
 github.com/Rethunk-Tech/go-httpkit v0.3.0/go.mod h1:qJZZfD+ejjWm6LwjEXGAUOKEjak1Nx6W3vuZloeZBLM=
 github.com/Rethunk-Tech/go-safefs v0.9.0 h1:8N3h1QCeRDL/xK4ZjG11Fj/rr0KL5eKS0D+KKTaTNkA=
