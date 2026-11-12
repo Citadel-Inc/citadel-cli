@@ -191,6 +191,10 @@ func clearStoredCredentials() error {
 	})
 }
 
+func isInvalidGrantError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "invalid_grant")
+}
+
 // refreshSessionToken renews a login-only (no agent) session from its refresh token.
 func refreshSessionToken(ctx context.Context, cmd *cobra.Command, cfg clicfg.Config) (string, error) {
 	if strings.TrimSpace(cfg.RefreshToken) == "" {
@@ -212,7 +216,9 @@ func refreshSessionToken(ctx context.Context, cmd *cobra.Command, cfg clicfg.Con
 			if err == nil {
 				err = errors.New("refresh token response missing access_token")
 			}
-			clearCredentials(cfg)
+			if isInvalidGrantError(err) {
+				clearCredentials(cfg)
+			}
 			refreshErr = err
 			return nil
 		}
@@ -262,8 +268,10 @@ func rotateAgentToken(ctx context.Context, cmd *cobra.Command, cfg clicfg.Config
 		var humanErr error
 		newTok, rotatedRefresh, humanErr = rotateWithLogin(ctx, cmd, cfg, uid)
 		if humanErr != nil {
-			if clearErr := clearStoredCredentials(); clearErr != nil {
-				return "", fmt.Errorf("%w: clear credentials: %w", errSessionExpired, clearErr)
+			if isInvalidGrantError(humanErr) {
+				if clearErr := clearStoredCredentials(); clearErr != nil {
+					return "", fmt.Errorf("%w: clear credentials: %w", errSessionExpired, clearErr)
+				}
 			}
 			return "", fmt.Errorf("%w: %w", errSessionExpired, humanErr)
 		}
@@ -308,6 +316,14 @@ func rotateWithLogin(ctx context.Context, cmd *cobra.Command, cfg clicfg.Config,
 	next := strings.TrimSpace(jwtResp.RefreshToken)
 	if next == "" {
 		next = refresh
+	}
+	// The refresh token is spent after a successful exchange; keep the
+	// replacement even if rotate-token fails next.
+	if err := clicfg.Update(func(stored *clicfg.Config) error {
+		stored.RefreshToken = next
+		return nil
+	}); err != nil {
+		return newTok, next, fmt.Errorf("save rotated refresh token: %w", err)
 	}
 	work := cfg
 	work.ServerURL = serverURL
