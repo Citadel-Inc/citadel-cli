@@ -13,48 +13,49 @@ MODULE="github.com/Citadel-Inc/citadel-cli"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-# A race binary sleeps 1s at exit by default, and the fake-git tests re-exec the test binary per git call.
-GORACE=atexit_sleep_ms=0 go test -race ./... -cover -covermode=atomic >"$tmp" 2>&1 || {
-	cat "$tmp"
-	exit 1
+# A race binary sleeps 1s at exit by default. -vet=off: vet is its own gate; the
+# default go-test vet pass compiles again and contended with `go vet ./...`.
+GORACE=atexit_sleep_ms=0 go test -vet=off -race ./... -cover -covermode=atomic >"$tmp" 2>&1 || {
+  cat "$tmp"
+  exit 1
 }
 
 fail=0
 summary_rows=()
 
 while IFS= read -r line; do
-	[[ "$line" =~ coverage:[[:space:]]+[0-9.]+% ]] || continue
-	pkg="$(awk '{print $2}' <<<"$line")"
-	if [[ -n "$SKIP" ]] && grep -Eq "$SKIP" <<<"$pkg"; then
-		continue
-	fi
-	pct="$(sed -n 's/.*coverage: \([0-9.]*\)%.*/\1/p' <<<"$line")"
-	if awk -v p="$pct" -v m="$MIN" 'BEGIN { exit !(p + 0 >= m + 0) }'; then
-		gate="✅"
-	else
-		echo "coverage gate: ${pkg} ${pct}% < ${MIN}%" >&2
-		fail=1
-		gate="❌"
-	fi
-	short=".${pkg#"${MODULE}"}"
-	summary_rows+=("| \`${short}\` | ${pct}% | ${gate} |")
+  [[ "$line" =~ coverage:[[:space:]]+[0-9.]+% ]] || continue
+  pkg="$(awk '{print $2}' <<<"$line")"
+  if [[ -n "$SKIP" ]] && grep -Eq "$SKIP" <<<"$pkg"; then
+    continue
+  fi
+  pct="$(sed -n 's/.*coverage: \([0-9.]*\)%.*/\1/p' <<<"$line")"
+  if awk -v p="$pct" -v m="$MIN" 'BEGIN { exit !(p + 0 >= m + 0) }'; then
+    gate="✅"
+  else
+    echo "coverage gate: ${pkg} ${pct}% < ${MIN}%" >&2
+    fail=1
+    gate="❌"
+  fi
+  short=".${pkg#"${MODULE}"}"
+  summary_rows+=("| \`${short}\` | ${pct}% | ${gate} |")
 done <"$tmp"
 
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
-	{
-		echo "## Coverage (min ${MIN}%)"
-		echo ""
-		echo "| Package | Coverage | Gate |"
-		echo "|---------|----------|------|"
-		for row in "${summary_rows[@]}"; do
-			echo "$row"
-		done
-	} >>"$GITHUB_STEP_SUMMARY"
+  {
+    echo "## Coverage (min ${MIN}%)"
+    echo ""
+    echo "| Package | Coverage | Gate |"
+    echo "|---------|----------|------|"
+    for row in "${summary_rows[@]}"; do
+      echo "$row"
+    done
+  } >>"$GITHUB_STEP_SUMMARY"
 fi
 
 if [[ "$fail" -ne 0 ]]; then
-	echo "check-package-coverage: FAILED (minimum ${MIN}% per package)" >&2
-	exit 1
+  echo "check-package-coverage: FAILED (minimum ${MIN}% per package)" >&2
+  exit 1
 fi
 
 echo "check-package-coverage: OK (all packages >= ${MIN}%)"

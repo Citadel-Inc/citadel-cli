@@ -7,11 +7,17 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func TestMain(m *testing.M) {
+	retryBaseBackoff = 0
+	os.Exit(m.Run())
+}
 
 // TestRetryOn503 asserts an idempotent GET retries through a 503 and
 // succeeds on the next attempt.

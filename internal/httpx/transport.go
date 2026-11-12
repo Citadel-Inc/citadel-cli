@@ -42,10 +42,11 @@ func Stack(base http.RoundTripper, opts Options) http.RoundTripper {
 
 // Default retry policy for idempotent verbs against transient failures.
 const (
-	retryAttempts    = 3
-	retryBaseBackoff = 250 * time.Millisecond
-	retryMaxBackoff  = 4 * time.Second
+	retryAttempts   = 3
+	retryMaxBackoff = 4 * time.Second
 )
+
+var retryBaseBackoff = 250 * time.Millisecond
 
 // retryableStatus reports whether a response status code is worth retrying on
 // an idempotent verb. 408, 425, 429, and 5xx (except 501 Not Implemented).
