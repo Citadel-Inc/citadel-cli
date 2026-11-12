@@ -25,11 +25,6 @@ var (
 func TestMain(m *testing.M) {
 	apiclient.ProbeLoopback = false
 	cmd.NewRootCmd()
-	// The fake git helper is this same binary re-executed per git call; building
-	// the CLI in each of those children would cost more than the tests using it.
-	if os.Getenv("GO_WANT_HELPER_PROCESS_GIT") == "1" {
-		os.Exit(m.Run())
-	}
 	os.Exit(runWithCLI(m))
 }
 

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -18,6 +19,18 @@ import (
 
 	"github.com/Citadel-Inc/citadel-cli/internal/mcptest"
 )
+
+func TestMain(m *testing.M) {
+	waitRetry = func(ctx context.Context, _ int) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			return nil
+		}
+	}
+	os.Exit(m.Run())
+}
 
 // failMethod makes the first n POSTs carrying the JSON-RPC method answer with
 // status instead of reaching the MCP handler, and counts every POST for it.
@@ -56,6 +69,7 @@ func dial(t *testing.T, url, token string) *Client {
 }
 
 func TestInitializeAndToolsList_SendBearerToken(t *testing.T) {
+	t.Parallel()
 	s := mcptest.NewServer()
 	mcptest.Tool(s, "get_namespace", "Look up a namespace", func(map[string]any) (*mcp.CallToolResult, error) {
 		return textResult("ok"), nil
@@ -84,8 +98,10 @@ func TestInitializeAndToolsList_SendBearerToken(t *testing.T) {
 }
 
 func TestToolsList_RetriesTransientStatus(t *testing.T) {
+	t.Parallel()
 	for _, status := range []int{http.StatusServiceUnavailable, http.StatusInternalServerError} {
 		t.Run(http.StatusText(status), func(t *testing.T) {
+			t.Parallel()
 			s := mcptest.NewServer()
 			mcptest.Tool(s, "t1", "", func(map[string]any) (*mcp.CallToolResult, error) { return textResult("x"), nil })
 			var seen atomic.Int32
@@ -103,6 +119,7 @@ func TestToolsList_RetriesTransientStatus(t *testing.T) {
 }
 
 func TestToolsList_GivesUpAfterMaxAttempts(t *testing.T) {
+	t.Parallel()
 	var seen atomic.Int32
 	srv := mcptest.Serve(t, mcptest.NewServer(), failMethod("tools/list", http.StatusServiceUnavailable, 100, &seen))
 	c := dial(t, srv.URL, "t")
@@ -115,6 +132,7 @@ func TestToolsList_GivesUpAfterMaxAttempts(t *testing.T) {
 }
 
 func TestToolsCall_ResultAndRaw(t *testing.T) {
+	t.Parallel()
 	s := mcptest.NewServer()
 	var got map[string]any
 	mcptest.Tool(s, "echo", "", func(args map[string]any) (*mcp.CallToolResult, error) {
@@ -144,6 +162,7 @@ func TestToolsCall_ResultAndRaw(t *testing.T) {
 }
 
 func TestToolsCall_NeverRetried(t *testing.T) {
+	t.Parallel()
 	s := mcptest.NewServer()
 	mcptest.Tool(s, "t1", "", func(map[string]any) (*mcp.CallToolResult, error) { return textResult("x"), nil })
 	var seen atomic.Int32
@@ -158,6 +177,7 @@ func TestToolsCall_NeverRetried(t *testing.T) {
 }
 
 func TestInitialize_NotRetried(t *testing.T) {
+	t.Parallel()
 	var seen atomic.Int32
 	srv := mcptest.Serve(t, mcptest.NewServer(), failMethod("initialize", http.StatusServiceUnavailable, 1, &seen))
 	c := New(srv.URL+"/mcp", "t", 5*time.Second, Options{})
@@ -170,6 +190,7 @@ func TestInitialize_NotRetried(t *testing.T) {
 }
 
 func TestUnauthorizedHTTP401(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
@@ -181,6 +202,7 @@ func TestUnauthorizedHTTP401(t *testing.T) {
 }
 
 func TestUnauthorizedMidSession(t *testing.T) {
+	t.Parallel()
 	s := mcptest.NewServer()
 	var revoke atomic.Bool
 	srv := mcptest.Serve(t, s, func(next http.Handler) http.Handler {
@@ -203,6 +225,7 @@ func TestUnauthorizedMidSession(t *testing.T) {
 // that wrap a *mcpclient.Error with fmt.Errorf("...: %w", err) must still
 // classify as unauthorized.
 func TestIsUnauthorized_UnwrapsWrapped(t *testing.T) {
+	t.Parallel()
 	inner := &Error{Kind: KindUnauthorized, Message: "bad token"}
 	wrapped := fmt.Errorf("mcp call failed: %w", inner)
 	if !IsUnauthorized(wrapped) {
@@ -214,6 +237,7 @@ func TestIsUnauthorized_UnwrapsWrapped(t *testing.T) {
 }
 
 func TestJSONRPCErrorFromServerIsClassified(t *testing.T) {
+	t.Parallel()
 	srv := mcptest.Serve(t, mcptest.NewServer(), nil)
 	c := dial(t, srv.URL, "t")
 	_, err := c.ResourcesRead(t.Context(), "citadel://missing")
@@ -246,8 +270,10 @@ func rewriteProtocol(to string) func(http.Handler) http.Handler {
 }
 
 func TestVersionMismatch(t *testing.T) {
+	t.Parallel()
 	for _, server := range []string{"2025-06-18", "1999-01-01"} {
 		t.Run(server, func(t *testing.T) {
+			t.Parallel()
 			srv := mcptest.Serve(t, mcptest.NewServer(), rewriteProtocol(server))
 			c := New(srv.URL+"/mcp", "t", 5*time.Second, Options{})
 			err := c.Initialize(t.Context())
@@ -260,6 +286,7 @@ func TestVersionMismatch(t *testing.T) {
 }
 
 func TestResourcesListAndRead(t *testing.T) {
+	t.Parallel()
 	s := mcptest.NewServer()
 	s.AddResource(&mcp.Resource{URI: "citadel://ns/x", Name: "x", Description: "desc", MIMEType: "text/plain"},
 		func(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
@@ -284,6 +311,7 @@ func TestResourcesListAndRead(t *testing.T) {
 }
 
 func TestPromptsListAndGet(t *testing.T) {
+	t.Parallel()
 	s := mcptest.NewServer()
 	var gotArgs map[string]string
 	s.AddPrompt(&mcp.Prompt{Name: "issue_template", Description: "Open an issue", Arguments: []*mcp.PromptArgument{{Name: "topic"}}},
@@ -316,6 +344,7 @@ func TestPromptsListAndGet(t *testing.T) {
 }
 
 func TestNotInitialized(t *testing.T) {
+	t.Parallel()
 	c := New("http://nope", "t", time.Second, Options{})
 	checks := map[string]func() error{
 		"ToolsList":     func() error { _, err := c.ToolsList(t.Context()); return err },
@@ -333,6 +362,7 @@ func TestNotInitialized(t *testing.T) {
 }
 
 func TestClassifyJSONRPCError_AllKinds(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		code int
 		want Kind
@@ -353,6 +383,7 @@ func TestClassifyJSONRPCError_AllKinds(t *testing.T) {
 }
 
 func TestNew_DefaultTimeout(t *testing.T) {
+	t.Parallel()
 	c := New("http://example.test", "t", 0, Options{})
 	if c.http.Timeout != 60*time.Second {
 		t.Fatalf("default timeout: got %v", c.http.Timeout)
@@ -360,9 +391,11 @@ func TestNew_DefaultTimeout(t *testing.T) {
 }
 
 func TestTimeoutSurfacesAsError(t *testing.T) {
+	t.Parallel()
+	block := make(chan struct{})
 	s := mcptest.NewServer()
 	mcptest.Tool(s, "slow", "", func(map[string]any) (*mcp.CallToolResult, error) {
-		time.Sleep(500 * time.Millisecond)
+		<-block
 		return textResult("late"), nil
 	})
 	srv := mcptest.Serve(t, s, nil)
@@ -371,7 +404,9 @@ func TestTimeoutSurfacesAsError(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = c.Close() })
-	if _, err := c.ToolsCall(t.Context(), "slow", nil); err == nil {
+	_, err := c.ToolsCall(t.Context(), "slow", nil)
+	close(block)
+	if err == nil {
 		t.Fatal("want timeout error")
 	}
 }

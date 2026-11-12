@@ -272,16 +272,17 @@ func assertDeployTokenListWatch(t *testing.T, path, jsonData, wantID string, ver
 	t.Setenv("CITADEL_SERVER", srv.URL)
 	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
 
-	out := &safeStdout{}
+	var out writtenBuffer
+	out.onWrite = cancel
 	resetFlagsRecursive(verb)
 	resetCtxRecursive(verb, ctx)
-	setOutRecursive(verb, out, io.Discard)
+	setOutRecursive(verb, &out, io.Discard)
 
 	root := &cobra.Command{Use: "test"}
 	addTestRootGroups(root)
 	root.AddCommand(verb)
 	root.SetArgs(append([]string{verb.Name()}, args...))
-	root.SetOut(out)
+	root.SetOut(&out)
 	root.SetErr(io.Discard)
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -289,15 +290,6 @@ func assertDeployTokenListWatch(t *testing.T, path, jsonData, wantID string, ver
 	errCh := make(chan error, 1)
 	go func() { errCh <- root.ExecuteContext(ctx) }()
 
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		if strings.Contains(out.String(), wantID) {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	got := out.String()
-	cancel()
 	select {
 	case err := <-errCh:
 		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
@@ -306,6 +298,7 @@ func assertDeployTokenListWatch(t *testing.T, path, jsonData, wantID string, ver
 	case <-time.After(30 * time.Second):
 		t.Fatal("timed out waiting for watch command to exit")
 	}
+	got := out.String()
 
 	if !strings.Contains(got, `"type":"init"`) || !strings.Contains(got, wantID) {
 		t.Fatalf("expected ndjson init payload with %s, got: %s", wantID, got)

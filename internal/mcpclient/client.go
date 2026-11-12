@@ -282,7 +282,9 @@ func (c *Client) transient(ctx context.Context, err error) bool {
 		errors.Is(err, io.ErrUnexpectedEOF)
 }
 
-func waitRetry(ctx context.Context, attempt int) error {
+var waitRetry = waitRetryPause
+
+func waitRetryPause(ctx context.Context, attempt int) error {
 	timer := time.NewTimer(100 * time.Millisecond * time.Duration(1<<attempt))
 	defer timer.Stop()
 	select {

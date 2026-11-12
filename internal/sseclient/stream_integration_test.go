@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
 	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
@@ -82,10 +81,7 @@ func TestStream_Next_singleEventThenCancel(t *testing.T) {
 	if ev.Type != "add" || ev.ID != "7" || string(ev.Data) != `{"x":1}` {
 		t.Fatalf("ev = %#v", ev)
 	}
-	go func() {
-		time.Sleep(20 * time.Millisecond)
-		cancel()
-	}()
+	cancel()
 	_, err = s.Next(ctx)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("want canceled, got %v", err)

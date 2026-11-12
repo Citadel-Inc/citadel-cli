@@ -20,14 +20,22 @@ import (
 )
 
 type safeStdout struct {
-	mu sync.Mutex
-	b  strings.Builder
+	mu     sync.Mutex
+	b      strings.Builder
+	notify chan struct{}
 }
 
 func (s *safeStdout) Write(p []byte) (int, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.b.Write(p)
+	n, err := s.b.Write(p)
+	s.mu.Unlock()
+	if s.notify != nil {
+		select {
+		case s.notify <- struct{}{}:
+		default:
+		}
+	}
+	return n, err
 }
 
 func (s *safeStdout) String() string {
@@ -92,7 +100,7 @@ func TestRepoListWatch_scriptedSSESequence_ndjson(t *testing.T) {
 	t.Setenv("CITADEL_ACCESS_TOKEN", "tok")
 
 	ctx, cancel := context.WithCancel(t.Context())
-	out := &safeStdout{}
+	out := &safeStdout{notify: make(chan struct{}, 8)}
 	resetFlagsRecursive(cmd.RepoCmd)
 	resetCtxRecursive(cmd.RepoCmd, ctx)
 	setOutRecursive(cmd.RepoCmd, out, io.Discard)
@@ -121,29 +129,25 @@ func TestRepoListWatch_scriptedSSESequence_ndjson(t *testing.T) {
 	}()
 
 	wantTypes := []string{"init", "init", "init", "add", "update", "remove", "add"}
-	// Under -race the client reconnect path can be slow; keep polling only stdout here
-	// (never compete with defer on errCh — that duplicated reads and hid real failures).
 	deadline := time.After(90 * time.Second)
-	tick := time.NewTicker(25 * time.Millisecond)
-	defer tick.Stop()
-
-waitLoop:
-	for {
+	match := func() bool {
+		types := ndjsonWatchEventTypes(out.String())
+		if len(types) < len(wantTypes) {
+			return false
+		}
+		for i := range wantTypes {
+			if types[i] != wantTypes[i] {
+				t.Fatalf("event %d: got type %q want %q; stdout=%q", i, types[i], wantTypes[i], out.String())
+			}
+		}
+		return true
+	}
+	for !match() {
 		select {
 		case <-deadline:
 			types := ndjsonWatchEventTypes(out.String())
 			t.Fatalf("timeout: got types=%v (want %d); stdout=%q resume=%v", types, len(wantTypes), out.String(), sawResume.Load())
-		case <-tick.C:
-			types := ndjsonWatchEventTypes(out.String())
-			if len(types) < len(wantTypes) {
-				continue waitLoop
-			}
-			for i := range wantTypes {
-				if types[i] != wantTypes[i] {
-					t.Fatalf("event %d: got type %q want %q; stdout=%q", i, types[i], wantTypes[i], out.String())
-				}
-			}
-			break waitLoop
+		case <-out.notify:
 		}
 	}
 

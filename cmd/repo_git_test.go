@@ -22,42 +22,6 @@ type fakeGitInvocation struct {
 	Env  map[string]string `json:"env"`
 }
 
-func TestHelperProcessGit(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS_GIT") != "1" {
-		return
-	}
-	logPath := os.Getenv("CITADEL_GIT_TEST_LOG")
-	args := os.Args
-	for i := range args {
-		if args[i] == "--" {
-			args = args[i+1:]
-			break
-		}
-	}
-	if len(args) == 0 {
-		os.Exit(2)
-	}
-	env := map[string]string{}
-	for _, key := range []string{"GIT_ASKPASS", "GIT_TERMINAL_PROMPT", "SSH_ASKPASS"} {
-		env[key] = os.Getenv(key)
-	}
-	//nolint:gosec // logPath is a test-created temporary path.
-	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
-	if err != nil {
-		os.Exit(3)
-	}
-	_ = json.NewEncoder(f).Encode(fakeGitInvocation{Args: args, Env: env})
-	_ = f.Close()
-
-	switch strings.Join(args, " ") {
-	case "git remote get-url origin":
-		_, _ = io.WriteString(os.Stdout, "https://src.land/myorg/r1.git\n")
-	case "git symbolic-ref --quiet --short HEAD":
-		_, _ = io.WriteString(os.Stdout, "feature\n")
-	}
-	os.Exit(0)
-}
-
 func TestRepoClone_InvokesGitCloneWithSSHRemote(t *testing.T) {
 	t.Setenv("CITADEL_AGENT_SESSION", "")
 	logPath, cleanup := patchGitExec(t)
@@ -360,21 +324,32 @@ func TestConfirmCreateRepo_InteractiveYes(t *testing.T) {
 	}
 }
 
+const fakeGitSh = `
+{
+  printf '{"args":['
+  sep=
+  for a in "$@"; do
+    printf '%s"%s"' "$sep" "$a"
+    sep=,
+  done
+  printf '],"env":{"GIT_ASKPASS":"%s","GIT_TERMINAL_PROMPT":"%s","SSH_ASKPASS":"%s"}}\n' \
+    "${GIT_ASKPASS-}" "${GIT_TERMINAL_PROMPT-}" "${SSH_ASKPASS-}"
+} >>"$CITADEL_GIT_TEST_LOG"
+case "$*" in
+  "git remote get-url origin") printf 'https://src.land/myorg/r1.git\n' ;;
+  "git symbolic-ref --quiet --short HEAD") printf 'feature\n' ;;
+esac
+`
+
 func patchGitExec(t *testing.T) (string, func()) {
 	t.Helper()
 	logPath := filepath.Join(t.TempDir(), "git.log")
 	oldExec := execCommandContext
 	oldLookPath := execLookPath
 	execCommandContext = func(ctx context.Context, name string, args ...string) *exec.Cmd {
-		cmdArgs := append([]string{"-test.run=TestHelperProcessGit", "--", name}, args...)
-		//nolint:gosec // The test helper re-executes the current binary with controlled arguments.
-		cmd := exec.CommandContext(ctx, os.Args[0], cmdArgs...)
-		// atexit_sleep_ms=0: a race binary otherwise sleeps a second per git call.
-		cmd.Env = append(os.Environ(),
-			"GO_WANT_HELPER_PROCESS_GIT=1",
-			"CITADEL_GIT_TEST_LOG="+logPath,
-			"GORACE=atexit_sleep_ms=0",
-		)
+		cmd := exec.CommandContext(ctx, "/bin/sh", "-c", fakeGitSh, "--")
+		cmd.Args = append([]string{"/bin/sh", "-c", fakeGitSh, "--", name}, args...)
+		cmd.Env = append(os.Environ(), "CITADEL_GIT_TEST_LOG="+logPath)
 		return cmd
 	}
 	execLookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
