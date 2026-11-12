@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: Rethunk-Tech/gh-actions/setup-go@00f86ab1d379ecfb8d7d5b5cfa6e21a2722ac159 # v1.25
