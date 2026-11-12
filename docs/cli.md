@@ -204,7 +204,7 @@ citadel-cli issue view -R acme/demo 42
 citadel-cli issue view -R acme/demo 42 --web
 citadel-cli issue create -R acme/demo --title "Ship it" --body "Ready for rollout"
 citadel-cli issue create -R acme/demo --title "Ship it" --milestone <milestone-uuid>
-citadel-cli issue comment -R acme/demo 42 --body "Looks good"
+citadel-cli issue comment add -R acme/demo 42 --body "Looks good"
 citadel-cli issue close -R acme/demo 42
 citadel-cli issue reopen -R acme/demo 42
 citadel-cli issue label -R acme/demo 42 --add bug --remove triage
@@ -222,7 +222,7 @@ does not answer with `text/event-stream` fails immediately with an error.
 `issue view` and `issue close-refs` accept `--output json|yaml|table`. `issue
 view --web` opens the canonical browser route for that namespace issue.
 
-When `issue create` or `issue comment` omit `--body`, the CLI reads piped stdin
+When `issue create` or `issue comment add` omit `--body`, the CLI reads piped stdin
 first; on a TTY it falls back to `$EDITOR`.
 
 ### Issue milestones
@@ -416,7 +416,7 @@ repository while no live agent session exists.
 
 `auth login` stores a token with the `code`, `issues` and `pulls` read and write scopes the CLI verbs use and the `sessions:write` scope the hooks need; a token from an older login is refused and the hook asks you to run `citadel-cli auth login` again.
 
-`--client cursor` writes the same three hooks into Cursor's `hooks.json` (`~/.cursor/hooks.json`, or `.cursor/hooks.json` with `--scope project`) as `sessionStart`, `preToolUse` and `sessionEnd` entries (see https://cursor.com/docs/hooks). The verbs run with `--client cursor`: the session variables are returned in `sessionStart`'s `env` output instead of an env file, `preToolUse` answers `{"permission":"allow"}` (or `deny` under `--require`), and the session id on later events is Cursor's `conversation_id`. Cursor documents `env` only for later hooks, and a run with `cursor-agent` (2026.10.28) confirmed it does not reach the agent's shell. So at `sessionStart` the hook also writes the session's `core.sshCommand` (and, for an `https://` origin, the credential helper) into the repository's own git config, skipping any key you already set there, and `sessionEnd` removes exactly those keys. Git in the agent's shell therefore authenticates as the agent. The session is named `cursor-<hostname>` and its `client` is `cursor`. The allow rule for `citadel-cli kg` goes in `cli-config.json` under `$CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor` or `~/.cursor`, the order Cursor reads it, or in `.cursor/cli.json` with `--scope project`. The shell tool is named `Shell` and its input carries `command` and `cwd`.
+`--client cursor` writes the same three hooks into Cursor's `hooks.json` (`~/.cursor/hooks.json`, or `.cursor/hooks.json` with `--scope project`) as `sessionStart`, `preToolUse` and `sessionEnd` entries (see <https://cursor.com/docs/hooks>). The verbs run with `--client cursor`: the session variables are returned in `sessionStart`'s `env` output instead of an env file, `preToolUse` answers `{"permission":"allow"}` (or `deny` under `--require`), and the session id on later events is Cursor's `conversation_id`. Cursor documents `env` only for later hooks, and a run with `cursor-agent` (2026.10.28) confirmed it does not reach the agent's shell. So at `sessionStart` the hook also writes the session's `core.sshCommand` (and, for an `https://` origin, the credential helper) into the repository's own git config, skipping any key you already set there, and `sessionEnd` removes exactly those keys. Git in the agent's shell therefore authenticates as the agent. The session is named `cursor-<hostname>` and its `client` is `cursor`. The allow rule for `citadel-cli kg` goes in `cli-config.json` under `$CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor` or `~/.cursor`, the order Cursor reads it, or in `.cursor/cli.json` with `--scope project`. The shell tool is named `Shell` and its input carries `command` and `cwd`.
 
 Cursor's sandbox also sets its own `GIT_SSH_COMMAND` (a `cursorsandbox git-ssh-dial` relay), which outranks `core.sshCommand`, and git cannot pass a non-22 port through it. So `preToolUse` rewrites a `Shell` command that runs git in a Citadel repo (through `updated_input`, which Cursor documents) to define a `git` function that sets the session's `GIT_SSH_COMMAND` and, for an `https://` origin, its credential helper for every call, so parallel sessions in one repository each act as themselves. A command that runs `citadel-cli` gets `CITADEL_AGENT_SESSION` and `CITADEL_HOOK_STATE` the same way, so it acts as the session and not your login; `citadel-cli` run outside a session uses your login. Observed with `cursor-agent` 2026.10.28: a command that is only a `git push` goes out on the session key, but a push chained after other commands with `;` was still sent through the sandbox's relay and failed on a non-22 SSH port. `https://` remotes use the credential helper and worked chained; prefer them under Cursor, or run SSH git as its own command.
 
@@ -440,7 +440,7 @@ services).
 
 ```bash
 citadel-cli agent list
-citadel-cli agent create <name> [--org <slug>] [--description "..."] [--scope <scope>]... [--output json]
+citadel-cli agent create <name> [--namespace <path>]... [--scope <scope>]... [--output json]
 citadel-cli agent get <name>
 citadel-cli agent delete <name> [--yes]
 citadel-cli agent rotate-token <name> [--scope <scope>]...
@@ -450,10 +450,13 @@ citadel-cli agent rotate-token <name> [--scope <scope>]...
 
 #### `agent create`
 
-Registers a new agent in the authenticated user's namespace (or an org namespace
-with `--org <slug>`) and prints the agent's **one-time initial token**. Save this
-token immediately — it will not be displayed again. Subsequent calls to
-`agent get` or `agent list` show metadata only.
+Registers a new agent in the authenticated user's personal namespace and prints
+the agent's **one-time initial token**. Save this token immediately — it will
+not be displayed again. Subsequent calls to `agent get` or `agent list` show
+metadata only.
+
+`--namespace` (repeatable) limits the issued token to a repo, project or org.
+Omit it for everything the authenticated user can reach.
 
 `--output json` emits a machine-readable object:
 
@@ -851,7 +854,6 @@ citadel-cli namespace profile get myorg --output yaml
 # Short alias
 citadel-cli ns profile get myorg
 ```
-
 
 ## Notification inbox
 
