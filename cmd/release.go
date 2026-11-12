@@ -550,6 +550,7 @@ func runReleaseAssetDownload(cmd *cobra.Command, args []string) error {
 	dst := cmd.OutOrStdout()
 	var file *os.File
 	if outputFile != "" && outputFile != "-" {
+		//nolint:gosec // --output-file explicitly selects a local path.
 		file, err = os.OpenFile(outputFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 		if err != nil {
 			return fmt.Errorf("create output file: %w", err)

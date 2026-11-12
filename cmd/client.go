@@ -191,8 +191,14 @@ func clearStoredCredentials() error {
 	})
 }
 
-func isInvalidGrantError(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "invalid_grant")
+// isRefreshRefusedError reports whether the server rejected the refresh token
+// (as opposed to a network or 5xx failure that a retry may clear).
+func isRefreshRefusedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "invalid_grant") || strings.Contains(msg, "status=401")
 }
 
 // refreshSessionToken renews a login-only (no agent) session from its refresh token.
@@ -216,7 +222,7 @@ func refreshSessionToken(ctx context.Context, cmd *cobra.Command, cfg clicfg.Con
 			if err == nil {
 				err = errors.New("refresh token response missing access_token")
 			}
-			if isInvalidGrantError(err) {
+			if isRefreshRefusedError(err) {
 				clearCredentials(cfg)
 			}
 			refreshErr = err
@@ -268,7 +274,7 @@ func rotateAgentToken(ctx context.Context, cmd *cobra.Command, cfg clicfg.Config
 		var humanErr error
 		newTok, rotatedRefresh, humanErr = rotateWithLogin(ctx, cmd, cfg, uid)
 		if humanErr != nil {
-			if isInvalidGrantError(humanErr) {
+			if isRefreshRefusedError(humanErr) {
 				if clearErr := clearStoredCredentials(); clearErr != nil {
 					return "", fmt.Errorf("%w: clear credentials: %w", errSessionExpired, clearErr)
 				}

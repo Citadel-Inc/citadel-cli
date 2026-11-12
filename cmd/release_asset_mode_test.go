@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -61,7 +60,7 @@ func TestReleaseAssetDownloadOutputFileMode(t *testing.T) {
 	if err := cmd.Flags().Set("repo", "org/repo"); err != nil {
 		t.Fatal(err)
 	}
-	cmd.SetContext(context.Background())
+	cmd.SetContext(t.Context())
 
 	if err := runReleaseAssetDownload(cmd, []string{"v1.0.0", "asset-1"}); err != nil {
 		t.Fatal(err)

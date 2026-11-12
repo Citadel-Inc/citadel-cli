@@ -40,7 +40,7 @@ func TestTraceTransportRedactsTokenResponseBody(t *testing.T) {
 		}, nil
 	})
 
-	req, err := http.NewRequest(http.MethodPost, "http://example.com/oauth/token", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.com/oauth/token", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,6 +60,7 @@ func TestTraceTransportRedactsTokenResponseBody(t *testing.T) {
 	if !strings.Contains(out, "access_token") || !strings.Contains(out, "refresh_token") {
 		t.Fatalf("debug dump dropped token fields:\n%s", out)
 	}
+	defer func() { _ = resp.Body.Close() }()
 	got, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)

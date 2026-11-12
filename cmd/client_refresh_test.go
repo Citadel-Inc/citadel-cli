@@ -41,7 +41,7 @@ func TestRefreshSessionTokenKeepsCredentialsOn502(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _ = refreshSessionToken(context.Background(), cmd, cfg)
+	_, _ = refreshSessionToken(t.Context(), cmd, cfg)
 
 	got, err := clicfg.Load()
 	if err != nil {
@@ -101,7 +101,7 @@ func TestRotateWithLoginKeepsNewRefreshTokenOnRotate500(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _ = rotateAgentToken(context.Background(), cmd, cfg, agentID)
+	_, _ = rotateAgentToken(t.Context(), cmd, cfg, agentID)
 
 	got, err := clicfg.Load()
 	if err != nil {
@@ -139,7 +139,7 @@ func TestRefreshSessionTokenClearsCredentialsOnInvalidGrant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _ = refreshSessionToken(context.Background(), cmd, cfg)
+	_, _ = refreshSessionToken(t.Context(), cmd, cfg)
 
 	got, err := clicfg.Load()
 	if err != nil {
