@@ -5,6 +5,7 @@ package httpx
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -184,7 +185,7 @@ func (tt *TraceTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, err
 	}
 	if tt.DebugHTTP {
-		dump, _ := httputil.DumpResponse(resp, true)
+		dump, _ := httputil.DumpResponse(redactResponse(resp), true)
 		fmt.Fprintf(os.Stderr, "--- HTTP response (%s) ---\n%s\n", dur.Round(time.Millisecond), dump)
 	} else if tt.Verbose {
 		fmt.Fprintf(os.Stderr, "%s %s → %d in %s\n", req.Method, req.URL, resp.StatusCode, dur.Round(time.Millisecond))
@@ -209,10 +210,76 @@ func redactAuth(req *http.Request) *http.Request {
 		clone.Body = io.NopCloser(bytes.NewReader(nil))
 		return clone
 	}
-	redactedBody := redactOAuthForm(body, req.Header.Get("Content-Type"))
+	redactedBody := redactSensitiveBody(body, req.Header.Get("Content-Type"))
 	clone.Body = io.NopCloser(bytes.NewReader(redactedBody))
 	clone.ContentLength = int64(len(redactedBody))
 	return clone
+}
+
+func redactResponse(resp *http.Response) *http.Response {
+	if resp.Body == nil {
+		return resp
+	}
+	body, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if err != nil {
+		resp.Body = io.NopCloser(bytes.NewReader(nil))
+		return resp
+	}
+	resp.Body = io.NopCloser(bytes.NewReader(body))
+	clone := *resp
+	clone.Header = resp.Header.Clone()
+	redacted := redactSensitiveBody(body, resp.Header.Get("Content-Type"))
+	clone.Body = io.NopCloser(bytes.NewReader(redacted))
+	clone.ContentLength = int64(len(redacted))
+	clone.Header.Del("Content-Encoding")
+	return &clone
+}
+
+func redactSensitiveBody(body []byte, contentType string) []byte {
+	mediaType := strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0])
+	if strings.EqualFold(mediaType, "application/json") {
+		return redactJSONTokens(body)
+	}
+	return redactOAuthForm(body, contentType)
+}
+
+func redactJSONTokens(body []byte) []byte {
+	var v any
+	if err := json.Unmarshal(body, &v); err != nil {
+		return body
+	}
+	redactJSONValue(v)
+	out, err := json.Marshal(v)
+	if err != nil {
+		return body
+	}
+	return out
+}
+
+func redactJSONValue(v any) {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, child := range x {
+			if sensitiveTokenKey(k) {
+				x[k] = "<redacted>"
+				continue
+			}
+			redactJSONValue(child)
+		}
+	case []any:
+		for _, child := range x {
+			redactJSONValue(child)
+		}
+	}
+}
+
+func sensitiveTokenKey(k string) bool {
+	switch k {
+	case "access_token", "refresh_token", "cleartext_token", "token":
+		return true
+	}
+	return false
 }
 
 func redactOAuthForm(body []byte, contentType string) []byte {
@@ -231,7 +298,8 @@ func redactOAuthForm(body []byte, contentType string) []byte {
 			continue
 		}
 		switch decodedKey {
-		case "refresh_token", "client_secret", "code", "code_verifier":
+		case "refresh_token", "client_secret", "code", "code_verifier",
+			"access_token", "cleartext_token", "token":
 			parts[i] = key + "=%3Credacted%3E"
 		}
 	}
