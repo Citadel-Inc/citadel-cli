@@ -17,7 +17,7 @@ func FuzzReadEvent(f *testing.F) {
 	f.Add("event: ping\n\n")
 	f.Add("id: abc\nevent: message\ndata: {}\n\n")
 	f.Fuzz(func(t *testing.T, raw string) {
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 		defer cancel()
 		ev, err := readEvent(ctx, bufio.NewReader(strings.NewReader(raw)))
 		if err != nil {
@@ -46,7 +46,7 @@ func FuzzReadEvent(f *testing.F) {
 		}
 		buf.WriteByte('\n')
 
-		ctx2, cancel2 := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		ctx2, cancel2 := context.WithTimeout(t.Context(), 100*time.Millisecond)
 		defer cancel2()
 		ev2, err := readEvent(ctx2, bufio.NewReader(bytes.NewReader(buf.Bytes())))
 		if err != nil {
