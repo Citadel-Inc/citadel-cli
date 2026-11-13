@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: Rethunk-Tech/gh-actions/setup-go@48cc92115e037b2ee57da2264f318265c8a78ec7 # v1.26
+        uses: Rethunk-Tech/gh-actions/setup-go@4c3240b9077c81a6f03f499dafaec6494220aad5 # v1.27
         with:
           run-lint: "true"
           run-govulncheck: "true"
