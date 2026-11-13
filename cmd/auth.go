@@ -712,7 +712,7 @@ func exchangePKCECode(ctx context.Context, citadelBaseURL, redirectURI, code, ve
 		return pkceTokenResponse{}, fmt.Errorf("token exchange: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := apiclient.NewHTTPClient().Do(req)
 	if err != nil {
 		return pkceTokenResponse{}, fmt.Errorf("token exchange: %w", err)
 	}
@@ -724,7 +724,7 @@ func exchangePKCECode(ctx context.Context, citadelBaseURL, redirectURI, code, ve
 	}
 
 	var out pkceTokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.NewDecoder(apiclient.LimitBody(resp.Body)).Decode(&out); err != nil {
 		return pkceTokenResponse{}, fmt.Errorf("decode token response: %w", err)
 	}
 	return out, nil
@@ -742,7 +742,7 @@ func exchangeRefreshToken(ctx context.Context, citadelBaseURL, refreshToken stri
 		return pkceTokenResponse{}, fmt.Errorf("refresh token exchange: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := apiclient.NewHTTPClient().Do(req)
 	if err != nil {
 		return pkceTokenResponse{}, fmt.Errorf("refresh token exchange: %w", err)
 	}
@@ -754,7 +754,7 @@ func exchangeRefreshToken(ctx context.Context, citadelBaseURL, refreshToken stri
 	}
 
 	var out pkceTokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.NewDecoder(apiclient.LimitBody(resp.Body)).Decode(&out); err != nil {
 		return pkceTokenResponse{}, fmt.Errorf("decode refresh token response: %w", err)
 	}
 	return out, nil

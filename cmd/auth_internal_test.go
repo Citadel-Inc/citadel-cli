@@ -386,6 +386,21 @@ func TestExchangePKCECode_BadJSON(t *testing.T) {
 	}
 }
 
+func TestTokenExchange_BoundsSuccessBody(t *testing.T) {
+	huge := `{"access_token":"` + strings.Repeat("a", 2<<20) + `"}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, huge)
+	}))
+	t.Cleanup(srv.Close)
+
+	if _, err := exchangePKCECode(t.Context(), srv.URL, "http://127.0.0.1:1/callback", "x", "y"); err == nil {
+		t.Error("exchangePKCECode accepted an oversized body")
+	}
+	if _, err := exchangeRefreshToken(t.Context(), srv.URL, "rt"); err == nil {
+		t.Error("exchangeRefreshToken accepted an oversized body")
+	}
+}
+
 func TestRunSetToken_FromFlag(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("CITADEL_ACCESS_TOKEN", "")
