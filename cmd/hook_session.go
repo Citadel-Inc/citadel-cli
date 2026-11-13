@@ -189,7 +189,7 @@ func readHookInput(cmd *cobra.Command) hookInput {
 // sessionDir returns the per-session directory, or "" when the id is unusable
 // as a path element.
 func sessionDir(sessionID string) string {
-	if sessionID == "" || sessionID != filepath.Base(sessionID) || sessionID == "." || sessionID == ".." {
+	if !usableSessionID(sessionID) {
 		return ""
 	}
 	base := os.Getenv("XDG_RUNTIME_DIR")
@@ -201,6 +201,20 @@ func sessionDir(sessionID string) string {
 		base = cache
 	}
 	return filepath.Join(base, "citadel", "sessions", sessionID)
+}
+
+func usableSessionID(sessionID string) bool {
+	if sessionID == "" || sessionID != filepath.Base(sessionID) || sessionID == "." || sessionID == ".." {
+		return false
+	}
+	stem, _, _ := strings.Cut(sessionID, ".")
+	switch strings.ToUpper(stem) {
+	case "CON", "PRN", "AUX", "NUL",
+		"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+		"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9":
+		return false
+	}
+	return true
 }
 
 func loadHookState(dir string) (hookState, bool) {
