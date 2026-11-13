@@ -410,3 +410,26 @@ func TestTimeoutSurfacesAsError(t *testing.T) {
 		t.Fatal("want timeout error")
 	}
 }
+
+func TestRedirectToOtherHostDoesNotCarryToken(t *testing.T) {
+	var leaked atomic.Bool
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "" {
+			leaked.Store(true)
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(other.Close)
+	// 127.0.0.1 and localhost are different hosts to the client.
+	target := strings.Replace(other.URL, "127.0.0.1", "localhost", 1)
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target+"/mcp", http.StatusTemporaryRedirect)
+	}))
+	t.Cleanup(origin.Close)
+
+	c := New(origin.URL+"/mcp", "secret-token", 5*time.Second, Options{})
+	_ = c.Initialize(t.Context())
+	if leaked.Load() {
+		t.Fatal("bearer token was sent to the redirect target on another host")
+	}
+}

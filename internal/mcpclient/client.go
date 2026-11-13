@@ -17,6 +17,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -72,6 +73,9 @@ func New(serverURL, token string, timeout time.Duration, opts Options) *Client {
 		base:  httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP}),
 		token: token,
 	}
+	if u, err := url.Parse(serverURL); err == nil {
+		tap.scheme, tap.host = u.Scheme, u.Host
+	}
 	return &Client{
 		url:  serverURL,
 		http: &http.Client{Timeout: timeout, Transport: tap},
@@ -90,11 +94,17 @@ type authTransport struct {
 	base   http.RoundTripper
 	token  string
 	status atomic.Int64
+	// Redirects reach RoundTrip too; the token goes only to the configured origin.
+	scheme, host string
 }
 
 func (a *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.Clone(req.Context())
-	req.Header.Set("Authorization", "Bearer "+a.token)
+	if req.URL.Scheme == a.scheme && req.URL.Host == a.host {
+		req.Header.Set("Authorization", "Bearer "+a.token)
+	} else {
+		req.Header.Del("Authorization")
+	}
 	resp, err := a.base.RoundTrip(req)
 	if req.Method == http.MethodDelete {
 		// The SDK's session teardown follows a failed call; its status would mask the failure.
