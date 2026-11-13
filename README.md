@@ -3,7 +3,7 @@
 <div align="center">
 
 [![CI](https://github.com/Citadel-Inc/citadel-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Citadel-Inc/citadel-cli/actions/workflows/ci.yml)
-[![Release](https://github.com/Citadel-Inc/citadel-cli/actions/workflows/cli-release.yml/badge.svg)](https://github.com/Citadel-Inc/citadel-cli/actions/workflows/cli-release.yml)
+[![Release](https://github.com/Citadel-Inc/citadel-cli/actions/workflows/release.yml/badge.svg)](https://github.com/Citadel-Inc/citadel-cli/actions/workflows/release.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/Citadel-Inc/citadel-cli.svg)](https://pkg.go.dev/github.com/Citadel-Inc/citadel-cli)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Citadel-Inc/citadel-cli)](https://goreportcard.com/report/github.com/Citadel-Inc/citadel-cli)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/Citadel-Inc/citadel-cli)](go.mod)

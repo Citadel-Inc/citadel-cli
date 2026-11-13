@@ -10,7 +10,7 @@ cmd/                 Subcommands
 internal/            apiclient, clicfg (XDG config), completion (cache), httpx,
                      mcpclient (go-sdk), mcptest, pager, pagination, selfhost, sseclient, term
 specs/active|parked/ SDD specs
-.github/workflows/   ci.yml, cli-release.yml
+.github/workflows/   ci.yml, release.yml
 Makefile             build / verify
 ```
 

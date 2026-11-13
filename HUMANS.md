@@ -8,7 +8,7 @@ Official CLI for [Citadel](https://src.land/) — repos, namespaces, agents, OAu
 
 ## Install
 
-Prefer a tagged binary from [GitHub Releases](https://github.com/Citadel-Inc/citadel-cli/releases) (linux-amd64, linux-arm64, darwin-arm64, windows-amd64). Put it on `PATH` as `citadel-cli`.
+Prefer a tagged binary from [GitHub Releases](https://github.com/Citadel-Inc/citadel-cli/releases) (linux/darwin/windows on amd64 and arm64). Put it on `PATH` as `citadel-cli`.
 
 With Go 1.27.2 or newer:
 

@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          # --verify-tag reads the tag object; a shallow checkout of the commit does not carry it.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: Rethunk-Tech/gh-actions/setup-go@00f86ab1d379ecfb8d7d5b5cfa6e21a2722ac159 # v1.25
+        with:
+          run-lint: "true"
+          run-govulncheck: "true"
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build CLI (cross-compile)
+        env:
+          TAG: ${{ github.ref_name }}
+        run: make build-all VERSION="$TAG"
+
+      - name: Package archives and SHA256SUMS
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          cd dist
+          for os in linux darwin; do
+            for arch in amd64 arm64; do
+              tar -czf "citadel-cli_${TAG}_${os}_${arch}.tar.gz" \
+                --transform "s|^citadel-cli-${os}-${arch}\$|citadel-cli|" \
+                "citadel-cli-${os}-${arch}"
+            done
+          done
+          for arch in amd64 arm64; do
+            python3 -c "import zipfile; z=zipfile.ZipFile('citadel-cli_${TAG}_windows_${arch}.zip','w',zipfile.ZIP_DEFLATED); z.write('citadel-cli-windows-${arch}.exe','citadel-cli.exe')"
+          done
+          sha256sum citadel-cli_*.tar.gz citadel-cli_*.zip > SHA256SUMS
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" --verify-tag \
+            --title "$TAG" --notes "" \
+            dist/citadel-cli_"${TAG}"_*.tar.gz \
+            dist/citadel-cli_"${TAG}"_*.zip \
+            dist/SHA256SUMS

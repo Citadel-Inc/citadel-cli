@@ -1319,17 +1319,19 @@ This will create a fresh config.
 
 ## Distribution
 
-The release workflow builds static binaries for `linux-amd64`, `linux-arm64`, `darwin-arm64`, and `windows-amd64` on every `v*` tag and publishes them with a `SHA256SUMS` file at `github.com/Citadel-Inc/citadel-cli/releases/tag/<tag>`. Cut a release with `make verify && make build-all VERSION=<tag>`, then push the tag.
+The release workflow builds static archives for linux, darwin, and windows on amd64 and arm64 on every `v*` tag and publishes them with a `SHA256SUMS` file at `github.com/Citadel-Inc/citadel-cli/releases/tag/<tag>`. Cut a release with `make verify && make build-all VERSION=<tag>`, then push the tag.
 
 Manual install and verification:
 
 ```bash
 TAG=<tag>
-curl -LO https://github.com/Citadel-Inc/citadel-cli/releases/download/$TAG/citadel-cli-linux-amd64
+OS=linux
+ARCH=amd64
+curl -LO https://github.com/Citadel-Inc/citadel-cli/releases/download/$TAG/citadel-cli_${TAG}_${OS}_${ARCH}.tar.gz
 curl -LO https://github.com/Citadel-Inc/citadel-cli/releases/download/$TAG/SHA256SUMS
-sha256sum -c SHA256SUMS --ignore-missing   # expect: citadel-cli-linux-amd64: OK
-chmod +x citadel-cli-linux-amd64
-sudo mv citadel-cli-linux-amd64 /usr/local/bin/citadel-cli
+sha256sum -c SHA256SUMS --ignore-missing   # expect: citadel-cli_${TAG}_${OS}_${ARCH}.tar.gz: OK
+tar -xzf citadel-cli_${TAG}_${OS}_${ARCH}.tar.gz
+sudo mv citadel-cli /usr/local/bin/citadel-cli
 ```
 
 If verification fails, do not run the binary.
