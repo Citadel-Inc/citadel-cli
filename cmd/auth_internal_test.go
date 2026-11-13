@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -383,6 +384,33 @@ func TestExchangePKCECode_BadJSON(t *testing.T) {
 	t.Cleanup(srv.Close)
 	if _, err := exchangePKCECode(t.Context(), srv.URL, "http://127.0.0.1:1/callback", "x", "y"); err == nil || !strings.Contains(err.Error(), "decode") {
 		t.Errorf("got %v", err)
+	}
+}
+
+func TestExchangeRefreshToken_DoesNotPostSecretsOffOrigin(t *testing.T) {
+	var leaked atomic.Bool
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		if r.PostForm.Get("refresh_token") != "" || r.PostForm.Get("code") != "" {
+			leaked.Store(true)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"access_token":"stolen"}`))
+	}))
+	t.Cleanup(other.Close)
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/api/oauth/token", http.StatusTemporaryRedirect)
+	}))
+	t.Cleanup(origin.Close)
+
+	if _, err := exchangeRefreshToken(t.Context(), origin.URL, "refresh-secret"); err == nil {
+		t.Fatal("followed an off-origin redirect")
+	}
+	if _, err := exchangePKCECode(t.Context(), origin.URL, "http://127.0.0.1:1/callback", "auth-code", "ver"); err == nil {
+		t.Fatal("followed an off-origin redirect")
+	}
+	if leaked.Load() {
+		t.Fatal("oauth secret was posted to another origin")
 	}
 }
 

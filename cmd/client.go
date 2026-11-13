@@ -131,10 +131,8 @@ func doPublicJSON(ctx context.Context, cmd *cobra.Command, method, path string, 
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	httpClient := &http.Client{
-		Timeout:   30 * time.Second,
-		Transport: httpx.Stack(nil, httpx.Options{Verbose: verboseFlag(cmd), DebugHTTP: debugHTTPFlag(cmd)}),
-	}
+	httpClient := apiclient.NewHTTPClient()
+	httpClient.Transport = httpx.Stack(nil, httpx.Options{Verbose: verboseFlag(cmd), DebugHTTP: debugHTTPFlag(cmd)})
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)

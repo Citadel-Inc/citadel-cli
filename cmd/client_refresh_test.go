@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/uuid"
@@ -147,6 +148,33 @@ func TestRefreshSessionTokenClearsCredentialsOnInvalidGrant(t *testing.T) {
 	}
 	if got.AccessToken != "" || got.RefreshToken != "" {
 		t.Fatalf("invalid_grant left stored login: access=%q refresh=%q", got.AccessToken, got.RefreshToken)
+	}
+}
+
+func TestDoPublicJSON_DoesNotPostBodyOffOrigin(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	var leaked atomic.Bool
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if strings.Contains(string(body), "oidc-secret") {
+			leaked.Store(true)
+		}
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(other.Close)
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+r.URL.Path, http.StatusTemporaryRedirect)
+	}))
+	t.Cleanup(origin.Close)
+	t.Setenv("CITADEL_SERVER", origin.URL)
+
+	err := doPublicJSON(t.Context(), testServerCmd(origin.URL), http.MethodPost, "/workload/sessions", map[string]string{"oidc_token": "oidc-secret"}, &struct{}{})
+	if err == nil {
+		t.Fatal("followed an off-origin redirect")
+	}
+	if leaked.Load() {
+		t.Fatal("request body was posted to another origin")
 	}
 }
 

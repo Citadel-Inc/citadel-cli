@@ -163,7 +163,20 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 // NewHTTPClient is the plain client for unauthenticated calls such as the OAuth
 // endpoints: the api client's timeout and redirect policy, no bearer token.
 func NewHTTPClient() *http.Client {
-	return &http.Client{Timeout: defaultTimeout, CheckRedirect: dropAuthOffOrigin}
+	return &http.Client{Timeout: defaultTimeout, CheckRedirect: refuseOffOrigin}
+}
+
+// refuseOffOrigin stops a redirect that leaves the original scheme and host:port.
+// Token-exchange POSTs carry secrets in the body, which dropAuthOffOrigin would
+// still replay after stripping only Authorization.
+func refuseOffOrigin(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	if first := via[0].URL; req.URL.Scheme != first.Scheme || req.URL.Host != first.Host {
+		return fmt.Errorf("stopped at redirect off origin")
+	}
+	return nil
 }
 
 // LimitBody caps a success body at the size bound used for error bodies.
