@@ -2,6 +2,8 @@ package selfhost
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -22,15 +24,6 @@ func TestTruncate_Long(t *testing.T) {
 	got := truncate("hello world", 5)
 	if got != "hello..." {
 		t.Fatalf("truncate long: got %q want %q", got, "hello...")
-	}
-}
-
-func TestDerivePostgresURL(t *testing.T) {
-	if got := derivePostgresURL("https://abc.supabase.co", ""); got != "" {
-		t.Fatalf("derivePostgresURL: got %q want empty", got)
-	}
-	if got := derivePostgresURL("https://self.hosted.example.com", "pass"); got != "" {
-		t.Fatalf("derivePostgresURL self-hosted: got %q want empty", got)
 	}
 }
 
@@ -71,6 +64,26 @@ func TestApplyMigrations_BinaryFails(t *testing.T) {
 	_, err := ApplyMigrations(t.Context(), Config{SupabaseURL: "https://abc.supabase.co"})
 	if err == nil {
 		t.Fatal("expected error when supabase exits non-zero")
+	}
+}
+
+func TestApplyMigrations_InheritsEnvironment(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell stub")
+	}
+	dir := t.TempDir()
+	//nolint:gosec // Fixture script must be executable by the test.
+	if err := os.WriteFile(filepath.Join(dir, "supabase"), []byte("#!/bin/sh\necho \"Applying migration $SUPABASE_DB_URL\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	t.Setenv("SUPABASE_DB_URL", "postgresql://op-set")
+	res, err := ApplyMigrations(t.Context(), Config{SupabaseURL: "https://abc.supabase.co"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Applied != 1 || !strings.Contains(res.Message, "postgresql://op-set") {
+		t.Fatalf("operator env not passed through: %+v", res)
 	}
 }
 

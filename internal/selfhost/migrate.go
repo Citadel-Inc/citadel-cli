@@ -19,9 +19,8 @@ type MigrateResult struct {
 // Phase 2 implementation: shells out to the official `supabase` CLI
 // (`supabase db push --linked`), which handles idempotency via the
 // schema_migrations table.  The Supabase CLI must be installed on the host.
-//
-// The supabaseURL and adminKey from cfg are passed via env so they are not
-// visible in the process table.
+// The config holds no database password, so the Postgres connection comes
+// from the CLI's linked project or the operator's SUPABASE_DB_URL.
 func ApplyMigrations(ctx context.Context, cfg Config) (MigrateResult, error) {
 	if cfg.SupabaseURL == "" {
 		return MigrateResult{}, fmt.Errorf("supabase_url is required for migrate")
@@ -36,18 +35,8 @@ func ApplyMigrations(ctx context.Context, cfg Config) (MigrateResult, error) {
 	}
 
 	//nolint:gosec // bin resolved via exec.LookPath; args do not contain user input
+	// cmd.Env stays nil so the CLI inherits PATH, HOME and any SUPABASE_DB_URL.
 	cmd := exec.CommandContext(ctx, bin, "db", "push", "--linked")
-
-	// Inject connection details via env — keeps secrets out of the process list.
-	// supabase CLI respects SUPABASE_DB_URL for the Postgres connection URL.
-	if cfg.SupabaseURL != "" {
-		// Derive a postgres URL from the Supabase project URL when possible.
-		// Self-hosted Supabase typically exposes Postgres on the standard port.
-		pgURL := derivePostgresURL(cfg.SupabaseURL, cfg.AdminKey)
-		if pgURL != "" {
-			cmd.Env = append(cmd.Env, "SUPABASE_DB_URL="+pgURL)
-		}
-	}
 
 	out, err := cmd.CombinedOutput()
 	output := strings.TrimSpace(string(out))
@@ -59,23 +48,6 @@ func ApplyMigrations(ctx context.Context, cfg Config) (MigrateResult, error) {
 		Applied: countApplied(output),
 		Message: output,
 	}, nil
-}
-
-// derivePostgresURL attempts to derive a Postgres connection URL from a
-// Supabase project URL.  Returns "" when the pattern is unrecognized.
-//
-// For Supabase Cloud (https://<ref>.supabase.co) the DB host is
-// db.<ref>.supabase.co:5432.  For self-hosted instances operators typically
-// expose Postgres directly; we rely on the SUPABASE_DB_URL they supply
-// (or the supabase CLI's project-linked config) and return "" here to let
-// the CLI fall back to its own resolution.
-func derivePostgresURL(supabaseURL, _ string) string {
-	// If the operator already set SUPABASE_DB_URL externally we should not
-	// override it — return "" and let the CLI pick it up.
-	// For now we don't try to synthesize a postgres:// URL; operators who
-	// want to override can set SUPABASE_DB_URL in their environment.
-	_ = supabaseURL
-	return ""
 }
 
 // countApplied counts the number of migration lines in supabase CLI output.
