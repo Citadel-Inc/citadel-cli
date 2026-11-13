@@ -13,6 +13,7 @@ import (
 
 	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
 	"github.com/Citadel-Inc/citadel-cli/internal/completion"
+	"github.com/Citadel-Inc/citadel-cli/internal/term"
 )
 
 var repoTagCmd = &cobra.Command{
@@ -147,7 +148,7 @@ func runRepoTagCreate(cmd *cobra.Command, args []string) error {
 	if payload.Annotated {
 		tagType = "annotated"
 	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created %s tag %s at %s.\n", tagType, payload.Name, shortSHA(payload.SHA))
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created %s tag %s at %s.\n", tagType, term.Sanitize(payload.Name), shortSHA(payload.SHA))
 	return nil
 }
 

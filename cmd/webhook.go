@@ -18,6 +18,7 @@ import (
 	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
 	"github.com/Citadel-Inc/citadel-cli/internal/completion"
 	"github.com/Citadel-Inc/citadel-cli/internal/pagination"
+	"github.com/Citadel-Inc/citadel-cli/internal/term"
 )
 
 const (
@@ -455,7 +456,7 @@ func runWebhookCreate(cmd *cobra.Command, namespacePath string, allowDescendants
 	default:
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created webhook %s for %s.\n", created.ID, created.NamespacePath)
 		if created.Name != "" {
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Name: %s\n", created.Name)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Name: %s\n", term.Sanitize(created.Name))
 		}
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Target: %s\n", created.TargetURL)
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Events: %s\n", strings.Join(created.EventKinds, ", "))

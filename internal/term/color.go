@@ -1,5 +1,6 @@
 // Package term carries terminal-aware helpers shared by the cmd handlers.
-// Today: color-enable resolution honoring NO_COLOR, CLICOLOR, and --color.
+// Color-enable resolution honoring NO_COLOR, CLICOLOR, and --color, and
+// control-character stripping for server text shown to a terminal.
 package term
 
 import (

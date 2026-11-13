@@ -9,6 +9,7 @@ import (
 
 	"github.com/Citadel-Inc/citadel-cli/cmd"
 	"github.com/Citadel-Inc/citadel-cli/internal/pager"
+	"github.com/Citadel-Inc/citadel-cli/internal/term"
 	"github.com/spf13/cobra"
 )
 
@@ -70,7 +71,7 @@ func runWriters(args []string, stdout, stderr io.Writer) int {
 			}
 			return code
 		}
-		_, _ = fmt.Fprintf(stderr, "Error: %s\n", ce.Message)
+		_, _ = fmt.Fprintf(stderr, "Error: %s\n", term.Sanitize(ce.Message))
 		return code
 	}
 	return 0

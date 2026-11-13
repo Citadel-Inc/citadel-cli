@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -301,5 +303,28 @@ func TestRunWriters_RepoList_JSON429_RetryAfterOnFinalResponse(t *testing.T) {
 	}
 	if calls.Load() != 3 {
 		t.Fatalf("server calls=%d want 3", calls.Load())
+	}
+}
+
+func TestRunWriters_ServerErrorMessageStripsTerminalControls(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ID json.RawMessage `json:"id"`
+		}
+		_ = json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":-32600,"message":"\u001b]0;pwned\u0007bad\u001b[31m input"}}`, req.ID)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_SERVER", srv.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	var stdout, stderr bytes.Buffer
+	if code := runWriters([]string{"mcp", "call", "x", "--no-pager"}, &stdout, &stderr); code == 0 {
+		t.Fatal("want non-zero exit")
+	}
+	if got := stderr.String(); strings.ContainsAny(got, "\x1b\x07") || !strings.Contains(got, "bad input") {
+		t.Fatalf("stderr=%q", got)
 	}
 }

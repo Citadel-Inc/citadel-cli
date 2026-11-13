@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/term"
 )
 
 // ── commands ──────────────────────────────────────────────────────────────────
@@ -208,9 +209,9 @@ func runPRCheck(cmd *cobra.Command, args []string) error {
 	}
 
 	if result.Mergeable {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "MERGEABLE  reason: %s\n", result.Reason)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "MERGEABLE  reason: %s\n", term.Sanitize(result.Reason))
 	} else {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "NOT MERGEABLE  reason: %s\n", result.Reason)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "NOT MERGEABLE  reason: %s\n", term.Sanitize(result.Reason))
 	}
 	return nil
 }

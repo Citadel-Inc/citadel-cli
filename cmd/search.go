@@ -10,6 +10,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/spf13/cobra"
+
+	"github.com/Citadel-Inc/citadel-cli/internal/term"
 )
 
 // SearchCmd is the top-level `citadel-cli search` command (dashboard Cmd-K parity).
@@ -145,7 +147,7 @@ func writeSearchTable(w io.Writer, rows []searchResult) error {
 		_, _ = fmt.Fprintln(w, "(no results)")
 		return nil
 	}
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	tw := tabwriter.NewWriter(term.NewSanitizer(w), 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(tw, "TYPE\tKIND\tPATH\tDISPLAY NAME\tSCORE")
 	for _, r := range rows {
 		path := pickSearchPath(r)

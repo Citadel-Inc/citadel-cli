@@ -150,3 +150,17 @@ func TestVerboseFlag_falseByDefault(t *testing.T) {
 		t.Fatal("default verbose is false")
 	}
 }
+
+func TestNewTabWriterStripsTerminalControls(t *testing.T) {
+	var buf bytes.Buffer
+	c := &cobra.Command{}
+	c.SetOut(&buf)
+	w := newTabWriter(c)
+	_, _ = w.Write([]byte("NAME\t\x1b]0;pwned\x07evil\x1b[2J\r\n"))
+	if err := w.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if got := buf.String(); got != "NAME  evil\n" {
+		t.Fatalf("got %q", got)
+	}
+}

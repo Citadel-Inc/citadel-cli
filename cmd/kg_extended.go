@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/Citadel-Inc/citadel-cli/internal/term"
 )
 
 var kgSearchCmd = &cobra.Command{
@@ -685,7 +687,7 @@ func runKgUnreferenced(cmd *cobra.Command, args []string) error {
 	if jsonFlag(cmd) {
 		return emitJSON(cmd, resp)
 	}
-	out := cmd.OutOrStdout()
+	out := term.NewSanitizer(cmd.OutOrStdout())
 	_, _ = fmt.Fprintln(out, resp.Note)
 	_, _ = fmt.Fprintf(out, "%d candidates, showing %d:\n", resp.Total, len(resp.Items))
 	for _, it := range resp.Items {

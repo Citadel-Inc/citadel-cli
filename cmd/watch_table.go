@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/sseclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/term"
 )
 
 type watchListKind int
@@ -116,7 +117,7 @@ func (e *tableWatchEmitter) paintRedraw() error {
 	if err := w.Flush(); err != nil {
 		return err
 	}
-	block := buf.String()
+	block := term.Sanitize(buf.String())
 	lines := strings.Count(block, "\n")
 	if e.paintedLines > 0 {
 		_, _ = fmt.Fprintf(e.out, "\033[%dA", e.paintedLines)
@@ -137,7 +138,7 @@ func (e *tableWatchEmitter) paintSnapshot() error {
 	if err := w.Flush(); err != nil {
 		return err
 	}
-	_, _ = e.out.Write([]byte(buf.String()))
+	_, _ = io.WriteString(e.out, term.Sanitize(buf.String()))
 	_, _ = e.out.Write([]byte("\n"))
 	flushOut(e.out)
 	return nil
@@ -157,7 +158,7 @@ func (e *tableWatchEmitter) printDelta(kind string) error {
 	if strings.TrimSpace(label) == "" {
 		label = e.deltaLabel()
 	}
-	_, err := fmt.Fprintf(e.out, "%c %s\n", prefix, label)
+	_, err := fmt.Fprintf(e.out, "%c %s\n", prefix, term.Sanitize(label))
 	if err != nil {
 		return err
 	}

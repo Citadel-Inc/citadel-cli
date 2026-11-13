@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/term"
 )
 
 // PrCmd is the exported root for `citadel-cli pr`.
@@ -460,7 +461,7 @@ func runPRCreate(cmd *cobra.Command, _ []string) error {
 		}
 		return prFriendlyError(err)
 	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Pull request #%d created in %s: %s\n", created.Number, nsPath, created.Title)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Pull request #%d created in %s: %s\n", created.Number, nsPath, term.Sanitize(created.Title))
 	return nil
 }
 

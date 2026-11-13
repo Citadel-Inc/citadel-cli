@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
+	"github.com/Citadel-Inc/citadel-cli/internal/term"
 )
 
 // ── domain types ─────────────────────────────────────────────────────────────
@@ -118,7 +119,7 @@ func runRepoInsights(cmd *cobra.Command, args []string) error {
 }
 
 func renderInsights(cmd *cobra.Command, r insightsResponse) {
-	out := cmd.OutOrStdout()
+	out := term.NewSanitizer(cmd.OutOrStdout())
 
 	// Topics
 	if len(r.Topics) > 0 {

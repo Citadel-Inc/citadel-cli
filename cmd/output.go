@@ -285,7 +285,7 @@ func emitCSVHeaderOnlyTo[T CSVRow](dst io.Writer) error {
 // shared by every list/get verb (2-space padding, no minwidth, no padchar
 // other than space).
 func newTabWriter(cmd *cobra.Command) *tabwriter.Writer {
-	return tabwriter.NewWriter(commandOut(cmd), 0, 0, 2, ' ', 0)
+	return tabwriter.NewWriter(term.NewSanitizer(commandOut(cmd)), 0, 0, 2, ' ', 0)
 }
 
 // emitOne centralizes the single-object "json or human" dispatch used by
