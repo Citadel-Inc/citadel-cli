@@ -630,3 +630,32 @@ func TestNewHTTPClient_HasTimeoutAndRedirectPolicy(t *testing.T) {
 		t.Fatalf("client = %+v", c)
 	}
 }
+
+func TestClient_GetRejectsOversizedBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"name":"`)
+		_, _ = io.Copy(w, io.LimitReader(neverEnding('x'), maxResponseBody))
+		_, _ = io.WriteString(w, `"}`)
+	}))
+	defer srv.Close()
+
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, out := range []any{&struct{ Name string }{}, &json.RawMessage{}} {
+		if err := c.Get(t.Context(), "/big", out); err == nil || !strings.Contains(err.Error(), "MiB") {
+			t.Fatalf("%T: want size-cap error, got %v", out, err)
+		}
+	}
+}
+
+type neverEnding byte
+
+func (b neverEnding) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = byte(b)
+	}
+	return len(p), nil
+}

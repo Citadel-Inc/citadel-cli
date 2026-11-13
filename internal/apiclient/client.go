@@ -25,6 +25,7 @@ import (
 	"github.com/Citadel-Inc/citadel-cli/internal/clicfg"
 	"github.com/Citadel-Inc/citadel-cli/internal/httpx"
 	"github.com/Rethunk-Tech/go-httpkit"
+	safefs "github.com/Rethunk-Tech/go-safefs"
 )
 
 // defaultTimeout is the per-request timeout applied to the api client's
@@ -92,6 +93,10 @@ func ParseRetryAfterSeconds(raw string) int {
 
 // maxErrorBody bounds an error answer, which is only ever shown to the user.
 const maxErrorBody = 1 << 20
+
+// maxResponseBody bounds a success answer: list pages stop at 200 rows and a
+// blob view at 10 MiB of content, which JSON escaping can roughly double.
+const maxResponseBody = 32 << 20
 
 // ReadErrorBody reads at most maxErrorBody bytes of a failed response's body.
 func ReadErrorBody(r io.Reader) []byte {
@@ -410,15 +415,18 @@ func decodeResponse(resp *http.Response, out any) error {
 	if out == nil || resp.StatusCode == http.StatusNoContent {
 		return nil
 	}
+	b, err := safefs.ReadCapped(resp.Body, maxResponseBody)
+	if errors.Is(err, safefs.ErrTooLarge) {
+		return fmt.Errorf("response body exceeds the %d MiB limit", maxResponseBody>>20)
+	}
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+	}
 	if raw, ok := out.(*json.RawMessage); ok {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("read response: %w", err)
-		}
 		*raw = b
 		return nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+	if err := json.Unmarshal(b, out); err != nil {
 		return fmt.Errorf("decode response: %w", err)
 	}
 	return nil
