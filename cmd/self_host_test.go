@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Citadel-Inc/citadel-cli/cmd"
+	"github.com/Citadel-Inc/citadel-cli/internal/selfhost"
 )
 
 // TestSelfHostInit_BatchAllFlags runs `self-host init --batch` with all four
@@ -111,21 +112,24 @@ func runSelfHostInitWith(t *testing.T, stdin string, args ...string) (string, er
 	cfgPath := filepath.Join(t.TempDir(), "self-host.yaml")
 	t.Setenv("CITADEL_SELF_HOST_CONFIG", cfgPath)
 	var stderr strings.Builder
-	root := rootForOut(cmd.SelfHostCmd, io.Discard, append([]string{"init", "--batch",
+	base := []string{
+		"init", "--batch",
 		"--api-endpoint", "https://citadel.example.com",
-		"--supabase-url", "https://abc.supabase.co"}, args...)...)
+		"--supabase-url", "https://abc.supabase.co",
+	}
+	root := rootForOut(cmd.SelfHostCmd, io.Discard, append(base, args...)...)
 	for _, c := range cmd.SelfHostCmd.Commands() {
 		c.SetErr(&stderr)
 		c.SetIn(strings.NewReader(stdin))
 	}
 	err := root.Execute()
 	if err == nil {
-		b, rerr := os.ReadFile(cfgPath)
-		if rerr != nil {
-			t.Fatal(rerr)
+		cfg, lerr := selfhost.Load()
+		if lerr != nil {
+			t.Fatal(lerr)
 		}
-		if !strings.Contains(string(b), "admin_key: service-role-key") || !strings.Contains(string(b), "jwt_secret: jwt-signing-secret") {
-			t.Fatalf("secrets not saved: %s", b)
+		if cfg.AdminKey != "service-role-key" || cfg.JWTSecret != "jwt-signing-secret" {
+			t.Fatalf("secrets not saved: %+v", cfg)
 		}
 	}
 	return stderr.String(), err
