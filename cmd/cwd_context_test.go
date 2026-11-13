@@ -280,3 +280,18 @@ func TestParseOriginIntoRepo_ProjectRepoOverSSHPort(t *testing.T) {
 		}
 	}
 }
+
+func TestParseOriginIntoRepo_UserinfoCannotHideTheHost(t *testing.T) {
+	hosts := mergeCitadelHosts()
+	for _, remote := range []string{
+		"https://evil.example/x@src.land/acme/widget.git",
+		"ssh://evil.example/x@src.land/acme/widget.git",
+		"https://evil.example?x@src.land/acme/widget.git",
+		"https://evil.example#x@src.land/acme/widget.git",
+		"ssh://src.land:@evil.example/acme/widget.git",
+	} {
+		if ns, slug, err := parseOriginIntoRepo(remote, hosts); err == nil {
+			t.Errorf("%s accepted as Citadel repo %s/%s", remote, ns, slug)
+		}
+	}
+}

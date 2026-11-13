@@ -24,8 +24,8 @@ const (
 
 var (
 	// ns may be "<org>/<project>": a project repo is org/project/repo.
-	repoHTTPS = regexp.MustCompile(`^https?://(?:[^@]+@)?(?P<host>[^/:]+)(?::[0-9]+)?/(?P<ns>[^/]+(?:/[^/]+)?)/(?P<slug>[^/.]+)(?:\.git)?/?$`)
-	repoSSH   = regexp.MustCompile(`^(?:git\+ssh://|ssh://)?(?:[^@]+@)?(?P<host>[^/:]+)(?::[0-9]+)?[:/](?P<ns>[^/]+(?:/[^/]+)?)/(?P<slug>[^/.]+?)(?:\.git)?$`)
+	repoHTTPS = regexp.MustCompile(`^https?://(?:[^@/?#]+@)?(?P<host>[^/:]+)(?::[0-9]+)?/(?P<ns>[^/@]+(?:/[^/@]+)?)/(?P<slug>[^/.]+)(?:\.git)?/?$`)
+	repoSSH   = regexp.MustCompile(`^(?:git\+ssh://|ssh://)?(?:[^@/?#]+@)?(?P<host>[^/:]+)(?::[0-9]+)?[:/](?P<ns>[^/@]+(?:/[^/@]+)?)/(?P<slug>[^/.]+?)(?:\.git)?$`)
 )
 
 func defaultCitadelGitHosts() []string {
