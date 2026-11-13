@@ -321,13 +321,13 @@ func dialMCP(cmd *cobra.Command) (*mcpclient.Client, error) {
 	flagToken, _ := cmd.Flags().GetString("token")
 	timeoutSecs, _ := cmd.Flags().GetInt("timeout")
 
-	mcpURL := resolveMCPURL(cfg.ResolveServerURL(flagServer))
-	if err := apiclient.CheckServerURL(mcpURL); err != nil {
-		return nil, err
-	}
 	token := pickToken(flagToken, cfg.AccessToken)
 	if token == "" {
 		return nil, errors.New("no auth token: run `citadel-cli auth login` (or pass --token / set CITADEL_AGENT_TOKEN)")
+	}
+	mcpURL := resolveMCPURL(cfg.ResolveServerURL(flagServer))
+	if err := apiclient.CheckServerURL(mcpURL); err != nil {
+		return nil, err
 	}
 
 	c := mcpclient.New(mcpURL, token, time.Duration(timeoutSecs)*time.Second, mcpclient.Options{Verbose: verboseFlag(cmd), DebugHTTP: debugHTTPFlag(cmd)})

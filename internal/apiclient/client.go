@@ -290,7 +290,7 @@ func isLoopbackHost(h string) bool {
 func CheckServerURL(server string) error {
 	u, err := url.Parse(server)
 	if err != nil {
-		return nil
+		return fmt.Errorf("invalid server URL %q: %w", server, err)
 	}
 	if u.Scheme != "http" {
 		return nil
