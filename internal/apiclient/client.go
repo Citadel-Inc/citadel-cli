@@ -415,7 +415,12 @@ func decodeResponse(resp *http.Response, out any) error {
 	if out == nil || resp.StatusCode == http.StatusNoContent {
 		return nil
 	}
-	b, err := safefs.ReadCapped(resp.Body, maxResponseBody)
+	return DecodeJSONBody(resp.Body, out)
+}
+
+// DecodeJSONBody reads at most maxResponseBody bytes and unmarshals JSON.
+func DecodeJSONBody(r io.Reader, out any) error {
+	b, err := safefs.ReadCapped(r, maxResponseBody)
 	if errors.Is(err, safefs.ErrTooLarge) {
 		return fmt.Errorf("response body exceeds the %d MiB limit", maxResponseBody>>20)
 	}

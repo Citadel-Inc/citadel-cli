@@ -150,6 +150,27 @@ func TestRefreshSessionTokenClearsCredentialsOnInvalidGrant(t *testing.T) {
 	}
 }
 
+func TestDoPublicJSON_RejectsOversizedBody(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/healthz" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"name":"`)
+		_, _ = io.WriteString(w, strings.Repeat("x", 32<<20))
+		_, _ = io.WriteString(w, `"}`)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("CITADEL_SERVER", srv.URL)
+
+	var out struct{ Name string }
+	if err := doPublicJSON(t.Context(), testServerCmd(srv.URL), http.MethodGet, "/auth/providers", nil, &out); err == nil || !strings.Contains(err.Error(), "MiB") {
+		t.Fatalf("want size-cap error, got %v", err)
+	}
+}
+
 func testServerCmd(serverURL string) *cobra.Command {
 	cmd := &cobra.Command{Use: "test"}
 	cmd.PersistentFlags().String("server", serverURL, "")

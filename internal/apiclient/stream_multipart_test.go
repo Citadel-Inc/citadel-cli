@@ -198,6 +198,25 @@ func TestClient_PostMultipart_StreamsFileField(t *testing.T) {
 	}
 }
 
+func TestClient_PostMultipartRejectsOversizedBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"name":"`)
+		_, _ = io.Copy(w, io.LimitReader(neverEnding('x'), maxResponseBody))
+		_, _ = io.WriteString(w, `"}`)
+	}))
+	defer srv.Close()
+
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.PostMultipart(t.Context(), "/assets", "file", "artifact.bin", strings.NewReader("payload"), &struct{ Name string }{}); err == nil || !strings.Contains(err.Error(), "MiB") {
+		t.Fatalf("want size-cap error, got %v", err)
+	}
+}
+
 func TestClient_PostMultipart_ReturnsHTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)

@@ -2,7 +2,6 @@ package apiclient
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -114,11 +113,5 @@ func (c *Client) PostMultipart(ctx context.Context, path, field, filename string
 			RetryAfter: ParseRetryAfterSeconds(resp.Header.Get("Retry-After")),
 		}
 	}
-	if out == nil || resp.StatusCode == http.StatusNoContent {
-		return nil
-	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return fmt.Errorf("decode response: %w", err)
-	}
-	return nil
+	return decodeResponse(resp, out)
 }

@@ -151,10 +151,7 @@ func doPublicJSON(ctx context.Context, cmd *cobra.Command, method, path string, 
 	if out == nil || resp.StatusCode == http.StatusNoContent {
 		return nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return fmt.Errorf("decode response: %w", err)
-	}
-	return nil
+	return apiclient.DecodeJSONBody(resp.Body, out)
 }
 
 func rotateAccessTokenOn401Hook(cmd *cobra.Command) func(context.Context) (string, error) {
