@@ -284,6 +284,15 @@ func sensitiveTokenKey(k string) bool {
 	return false
 }
 
+func sensitiveFormKey(k string) bool {
+	switch k {
+	case "refresh_token", "client_secret", "code", "code_verifier",
+		"access_token", "cleartext_token", "token":
+		return true
+	}
+	return false
+}
+
 func redactOAuthForm(body []byte, contentType string) []byte {
 	mediaType := strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0])
 	if !strings.EqualFold(mediaType, "application/x-www-form-urlencoded") {
@@ -299,9 +308,7 @@ func redactOAuthForm(body []byte, contentType string) []byte {
 		if err != nil {
 			continue
 		}
-		switch decodedKey {
-		case "refresh_token", "client_secret", "code", "code_verifier",
-			"access_token", "cleartext_token", "token":
+		if sensitiveFormKey(decodedKey) {
 			parts[i] = key + "=%3Credacted%3E"
 		}
 	}
