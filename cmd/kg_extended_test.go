@@ -426,3 +426,17 @@ func kgTestOutputCommand(t *testing.T, output string) *cobra.Command {
 	cmd.Flags().String("output", output, "output format")
 	return cmd
 }
+
+func TestKgFetchPagesStopsOnRepeatedCursor(t *testing.T) {
+	calls := 0
+	_, err := kgFetchPages(func(string) (any, error) {
+		calls++
+		if calls > 5 {
+			t.Fatal("kept paging on a repeated cursor")
+		}
+		return map[string]any{"next_cursor": "same"}, nil
+	}, "", true)
+	if err == nil {
+		t.Fatal("want an error for a repeated cursor")
+	}
+}

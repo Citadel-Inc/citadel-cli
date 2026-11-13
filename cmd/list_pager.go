@@ -65,6 +65,9 @@ func (p *listPager[T]) pageRaw(serverEmpty bool, rows []T, cursor, next string) 
 	if next == "" {
 		return true, p.finish()
 	}
+	if next == cursor {
+		return true, fmt.Errorf("server returned cursor %q again; stopping --all", next)
+	}
 	return false, nil
 }
 

@@ -133,6 +133,9 @@ func kgFetchPages(fetch func(cursor string) (any, error), cursor string, all boo
 		if next == "" {
 			return pages, nil
 		}
+		if next == cursor {
+			return nil, fmt.Errorf("server returned cursor %q again; stopping --all", next)
+		}
 		cursor = next
 	}
 }

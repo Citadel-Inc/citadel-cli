@@ -102,10 +102,11 @@ func FetchOrgNamespaceSlugs(ctx context.Context, c *apiclient.Client) ([]string,
 			return nil, err
 		}
 		all = append(all, payload.Orgs...)
-		if strings.TrimSpace(payload.NextCursor) == "" {
+		next := strings.TrimSpace(payload.NextCursor)
+		if next == "" || next == cursor {
 			break
 		}
-		cursor = payload.NextCursor
+		cursor = next
 	}
 	out := make([]string, 0, len(all))
 	for _, o := range all {
@@ -143,10 +144,11 @@ func FetchRepoSlugs(ctx context.Context, c *apiclient.Client, parentNamespace st
 			return nil, err
 		}
 		all = append(all, payload.Repos...)
-		if strings.TrimSpace(payload.NextCursor) == "" {
+		next := strings.TrimSpace(payload.NextCursor)
+		if next == "" || next == cursor {
 			break
 		}
-		cursor = payload.NextCursor
+		cursor = next
 	}
 	out := make([]string, 0, len(all))
 	for _, r := range all {
@@ -197,10 +199,11 @@ func fetchRepoRefNames(ctx context.Context, c *apiclient.Client, parentNamespace
 				out = append(out, name)
 			}
 		}
-		if strings.TrimSpace(payload.NextCursor) == "" {
+		next := strings.TrimSpace(payload.NextCursor)
+		if next == "" || next == cursor {
 			break
 		}
-		cursor = strings.TrimSpace(payload.NextCursor)
+		cursor = next
 	}
 	return sortDedupe(out), nil
 }
@@ -227,10 +230,11 @@ func FetchAgentNames(ctx context.Context, c *apiclient.Client) ([]string, error)
 			return nil, err
 		}
 		all = append(all, payload.Agents...)
-		if strings.TrimSpace(payload.NextCursor) == "" {
+		next := strings.TrimSpace(payload.NextCursor)
+		if next == "" || next == cursor {
 			break
 		}
-		cursor = payload.NextCursor
+		cursor = next
 	}
 	out := make([]string, 0, len(all))
 	for _, r := range all {
@@ -270,10 +274,11 @@ func FetchNamespaceDeployTokenIDs(ctx context.Context, c *apiclient.Client, name
 				out = append(out, id)
 			}
 		}
-		if strings.TrimSpace(payload.NextCursor) == "" {
+		next := strings.TrimSpace(payload.NextCursor)
+		if next == "" || next == cursor {
 			break
 		}
-		cursor = strings.TrimSpace(payload.NextCursor)
+		cursor = next
 	}
 	return sortDedupe(out), nil
 }
@@ -300,10 +305,11 @@ func FetchOAuthClientIDs(ctx context.Context, c *apiclient.Client) ([]string, er
 			return nil, err
 		}
 		all = append(all, payload.Clients...)
-		if strings.TrimSpace(payload.NextCursor) == "" {
+		next := strings.TrimSpace(payload.NextCursor)
+		if next == "" || next == cursor {
 			break
 		}
-		cursor = payload.NextCursor
+		cursor = next
 	}
 	out := make([]string, 0, len(all))
 	for _, r := range all {

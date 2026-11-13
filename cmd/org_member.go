@@ -132,7 +132,7 @@ func resolveMemberToUUID(cmd *cobra.Command, c *apiclient.Client, orgSlug, membe
 				return m.UserID, nil
 			}
 		}
-		if page.NextCursor == "" {
+		if page.NextCursor == "" || page.NextCursor == cursor {
 			break
 		}
 		cursor = page.NextCursor
