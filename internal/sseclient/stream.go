@@ -25,6 +25,14 @@ var ErrIdle = errors.New("sse: idle timeout waiting for event data")
 
 // ErrNotEventStream means the server answered 2xx without an event stream
 // (it ignores Accept: text/event-stream); retrying would loop forever.
+// MaxEventBytes bounds one event, so a server that never ends a line or an
+// event cannot grow the CLI's memory without limit.
+const MaxEventBytes = 4 << 20
+
+// ErrEventTooLarge reports an event over MaxEventBytes. Reconnecting would
+// replay the same event, so it ends the stream.
+var ErrEventTooLarge = fmt.Errorf("sse: event exceeds %d bytes", MaxEventBytes)
+
 var ErrNotEventStream = errors.New("server does not support --watch (response was not text/event-stream)")
 
 // Event is one logical SSE dispatch (after blank-line framing).
@@ -146,7 +154,7 @@ func (s *Stream) Next(ctx context.Context) (Event, error) {
 		ev, err := readEvent(ctx, s.br)
 		if err != nil {
 			s.closeBody()
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || terminalHTTP(err) {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, ErrEventTooLarge) || terminalHTTP(err) {
 				return Event{}, err
 			}
 			if berr := s.backoff(ctx); berr != nil {
@@ -178,7 +186,7 @@ func readLineCtx(ctx context.Context, br *bufio.Reader, idle time.Duration) ([]b
 	}
 	ch := make(chan res, 1)
 	go func() {
-		b, err := br.ReadBytes('\n')
+		b, err := readLine(br)
 		ch <- res{b, err}
 	}()
 	select {
@@ -188,6 +196,20 @@ func readLineCtx(ctx context.Context, br *bufio.Reader, idle time.Duration) ([]b
 		return nil, ErrIdle
 	case r := <-ch:
 		return r.b, r.err
+	}
+}
+
+func readLine(br *bufio.Reader) ([]byte, error) {
+	var line []byte
+	for {
+		frag, err := br.ReadSlice('\n')
+		if len(line)+len(frag) > MaxEventBytes {
+			return nil, ErrEventTooLarge
+		}
+		line = append(line, frag...)
+		if !errors.Is(err, bufio.ErrBufferFull) {
+			return line, err
+		}
 	}
 }
 
@@ -221,6 +243,9 @@ func readEvent(ctx context.Context, br *bufio.Reader) (Event, error) {
 			payload := line[len("data:"):]
 			if len(payload) > 0 && payload[0] == ' ' {
 				payload = payload[1:]
+			}
+			if databuf.Len()+len(payload)+1 > MaxEventBytes {
+				return Event{}, ErrEventTooLarge
 			}
 			if databuf.Len() > 0 {
 				_ = databuf.WriteByte('\n')

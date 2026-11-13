@@ -2,6 +2,7 @@ package sseclient
 
 import (
 	"bufio"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -47,5 +48,20 @@ func TestReadEvent_multiDataLines(t *testing.T) {
 	}
 	if string(ev.Data) != "line1\nline2" {
 		t.Fatalf("got %q", ev.Data)
+	}
+}
+
+func TestReadEvent_oversizedEventRejected(t *testing.T) {
+	cases := map[string]string{
+		"many data lines": strings.Repeat("data: "+strings.Repeat("x", 1000)+"\n", MaxEventBytes/1000+1),
+		"one long line":   "data: " + strings.Repeat("x", MaxEventBytes+1) + "\n\n",
+	}
+	for name, raw := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := readEvent(t.Context(), bufio.NewReader(strings.NewReader(raw)))
+			if !errors.Is(err, ErrEventTooLarge) {
+				t.Fatalf("err = %v, want ErrEventTooLarge", err)
+			}
+		})
 	}
 }
