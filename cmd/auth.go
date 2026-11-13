@@ -147,6 +147,9 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 	flagServer, _ := cmd.Flags().GetString("server")
 	serverURL := cfg.ResolveServerURL(flagServer)
+	if err := apiclient.CheckServerURL(serverURL); err != nil {
+		return err
+	}
 	citadelBaseURL := strings.TrimRight(serverURL, "/")
 	// With no flag, env var or config this is the vendor's host, which someone on a
 	// private install needs to see before a credential goes anywhere.

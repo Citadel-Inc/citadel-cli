@@ -41,7 +41,7 @@ func TestFetchRepoSlugs_DecodesReposPayload(t *testing.T) {
 }
 
 func TestFetchRepoSlugs_RejectsEmptyNamespace(t *testing.T) {
-	c, err := apiclient.New(clicfg.Config{AccessToken: "t"}, apiclient.Options{Server: "http://unused"})
+	c, err := apiclient.New(clicfg.Config{AccessToken: "t"}, apiclient.Options{Server: "https://unused"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func TestFetchNamespaceDeployTokenIDs_DecodesList(t *testing.T) {
 }
 
 func TestFetchNamespaceDeployTokenIDs_EmptyNamespace(t *testing.T) {
-	c, err := apiclient.New(clicfg.Config{AccessToken: "t"}, apiclient.Options{Server: "http://unused"})
+	c, err := apiclient.New(clicfg.Config{AccessToken: "t"}, apiclient.Options{Server: "https://unused"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,7 +24,7 @@ func mustFlusher(t *testing.T, w http.ResponseWriter) http.Flusher {
 }
 
 func TestOpen_Close_noBody(t *testing.T) {
-	c, err := apiclient.New(clicfg.Config{ServerURL: "http://unused.test", AccessToken: "x"}, apiclient.Options{})
+	c, err := apiclient.New(clicfg.Config{ServerURL: "https://unused.test", AccessToken: "x"}, apiclient.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestOpen_Close_noBody(t *testing.T) {
 }
 
 func TestStream_Next_contextAlreadyCanceled(t *testing.T) {
-	c, err := apiclient.New(clicfg.Config{ServerURL: "http://unused.test", AccessToken: "x"}, apiclient.Options{})
+	c, err := apiclient.New(clicfg.Config{ServerURL: "https://unused.test", AccessToken: "x"}, apiclient.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

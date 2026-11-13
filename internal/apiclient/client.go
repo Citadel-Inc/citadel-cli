@@ -144,13 +144,17 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	if cfg.AccessToken == "" {
 		return nil, errors.New("not authenticated; run 'citadel-cli auth login' first")
 	}
+	server := cfg.ResolveRawServerURL(opts.Server)
+	if err := CheckServerURL(server); err != nil {
+		return nil, err
+	}
 	ua := opts.UserAgent
 	if ua == "" {
 		ua = "citadel-cli"
 	}
 	rt := httpx.Stack(nil, httpx.Options{Verbose: opts.Verbose, DebugHTTP: opts.DebugHTTP})
 	return &Client{
-		server:     ResolveRESTServerURL(cfg.ResolveRawServerURL(opts.Server)),
+		server:     ResolveRESTServerURL(server),
 		token:      cfg.AccessToken,
 		userAgent:  ua,
 		http:       &http.Client{Timeout: defaultTimeout, Transport: rt, CheckRedirect: dropAuthOffOrigin},
@@ -279,6 +283,22 @@ func isLoopbackHost(h string) bool {
 	}
 	ip := net.ParseIP(h)
 	return ip != nil && ip.IsLoopback()
+}
+
+// CheckServerURL refuses a non-loopback http:// URL. https is allowed
+// anywhere; http is allowed only for localhost, 127.0.0.1, and [::1].
+func CheckServerURL(server string) error {
+	u, err := url.Parse(server)
+	if err != nil {
+		return nil
+	}
+	if u.Scheme != "http" {
+		return nil
+	}
+	if isLoopbackHost(u.Hostname()) {
+		return nil
+	}
+	return fmt.Errorf("refusing http:// server URL %q: http is only allowed for localhost, 127.0.0.1, or [::1]; use https://", server)
 }
 
 // Server returns the resolved base URL with no trailing slash.

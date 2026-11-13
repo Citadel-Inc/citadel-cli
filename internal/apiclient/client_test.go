@@ -41,6 +41,20 @@ func TestNew_LeavesCustomHostUntouched(t *testing.T) {
 	}
 }
 
+func TestNew_RejectsNonLoopbackHTTP(t *testing.T) {
+	cfg := clicfg.Config{AccessToken: "tok"}
+	for _, u := range []string{"http://example.com", "http://10.0.0.5:8000", "http://[2001:db8::1]"} {
+		if _, err := New(cfg, Options{Server: u}); err == nil || !strings.Contains(err.Error(), "http is only allowed") {
+			t.Errorf("%s: want refuse error, got %v", u, err)
+		}
+	}
+	for _, u := range []string{"https://example.com", "https://10.0.0.5", "http://localhost:8080", "http://127.0.0.1:9", "http://[::1]:9"} {
+		if _, err := New(cfg, Options{Server: u}); err != nil {
+			t.Errorf("%s: %v", u, err)
+		}
+	}
+}
+
 func TestClient_GetDecodes(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Bearer tok" {

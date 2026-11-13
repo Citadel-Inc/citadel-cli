@@ -107,7 +107,11 @@ func publicAPIBaseURL(cmd *cobra.Command) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("load config: %w", err)
 	}
-	return apiclient.ResolveRESTServerURL(cfg.ResolveRawServerURL(serverFlag(cmd))), nil
+	raw := cfg.ResolveRawServerURL(serverFlag(cmd))
+	if err := apiclient.CheckServerURL(raw); err != nil {
+		return "", err
+	}
+	return apiclient.ResolveRESTServerURL(raw), nil
 }
 
 func doPublicJSON(ctx context.Context, cmd *cobra.Command, method, path string, body, out any) error {
