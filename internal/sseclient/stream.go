@@ -23,8 +23,6 @@ const IdleTimeout = 30 * time.Second
 // ErrIdle indicates no SSE traffic within IdleTimeout.
 var ErrIdle = errors.New("sse: idle timeout waiting for event data")
 
-// ErrNotEventStream means the server answered 2xx without an event stream
-// (it ignores Accept: text/event-stream); retrying would loop forever.
 // MaxEventBytes bounds one event, so a server that never ends a line or an
 // event cannot grow the CLI's memory without limit.
 const MaxEventBytes = 4 << 20
@@ -33,6 +31,8 @@ const MaxEventBytes = 4 << 20
 // replay the same event, so it ends the stream.
 var ErrEventTooLarge = fmt.Errorf("sse: event exceeds %d bytes", MaxEventBytes)
 
+// ErrNotEventStream means the server answered 2xx without an event stream
+// (it ignores Accept: text/event-stream); retrying would loop forever.
 var ErrNotEventStream = errors.New("server does not support --watch (response was not text/event-stream)")
 
 // Event is one logical SSE dispatch (after blank-line framing).
