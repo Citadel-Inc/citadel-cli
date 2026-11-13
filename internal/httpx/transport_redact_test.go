@@ -69,3 +69,13 @@ func TestTraceTransportRedactsTokenResponseBody(t *testing.T) {
 		t.Fatalf("response body not restored: got %q", got)
 	}
 }
+
+func TestRedactJSONTokensHidesClientSecrets(t *testing.T) {
+	in := `{"client_id":"c","client_secret":"s3cret","nested":{"cleartext_secret":"hook-secret"}}`
+	out := string(redactJSONTokens([]byte(in)))
+	for _, leak := range []string{"s3cret", "hook-secret"} {
+		if strings.Contains(out, leak) {
+			t.Fatalf("%q survived redaction: %s", leak, out)
+		}
+	}
+}
