@@ -1,9 +1,9 @@
 github.com/Rethunk-Tech/go-desktopenv v0.9.1 h1:1VUkePShCoBSBH3FGz5E4FpEj1IG9hfjGs+t1K5DvkE=
 github.com/Rethunk-Tech/go-desktopenv v0.9.1/go.mod h1:Hr0/FZV8xWHGtSEIDrI+NwdpyTn43B2LWqrh+POcHik=
-github.com/Rethunk-Tech/go-httpkit v0.3.0 h1:WifczPJg6anrZ+LTr0UwqnxihJnZIdgm6A+n6d6Uj54=
-github.com/Rethunk-Tech/go-httpkit v0.3.0/go.mod h1:qJZZfD+ejjWm6LwjEXGAUOKEjak1Nx6W3vuZloeZBLM=
-github.com/Rethunk-Tech/go-safefs v0.9.0 h1:8N3h1QCeRDL/xK4ZjG11Fj/rr0KL5eKS0D+KKTaTNkA=
-github.com/Rethunk-Tech/go-safefs v0.9.0/go.mod h1:au7iteKy+uWtmmbGw58R46RJ6tVmcTMeKFLSDyhFZdw=
+github.com/Rethunk-Tech/go-httpkit v0.3.1 h1:TEMOQ488ENSWf4wAGtBkfIyWxUDrtcsM0WOTuRg0abM=
+github.com/Rethunk-Tech/go-httpkit v0.3.1/go.mod h1:VSo/w8IjHfEn+3P6OW/9513buuzPpWHE7aBbcm8FiJ0=
+github.com/Rethunk-Tech/go-safefs v0.9.1 h1:HfiNmSu4IGQVjDTTGeLOqCl4Xs45gyUcHKX+5PznJ18=
+github.com/Rethunk-Tech/go-safefs v0.9.1/go.mod h1:Kr+UKsuC4mKE4Ec986hwHqqOSz2JqYDdQil10zlQMhw=
 github.com/Totative/go-keyring v0.3.0 h1:5VYcyTd10unpGjuhJgP2EjBsIOItbtipj1qn+MBOwOw=
 github.com/Totative/go-keyring v0.3.0/go.mod h1:q1h9jXCz+ivzMCpqkqywE88CqEIsnGcv0Svr5rR+pXc=
 github.com/aws/aws-sdk-go-v2 v1.48.0 h1:tFU7EJVm7MfyaXLsXdYTZ0Vd6vwt9OljCyqq0gqk0Mc=
