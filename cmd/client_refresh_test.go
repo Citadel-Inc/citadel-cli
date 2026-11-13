@@ -164,7 +164,7 @@ func TestDoPublicJSON_DoesNotPostBodyOffOrigin(t *testing.T) {
 	}))
 	t.Cleanup(other.Close)
 	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, other.URL+r.URL.Path, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, other.URL+"/workload/sessions", http.StatusTemporaryRedirect)
 	}))
 	t.Cleanup(origin.Close)
 	t.Setenv("CITADEL_SERVER", origin.URL)
