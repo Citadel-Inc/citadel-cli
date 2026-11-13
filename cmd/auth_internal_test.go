@@ -954,3 +954,26 @@ func TestOAuthCallbackHandler_IgnoresWrongState(t *testing.T) {
 		t.Fatalf("result = %+v", res)
 	}
 }
+
+func TestRunSetToken_FromEnvIsStored(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	tok := makeUnsignedJWT(t, jwt.MapClaims{
+		"sub": "11111111-1111-1111-1111-111111111111",
+		"exp": float64(time.Now().Add(time.Hour).Unix()),
+	})
+	t.Setenv("CITADEL_ACCESS_TOKEN", tok)
+	if err := setTokenCmd.Flags().Set("token", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := runSetToken(setTokenCmd, nil); err != nil {
+		t.Fatalf("runSetToken: %v", err)
+	}
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	cfg, err := clicfg.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AccessToken != tok {
+		t.Fatalf("stored access token = %q, want the env token", cfg.AccessToken)
+	}
+}

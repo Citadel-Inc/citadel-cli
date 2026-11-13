@@ -262,3 +262,58 @@ func TestOnlyTheFirstLoadSpendsTheKeyringTimeout(t *testing.T) {
 		t.Fatalf("backend opened %d times, want 1", calls)
 	}
 }
+
+func TestEnvTokenIsNotPersistedOverFileLogin(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv(accessTokenEnv, "")
+	if err := (Config{AccessToken: "acc", RefreshToken: "ref"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(accessTokenEnv, "env")
+	if err := Update(func(c *Config) error { c.RefreshToken = "ref2"; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	got, err := readBack()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.AccessToken != "acc" || got.RefreshToken != "ref2" {
+		t.Fatalf("stored = %+v, want access acc and refresh ref2", got)
+	}
+}
+
+func TestLogoutUnderEnvTokenDeletesKeyringItems(t *testing.T) {
+	f, _ := useBackend(t)
+	if err := (Config{AccessToken: "acc", RefreshToken: "ref"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(accessTokenEnv, "env")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.AccessToken, cfg.RefreshToken = "", ""
+	if err := cfg.Save(); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.items) != 0 {
+		t.Fatalf("items left: %v", f.items)
+	}
+}
+
+func TestExplicitTokenEqualToEnvIsStoredInKeyring(t *testing.T) {
+	f, path := useBackend(t)
+	if err := (Config{AccessToken: "acc", RefreshToken: "ref"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(accessTokenEnv, "env")
+	if err := (Config{AccessToken: "env"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	if f.items[accessItem(path)] != "env" {
+		t.Fatalf("set-token value not stored: %v", f.items)
+	}
+	if _, ok := f.items[refreshItem(path)]; ok {
+		t.Fatalf("old refresh token kept: %v", f.items)
+	}
+}

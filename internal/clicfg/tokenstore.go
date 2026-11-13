@@ -175,15 +175,6 @@ func deleteKeyringTokens(path string) {
 	})
 }
 
-// readStoreMarker reads the file alone, so it never touches the keyring.
-func readStoreMarker(path string) (store, reason string) {
-	var cfg Config
-	if err := readFile(path, &cfg); err != nil {
-		return "", ""
-	}
-	return cfg.TokenStore, cfg.TokenStoreReason
-}
-
 // TokenStorage describes where the tokens live, for `doctor`. plaintext is true
 // when they are in the config file. It never touches the keyring.
 func TokenStorage() (description string, plaintext bool, err error) {

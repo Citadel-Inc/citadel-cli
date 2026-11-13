@@ -418,13 +418,14 @@ func runSetToken(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("parse token: %w", err)
 	}
-	cfg.ServerURL = cfg.ResolveServerURL(serverFlag(cmd))
-	cfg.AccessToken = tok
-	cfg.RefreshToken = ""
-	cfg.UserUUID = userUUIDFromClaims(claims)
-	cfg.AgentID = ""
-	cfg.AgentName = ""
-	cfg.ExpiresAt = expiryFromClaims(claims, time.Now().Add(time.Hour))
+	// A fresh Config, so a token taken from CITADEL_ACCESS_TOKEN is stored
+	// rather than treated as Load's process-only override.
+	cfg = clicfg.Config{
+		ServerURL:   cfg.ResolveServerURL(serverFlag(cmd)),
+		AccessToken: tok,
+		UserUUID:    userUUIDFromClaims(claims),
+		ExpiresAt:   expiryFromClaims(claims, time.Now().Add(time.Hour)),
+	}
 
 	if err := cfg.Save(); err != nil {
 		return fmt.Errorf("save config: %w", err)

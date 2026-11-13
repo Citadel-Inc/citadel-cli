@@ -27,6 +27,10 @@ type Config struct {
 	// here, else "file", with TokenStoreReason saying why. Save sets both.
 	TokenStore       string `toml:"token_store,omitempty"`
 	TokenStoreReason string `toml:"token_store_reason,omitempty"`
+
+	// envAccess is the CITADEL_ACCESS_TOKEN value Load put in AccessToken. It
+	// belongs to this process only, so Save keeps the stored login in its place.
+	envAccess string
 }
 
 // configPath returns the full path to the config file.
@@ -86,6 +90,7 @@ func Load() (Config, error) {
 
 	if envToken != "" {
 		cfg.AccessToken = envToken
+		cfg.envAccess = envToken
 		// Trust the env value for an hour; the JWT itself is what gets
 		// validated server-side, so a wrong expiry only affects the
 		// client's own EXPIRED check.
@@ -126,20 +131,25 @@ func (c Config) Save() error {
 	}
 
 	onDisk := c
-	priorStore, _ := readStoreMarker(path)
+	var prior Config
+	_ = readFile(path, &prior)
+	fromEnv := c.envAccess != "" && c.AccessToken == c.envAccess
+	if fromEnv {
+		onDisk.AccessToken, onDisk.ExpiresAt = prior.AccessToken, prior.ExpiresAt
+	}
 	switch {
-	case os.Getenv(accessTokenEnv) != "" && priorStore == storeKeyring:
-		// c holds the env token and no refresh token. Storing that would replace
-		// the login the keyring holds.
+	case fromEnv && prior.TokenStore == storeKeyring:
+		// The keyring was never read under the env token, so c has no refresh
+		// token to store; the login stays in the keyring untouched.
 		onDisk.AccessToken, onDisk.RefreshToken = "", ""
 		onDisk.TokenStore, onDisk.TokenStoreReason = storeKeyring, ""
-	case c.AccessToken == "" && c.RefreshToken == "":
-		if priorStore == storeKeyring {
+	case onDisk.AccessToken == "" && onDisk.RefreshToken == "":
+		if prior.TokenStore == storeKeyring {
 			deleteKeyringTokens(path)
 		}
 		onDisk.TokenStore, onDisk.TokenStoreReason = "", ""
 	default:
-		onDisk.TokenStore, onDisk.TokenStoreReason = storeTokens(path, c.AccessToken, c.RefreshToken)
+		onDisk.TokenStore, onDisk.TokenStoreReason = storeTokens(path, onDisk.AccessToken, onDisk.RefreshToken)
 		if onDisk.TokenStore == storeKeyring {
 			onDisk.AccessToken, onDisk.RefreshToken = "", ""
 		}
