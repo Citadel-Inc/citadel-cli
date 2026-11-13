@@ -118,9 +118,12 @@ var logoutCmd = &cobra.Command{
 var setTokenCmd = &cobra.Command{
 	Use:   "set-token",
 	Short: "Persist a Supabase JWT directly (operator / CI path)",
-	Long: `Reads a JWT from --token, the CITADEL_ACCESS_TOKEN env var, or stdin
-(in that order), parses sub/exp claims, and writes the token + derived user
+	Long: `Reads a JWT from stdin or the CITADEL_ACCESS_TOKEN env var (prefer those),
+or from --token, parses sub/exp claims, and writes the token + derived user
 UUID + expiry to ~/.config/citadel/config.toml.
+
+--token lands the secret in your shell history; prefer piping on stdin or
+CITADEL_ACCESS_TOKEN.
 
 This is the supported headless / CI / SSH-only bootstrap when you cannot run
 'auth login' (no browser on the host). The JWT is used as given and expires with
@@ -133,9 +136,9 @@ Use this when:
   - the interactive 'auth login' browser flow is unavailable or undesired.
 
 Examples:
-  citadel-cli auth set-token --token "$JWT"
   echo "$JWT" | citadel-cli auth set-token
-  CITADEL_ACCESS_TOKEN="$JWT" citadel-cli auth set-token`,
+  CITADEL_ACCESS_TOKEN="$JWT" citadel-cli auth set-token
+  citadel-cli auth set-token --token "$JWT"`,
 	RunE: runSetToken,
 }
 
@@ -404,6 +407,9 @@ func runSetToken(cmd *cobra.Command, _ []string) error {
 	}
 
 	tok, _ := cmd.Flags().GetString("token")
+	if tok != "" {
+		fmt.Fprintln(cmd.ErrOrStderr(), "warning: --token lands the secret in your shell history; prefer piping on stdin or CITADEL_ACCESS_TOKEN")
+	}
 	tok = cmp.Or(tok, os.Getenv("CITADEL_ACCESS_TOKEN"))
 	if tok == "" {
 		// Fall back to stdin, trimmed.
@@ -863,6 +869,6 @@ func registerAuthCommands() {
 	AuthCmd.AddCommand(setTokenCmd)
 	AuthCmd.AddCommand(authProviderCmd)
 	AuthCmd.AddCommand(authGitCmd)
-	setTokenCmd.Flags().String("token", "", "JWT to persist (overrides CITADEL_ACCESS_TOKEN and stdin)")
+	setTokenCmd.Flags().String("token", "", "JWT to persist (lands in shell history; prefer stdin or CITADEL_ACCESS_TOKEN)")
 	loginCmd.Flags().Bool("device", false, "use RFC 8628 device authorization instead of opening a browser")
 }

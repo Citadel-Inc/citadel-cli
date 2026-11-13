@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -443,6 +444,42 @@ func TestRunSetToken_FromFlag(t *testing.T) {
 
 	if err := runSetToken(setTokenCmd, nil); err != nil {
 		t.Fatalf("runSetToken: %v", err)
+	}
+}
+
+func TestRunSetToken_FlagWarnsShellHistory(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	if !strings.Contains(setTokenCmd.Long, "shell history") {
+		t.Fatalf("Long missing shell-history warning: %q", setTokenCmd.Long)
+	}
+	echoAt := strings.Index(setTokenCmd.Long, `echo "$JWT"`)
+	flagAt := strings.Index(setTokenCmd.Long, `set-token --token`)
+	if echoAt < 0 || flagAt < 0 || echoAt > flagAt {
+		t.Fatalf("help should show stdin before --token, got %q", setTokenCmd.Long)
+	}
+	usage := setTokenCmd.Flags().Lookup("token").Usage
+	if !strings.Contains(usage, "shell history") || !strings.Contains(usage, "stdin") {
+		t.Fatalf("flag help = %q, want shell-history warning preferring stdin", usage)
+	}
+	tok := makeUnsignedJWT(t, jwt.MapClaims{
+		"sub": "11111111-1111-1111-1111-111111111111",
+		"exp": float64(time.Now().Add(time.Hour).Unix()),
+	})
+	var stderr bytes.Buffer
+	setTokenCmd.SetErr(&stderr)
+	t.Cleanup(func() {
+		setTokenCmd.SetErr(nil)
+		_ = setTokenCmd.Flags().Set("token", "")
+	})
+	if err := setTokenCmd.Flags().Set("token", tok); err != nil {
+		t.Fatal(err)
+	}
+	if err := runSetToken(setTokenCmd, nil); err != nil {
+		t.Fatalf("runSetToken: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "shell history") {
+		t.Fatalf("stderr = %q, want shell-history warning", stderr.String())
 	}
 }
 
