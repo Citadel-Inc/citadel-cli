@@ -2,6 +2,7 @@ package selfhost
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -64,7 +65,7 @@ func (r HealthReport) Overall() HealthStatus {
 
 // CheckHealth probes all health components for the given config.
 func CheckHealth(ctx context.Context, cfg Config) HealthReport {
-	client := &http.Client{Timeout: 8 * time.Second}
+	client := &http.Client{Timeout: 8 * time.Second, CheckRedirect: keepKeyOnOrigin}
 	return HealthReport{
 		Probes: []ProbeResult{
 			probeAPI(ctx, client, cfg.APIEndpoint),
@@ -75,6 +76,19 @@ func CheckHealth(ctx context.Context, cfg Config) HealthReport {
 }
 
 // probeAPI checks that the Citadel API server answers /api/healthz.
+// keepKeyOnOrigin strips the service-role key from a redirect to another
+// origin: net/http drops Authorization only across domains, and never Apikey.
+func keepKeyOnOrigin(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	if first := via[0].URL; req.URL.Scheme != first.Scheme || req.URL.Host != first.Host {
+		req.Header.Del("Apikey")
+		req.Header.Del("Authorization")
+	}
+	return nil
+}
+
 func probeAPI(ctx context.Context, client *http.Client, endpoint string) ProbeResult {
 	const name = "api"
 	if endpoint == "" {

@@ -143,3 +143,23 @@ func TestHealthWebPageInPlaceOfPostgREST(t *testing.T) {
 		t.Fatalf("Overall = %v, want AMBER: %+v", report.Overall(), report.Probes)
 	}
 }
+
+func TestHealthKeepsAdminKeyOffRedirectsToAnotherOrigin(t *testing.T) {
+	var leaked []string
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if v := r.Header.Get("Apikey") + r.Header.Get("Authorization"); v != "" {
+			leaked = append(leaked, r.URL.Path+": "+v)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer other.Close()
+	sup := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+r.URL.RequestURI(), http.StatusFound)
+	}))
+	defer sup.Close()
+
+	selfhost.CheckHealth(t.Context(), buildCfg(sup.URL, sup.URL))
+	if len(leaked) != 0 {
+		t.Fatalf("admin key sent to another origin: %v", leaked)
+	}
+}
