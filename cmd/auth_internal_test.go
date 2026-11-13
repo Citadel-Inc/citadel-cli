@@ -922,7 +922,7 @@ func TestOAuthCallbackHandler_IgnoresWrongState(t *testing.T) {
 
 	for _, target := range []string{"/callback?state=bad&code=x", "/callback?code=x", "/callback?error=denied"} {
 		rec := httptest.NewRecorder()
-		h(rec, httptest.NewRequest(http.MethodGet, target, nil))
+		h(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, target, nil))
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("%s: status = %d, want 400", target, rec.Code)
 		}
@@ -934,7 +934,7 @@ func TestOAuthCallbackHandler_IgnoresWrongState(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	h(rec, httptest.NewRequest(http.MethodGet, "/callback?state=good&code=abc", nil))
+	h(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/callback?state=good&code=abc", nil))
 	if res := <-resCh; res.code != "abc" || res.err != nil {
 		t.Fatalf("result = %+v", res)
 	}
