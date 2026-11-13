@@ -79,3 +79,13 @@ func TestRedactJSONTokensHidesClientSecrets(t *testing.T) {
 		}
 	}
 }
+
+func TestRedactJSONTokensHidesWorkloadProofs(t *testing.T) {
+	in := `{"org":"o","oidc_token":"oidc-jwt","aws":{"region":"us-east-1","headers":{"Authorization":"AWS4-HMAC-SHA256 Signature=sig","X-Amz-Security-Token":"aws-session"}}}`
+	out := string(redactJSONTokens([]byte(in)))
+	for _, leak := range []string{"oidc-jwt", "Signature=sig", "aws-session"} {
+		if strings.Contains(out, leak) {
+			t.Fatalf("%q survived redaction: %s", leak, out)
+		}
+	}
+}

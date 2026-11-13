@@ -277,7 +277,8 @@ func redactJSONValue(v any) {
 
 func sensitiveTokenKey(k string) bool {
 	switch k {
-	case "access_token", "refresh_token", "cleartext_token", "token", "client_secret", "cleartext_secret":
+	case "access_token", "refresh_token", "cleartext_token", "token", "client_secret", "cleartext_secret",
+		"oidc_token", "Authorization", "X-Amz-Security-Token":
 		return true
 	}
 	return false
