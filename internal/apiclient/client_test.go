@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -595,5 +596,30 @@ func TestClientEndpoint_NoDoubleAPI(t *testing.T) {
 	}
 	if got := c.endpoint("/orgs"); got != "https://self.example/api/orgs" {
 		t.Errorf("plain path: %q", got)
+	}
+}
+
+func TestClient_RedirectToOtherOriginDoesNotCarryToken(t *testing.T) {
+	var leaked atomic.Bool
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "" {
+			leaked.Store(true)
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(other.Close)
+	// Same hostname, different port: Go's client keeps Authorization across it.
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/x", http.StatusTemporaryRedirect)
+	}))
+	t.Cleanup(origin.Close)
+
+	c, err := New(clicfg.Config{AccessToken: "secret-token"}, Options{Server: origin.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = c.Get(t.Context(), "/x", nil)
+	if leaked.Load() {
+		t.Fatal("bearer token was sent to a redirect target on another origin")
 	}
 }

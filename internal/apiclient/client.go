@@ -148,11 +148,24 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 		server:     ResolveRESTServerURL(cfg.ResolveRawServerURL(opts.Server)),
 		token:      cfg.AccessToken,
 		userAgent:  ua,
-		http:       &http.Client{Timeout: defaultTimeout, Transport: rt},
-		streamHTTP: &http.Client{Transport: rt},
+		http:       &http.Client{Timeout: defaultTimeout, Transport: rt, CheckRedirect: dropAuthOffOrigin},
+		streamHTTP: &http.Client{Transport: rt, CheckRedirect: dropAuthOffOrigin},
 		retryOn401: opts.RetryOn401,
 		writeToken: opts.WriteToken,
 	}, nil
+}
+
+// dropAuthOffOrigin strips the bearer token from a redirect that leaves the
+// original scheme and host:port; net/http compares hostnames only, so it would
+// forward the token to another port or down to plain http.
+func dropAuthOffOrigin(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	if first := via[0].URL; req.URL.Scheme != first.Scheme || req.URL.Host != first.Host {
+		req.Header.Del("Authorization")
+	}
+	return nil
 }
 
 // bearer picks the token for one request.
