@@ -4,6 +4,7 @@ run = "go vet ./..."
 
 [gates.test]
 run = "bash scripts/check-package-coverage.sh"
+timeout = "5m"
 
 # golangci-lint spends about a third of its CPU in GC at the default GOGC, and a cold gate is CPU-bound.
 [gates.lint]
