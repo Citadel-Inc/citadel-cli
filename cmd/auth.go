@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -187,45 +188,12 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 	// Wait for callback
 	var code string
-	type oauthCallbackResult struct {
-		code string
-		err  error
-	}
 	resCh := make(chan oauthCallbackResult, 1)
 	errServe := make(chan error, 1)
 
 	go func() {
 		mux := http.NewServeMux()
-		mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-			q := r.URL.Query()
-			if errName := q.Get("error"); errName != "" {
-				desc := q.Get("error_description")
-				if desc == "" {
-					desc = errName
-				}
-				resCh <- oauthCallbackResult{err: fmt.Errorf("oauth authorization failed: %s", desc)}
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte("Authorization failed. You can close this window."))
-				return
-			}
-			if got := q.Get("state"); got != oauthState {
-				resCh <- oauthCallbackResult{err: errors.New("invalid oauth state parameter")}
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte("invalid state"))
-				return
-			}
-			c := q.Get("code")
-			if c == "" {
-				resCh <- oauthCallbackResult{err: errors.New("missing code parameter")}
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte("missing code"))
-				return
-			}
-			resCh <- oauthCallbackResult{code: c}
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("Authentication successful! You can close this window."))
-		})
+		mux.HandleFunc("/callback", oauthCallbackHandler(oauthState, resCh))
 
 		// The outer defer closes the listener; that is what unblocks Serve.
 		// No follow-up Shutdown() is needed — Serve already returned.
@@ -274,6 +242,48 @@ func runLogin(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Authentication successful! User: %s, agent: %s (%s)\n", userUUID, cfg.AgentName, cfg.AgentID)
 	return nil
+}
+
+type oauthCallbackResult struct {
+	code string
+	err  error
+}
+
+// oauthCallbackHandler reports the first genuine callback on resCh. A request
+// whose state does not match comes from something other than the authorization
+// server, so it is refused without ending the login.
+func oauthCallbackHandler(oauthState string, resCh chan<- oauthCallbackResult) http.HandlerFunc {
+	var once sync.Once
+	report := func(res oauthCallbackResult) { once.Do(func() { resCh <- res }) }
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if q.Get("state") != oauthState {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("invalid state"))
+			return
+		}
+		if errName := q.Get("error"); errName != "" {
+			desc := q.Get("error_description")
+			if desc == "" {
+				desc = errName
+			}
+			report(oauthCallbackResult{err: fmt.Errorf("oauth authorization failed: %s", desc)})
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("Authorization failed. You can close this window."))
+			return
+		}
+		c := q.Get("code")
+		if c == "" {
+			report(oauthCallbackResult{err: errors.New("missing code parameter")})
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("missing code"))
+			return
+		}
+		report(oauthCallbackResult{code: c})
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("Authentication successful! You can close this window."))
+	}
 }
 
 func runDeviceLogin(cmd *cobra.Command, cfg *clicfg.Config, serverURL, flagServer string) error {

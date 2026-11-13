@@ -915,3 +915,27 @@ func TestFriendlyError_SessionCredentialRequired(t *testing.T) {
 		t.Fatalf("FriendlyError = %#v", ce)
 	}
 }
+
+func TestOAuthCallbackHandler_IgnoresWrongState(t *testing.T) {
+	resCh := make(chan oauthCallbackResult, 1)
+	h := oauthCallbackHandler("good", resCh)
+
+	for _, target := range []string{"/callback?state=bad&code=x", "/callback?code=x", "/callback?error=denied"} {
+		rec := httptest.NewRecorder()
+		h(rec, httptest.NewRequest(http.MethodGet, target, nil))
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: status = %d, want 400", target, rec.Code)
+		}
+	}
+	select {
+	case res := <-resCh:
+		t.Fatalf("mismatched state ended the login: %+v", res)
+	default:
+	}
+
+	rec := httptest.NewRecorder()
+	h(rec, httptest.NewRequest(http.MethodGet, "/callback?state=good&code=abc", nil))
+	if res := <-resCh; res.code != "abc" || res.err != nil {
+		t.Fatalf("result = %+v", res)
+	}
+}
