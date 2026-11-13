@@ -94,7 +94,7 @@ type authTransport struct {
 	base   http.RoundTripper
 	token  string
 	status atomic.Int64
-	// Redirects reach RoundTrip too; the token goes only to the configured origin.
+	// Redirects reach RoundTrip too; the token and session id go only to the configured origin.
 	scheme, host string
 }
 
@@ -104,6 +104,7 @@ func (a *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Set("Authorization", "Bearer "+a.token)
 	} else {
 		req.Header.Del("Authorization")
+		req.Header.Del("Mcp-Session-Id")
 	}
 	resp, err := a.base.RoundTrip(req)
 	if req.Method == http.MethodDelete {

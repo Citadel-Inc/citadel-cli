@@ -411,6 +411,32 @@ func TestTimeoutSurfacesAsError(t *testing.T) {
 	}
 }
 
+func TestAuthTransportStripsSessionHeaderOffOrigin(t *testing.T) {
+	var leaked atomic.Bool
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "" || r.Header.Get("Mcp-Session-Id") != "" {
+			leaked.Store(true)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(other.Close)
+
+	tap := &authTransport{base: http.DefaultTransport, token: "secret-token", scheme: "http", host: "origin.test"}
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, other.URL+"/mcp", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Mcp-Session-Id", "sess-1")
+	resp, err := tap.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if leaked.Load() {
+		t.Fatal("session header or bearer token was sent off origin")
+	}
+}
+
 func TestRedirectToOtherHostDoesNotCarryToken(t *testing.T) {
 	var leaked atomic.Bool
 	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
