@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/selfhost"
+	safefs "github.com/Rethunk-Tech/go-safefs"
 )
 
 // selfHostDebugFlag returns true when --debug is set on the self-host command group.
@@ -69,7 +70,10 @@ var selfHostInitCmd = &cobra.Command{
 	Long: `Collect API endpoint, Supabase URL, admin key, and JWT secret, then
 write them to ~/.citadel/self-host.yaml (or CITADEL_SELF_HOST_CONFIG).
 
-Pass --batch to read all required values from flags without prompting.`,
+Pass --batch to read all required values without prompting. Secrets come
+from CITADEL_SELF_HOST_ADMIN_KEY / CITADEL_SELF_HOST_JWT_SECRET or
+--admin-key-stdin / --jwt-secret-stdin; --admin-key and --jwt-secret still
+work but expose the value in the process list.`,
 	RunE: runSelfHostInit,
 }
 
@@ -125,10 +129,15 @@ func runSelfHostInit(cmd *cobra.Command, _ []string) error {
 
 	apiEndpoint, _ := cmd.Flags().GetString("api-endpoint")
 	supabaseURL, _ := cmd.Flags().GetString("supabase-url")
-	adminKey, _ := cmd.Flags().GetString("admin-key")
-	jwtSecret, _ := cmd.Flags().GetString("jwt-secret")
+	adminKey, err := secretInput(cmd, "admin-key", "CITADEL_SELF_HOST_ADMIN_KEY")
+	if err != nil {
+		return err
+	}
+	jwtSecret, err := secretInput(cmd, "jwt-secret", "CITADEL_SELF_HOST_JWT_SECRET")
+	if err != nil {
+		return err
+	}
 
-	var err error
 	cfg.APIEndpoint, err = resolveField("API endpoint (e.g. https://citadel.example.com)",
 		apiEndpoint, cfg.APIEndpoint, batch, false)
 	if err != nil {
@@ -164,6 +173,29 @@ func runSelfHostInit(cmd *cobra.Command, _ []string) error {
 	log.Debug("config saved", "path", path)
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Self-host config written to %s\n", path)
 	return nil
+}
+
+// secretInput resolves a secret from --<flag>, --<flag>-stdin, or env, warning
+// when it arrived on argv where other local users can read it.
+func secretInput(cmd *cobra.Command, flag, env string) (string, error) {
+	if v, _ := cmd.Flags().GetString(flag); v != "" {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"warning: --%s on the command line is visible in the process list; use %s or --%s-stdin instead\n",
+			flag, env, flag)
+		return v, nil
+	}
+	if fromStdin, _ := cmd.Flags().GetBool(flag + "-stdin"); fromStdin {
+		b, err := safefs.ReadCapped(cmd.InOrStdin(), 64<<10)
+		if err != nil {
+			return "", fmt.Errorf("read --%s from stdin: %w", flag, err)
+		}
+		v := strings.TrimSpace(string(b))
+		if v == "" {
+			return "", fmt.Errorf("--%s-stdin: stdin was empty", flag)
+		}
+		return v, nil
+	}
+	return os.Getenv(env), nil
 }
 
 // resolveField returns the effective value for a config field, prompting
@@ -333,8 +365,14 @@ func registerSelfHostCommands() {
 	// init flags
 	selfHostInitCmd.Flags().String("api-endpoint", "", "Citadel API endpoint URL")
 	selfHostInitCmd.Flags().String("supabase-url", "", "Supabase project URL")
-	selfHostInitCmd.Flags().String("admin-key", "", "Supabase service-role key")
-	selfHostInitCmd.Flags().String("jwt-secret", "", "Supabase JWT signing secret")
+	selfHostInitCmd.Flags().String("admin-key", "", "Supabase service-role key (visible in ps; prefer CITADEL_SELF_HOST_ADMIN_KEY or --admin-key-stdin)")
+	selfHostInitCmd.Flags().String("jwt-secret", "", "Supabase JWT signing secret (visible in ps; prefer CITADEL_SELF_HOST_JWT_SECRET or --jwt-secret-stdin)")
+	selfHostInitCmd.Flags().Bool("admin-key-stdin", false, "Read the service-role key from stdin")
+	selfHostInitCmd.Flags().Bool("jwt-secret-stdin", false, "Read the JWT signing secret from stdin")
+	selfHostInitCmd.MarkFlagsMutuallyExclusive("admin-key", "admin-key-stdin")
+	selfHostInitCmd.MarkFlagsMutuallyExclusive("jwt-secret", "jwt-secret-stdin")
+	// stdin is one stream, so it can carry only one secret.
+	selfHostInitCmd.MarkFlagsMutuallyExclusive("admin-key-stdin", "jwt-secret-stdin")
 
 	// bootstrap-token flags
 	selfHostBootstrapTokenCmd.Flags().String("duration", "", "Token validity (default 168h = 7 days, e.g. 24h, 720h)")

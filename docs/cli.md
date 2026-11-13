@@ -1356,15 +1356,17 @@ You will be prompted for:
 - **Admin key** — Supabase service-role key (kept in config file at 0600)
 - **JWT secret** — Supabase JWT signing secret (signs bootstrap tokens)
 
-For non-interactive (CI/automation) environments, pass all values as flags:
+For non-interactive (CI/automation) environments, pass the URLs as flags and the secrets through the environment, or pipe one of them on stdin with `--admin-key-stdin` / `--jwt-secret-stdin`:
 
 ```bash
+CITADEL_SELF_HOST_ADMIN_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+CITADEL_SELF_HOST_JWT_SECRET="$SUPABASE_JWT_SECRET" \
 citadel-cli self-host init --batch \
   --api-endpoint https://citadel.example.com \
-  --supabase-url https://abc.supabase.co \
-  --admin-key "$SUPABASE_SERVICE_ROLE_KEY" \
-  --jwt-secret "$SUPABASE_JWT_SECRET"
+  --supabase-url https://abc.supabase.co
 ```
+
+`--admin-key` and `--jwt-secret` still work but print a warning: argv is visible to other users in the process list.
 
 ### Health check
 

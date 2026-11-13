@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -100,5 +101,69 @@ func TestSelfHostHealth_NoConfig(t *testing.T) {
 	err := rootFor(cmd.SelfHostCmd, "health").Execute()
 	if err == nil || !strings.Contains(err.Error(), "self-host config incomplete") {
 		t.Fatalf("want config-incomplete error, got %v", err)
+	}
+}
+
+// runSelfHostInitWith drives `self-host init --batch` with the given stdin and
+// returns stderr, so secret-source behaviour can be asserted.
+func runSelfHostInitWith(t *testing.T, stdin string, args ...string) (string, error) {
+	t.Helper()
+	cfgPath := filepath.Join(t.TempDir(), "self-host.yaml")
+	t.Setenv("CITADEL_SELF_HOST_CONFIG", cfgPath)
+	var stderr strings.Builder
+	root := rootForOut(cmd.SelfHostCmd, io.Discard, append([]string{"init", "--batch",
+		"--api-endpoint", "https://citadel.example.com",
+		"--supabase-url", "https://abc.supabase.co"}, args...)...)
+	for _, c := range cmd.SelfHostCmd.Commands() {
+		c.SetErr(&stderr)
+		c.SetIn(strings.NewReader(stdin))
+	}
+	err := root.Execute()
+	if err == nil {
+		b, rerr := os.ReadFile(cfgPath)
+		if rerr != nil {
+			t.Fatal(rerr)
+		}
+		if !strings.Contains(string(b), "admin_key: service-role-key") || !strings.Contains(string(b), "jwt_secret: jwt-signing-secret") {
+			t.Fatalf("secrets not saved: %s", b)
+		}
+	}
+	return stderr.String(), err
+}
+
+func TestSelfHostInit_BatchSecretsFromEnv(t *testing.T) {
+	t.Setenv("CITADEL_SELF_HOST_ADMIN_KEY", "service-role-key")
+	t.Setenv("CITADEL_SELF_HOST_JWT_SECRET", "jwt-signing-secret")
+	stderr, err := runSelfHostInitWith(t, "")
+	if err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	if strings.Contains(stderr, "warning") {
+		t.Fatalf("env secrets must not warn: %q", stderr)
+	}
+}
+
+func TestSelfHostInit_BatchSecretFromStdin(t *testing.T) {
+	t.Setenv("CITADEL_SELF_HOST_JWT_SECRET", "jwt-signing-secret")
+	if _, err := runSelfHostInitWith(t, "service-role-key\n", "--admin-key-stdin"); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+}
+
+func TestSelfHostInit_ArgvSecretWarns(t *testing.T) {
+	stderr, err := runSelfHostInitWith(t, "", "--admin-key", "service-role-key", "--jwt-secret", "jwt-signing-secret")
+	if err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	for _, flag := range []string{"--admin-key", "--jwt-secret"} {
+		if !strings.Contains(stderr, "warning: "+flag) {
+			t.Fatalf("want argv warning for %s, got %q", flag, stderr)
+		}
+	}
+}
+
+func TestSelfHostInit_BothSecretsFromStdinRejected(t *testing.T) {
+	if _, err := runSelfHostInitWith(t, "x\n", "--admin-key-stdin", "--jwt-secret-stdin"); err == nil {
+		t.Fatal("want error: stdin can carry only one secret")
 	}
 }
