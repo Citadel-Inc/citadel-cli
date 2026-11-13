@@ -623,3 +623,10 @@ func TestClient_RedirectToOtherOriginDoesNotCarryToken(t *testing.T) {
 		t.Fatal("bearer token was sent to a redirect target on another origin")
 	}
 }
+
+func TestNewHTTPClient_HasTimeoutAndRedirectPolicy(t *testing.T) {
+	c := NewHTTPClient()
+	if c.Timeout != defaultTimeout || c.CheckRedirect == nil {
+		t.Fatalf("client = %+v", c)
+	}
+}

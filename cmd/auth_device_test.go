@@ -306,3 +306,18 @@ func mapClaimsForDeviceTest() jwt.MapClaims {
 		"exp": float64(time.Now().Add(time.Hour).Unix()),
 	}
 }
+
+func TestDeviceFlow_BoundsSuccessBody(t *testing.T) {
+	huge := `{"access_token":"` + strings.Repeat("a", 2<<20) + `"}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, huge)
+	}))
+	t.Cleanup(srv.Close)
+
+	if _, err := requestDeviceAuthorization(t.Context(), srv.URL); err == nil {
+		t.Error("requestDeviceAuthorization accepted an oversized body")
+	}
+	if _, _, _, err := pollDeviceTokenOnce(t.Context(), srv.URL, "dc"); err == nil {
+		t.Error("pollDeviceTokenOnce accepted an oversized body")
+	}
+}

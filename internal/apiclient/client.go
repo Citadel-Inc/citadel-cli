@@ -155,6 +155,15 @@ func New(cfg clicfg.Config, opts Options) (*Client, error) {
 	}, nil
 }
 
+// NewHTTPClient is the plain client for unauthenticated calls such as the OAuth
+// endpoints: the api client's timeout and redirect policy, no bearer token.
+func NewHTTPClient() *http.Client {
+	return &http.Client{Timeout: defaultTimeout, CheckRedirect: dropAuthOffOrigin}
+}
+
+// LimitBody caps a success body at the size bound used for error bodies.
+func LimitBody(r io.Reader) io.Reader { return io.LimitReader(r, maxErrorBody) }
+
 // dropAuthOffOrigin strips the bearer token from a redirect that leaves the
 // original scheme and host:port; net/http compares hostnames only, so it would
 // forward the token to another port or down to plain http.

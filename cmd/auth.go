@@ -558,7 +558,7 @@ func requestDeviceAuthorization(ctx context.Context, citadelBaseURL string) (dev
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	// The approval page shows the platform, so the person approving can recognise the request.
 	req.Header.Set("User-Agent", "citadel-cli/"+Version+" ("+runtime.GOOS+"/"+runtime.GOARCH+")")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := apiclient.NewHTTPClient().Do(req)
 	if err != nil {
 		return deviceAuthorizationResponse{}, fmt.Errorf("device authorization request: %w", err)
 	}
@@ -569,7 +569,7 @@ func requestDeviceAuthorization(ctx context.Context, citadelBaseURL string) (dev
 		return deviceAuthorizationResponse{}, fmt.Errorf("device authorization failed: %s", strings.TrimSpace(string(body)))
 	}
 	var out deviceAuthorizationResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.NewDecoder(apiclient.LimitBody(resp.Body)).Decode(&out); err != nil {
 		return deviceAuthorizationResponse{}, fmt.Errorf("decode device authorization response: %w", err)
 	}
 	if out.DeviceCode == "" || out.UserCode == "" || out.VerificationURI == "" {
@@ -657,7 +657,7 @@ func pollDeviceTokenOnce(ctx context.Context, citadelBaseURL, deviceCode string)
 		return pkceTokenResponse{}, "", "", fmt.Errorf("device token poll: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := apiclient.NewHTTPClient().Do(req)
 	if err != nil {
 		return pkceTokenResponse{}, "", "", fmt.Errorf("device token poll: %w", err)
 	}
@@ -676,7 +676,7 @@ func pollDeviceTokenOnce(ctx context.Context, citadelBaseURL, deviceCode string)
 	}
 
 	var out pkceTokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.NewDecoder(apiclient.LimitBody(resp.Body)).Decode(&out); err != nil {
 		return pkceTokenResponse{}, "", "", fmt.Errorf("decode device token response: %w", err)
 	}
 	if out.AccessToken == "" {
