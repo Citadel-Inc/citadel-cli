@@ -34,9 +34,10 @@ import (
 const ProtocolVersion = "2025-11-25"
 
 const (
-	clientName    = "citadel-cli"
-	clientVersion = "1"
-	maxAttempts   = 3
+	clientName      = "citadel-cli"
+	clientVersion   = "1"
+	maxAttempts     = 3
+	maxResponseBody = 32 << 20
 )
 
 // Options are the per-invocation knobs surfaced from the CLI persistent flags.
@@ -107,6 +108,9 @@ func (a *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.Header.Del("Mcp-Session-Id")
 	}
 	resp, err := a.base.RoundTrip(req)
+	if resp != nil && resp.Body != nil {
+		resp.Body = capResponseBody(resp.Body)
+	}
 	if req.Method == http.MethodDelete {
 		// The SDK's session teardown follows a failed call; its status would mask the failure.
 		return resp, err
@@ -118,6 +122,28 @@ func (a *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	a.status.Store(int64(resp.StatusCode))
 	return resp, nil
 }
+
+func capResponseBody(rc io.ReadCloser) io.ReadCloser {
+	return &cappedBody{r: io.LimitReader(rc, maxResponseBody+1), c: rc, max: maxResponseBody}
+}
+
+type cappedBody struct {
+	r   io.Reader
+	c   io.Closer
+	n   int64
+	max int64
+}
+
+func (c *cappedBody) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+	if c.n > c.max {
+		return n, fmt.Errorf("streamable HTTP response body exceeds the %d MiB limit", c.max>>20)
+	}
+	return n, err
+}
+
+func (c *cappedBody) Close() error { return c.c.Close() }
 
 // Initialize performs the MCP initialize handshake. A server that settles on a
 // protocol version other than ProtocolVersion produces KindVersionMismatch.

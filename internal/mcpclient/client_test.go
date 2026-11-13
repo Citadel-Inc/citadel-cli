@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -409,6 +410,42 @@ func TestTimeoutSurfacesAsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("want timeout error")
 	}
+}
+
+func TestAuthTransport_CapsResponseBody(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.Copy(w, io.LimitReader(neverEnding('x'), maxResponseBody+1))
+	}))
+	t.Cleanup(srv.Close)
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tap := &authTransport{base: http.DefaultTransport, token: "t", scheme: u.Scheme, host: u.Host}
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := tap.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	_, err = io.ReadAll(resp.Body)
+	if err == nil || !strings.Contains(err.Error(), "32 MiB") {
+		t.Fatalf("want 32 MiB cap error, got %v", err)
+	}
+}
+
+type neverEnding byte
+
+func (b neverEnding) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = byte(b)
+	}
+	return len(p), nil
 }
 
 func TestAuthTransportStripsSessionHeaderOffOrigin(t *testing.T) {
