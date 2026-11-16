@@ -382,7 +382,17 @@ func gitSSHRemote(serverURL, ns, slug string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return "git@" + host + ":" + url.PathEscape(ns) + "/" + url.PathEscape(slug) + ".git", nil
+	// PathEscape encodes "/", which turns org/project namespaces into an
+	// unusable git path (acme%2Fproject/demo.git). Escape each segment.
+	return "git@" + host + ":" + escapeGitSSHPath(ns+"/"+slug) + ".git", nil
+}
+
+func escapeGitSSHPath(p string) string {
+	parts := strings.Split(p, "/")
+	for i, part := range parts {
+		parts[i] = url.PathEscape(part)
+	}
+	return strings.Join(parts, "/")
 }
 
 // resolveRepoSSHRemote fetches git_ssh_remote from the repo API, falling back
