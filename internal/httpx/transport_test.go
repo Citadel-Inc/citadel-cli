@@ -75,6 +75,22 @@ func TestStackBaseDefault(t *testing.T) {
 	_ = t.Context()
 }
 
+// A long-lived watch reconnects indefinitely, so the exponent is unbounded:
+// the shifted duration must saturate at the cap rather than overflow int64
+// (a negative delay panics rand.Int64N inside Backoff).
+func TestBackoff_SaturatesOnLongStreaks(t *testing.T) {
+	base := retryBaseBackoff
+	retryBaseBackoff = 250 * time.Millisecond
+	t.Cleanup(func() { retryBaseBackoff = base })
+
+	for n := 0; n <= 200; n++ {
+		got := Backoff(n)
+		if got < 0 || got > retryMaxBackoff {
+			t.Fatalf("Backoff(%d) = %v; want within [0, %v]", n, got, retryMaxBackoff)
+		}
+	}
+}
+
 func TestRetryAfterDelay_ParseSeconds(t *testing.T) {
 	h := http.Header{}
 	if got := retryAfterDelay(h); got != 0 {

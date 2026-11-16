@@ -86,7 +86,16 @@ func retryAfterDelay(h http.Header) time.Duration {
 // Backoff returns the expo-jittered delay for reconnect attempt n (0-indexed).
 // Matches the retry policy used by RetryTransport (250 ms floor, 4 s cap).
 func Backoff(n int) time.Duration {
-	d := min(retryBaseBackoff<<n, retryMaxBackoff)
+	// A watch reconnects indefinitely, so n is unbounded: double up to the cap
+	// rather than shifting, which overflows int64 and yields a negative bound.
+	d := retryBaseBackoff
+	for range n {
+		if d >= retryMaxBackoff {
+			break
+		}
+		d *= 2
+	}
+	d = min(d, retryMaxBackoff)
 	half := d / 2
 	return half + time.Duration(rand.Int64N(int64(half)+1)) //nolint:gosec // Retry jitter is timing noise, not security material.
 }
