@@ -385,6 +385,14 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Warning: could not parse access token: %v\n", perr)
 	}
 	exp := expiryFromClaims(claims, time.Time{})
+	// time.Time{} means exp was absent (opaque token / unreadable JWT), not 1970.
+	// time.Until(zero) is always negative, which is why this used to print EXPIRED.
+	if exp.IsZero() {
+		fmt.Println("Session: opaque token (expiry unknown)")
+		fmt.Printf("User UUID: %s\n", cfg.UserUUID)
+		fmt.Printf("Server: %s\n", resolvedServer)
+		return nil
+	}
 	remaining := time.Until(exp)
 	if remaining < 0 {
 		fmt.Println("Session: EXPIRED")
