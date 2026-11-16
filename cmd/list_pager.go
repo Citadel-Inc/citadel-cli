@@ -22,9 +22,10 @@ type listPager[T any] struct {
 	csv      func(cmd *cobra.Command, headerWritten *bool, rows []T) error
 	csvEmpty func(cmd *cobra.Command) error
 
-	first     bool
-	csvHdr    bool
-	yamlAccum []T
+	first      bool
+	csvHdr     bool
+	yamlAccum  []T
+	tableAccum []T
 }
 
 func newListPager[T CSVRow](cmd *cobra.Command, output string, all bool, empty func(w io.Writer), table func(w *tabwriter.Writer, rows []T)) *listPager[T] {
@@ -103,19 +104,32 @@ func (p *listPager[T]) emitRows(rows []T) (stop bool, err error) {
 		p.yamlAccum = append(p.yamlAccum, rows...)
 		return false, nil
 	default:
+		if p.all {
+			p.tableAccum = append(p.tableAccum, rows...)
+			return false, nil
+		}
 		w := newTabWriter(p.cmd)
 		p.table(w, rows)
 		return false, w.Flush()
 	}
 }
 
-// finish emits the accumulated YAML document for --all.
+// finish emits the accumulated YAML document or table for --all.
 func (p *listPager[T]) finish() error {
-	if !p.all || p.output != "yaml" {
+	if !p.all {
 		return nil
 	}
-	if p.yamlAccum == nil {
-		p.yamlAccum = []T{}
+	switch p.output {
+	case "yaml":
+		if p.yamlAccum == nil {
+			p.yamlAccum = []T{}
+		}
+		return emitYAML(p.cmd, p.yamlAccum)
+	case "json", "ndjson", "csv":
+		return nil
+	default:
+		w := newTabWriter(p.cmd)
+		p.table(w, p.tableAccum)
+		return w.Flush()
 	}
-	return emitYAML(p.cmd, p.yamlAccum)
 }
