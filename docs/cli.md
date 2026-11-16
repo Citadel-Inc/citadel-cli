@@ -132,6 +132,17 @@ citadel-cli auth provider unlink github --yes --json
 
 `auth provider list` does **not** require a saved session; `link` and `unlink` do. `link` opens the returned Supabase authorize URL in your browser by default and still prints the URL so headless users can copy-paste it elsewhere. `unlink` uses the daemon's guardrails directly, including `last_provider_blocked` when removing the last non-email provider would strand the account.
 
+## Workload login
+
+`citadel-cli workload login` proves a server-side workload's identity to an org's trust policy and prints shell exports for an agent process: `CITADEL_ACCESS_TOKEN`, `CITADEL_WORKLOAD_SESSION_ID`, `CITADEL_WORKLOAD_EXPIRES_AT`, and `GIT_SSH_COMMAND` (a fresh SSH key registered for the session). There is no developer login.
+
+```bash
+eval "$(citadel-cli workload login --org acme --oidc-token-file /var/run/secrets/tokens/citadel)"
+citadel-cli workload login --org acme --aws --audience https://citadel.example.com
+```
+
+`--org` is required. Give exactly one of `--oidc-token-file` (an OIDC JWT whose audience is the server's configured workload audience) and `--aws` (sign `sts:GetCallerIdentity` with ambient AWS credentials: IRSA, instance role, or Bedrock roles). `--aws` needs `--audience` or `CITADEL_WORKLOAD_AUDIENCE`. Optional flags: `--policy`, repeatable `--scope`, `--client`, `--key-dir`, `--aws-region`.
+
 ## Shell completion
 
 Generate scripts for your shell (bash, zsh, fish, or PowerShell):
@@ -174,6 +185,7 @@ citadel-cli project edge add org/repo \
   --from-namespace-id <uuid> --from-kind repo --to-kind repo \
   --edge-type pins --output json
 citadel-cli project edge delete org/repo <edge-uuid> --yes
+citadel-cli project edge restore org/repo <edge-uuid>
 citadel-cli project reindex org/repo --yes
 ```
 
@@ -331,6 +343,12 @@ citadel-cli repo pull
 - `--remote <name>` applies when the repo path is inferred from the current
   checkout rather than passed explicitly.
 
+### Default branch
+
+```bash
+citadel-cli repo branch set-default acme/demo main
+```
+
 ### Webhooks
 
 Webhook management follows Citadel's namespace-scoped API, so the CLI nests it
@@ -413,6 +431,8 @@ repository while no live agent session exists.
 | `SessionStart` | `citadel-cli hook session-start` | Creates an agent session `claude-code-<hostname>` for the repository in `origin` when that remote is on the Citadel server the session opens on (or a host in `CITADEL_GIT_HOSTS`), which shows the session on that org's Fleet from the start. It has an ephemeral ed25519 key under `$XDG_RUNTIME_DIR/citadel/sessions/<session_id>/`, then exports `GIT_SSH_COMMAND`, `CITADEL_AGENT_SESSION`, `CITADEL_HOOK_STATE` and `CITADEL_ACCESS_TOKEN` through `CLAUDE_ENV_FILE`. `GIT_SSH_COMMAND` is the hidden `citadel-cli hook git-ssh`, which offers the session key only to Citadel hosts and runs plain `ssh` unchanged for any other host. For an `https://` origin it also registers a git credential helper for that host through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n`, so `git clone` and `git push` over HTTPS authenticate as the agent with no prompt. The helper is the hidden `citadel-cli hook git-credential`; it answers `get` with username `x` and the token from `CITADEL_ACCESS_TOKEN`, so the token is never in git config or argv. |
 | `PreToolUse` | `citadel-cli hook renew` | Renews the 15-minute session when under 5 minutes remain; otherwise makes no network call. If the session already ended (idle over 15 minutes), opens a new one on a fresh key (written over the old key file, so `GIT_SSH_COMMAND` keeps working) with the same scopes and reports it on stderr. If the session was revoked (410 `session_revoked`), the hook removes the key and token, warns, and does not reissue for the rest of that Claude Code session; a new Claude Code session starts fresh; the new token is kept in session state, which every `citadel-cli` call in the session reads when `CITADEL_AGENT_SESSION` and `CITADEL_HOOK_STATE` are set. |
 | `SessionEnd` | `citadel-cli hook session-end` | Ends the session and deletes its key directory. |
+
+`hook commit-trailers` is a hidden `prepare-commit-msg` helper that adds the agent session trailers to a commit message file.
 
 `auth login` stores a token with the `code`, `issues` and `pulls` read and write scopes the CLI verbs use and the `sessions:write` scope the hooks need; a token from an older login is refused and the hook asks you to run `citadel-cli auth login` again.
 
@@ -677,6 +697,7 @@ citadel-cli kg fulltext --q "panic(" -R myorg/myrepo
 citadel-cli kg walk --seed-id <symbol-uuid> -R myorg/myrepo --depth 2
 citadel-cli kg diff -R myorg/myrepo --from-ref main --to-ref topic-branch
 citadel-cli kg impact myorg/myrepo MyFunc   # symbol name or UUID
+citadel-cli kg unreferenced -R myorg/myrepo
 ```
 
 **`kg impact`** uses **`GET /api/namespaces/{namespace}/kg/impact`**.
@@ -719,6 +740,21 @@ Prints the drill-down JSON from the server (including operator-only fields only 
 citadel-cli audit sessions show <session-id>
 citadel-cli audit sessions show <session-id> --output yaml
 ```
+
+## Change provenance
+
+`citadel-cli provenance` fetches and verifies signed change-provenance reports. A report states who and what changed a repository's code and who approved it, signed by the server with an Ed25519 key. Server-observed facts (pusher, session) are kept apart from claims (commit author, trailers). Fetching needs repo read plus the `audit:read` grant, or org admin.
+
+```bash
+citadel-cli provenance report -R acme/demo --pr 42
+citadel-cli provenance report -R acme/demo --to abc1234 --from def5678
+citadel-cli provenance report -R acme/demo --since 2026-01-01T00:00:00Z --until 2026-02-01T00:00:00Z
+citadel-cli provenance report -R acme/demo --pr 42 --out report.json
+citadel-cli provenance verify report.json
+citadel-cli provenance verify report.json --key ./provenance-keys.json
+```
+
+`report` writes the signed envelope to stdout or `--out`. Pick exactly one scope: `--pr N`, `--to SHA` (`--from SHA` optional), or `--since` with `--until` (RFC3339). `verify` checks the Ed25519 signature offline. The key comes from `--key` (a base64 public key, or a file holding one base64 key or the JSON served at `/.well-known/citadel-provenance-keys`), else from the pinned file `<user config dir>/citadel/provenance-keys.json`.
 
 ## Server URL configuration
 
@@ -854,6 +890,20 @@ citadel-cli namespace profile get myorg --output yaml
 # Short alias
 citadel-cli ns profile get myorg
 ```
+
+## Namespace transfer
+
+Transfer ownership of an org namespace. The initiator proposes; the recipient accepts or declines.
+
+```bash
+citadel-cli namespace transfer initiate myorg --to newowner
+citadel-cli namespace transfer list-pending
+citadel-cli namespace transfer accept <transfer-id>
+citadel-cli namespace transfer decline <transfer-id>
+citadel-cli namespace transfer revoke <transfer-id>
+```
+
+`initiate`, `accept`, and `revoke` require typed-slug confirmation unless `--yes` is set. Only org namespaces are supported.
 
 ## Notification inbox
 
@@ -1387,6 +1437,17 @@ Overall: GREEN
 ```
 
 Exit code 0 = GREEN; 1 = AMBER or RED.
+
+### License
+
+Inspect and validate a Citadel license file (signature, expiry, fields):
+
+```bash
+citadel-cli self-host license validate --file ./license.json
+citadel-cli self-host license validate --file ./license.json --skip-signature
+```
+
+Signature verification runs when `CITADEL_LICENSE_PUBKEY` or `--pubkey` provides the Ed25519 public key. `--skip-signature` checks schema and expiry only.
 
 | Status | Meaning |
 | -------- | --------- |
