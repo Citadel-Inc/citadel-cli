@@ -386,7 +386,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 	exp := expiryFromClaims(claims, time.Time{})
 	// time.Time{} means exp was absent (opaque token / unreadable JWT), not 1970.
-	// time.Until(zero) is always negative, which is why this used to print EXPIRED.
+	// time.Until(zero) is always negative, so it would read as expired.
 	if exp.IsZero() {
 		fmt.Println("Session: opaque token (expiry unknown)")
 		fmt.Printf("User UUID: %s\n", cfg.UserUUID)
