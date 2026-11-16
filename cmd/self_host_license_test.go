@@ -195,6 +195,25 @@ func TestSelfHostLicenseValidate_GraceWindow(t *testing.T) {
 	}
 }
 
+func TestSelfHostLicenseValidate_ExpiredWithinDayIsGrace(t *testing.T) {
+	// Expired 12 hours ago: the day count must not truncate to zero and report
+	// it as still valid; docs/cli.md says an expired licence is in GRACE.
+	past := time.Now().UTC().Add(-12 * time.Hour).Format(time.RFC3339)
+	path, pub := newSignedLicenseFile(t, map[string]any{
+		"license_id":  "lic-1",
+		"instance_id": "inst-1",
+		"expires_at":  past,
+	})
+	var out strings.Builder
+	rc := rootForOut(cmd.SelfHostCmd, &out, "license", "validate", "--file", path, "--pubkey", pub)
+	if err := rc.Execute(); err != nil {
+		t.Fatalf("validate: %v\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "GRACE") || strings.Contains(out.String(), "WARNING") {
+		t.Fatalf("expected GRACE state for a licence that expired hours ago, got: %s", out.String())
+	}
+}
+
 func TestSelfHostLicenseValidate_Stdin(t *testing.T) {
 	expires := time.Now().UTC().AddDate(1, 0, 0).Format(time.RFC3339)
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)

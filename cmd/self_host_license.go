@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -106,21 +107,26 @@ func runSelfHostLicenseValidate(cmd *cobra.Command, _ []string) error {
 	}
 
 	now := time.Now().UTC()
-	daysLeft := int(lic.ExpiresAt.Sub(now).Hours() / 24)
+	remaining := lic.ExpiresAt.Sub(now)
+	// The state follows the clock, not a truncated day count: a licence that
+	// expired hours ago must not read as still valid just because the elapsed
+	// days round to zero.
+	daysLeft := int(math.Ceil(remaining.Hours() / 24))
+	daysExpired := int(math.Ceil(-remaining.Hours() / 24))
 	var warnings []string
 	var state string
 	switch {
-	case daysLeft > 30:
+	case remaining > 30*24*time.Hour:
 		state = "OK"
-	case daysLeft >= 0:
+	case remaining > 0:
 		state = "WARNING"
-		warnings = append(warnings, fmt.Sprintf("expires in %d day(s)", daysLeft+1))
+		warnings = append(warnings, fmt.Sprintf("expires in %d day(s)", daysLeft))
 	case now.Before(lic.ExpiresAt.Add(licenseGracePeriod)):
 		state = "GRACE"
-		graceLeft := int(lic.ExpiresAt.Add(licenseGracePeriod).Sub(now).Hours() / 24)
-		warnings = append(warnings, fmt.Sprintf("expired %d day(s) ago; %d day(s) grace remaining", -daysLeft, graceLeft))
+		graceLeft := int(math.Ceil(lic.ExpiresAt.Add(licenseGracePeriod).Sub(now).Hours() / 24))
+		warnings = append(warnings, fmt.Sprintf("expired %d day(s) ago; %d day(s) grace remaining", daysExpired, graceLeft))
 	default:
-		return fmt.Errorf("license expired %d day(s) ago; grace period elapsed", -daysLeft)
+		return fmt.Errorf("license expired %d day(s) ago; grace period elapsed", daysExpired)
 	}
 
 	output := strings.TrimSpace(strings.ToLower(outputFlag(cmd)))
@@ -184,7 +190,11 @@ func runSelfHostLicenseValidate(cmd *cobra.Command, _ []string) error {
 	if !lic.IssuedAt.IsZero() {
 		_, _ = fmt.Fprintf(w, "ISSUED\t%s\n", lic.IssuedAt.Format(time.RFC3339))
 	}
-	_, _ = fmt.Fprintf(w, "EXPIRES\t%s (in %d day(s))\n", lic.ExpiresAt.Format(time.RFC3339), daysLeft)
+	if remaining > 0 {
+		_, _ = fmt.Fprintf(w, "EXPIRES\t%s (in %d day(s))\n", lic.ExpiresAt.Format(time.RFC3339), daysLeft)
+	} else {
+		_, _ = fmt.Fprintf(w, "EXPIRES\t%s (expired %d day(s) ago)\n", lic.ExpiresAt.Format(time.RFC3339), daysExpired)
+	}
 	_, _ = fmt.Fprintf(w, "STATE\t%s\n", state)
 	_, _ = fmt.Fprintf(w, "SIGNATURE\t%s\n", sigStatus)
 	if len(lic.Features) > 0 {
