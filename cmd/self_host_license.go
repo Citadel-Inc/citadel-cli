@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
@@ -237,8 +238,13 @@ func verifyLicenseSignature(raw []byte, sigB64, pubB64 string) error {
 		return fmt.Errorf("pubkey must be %d bytes, got %d", ed25519.PublicKeySize, len(pubKey))
 	}
 
+	// Numbers stay json.Number: decoded into float64 they re-marshal from the
+	// nearest double, so a tampered integer outside float64's exact range would
+	// still verify.
 	var fields map[string]any
-	if err := json.Unmarshal(raw, &fields); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	if err := dec.Decode(&fields); err != nil {
 		return fmt.Errorf("re-parse for signing: %w", err)
 	}
 	delete(fields, "signature")

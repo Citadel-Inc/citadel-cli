@@ -138,6 +138,31 @@ func TestSelfHostLicenseValidate_MissingField(t *testing.T) {
 	}
 }
 
+func TestSelfHostLicenseValidate_RejectsTamperedInteger(t *testing.T) {
+	expires := time.Now().UTC().AddDate(1, 0, 0).Format(time.RFC3339)
+	path, pub := newSignedLicenseFile(t, map[string]any{
+		"license_id":  "lic-1",
+		"instance_id": "inst-1",
+		"expires_at":  expires,
+		"seat_count":  int64(10000000000000000),
+	})
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tampered := strings.Replace(string(raw), "10000000000000000", "10000000000000001", 1)
+	if tampered == string(raw) {
+		t.Fatalf("license JSON lacks the seat count to tamper: %s", raw)
+	}
+	if err := os.WriteFile(path, []byte(tampered), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err = rootFor(cmd.SelfHostCmd, "license", "validate", "--file", path, "--pubkey", pub).Execute()
+	if err == nil || !strings.Contains(err.Error(), "signature") {
+		t.Fatalf("tampered seat_count must fail signature verification, got %v", err)
+	}
+}
+
 func TestSelfHostLicenseValidate_ExpiredPastGrace(t *testing.T) {
 	// expired 30 days ago; grace is 7 days → must error.
 	past := time.Now().UTC().AddDate(0, 0, -30).Format(time.RFC3339)
