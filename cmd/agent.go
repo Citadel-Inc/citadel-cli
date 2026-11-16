@@ -125,10 +125,14 @@ func listAgentRows(ctx context.Context, c *apiclient.Client) ([]agentRow, error)
 			return nil, err
 		}
 		all = append(all, payload.Agents...)
-		if strings.TrimSpace(payload.Next) == "" {
+		next := strings.TrimSpace(payload.Next)
+		if next == "" {
 			break
 		}
-		cur = payload.Next
+		if next == cur {
+			return nil, fmt.Errorf("server returned cursor %q again; stopping", next)
+		}
+		cur = next
 	}
 	return all, nil
 }
