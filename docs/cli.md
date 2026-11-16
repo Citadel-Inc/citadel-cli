@@ -185,9 +185,11 @@ citadel-cli project edge add org/repo \
   --from-namespace-id <uuid> --from-kind repo --to-kind repo \
   --edge-type pins --output json
 citadel-cli project edge delete org/repo <edge-uuid> --yes
-citadel-cli project edge restore org/repo <edge-uuid>
+citadel-cli project edge restore org/repo <edge-uuid> --yes
 citadel-cli project reindex org/repo --yes
 ```
+
+`project edge restore <namespace-path> <edge-uuid>` undeletes a previously deleted graph edge (`POST .../edges/<id>/restore`); the edge id must be a UUID, and the typed confirmation is skipped with `--yes`.
 
 Operators can enqueue a project-graph recovery scan. The command is
 operator-only and requires typing `recovery-scan` to confirm unless `--yes` is
@@ -347,7 +349,10 @@ citadel-cli repo pull
 
 ```bash
 citadel-cli repo branch set-default acme/demo main
+citadel-cli repo branch set-default main   # repo inferred from the current checkout
 ```
+
+`set-default` changes the repository's default branch to an existing branch (`PATCH .../default-branch`); a missing branch fails with `branch "x" not found`. `--dry-run` prints the request without sending it, and `--output json` prints the response.
 
 ### Webhooks
 
@@ -432,7 +437,7 @@ repository while no live agent session exists.
 | `PreToolUse` | `citadel-cli hook renew` | Renews the 15-minute session when under 5 minutes remain; otherwise makes no network call. If the session already ended (idle over 15 minutes), opens a new one on a fresh key (written over the old key file, so `GIT_SSH_COMMAND` keeps working) with the same scopes and reports it on stderr. If the session was revoked (410 `session_revoked`), the hook removes the key and token, warns, and does not reissue for the rest of that Claude Code session; a new Claude Code session starts fresh; the new token is kept in session state, which every `citadel-cli` call in the session reads when `CITADEL_AGENT_SESSION` and `CITADEL_HOOK_STATE` are set. |
 | `SessionEnd` | `citadel-cli hook session-end` | Ends the session and deletes its key directory. |
 
-`hook commit-trailers` is a hidden `prepare-commit-msg` helper that adds the agent session trailers to a commit message file.
+`hook commit-trailers <msg-file> [source] [sha]` is a hidden `prepare-commit-msg` helper. When the hook state holds an active (not revoked) session, it adds `Agent-Session: <id>` and `Agent: <name>` trailers to the commit message file with `git interpret-trailers`, skipping trailers already present and merge commits. It never fails the commit: errors are printed to stderr.
 
 `auth login` stores a token with the `code`, `issues` and `pulls` read and write scopes the CLI verbs use and the `sessions:write` scope the hooks need; a token from an older login is refused and the hook asks you to run `citadel-cli auth login` again.
 
@@ -697,8 +702,10 @@ citadel-cli kg fulltext --q "panic(" -R myorg/myrepo
 citadel-cli kg walk --seed-id <symbol-uuid> -R myorg/myrepo --depth 2
 citadel-cli kg diff -R myorg/myrepo --from-ref main --to-ref topic-branch
 citadel-cli kg impact myorg/myrepo MyFunc   # symbol name or UUID
-citadel-cli kg unreferenced -R myorg/myrepo
+citadel-cli kg unreferenced -R myorg/myrepo --exported --path-prefix internal/ --limit 50
 ```
+
+**`kg unreferenced`** lists functions no production code reaches, each with a certainty (`GET /api/namespaces/{namespace}/kg/unreferenced`). They are dead-code candidates, not proof: `certainty=uncertain` marks rows where a call may exist. Flags: `--exported` (only names exported by their package), `--path-prefix` (filter by path), `--limit` (default 200, 1 to 500).
 
 **`kg impact`** uses **`GET /api/namespaces/{namespace}/kg/impact`**.
 
@@ -896,14 +903,14 @@ citadel-cli ns profile get myorg
 Transfer ownership of an org namespace. The initiator proposes; the recipient accepts or declines.
 
 ```bash
-citadel-cli namespace transfer initiate myorg --to newowner
-citadel-cli namespace transfer list-pending
+citadel-cli namespace transfer initiate myorg --to newowner [--yes]
+citadel-cli namespace transfer list-pending [--output json]
 citadel-cli namespace transfer accept <transfer-id>
 citadel-cli namespace transfer decline <transfer-id>
 citadel-cli namespace transfer revoke <transfer-id>
 ```
 
-`initiate`, `accept`, and `revoke` require typed-slug confirmation unless `--yes` is set. Only org namespaces are supported.
+`initiate <org-slug> --to <username>` proposes the transfer (`--to` is required). `list-pending` lists incoming transfers addressed to you that are not yet accepted, declined or expired. `accept <transfer-id>` takes ownership; `decline <transfer-id>` rejects an incoming transfer without a confirmation prompt; `revoke <transfer-id>` cancels an outgoing transfer the recipient has not accepted. `initiate`, `accept` and `revoke` require typed-slug confirmation unless `--yes` is set. Only org namespaces are supported.
 
 ## Notification inbox
 
@@ -1438,6 +1445,12 @@ Overall: GREEN
 
 Exit code 0 = GREEN; 1 = AMBER or RED.
 
+| Status | Meaning |
+| -------- | --------- |
+| GREEN | All components reachable; migrations current |
+| AMBER | Components up but migrations pending |
+| RED | API or Supabase unreachable |
+
 ### License
 
 Inspect and validate a Citadel license file (signature, expiry, fields):
@@ -1447,13 +1460,7 @@ citadel-cli self-host license validate --file ./license.json
 citadel-cli self-host license validate --file ./license.json --skip-signature
 ```
 
-Signature verification runs when `CITADEL_LICENSE_PUBKEY` or `--pubkey` provides the Ed25519 public key. `--skip-signature` checks schema and expiry only.
-
-| Status | Meaning |
-| -------- | --------- |
-| GREEN | All components reachable; migrations current |
-| AMBER | Components up but migrations pending |
-| RED | API or Supabase unreachable |
+`validate` reads the license JSON from `--file`, or from stdin when `--file` is omitted, and requires `license_id`, `instance_id`, `expires_at` and `signature`. Signature verification uses the base64 Ed25519 public key from `--pubkey` or `CITADEL_LICENSE_PUBKEY`; with neither set the command fails unless `--skip-signature` is given, which checks fields and expiry only. The report shows state `OK` (more than 30 days left), `WARNING` (30 days or fewer), `GRACE` (expired, within the 7-day grace period) or fails once the grace period has elapsed. `--output json|yaml` emits the fields, `days_left`, `state` and `signature_status`.
 
 ### Apply migrations
 
