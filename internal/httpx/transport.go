@@ -190,7 +190,7 @@ func (tt *TraceTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	dur := time.Since(start)
 	if err != nil {
 		if tt.Verbose || tt.DebugHTTP {
-			fmt.Fprintf(os.Stderr, "%s %s → error after %s: %v\n", req.Method, req.URL, dur.Round(time.Millisecond), err)
+			fmt.Fprintf(os.Stderr, "%s %s → error after %s: %v\n", req.Method, redactURL(req.URL), dur.Round(time.Millisecond), err)
 		}
 		return resp, err
 	}
@@ -198,9 +198,39 @@ func (tt *TraceTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		dump, _ := httputil.DumpResponse(redactResponse(resp), true)
 		fmt.Fprintf(os.Stderr, "--- HTTP response (%s) ---\n%s\n", dur.Round(time.Millisecond), dump)
 	} else if tt.Verbose {
-		fmt.Fprintf(os.Stderr, "%s %s → %d in %s\n", req.Method, req.URL, resp.StatusCode, dur.Round(time.Millisecond))
+		fmt.Fprintf(os.Stderr, "%s %s → %d in %s\n", req.Method, redactURL(req.URL), resp.StatusCode, dur.Round(time.Millisecond))
 	}
 	return resp, nil
+}
+
+// redactURL renders u for the trace with credential-bearing query values
+// masked: download links are presigned, and the signature is the credential.
+func redactURL(u *url.URL) string {
+	if u == nil || u.RawQuery == "" {
+		return u.String()
+	}
+	q, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		return u.Scheme + "://" + u.Host + u.Path
+	}
+	for k := range q {
+		if sensitiveQueryKey(k) {
+			q.Set(k, "<redacted>")
+		}
+	}
+	clone := *u
+	clone.RawQuery = q.Encode()
+	return clone.String()
+}
+
+func sensitiveQueryKey(k string) bool {
+	switch strings.ToLower(k) {
+	case "x-amz-signature", "x-amz-credential", "x-amz-security-token",
+		"signature", "sig", "token", "access_token", "refresh_token",
+		"client_secret", "api_key", "key", "password":
+		return true
+	}
+	return false
 }
 
 // redactAuth clones req with auth headers and OAuth form fields masked, so

@@ -3,6 +3,7 @@ package httpx
 import (
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -67,6 +68,53 @@ func TestTraceTransportRedactsTokenResponseBody(t *testing.T) {
 	}
 	if string(got) != body {
 		t.Fatalf("response body not restored: got %q", got)
+	}
+}
+
+// A download_url is a presigned link: the signature in the query string is the
+// credential, so the --verbose one-liner must not print it verbatim.
+func TestVerboseTrace_RedactsPresignedQuery(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stderr
+	os.Stderr = w
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+
+	c := &http.Client{Transport: Stack(nil, Options{Verbose: true})}
+	reqURL := srv.URL + "/obj/x.bin?X-Amz-Credential=AKIASECRETKEY%2F20260101&X-Amz-Signature=deadbeefSECRETSIG"
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, reqURL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+
+	os.Stderr = old
+	_ = w.Close()
+	dumped, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = r.Close()
+	out := string(dumped)
+
+	for _, secret := range []string{"AKIASECRETKEY", "deadbeefSECRETSIG"} {
+		if strings.Contains(out, secret) {
+			t.Fatalf("verbose trace leaked presigned credential %q: %s", secret, out)
+		}
+	}
+	if !strings.Contains(out, "/obj/x.bin") || !strings.Contains(out, "200") {
+		t.Fatalf("verbose trace lost the request line: %s", out)
 	}
 }
 
