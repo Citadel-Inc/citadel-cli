@@ -843,7 +843,9 @@ func reissueSession(ctx context.Context, cmd *cobra.Command, dir string, old hoo
 	return true
 }
 
-var gitPushCmd = regexp.MustCompile(`(^|[;&|(\s])git(\s+-\S+(\s+\S+)?)*\s+push(\s|$)`)
+// A push counts however git is spelled: `git`, an absolute or relative path to
+// the binary, and a nested invocation inside another command's quoted argument.
+var gitPushCmd = regexp.MustCompile("(^|[;&|(\\s'\"`])(?:[^\\s;&|'\"`]*/)?git(\\s+-\\S+(\\s+\\S+)?)*\\s+push(\\s|['\"`]|$)")
 
 // denyPushWithoutSession emits the PreToolUse deny decision for a Bash
 // `git push` run in a Citadel repository.

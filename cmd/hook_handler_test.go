@@ -535,6 +535,32 @@ func TestHookRenewReissueAndRequire_Hermetic(t *testing.T) {
 	}
 }
 
+// `--require` blocks a push however git is spelled on the command line: a bare
+// word, an absolute path, or a nested invocation inside another shell word.
+func TestHookRequireDeniesEveryPushSpelling_Hermetic(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
+	t.Setenv("CLAUDE_ENV_FILE", filepath.Join(t.TempDir(), "env"))
+	t.Setenv("CITADEL_GIT_HOSTS", "")
+	repo := gitRepoWithOrigin(t, "git@src.land:acme/demo.git")
+	for _, command := range []string{
+		"git push origin main",
+		"/usr/bin/git push origin main",
+		"/bin/git push origin main",
+		"git submodule foreach 'git push'",
+		"git -C . push origin main",
+	} {
+		t.Run(command, func(t *testing.T) {
+			in := `{"session_id":"s1","cwd":"` + repo + `","tool_name":"Bash","tool_input":{"command":"` + command + `"}}`
+			if out := runHook(t, in, "renew", "--require"); !strings.Contains(out, `"permissionDecision":"deny"`) {
+				t.Fatalf("%q = %q, want a deny decision", command, out)
+			}
+		})
+	}
+	if out := runHook(t, `{"session_id":"s1","cwd":"`+repo+`","tool_name":"Bash","tool_input":{"command":"git status"}}`, "renew", "--require"); out != "" {
+		t.Fatalf("non-push denied: %q", out)
+	}
+}
+
 // `auth git` trades the stored refresh token for a human JWT, registers a fresh
 // key under it, and points git's ssh at the host-scoped wrapper.
 func TestAuthGit_Hermetic(t *testing.T) {
