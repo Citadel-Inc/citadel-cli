@@ -286,6 +286,8 @@ citadel-cli gist raw <id> path/to/file
 citadel-cli gist raw <id> path/to/file --output-file ./file
 ```
 
+`gist delete` requires typing the gist id unless `--yes` is set.
+
 `gist raw` streams bytes to stdout or `--output-file`. Binary content is
 refused when stdout is a terminal unless `--output-file` is set.
 
@@ -298,11 +300,15 @@ applies where supported.
 ```bash
 citadel-cli release list -R acme/demo
 citadel-cli release view -R acme/demo v1.0.0
+citadel-cli release delete -R acme/demo v1.0.0 --yes
 citadel-cli release asset list -R acme/demo v1.0.0
 citadel-cli release asset upload -R acme/demo v1.0.0 ./dist/app.tar.gz
 citadel-cli release asset download -R acme/demo v1.0.0 <asset-id> -o ./app.tar.gz
 citadel-cli release asset delete -R acme/demo v1.0.0 <asset-id> --yes
 ```
+
+`release delete` requires typing the tag name unless `--yes` is set.
+`release asset delete` requires typing the asset id unless `--yes` is set.
 
 Download resolves asset metadata then follows `download_url` (often a signed
 object-store URL). Binary assets refuse to dump to a TTY without redirect or

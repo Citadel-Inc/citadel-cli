@@ -426,10 +426,9 @@ func runGistDelete(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Would DELETE %s (skipped; --dry-run)\n", path)
 		return nil
 	}
-	if !yesFlag(cmd) {
-		if err := confirmTypedValue(false, "delete gist", id); err != nil {
-			return err
-		}
+	// --yes skips the typed id; a hardcoded false here would ignore the flag.
+	if err := confirmTypedValue(yesFlag(cmd), "delete gist", id); err != nil {
+		return err
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {

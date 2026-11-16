@@ -3,6 +3,7 @@ package cmd_test
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -293,6 +294,78 @@ func TestIssueMilestoneDelete_JSON(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), `"status": "ok"`) {
 		t.Fatalf("unexpected output: %s", out.String())
+	}
+}
+
+func TestIssueMilestoneDelete_YesSkipsTypedPrompt(t *testing.T) {
+	deleted := false
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || !issuePathMatches(r, "/namespaces/acme%2Fdemo/milestones/11111111-1111-1111-1111-111111111111", "/namespaces/acme/demo/milestones/11111111-1111-1111-1111-111111111111") {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		deleted = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteString("wrong\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = orig
+		_ = r.Close()
+	})
+	if err := rootFor(cmd.IssueCmd, "milestone", "delete", "-R", "acme/demo", "11111111-1111-1111-1111-111111111111", "--yes").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !deleted {
+		t.Fatal("expected DELETE against the fake")
+	}
+}
+
+func TestIssueMilestoneDelete_RequiresTypedPrompt(t *testing.T) {
+	gotDelete := false
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && issuePathMatches(r, "/namespaces/acme%2Fdemo/milestones/11111111-1111-1111-1111-111111111111", "/namespaces/acme/demo/milestones/11111111-1111-1111-1111-111111111111") {
+			writeJSON(t, w, http.StatusOK, map[string]any{
+				"id":    "11111111-1111-1111-1111-111111111111",
+				"title": "v1.0",
+			})
+			return
+		}
+		if r.Method == http.MethodDelete {
+			gotDelete = true
+		}
+		t.Errorf("prompt required; unexpected request: %s %s", r.Method, r.URL.Path)
+		http.NotFound(w, r)
+	})
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteString("wrong\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = orig
+		_ = r.Close()
+	})
+	err = rootFor(cmd.IssueCmd, "milestone", "delete", "-R", "acme/demo", "11111111-1111-1111-1111-111111111111").Execute()
+	if err == nil || !strings.Contains(err.Error(), "confirmation mismatch") {
+		t.Fatalf("want confirmation mismatch without --yes, got %v", err)
+	}
+	if gotDelete {
+		t.Fatal("DELETE must not run when the typed prompt is required")
 	}
 }
 

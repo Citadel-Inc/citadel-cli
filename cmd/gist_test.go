@@ -246,6 +246,52 @@ func TestGistDelete_DryRun_Hermetic(t *testing.T) {
 	}
 }
 
+func TestGistDelete_YesSkipsTypedPrompt(t *testing.T) {
+	deleted := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api")
+		if r.Method != http.MethodDelete || path != "/gists/g1" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		deleted = true
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	t.Setenv("CITADEL_SERVER", server.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	withStdin(t, "wrong\n", func() {
+		output, err := executeGistTestCommand(t, "gist", "delete", "g1", "--yes")
+		if err != nil {
+			t.Fatalf("gist delete --yes: %v", err)
+		}
+		if !deleted {
+			t.Fatal("expected DELETE against the fake")
+		}
+		if !strings.Contains(output, "Deleted gist g1") {
+			t.Fatalf("gist delete --yes output = %q", output)
+		}
+	})
+}
+
+func TestGistDelete_RequiresTypedPrompt(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		t.Errorf("prompt required; unexpected request: %s %s", r.Method, r.URL.Path)
+	}))
+	defer server.Close()
+	t.Setenv("CITADEL_SERVER", server.URL)
+	t.Setenv("CITADEL_ACCESS_TOKEN", "test-token")
+
+	withStdin(t, "wrong\n", func() {
+		_, err := executeGistTestCommand(t, "gist", "delete", "g1")
+		if err == nil || !strings.Contains(err.Error(), "confirmation mismatch") {
+			t.Fatalf("want confirmation mismatch without --yes, got %v", err)
+		}
+	})
+}
+
 type gistStreamingBuffer struct {
 	mu         sync.Mutex
 	buffer     bytes.Buffer

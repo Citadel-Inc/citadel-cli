@@ -504,7 +504,8 @@ func runIssueMilestoneDelete(cmd *cobra.Command, args []string) error {
 		if value == "" {
 			value = id
 		}
-		if err := confirmTypedValue(false, "delete milestone", value); err != nil {
+		// --yes skips the typed title; a hardcoded false here would ignore the flag.
+		if err := confirmTypedValue(yesFlag(cmd), "delete milestone", value); err != nil {
 			return err
 		}
 	}

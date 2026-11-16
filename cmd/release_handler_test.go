@@ -378,6 +378,63 @@ func TestReleaseDelete_NotFound(t *testing.T) {
 	}
 }
 
+func TestReleaseDelete_YesSkipsTypedPrompt(t *testing.T) {
+	deleted := false
+	withServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Errorf("method = %q", r.Method)
+			http.NotFound(w, r)
+			return
+		}
+		deleted = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteString("wrong\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = orig
+		_ = r.Close()
+	})
+	if err := rootFor(cmd.ReleaseCmd, "delete", "v1.0.0", "-R", "acme/demo", "--yes").Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !deleted {
+		t.Fatal("expected DELETE against the fake")
+	}
+}
+
+func TestReleaseDelete_RequiresTypedPrompt(t *testing.T) {
+	withServer(t, func(_ http.ResponseWriter, r *http.Request) {
+		t.Errorf("prompt required; unexpected request: %s %s", r.Method, r.URL.Path)
+	})
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.WriteString("wrong\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = orig
+		_ = r.Close()
+	})
+	err = rootFor(cmd.ReleaseCmd, "delete", "v1.0.0", "-R", "acme/demo").Execute()
+	if err == nil || !strings.Contains(err.Error(), "confirmation mismatch") {
+		t.Fatalf("want confirmation mismatch without --yes, got %v", err)
+	}
+}
+
 func TestReleaseAssetCRUD_RoundTrip(t *testing.T) {
 	const assetID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	payload := []byte{0x00, 0x01, 0x7f, 0x80, 0xff}
