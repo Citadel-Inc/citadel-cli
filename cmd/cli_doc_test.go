@@ -16,7 +16,7 @@ func TestCLIDocParity(t *testing.T) {
 		t.Fatal("runtime.Caller failed")
 	}
 	docPath := filepath.Join(filepath.Dir(thisFile), "..", "docs", "cli.md")
-	data, err := os.ReadFile(docPath)
+	data, err := os.ReadFile(docPath) //nolint:gosec // path is this test file's ../docs/cli.md
 	if err != nil {
 		t.Fatal(err)
 	}
