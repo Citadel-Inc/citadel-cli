@@ -16,7 +16,7 @@ Do **not** restore `account passkey` / `account device` — those verbs are out 
 | --- | --- |
 | **Packages / files** | `.github/workflows/release.yml` (new bump job after Create Release), `Citadel-Inc/homebrew-tap` `Formula/citadel-cli.rb`, `docs/cli.md` § Distribution |
 | **Work** | After the release is created, rewrite `version`, both `url` lines and both `sha256` values (darwin arm64 and amd64, from `dist/SHA256SUMS`) in the formula, then commit and push to the tap `main` over SSH using the `HOMEBREW_TAP_DEPLOY_KEY` Actions secret |
-| **Traps** | The org has deploy keys disabled (`deploy_keys_enabled_for_repositories=false`), so the tap has no deploy key and the secret is not set yet: NOMAD enables deploy keys (or picks a token instead), then run `gh repo deploy-key add --allow-write` and `gh secret set HOMEBREW_TAP_DEPLOY_KEY`. Publishing waits on NOMAD's go |
+| **Traps** | Deploy key "citadel-cli release" (write) is on the tap and `HOMEBREW_TAP_DEPLOY_KEY` is set in this repo. Publishing waits on NOMAD's go |
 | **Acceptance** | Tagging `v*` leaves the tap formula at the new version with matching checksums; docs link the tap |
 
 ---
