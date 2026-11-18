@@ -1,0 +1,14 @@
+[extend]
+useDefault = true
+
+# Fake AdminKey / stub-admin-key strings used only as Go test fixtures; they are not live credentials.
+[[allowlists]]
+paths = [
+  '''internal/selfhost/internal_test\.go''',
+  '''internal/selfhost/config_test\.go''',
+  '''internal/selfhost/integration_test\.go''',
+]
+
+# Fake CITADEL_ACCESS_TOKEN values used only as Go test fixtures; they are not live credentials.
+[[allowlists]]
+paths = ['''cmd/handler_test\.go''']
