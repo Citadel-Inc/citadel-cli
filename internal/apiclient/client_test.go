@@ -743,7 +743,11 @@ func TestUnauthenticatedClientStopsRedirectOffOriginAndAfterTenHops(t *testing.T
 
 	c := NewHTTPClient()
 	getErr := func(rawURL string) error {
-		resp, err := c.Get(rawURL)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, rawURL, nil)
+		if err != nil {
+			return err
+		}
+		resp, err := c.Do(req)
 		if resp != nil {
 			_ = resp.Body.Close()
 		}
