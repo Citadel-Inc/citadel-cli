@@ -86,6 +86,7 @@ jobs:
         if: ${{ env.DRY_RUN != 'true' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           repository: Citadel-Inc/homebrew-tap
           ref: main
           path: homebrew-tap
@@ -97,6 +98,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           DRY_RUN: ${{ env.DRY_RUN }}
+          HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
         run: |
           set -euo pipefail
           if [ "$DRY_RUN" = "true" ]; then
@@ -163,4 +165,8 @@ jobs:
             exit 0
           }
           git -C homebrew-tap commit -m "chore(citadel-cli): ${TAG}"
-          git -C homebrew-tap push origin HEAD:main
+          key="$RUNNER_TEMP/homebrew-tap-deploy-key"
+          printf '%s\n' "$HOMEBREW_TAP_DEPLOY_KEY" >"$key"
+          chmod 600 "$key"
+          GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
+            git -C homebrew-tap push origin HEAD:main
