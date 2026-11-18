@@ -1,0 +1,5 @@
+[deviations]
+# The artifact's allowlists list is compared equal-only. This repository keeps that
+# generated-tree allowlist and adds path allowlists for fake AdminKey and
+# CITADEL_ACCESS_TOKEN strings that exist only as Go test fixtures.
+"patterns-gitleaks-00001" = ".gitleaks.toml keeps the generated-tree allowlist and adds Go test-fixture path allowlists for strings that are not live credentials"

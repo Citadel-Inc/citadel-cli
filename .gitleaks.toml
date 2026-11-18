@@ -1,6 +1,14 @@
 [extend]
 useDefault = true
 
+[[allowlists]]
+description = "Generated, vendored and build-output trees hold no authored source, and gitleaks dir reads every one of them"
+paths = [
+  '''(^|/)(node_modules|\.next|\.venv|\.turbo|dist|target|coverage|test-results|playwright-report)/''',
+  '''^[^/]+/(.+/)?build/''',
+  '''^tmp/''',
+]
+
 # Fake AdminKey / stub-admin-key strings used only as Go test fixtures; they are not live credentials.
 [[allowlists]]
 paths = [
