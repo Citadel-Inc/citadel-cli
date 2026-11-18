@@ -189,7 +189,7 @@ citadel-cli project edge restore org/repo <edge-uuid> --yes
 citadel-cli project reindex org/repo --yes
 ```
 
-`project edge restore <namespace-path> <edge-uuid>` undeletes a previously deleted graph edge (`POST .../edges/<id>/restore`); the edge id must be a UUID, and the typed confirmation is skipped with `--yes`.
+`project edge restore <namespace-path> <edge-uuid>` restores a deleted graph edge (`POST .../edges/<id>/restore`); the edge id must be a UUID, and the typed confirmation is skipped with `--yes`.
 
 Operators can enqueue a project-graph recovery scan. The command is
 operator-only and requires typing `recovery-scan` to confirm unless `--yes` is
@@ -447,9 +447,34 @@ repository while no live agent session exists.
 
 `auth login` stores a token with the `code`, `issues` and `pulls` read and write scopes the CLI verbs use and the `sessions:write` scope the hooks need; a token from an older login is refused and the hook asks you to run `citadel-cli auth login` again.
 
-`--client cursor` writes the same three hooks into Cursor's `hooks.json` (`~/.cursor/hooks.json`, or `.cursor/hooks.json` with `--scope project`) as `sessionStart`, `preToolUse` and `sessionEnd` entries (see <https://cursor.com/docs/hooks>). The verbs run with `--client cursor`: the session variables are returned in `sessionStart`'s `env` output instead of an env file, `preToolUse` answers `{"permission":"allow"}` (or `deny` under `--require`), and the session id on later events is Cursor's `conversation_id`. Cursor documents `env` only for later hooks, and a run with `cursor-agent` (2026.10.28) confirmed it does not reach the agent's shell. So at `sessionStart` the hook also writes the session's `core.sshCommand` (and, for an `https://` origin, the credential helper) into the repository's own git config, skipping any key you already set there, and `sessionEnd` removes exactly those keys. Git in the agent's shell therefore authenticates as the agent. The session is named `cursor-<hostname>` and its `client` is `cursor`. The allow rule for `citadel-cli kg` goes in `cli-config.json` under `$CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor` or `~/.cursor`, the order Cursor reads it, or in `.cursor/cli.json` with `--scope project`. The shell tool is named `Shell` and its input carries `command` and `cwd`.
+`--client cursor` writes the same three hooks into Cursor's `hooks.json`
+(`~/.cursor/hooks.json`, or `.cursor/hooks.json` with `--scope project`) as
+`sessionStart`, `preToolUse` and `sessionEnd` (see
+<https://cursor.com/docs/hooks>). Verbs run with `--client cursor` as follows.
 
-Cursor's sandbox also sets its own `GIT_SSH_COMMAND` (a `cursorsandbox git-ssh-dial` relay), which outranks `core.sshCommand`, and git cannot pass a non-22 port through it. So `preToolUse` rewrites a `Shell` command that runs git in a Citadel repo (through `updated_input`, which Cursor documents) to define a `git` function that sets the session's `GIT_SSH_COMMAND` and, for an `https://` origin, its credential helper for every call, so parallel sessions in one repository each act as themselves. A command that runs `citadel-cli` gets `CITADEL_AGENT_SESSION` and `CITADEL_HOOK_STATE` the same way, so it acts as the session and not your login; `citadel-cli` run outside a session uses your login. Observed with `cursor-agent` 2026.10.28: a command that is only a `git push` goes out on the session key, but a push chained after other commands with `;` was still sent through the sandbox's relay and failed on a non-22 SSH port. `https://` remotes use the credential helper and worked chained; prefer them under Cursor, or run SSH git as its own command.
+| Cursor detail | Behaviour |
+| --- | --- |
+| `sessionStart` output | Session variables in `env`, not an env file. |
+| `env` reach | Cursor documents `env` only for later hooks; `cursor-agent` (2026.10.28) does not pass it to the agent's shell. |
+| Repo git config | At `sessionStart` the hook writes `core.sshCommand` (and, for an `https://` origin, the credential helper) into the repository git config, skipping keys already set. Git in the agent's shell then authenticates as the agent. |
+| `sessionEnd` | Removes exactly those git config keys. |
+| `preToolUse` | Answers `{"permission":"allow"}` (or `deny` under `--require`). |
+| Session id | Cursor's `conversation_id` on later events. |
+| Session identity | Named `cursor-<hostname>`; `client` is `cursor`. |
+| `citadel-cli kg` allow rule | `cli-config.json` under `$CURSOR_CONFIG_DIR`, `$XDG_CONFIG_HOME/cursor` or `~/.cursor` (the order Cursor reads), or `.cursor/cli.json` with `--scope project`. |
+| Shell tool | Named `Shell`; input carries `command` and `cwd`. |
+
+Cursor's sandbox also sets its own `GIT_SSH_COMMAND` (a `cursorsandbox
+git-ssh-dial` relay), which outranks `core.sshCommand`, and git cannot pass a
+non-22 port through it.
+
+| Sandbox workaround | Behaviour |
+| --- | --- |
+| `preToolUse` rewrite | Rewrites a `Shell` command that runs git in a Citadel repo through documented `updated_input`, defining a `git` function that sets the session's `GIT_SSH_COMMAND` and, for an `https://` origin, its credential helper on every call. Parallel sessions in one repository each act as themselves. |
+| `citadel-cli` in a session | Gets `CITADEL_AGENT_SESSION` and `CITADEL_HOOK_STATE` the same way, so it acts as the session, not your login. |
+| `citadel-cli` outside a session | Uses your login. |
+| SSH `git push` (`cursor-agent` 2026.10.28) | A command that is only `git push` goes out on the session key. A push chained after other commands with `;` still used the sandbox relay and failed on a non-22 SSH port. |
+| `https://` remotes | Use the credential helper and worked chained; prefer them under Cursor, or run SSH git as its own command. |
 
 `hook install` prints the server the hooks will use and where that setting came from.
 

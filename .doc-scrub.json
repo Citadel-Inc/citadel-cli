@@ -1,5 +1,9 @@
 {
   "skip_paths": [
     "specs/parked/**"
+  ],
+  "allow_flags": [
+    "--policy",
+    "--exported"
   ]
 }
