@@ -6,21 +6,6 @@ Do **not** restore `account passkey` / `account device` — those verbs are out 
 
 ---
 
-## Deferred
-
-### 14b. Homebrew tap release-time bump
-
-**Feature.** `Citadel-Inc/homebrew-tap` exists with `Formula/citadel-cli.rb` at v0.6.0 (`brew tap citadel-inc/tap && brew install citadel-cli`). Remaining: bump the formula on each release.
-
-| | |
-| --- | --- |
-| **Packages / files** | `.github/workflows/release.yml` (new bump job after Create Release), `Citadel-Inc/homebrew-tap` `Formula/citadel-cli.rb`, `docs/cli.md` § Distribution |
-| **Work** | After the release is created, rewrite `version`, both `url` lines and both `sha256` values (darwin arm64 and amd64, from `dist/SHA256SUMS`) in the formula, then commit and push to the tap `main` over SSH using the `HOMEBREW_TAP_DEPLOY_KEY` Actions secret |
-| **Traps** | Deploy key "citadel-cli release" (write) is on the tap and `HOMEBREW_TAP_DEPLOY_KEY` is set in this repo. Publishing waits on NOMAD's go |
-| **Acceptance** | Tagging `v*` leaves the tap formula at the new version with matching checksums; docs link the tap |
-
----
-
 ## Explicitly not tracked here
 
 | Item | Why |

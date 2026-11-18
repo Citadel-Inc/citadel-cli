@@ -1382,7 +1382,13 @@ This will create a fresh config.
 
 ## Distribution
 
-The release workflow builds static archives for linux, darwin, and windows on amd64 and arm64 on every `v*` tag and publishes them with a `SHA256SUMS` file at `github.com/Citadel-Inc/citadel-cli/releases/tag/<tag>`. Cut a release with `make verify && make build-all VERSION=<tag>`, then push the tag.
+The release workflow builds static archives for linux, darwin, and windows on amd64 and arm64 on every `v*` tag and publishes them with a `SHA256SUMS` file at `github.com/Citadel-Inc/citadel-cli/releases/tag/<tag>`. Cut a release with `make verify && make build-all VERSION=<tag>`, then push the tag. Tagging `v*` also rewrites `version`, both darwin `url` lines, and both `sha256` values in `Citadel-Inc/homebrew-tap` `Formula/citadel-cli.rb` from `dist/SHA256SUMS` and pushes that bump to the tap's `main`.
+
+macOS via the tap:
+
+```bash
+brew tap citadel-inc/tap && brew install citadel-cli
+```
 
 Manual install and verification:
 

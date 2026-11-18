@@ -13,6 +13,8 @@ permissions: {}
 
 jobs:
   release:
+    # Workflow is tag-only; this lets act skip the cross-compile on a non-tag event.
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -67,3 +69,98 @@ jobs:
             dist/citadel-cli_"${TAG}"_*.tar.gz \
             dist/citadel-cli_"${TAG}"_*.zip \
             dist/SHA256SUMS
+
+  bump-homebrew-tap:
+    name: Bump Homebrew tap
+    needs: release
+    if: ${{ always() && (needs.release.result == 'success' || needs.release.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ github.ref_name }}
+      DRY_RUN: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - name: Checkout tap
+        if: ${{ env.DRY_RUN != 'true' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: Citadel-Inc/homebrew-tap
+          ref: main
+          path: homebrew-tap
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          # Pin GitHub's published ed25519 host key; ssh-keyscan would TOFU.
+          ssh-known-hosts: github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzJubRyZqSVymHaajC+HLx6mm7D4dYe4xWQ5N
+
+      - name: Bump formula and push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ env.DRY_RUN }}
+        run: |
+          set -euo pipefail
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "not a v* tag; would rewrite Formula/citadel-cli.rb version/url/sha256 and git push --dry-run origin main"
+            exit 0
+          fi
+          mkdir -p dist
+          gh release download "$TAG" --pattern SHA256SUMS --dir dist
+          export TAG
+          python3 <<'PY'
+          import os, pathlib, re, sys
+
+          tag = os.environ["TAG"]
+          version = tag[1:] if tag.startswith("v") else tag
+          sums = {}
+          for line in pathlib.Path("dist/SHA256SUMS").read_text().splitlines():
+              parts = line.split()
+              if len(parts) >= 2:
+                  sums[parts[1].lstrip("*")] = parts[0]
+
+          def sha(arch: str) -> str:
+              name = f"citadel-cli_{tag}_darwin_{arch}.tar.gz"
+              digest = sums.get(name)
+              if not digest:
+                  raise SystemExit(f"missing {name} in SHA256SUMS")
+              return digest
+
+          arm_sha = sha("arm64")
+          amd_sha = sha("amd64")
+          formula = pathlib.Path("homebrew-tap/Formula/citadel-cli.rb")
+          text = formula.read_text()
+          text, n = re.subn(
+              r'(?m)^(\s*version\s+")[^"]+("\s*)$',
+              rf"\g<1>{version}\g<2>",
+              text,
+              count=1,
+          )
+          if n != 1:
+              raise SystemExit("failed to rewrite version")
+
+          def repl_arch(src: str, arch: str, digest: str) -> str:
+              url = (
+                  "https://github.com/Citadel-Inc/citadel-cli/releases/download/"
+                  f"{tag}/citadel-cli_{tag}_darwin_{arch}.tar.gz"
+              )
+              pat = (
+                  rf'(url\s+")[^"]*(darwin_{arch})[^"]*'
+                  r'("\s*\n\s*sha256\s+")[0-9a-fA-F]+(")'
+              )
+              out, count = re.subn(pat, rf"\g<1>{url}\g<3>{digest}\g<4>", src, count=1)
+              if count != 1:
+                  raise SystemExit(f"failed to rewrite darwin {arch} url/sha256")
+              return out
+
+          text = repl_arch(text, "arm64", arm_sha)
+          text = repl_arch(text, "amd64", amd_sha)
+          formula.write_text(text)
+          PY
+          git -C homebrew-tap config user.name "github-actions[bot]"
+          git -C homebrew-tap config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C homebrew-tap add Formula/citadel-cli.rb
+          git -C homebrew-tap diff --cached --quiet && {
+            echo "Formula/citadel-cli.rb already at $TAG"
+            exit 0
+          }
+          git -C homebrew-tap commit -m "chore(citadel-cli): ${TAG}"
+          git -C homebrew-tap push origin HEAD:main
