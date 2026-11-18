@@ -7,12 +7,90 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  cancel-in-progress: false
 
 permissions: {}
 
 jobs:
+  # No contents: write in this job. It runs checkout, the build and attestation, and the
+  # token that can publish a release is deliberately not in scope while any of that happens.
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
   release:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      # fetch-depth: 0 brings the annotated tag OBJECT, not just the commit it points at.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Create the GitHub Release from the tag's own annotation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; nothing to do."
+            exit 0
+          fi
+          subject=$(git tag -l --format='%(contents:subject)' "$TAG")
+          body=$(git tag -l --format='%(contents:body)' "$TAG")
+          [ -n "$subject" ] || subject=$(git log -1 --format='%s' "$TAG")
+          [ -n "$body" ] || body=$(git log -1 --format='%b' "$TAG")
+          gh release create "$TAG" \
+            --title "$TAG — $subject" \
+            --notes "${body:-$subject}" \
+            --verify-tag
+
+  move-major:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Move the floating major tag to this release
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ ! "$TAG" =~ ^(v[0-9]+)\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "$TAG is not a vN.M release; no floating major to move."
+            exit 0
+          fi
+          major="${BASH_REMATCH[1]}"
+          newest=$(git tag -l --sort=-v:refname "${major}.*" | grep -E "^${major}\.[0-9]+(\.[0-9]+)?$" | head -1)
+          if [ "$newest" != "$TAG" ]; then
+            echo "$TAG is not the newest $major release ($newest); leaving $major where it is."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git tag -fa "$major" -m "$major -> $TAG" "$TAG^{commit}"
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" push --force origin "refs/tags/$major"
+
+  # Cross-compiled archives attach after the GitHub Release exists; this job is extra to
+  # canon's checkout-only build job so those steps stay an exact match.
+  package:
+    needs: release
     # Workflow is tag-only; this lets act skip the cross-compile on a non-tag event.
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
@@ -21,10 +99,9 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # --verify-tag reads the tag object; a shallow checkout of the commit does not carry it.
           fetch-depth: 0
 
       - name: Set up Go
@@ -59,21 +136,20 @@ jobs:
           done
           sha256sum citadel-cli_*.tar.gz citadel-cli_*.zip > SHA256SUMS
 
-      - name: Create Release
+      - name: Upload archives
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release create "$TAG" --verify-tag \
-            --title "$TAG" --notes "" \
+          gh release upload "$TAG" \
             dist/citadel-cli_"${TAG}"_*.tar.gz \
             dist/citadel-cli_"${TAG}"_*.zip \
             dist/SHA256SUMS
 
   bump-homebrew-tap:
     name: Bump Homebrew tap
-    needs: release
-    if: ${{ always() && (needs.release.result == 'success' || needs.release.result == 'skipped') }}
+    needs: [release, package]
+    if: ${{ always() && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.package.result == 'success' || needs.package.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
