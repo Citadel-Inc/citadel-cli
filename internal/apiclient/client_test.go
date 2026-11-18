@@ -673,3 +673,181 @@ func (b neverEnding) Read(p []byte) (int, error) {
 	}
 	return len(p), nil
 }
+
+func TestClient_TokenIgnoredHeaderRefusesAnonymousAnswer(t *testing.T) {
+	cases := []struct {
+		name    string
+		reason  string
+		status  int
+		wantErr string
+	}{
+		{"confined", "confined", http.StatusOK, "confined to one namespace"},
+		{"refused 404", "refused", http.StatusNotFound, "cannot use this route"},
+		{"missing scope 404", "repo", http.StatusNotFound, "lacks the repo scope"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set(TokenIgnoredHeader, tc.reason)
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(`{"name":"anon"}`))
+			}))
+			t.Cleanup(srv.Close)
+
+			c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out struct{ Name string }
+			err = c.Get(t.Context(), "/whoami", &out)
+			var ignored *TokenIgnoredError
+			if !errors.As(err, &ignored) {
+				t.Fatalf("got %v", err)
+			}
+			if ignored.Reason != tc.reason {
+				t.Fatalf("reason = %q", ignored.Reason)
+			}
+			if !strings.Contains(ignored.Error(), tc.wantErr) {
+				t.Fatalf("Error() = %q", ignored.Error())
+			}
+		})
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set(TokenIgnoredHeader, "repo")
+		_, _ = w.Write([]byte(`{"name":"alice"}`))
+	}))
+	defer srv.Close()
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out struct{ Name string }
+	if err := c.Get(t.Context(), "/whoami", &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Name != "alice" {
+		t.Fatalf("got %+v", out)
+	}
+}
+
+func TestUnauthenticatedClientStopsRedirectOffOriginAndAfterTenHops(t *testing.T) {
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("other"))
+	}))
+	t.Cleanup(other.Close)
+	off := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/x", http.StatusTemporaryRedirect)
+	}))
+	t.Cleanup(off.Close)
+
+	c := NewHTTPClient()
+	if _, err := c.Get(off.URL + "/start"); err == nil || !strings.Contains(err.Error(), "off origin") {
+		t.Fatalf("off-origin redirect: %v", err)
+	}
+
+	hops := 0
+	loop := httptest.NewServer(nil)
+	loop.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hops++
+		http.Redirect(w, r, loop.URL+"/n", http.StatusTemporaryRedirect)
+	})
+	t.Cleanup(loop.Close)
+	if _, err := c.Get(loop.URL + "/start"); err == nil || !strings.Contains(err.Error(), "stopped after 10 redirects") {
+		t.Fatalf("hop limit: %v after %d hops", err, hops)
+	}
+}
+
+func TestClient_StopsAfterTenSameOriginRedirects(t *testing.T) {
+	srv := httptest.NewServer(nil)
+	srv.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, srv.URL+"/n", http.StatusTemporaryRedirect)
+	})
+	t.Cleanup(srv.Close)
+
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = c.Get(t.Context(), "/start", nil)
+	if err == nil || !strings.Contains(err.Error(), "stopped after 10 redirects") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestClient_GetKeepsRawJSONAndSurfacesMalformedBodies(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/raw":
+			_, _ = w.Write([]byte(`{"ok":true}`))
+		default:
+			_, _ = w.Write([]byte(`{not json`))
+		}
+	}))
+	defer srv.Close()
+
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "tok"}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw json.RawMessage
+	if err := c.Get(t.Context(), "/raw", &raw); err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != `{"ok":true}` {
+		t.Fatalf("raw = %s", raw)
+	}
+	var out struct{ OK bool }
+	if err := c.Get(t.Context(), "/bad", &out); err == nil || !strings.Contains(err.Error(), "decode response") {
+		t.Fatalf("malformed: %v", err)
+	}
+	if err := DecodeJSONBody(errReader{errors.New("boom")}, &out); err == nil || !strings.Contains(err.Error(), "read response") {
+		t.Fatalf("read fail: %v", err)
+	}
+}
+
+func TestClient_EmptyRefreshTokenLeavesThe401(t *testing.T) {
+	var n int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n++
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	c, err := New(clicfg.Config{ServerURL: srv.URL, AccessToken: "old"}, Options{
+		RetryOn401: func(context.Context) (string, error) { return "", nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = c.Get(t.Context(), "/v", nil)
+	if !IsStatus(err, http.StatusUnauthorized) {
+		t.Fatalf("got %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("server requests = %d", n)
+	}
+}
+
+func TestLoopbackAPIProbeCachesAndTreatsUnreachableAsPresent(t *testing.T) {
+	ProbeLoopback = true
+	t.Cleanup(func() { ProbeLoopback = false })
+
+	missing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(missing.Close)
+	if loopbackServesAPI(missing.URL) {
+		t.Fatal("404 /api/healthz should mean no /api mount")
+	}
+	if loopbackServesAPI(missing.URL) {
+		t.Fatal("cached 404 flipped")
+	}
+	if !loopbackServesAPI("http://127.0.0.1:1") {
+		t.Fatal("unreachable probe should keep the /api layout")
+	}
+}
+
+type errReader struct{ err error }
+
+func (e errReader) Read([]byte) (int, error) { return 0, e.err }

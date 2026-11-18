@@ -1,6 +1,7 @@
 package clicfg
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -311,5 +312,44 @@ func TestSave_IgnoresAPlantedTempSymlink(t *testing.T) {
 	}
 	if b, err := safefs.ReadFile(target); err != nil || string(b) != "untouched" {
 		t.Fatalf("the planted symlink was written through: %q, %v", b, err)
+	}
+}
+
+func TestDescribeServerSource_NamesWhereTheURLCameFrom(t *testing.T) {
+	c := Config{ServerURL: "https://stored.example"}
+	t.Setenv("CITADEL_SERVER", "https://env.example")
+	if got := c.DescribeServerSource("https://flag.example"); got != "from --server" {
+		t.Fatalf("flag: %q", got)
+	}
+	if got := c.DescribeServerSource(""); got != "from CITADEL_SERVER" {
+		t.Fatalf("env: %q", got)
+	}
+	t.Setenv("CITADEL_SERVER", "")
+	if got := c.DescribeServerSource(""); got != "from the config file" {
+		t.Fatalf("file: %q", got)
+	}
+	if got := (Config{}).DescribeServerSource(""); !strings.Contains(got, "built-in default") {
+		t.Fatalf("default: %q", got)
+	}
+}
+
+func TestUpdate_CallbackErrorLeavesStoredTokensUnchanged(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("CITADEL_ACCESS_TOKEN", "")
+	if err := (Config{AccessToken: "keep"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	if err := Update(func(cfg *Config) error {
+		cfg.AccessToken = "changed"
+		return errors.New("nope")
+	}); err == nil || err.Error() != "nope" {
+		t.Fatalf("got %v", err)
+	}
+	got, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.AccessToken != "keep" {
+		t.Fatalf("AccessToken = %q", got.AccessToken)
 	}
 }

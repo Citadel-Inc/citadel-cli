@@ -317,3 +317,38 @@ func TestExplicitTokenEqualToEnvIsStoredInKeyring(t *testing.T) {
 		t.Fatalf("old refresh token kept: %v", f.items)
 	}
 }
+
+func TestTokenStorage_EmptyConfigIsNoStoredTokens(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv(accessTokenEnv, "")
+	desc, plain, err := TokenStorage()
+	if err != nil || plain || desc != "no stored tokens" {
+		t.Fatalf("TokenStorage = %q %v %v", desc, plain, err)
+	}
+}
+
+func TestLoad_MissingRefreshItemIsEmptyNotAnError(t *testing.T) {
+	f, path := useBackend(t)
+	if err := (Config{AccessToken: "acc", RefreshToken: "ref"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	delete(f.items, refreshItem(path))
+	cfg, err := Load()
+	if err != nil || cfg.AccessToken != "acc" || cfg.RefreshToken != "" {
+		t.Fatalf("Load = %+v, %v", cfg, err)
+	}
+}
+
+func TestLoad_KeyringReadErrorDoesNotClearTokens(t *testing.T) {
+	f, path := useBackend(t)
+	if err := (Config{AccessToken: "acc", RefreshToken: "ref"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	f.getErr = errors.New("disk")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "read keyring") {
+		t.Fatalf("Load err = %v", err)
+	}
+	if f.items[accessItem(path)] != "acc" || f.items[refreshItem(path)] != "ref" {
+		t.Fatalf("items = %v", f.items)
+	}
+}
