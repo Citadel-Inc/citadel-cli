@@ -742,7 +742,14 @@ func TestUnauthenticatedClientStopsRedirectOffOriginAndAfterTenHops(t *testing.T
 	t.Cleanup(off.Close)
 
 	c := NewHTTPClient()
-	if _, err := c.Get(off.URL + "/start"); err == nil || !strings.Contains(err.Error(), "off origin") {
+	getErr := func(rawURL string) error {
+		resp, err := c.Get(rawURL)
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		return err
+	}
+	if err := getErr(off.URL + "/start"); err == nil || !strings.Contains(err.Error(), "off origin") {
 		t.Fatalf("off-origin redirect: %v", err)
 	}
 
@@ -753,7 +760,7 @@ func TestUnauthenticatedClientStopsRedirectOffOriginAndAfterTenHops(t *testing.T
 		http.Redirect(w, r, loop.URL+"/n", http.StatusTemporaryRedirect)
 	})
 	t.Cleanup(loop.Close)
-	if _, err := c.Get(loop.URL + "/start"); err == nil || !strings.Contains(err.Error(), "stopped after 10 redirects") {
+	if err := getErr(loop.URL + "/start"); err == nil || !strings.Contains(err.Error(), "stopped after 10 redirects") {
 		t.Fatalf("hop limit: %v after %d hops", err, hops)
 	}
 }
