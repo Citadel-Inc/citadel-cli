@@ -4,6 +4,10 @@ All notable changes to `citadel-cli` are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- List commands no longer reject `--cursor` values the server issued. `pr list`, `issue list` and `kg` failed before sending because the CLI checked cursors against one codec. Cursors are now passed through as the server gave them.
+
 ### Added
 
 - `provenance` fetches and verifies signed change-provenance reports for a pull request, commit range, or date range.

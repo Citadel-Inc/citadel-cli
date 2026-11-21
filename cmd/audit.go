@@ -119,9 +119,6 @@ func runAuditList(cmd *cobra.Command, _ []string) error {
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
 	}
-	if err := validateAuditCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
-	}
 
 	c, err := newHumanAPIClient(cmd)
 	if err != nil {

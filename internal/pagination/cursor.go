@@ -1,12 +1,10 @@
-// Package pagination mirrors the Citadel server cursor codec for client-side
-// validation of --cursor before issuing HTTP requests.
+// Package pagination holds list limits and test-fixture cursor encoders.
+// Cursors are opaque to the CLI: the server alone validates them.
 package pagination
 
 import (
 	"encoding/base64"
 	"encoding/binary"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,19 +21,8 @@ const (
 	MaxLimit     = 200
 )
 
-var ErrInvalidCursor = errors.New("invalid_cursor")
-
 func encodeCursorInt64(value int64) uint64 {
 	return uint64(value) //nolint:gosec // Fixed-width cursor fields preserve signed integer bits.
-}
-
-func decodeCursorInt64(value uint64) int64 {
-	return int64(value) //nolint:gosec // Fixed-width cursor fields preserve signed integer bits.
-}
-
-type DescCursor struct {
-	TimeUnixNano int64
-	ID           uuid.UUID
 }
 
 func EncodeDesc(t time.Time, id uuid.UUID) string {
@@ -57,23 +44,6 @@ func EncodeMemberAsc(notOwner bool, joinedAt time.Time, userID uuid.UUID) string
 	return base64.RawURLEncoding.EncodeToString(buf)
 }
 
-func DecodeDesc(s string) (DescCursor, error) {
-	var z DescCursor
-	raw, err := base64.RawURLEncoding.DecodeString(s)
-	if err != nil || len(raw) != 25 || raw[0] != cursorV1Desc {
-		return z, fmt.Errorf("%w: desc", ErrInvalidCursor)
-	}
-	z.TimeUnixNano = decodeCursorInt64(binary.BigEndian.Uint64(raw[1:9]))
-	copy(z.ID[:], raw[9:25])
-	return z, nil
-}
-
-// AuditDescCursor orders audit_log rows by ts DESC, id DESC.
-type AuditDescCursor struct {
-	TimeUnixNano int64
-	ID           int64
-}
-
 // EncodeAuditDesc encodes a V3 audit list cursor (mirrors the Citadel server).
 func EncodeAuditDesc(t time.Time, id int64) string {
 	buf := make([]byte, 1+8+8)
@@ -81,36 +51,6 @@ func EncodeAuditDesc(t time.Time, id int64) string {
 	binary.BigEndian.PutUint64(buf[1:9], encodeCursorInt64(t.UTC().UnixNano()))
 	binary.BigEndian.PutUint64(buf[9:17], encodeCursorInt64(id))
 	return base64.RawURLEncoding.EncodeToString(buf)
-}
-
-// DecodeAuditDesc decodes a V3 audit list cursor.
-func DecodeAuditDesc(s string) (AuditDescCursor, error) {
-	var z AuditDescCursor
-	raw, err := base64.RawURLEncoding.DecodeString(s)
-	if err != nil || len(raw) != 17 || raw[0] != cursorV3Audit {
-		return z, fmt.Errorf("%w: audit", ErrInvalidCursor)
-	}
-	z.TimeUnixNano = decodeCursorInt64(binary.BigEndian.Uint64(raw[1:9]))
-	z.ID = decodeCursorInt64(binary.BigEndian.Uint64(raw[9:17]))
-	return z, nil
-}
-
-type MemberAscCursor struct {
-	NotOwner   bool
-	JoinedNano int64
-	UserID     uuid.UUID
-}
-
-func DecodeMemberAsc(s string) (MemberAscCursor, error) {
-	var z MemberAscCursor
-	raw, err := base64.RawURLEncoding.DecodeString(s)
-	if err != nil || len(raw) != 26 || raw[0] != cursorV2Mem {
-		return z, fmt.Errorf("%w: members", ErrInvalidCursor)
-	}
-	z.NotOwner = raw[1] != 0
-	z.JoinedNano = decodeCursorInt64(binary.BigEndian.Uint64(raw[2:10]))
-	copy(z.UserID[:], raw[10:26])
-	return z, nil
 }
 
 func ClampLimit(n int) int {

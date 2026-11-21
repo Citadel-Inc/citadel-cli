@@ -321,14 +321,6 @@ func runRepoWebhookList(cmd *cobra.Command, args []string) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
-	_, cursor, _, err := readPagination(cmd)
-	if err != nil {
-		return err
-	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
-	}
-
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -356,9 +348,6 @@ func runWebhookList(cmd *cobra.Command, namespacePath string) error {
 	}
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
-	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
@@ -616,9 +605,6 @@ func runWebhookDeliveryList(cmd *cobra.Command, namespacePath string) error {
 	}
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
-	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 	webhookID, _ := cmd.Flags().GetString("webhook-id")
 	state, _ := cmd.Flags().GetString("state")

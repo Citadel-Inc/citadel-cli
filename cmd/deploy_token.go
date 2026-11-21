@@ -161,7 +161,7 @@ func validateDeployTokenListFlags(cmd *cobra.Command) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
-	_, cursor, all, err := readPagination(cmd)
+	_, _, all, err := readPagination(cmd)
 	if err != nil {
 		return err
 	}
@@ -170,9 +170,6 @@ func validateDeployTokenListFlags(cmd *cobra.Command) error {
 	}
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
-	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 	return nil
 }
@@ -214,9 +211,6 @@ func runDeployTokenList(cmd *cobra.Command, namespacePath string) error {
 	}
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
-	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {

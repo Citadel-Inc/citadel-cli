@@ -92,15 +92,6 @@ func TestRepoList_WatchJSON_Hermetic(t *testing.T) {
 	}
 }
 
-func TestRepoList_BadCursor_Hermetic(t *testing.T) {
-	setRepoHermeticEnv(t)
-
-	err := rootFor(cmd.RepoCmd, "list", "--namespace", "acme", "--cursor", "not-base64!!!").Execute()
-	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
-		t.Fatalf("want cursor validation error, got %v", err)
-	}
-}
-
 func TestRepoDelete_HumanOutput(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"DELETE /namespaces/acme/repo": func(w http.ResponseWriter, _ *http.Request) {

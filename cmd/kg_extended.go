@@ -324,9 +324,6 @@ func runKgSearch(cmd *cobra.Command, args []string) error {
 	if err := validateKgPagesOutput(cmd, all); err != nil {
 		return err
 	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
-	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -372,9 +369,6 @@ func runKgSymbols(cmd *cobra.Command, args []string) error {
 	if err := validateKgPagesOutput(cmd, all); err != nil {
 		return err
 	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
-	}
 	pos := ""
 	if len(args) > 0 {
 		pos = args[0]
@@ -418,9 +412,6 @@ func runKgFiles(cmd *cobra.Command, args []string) error {
 	}
 	if err := validateKgPagesOutput(cmd, all); err != nil {
 		return err
-	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 	pos := ""
 	if len(args) > 0 {
@@ -521,9 +512,6 @@ func runKgFulltext(cmd *cobra.Command, args []string) error {
 	}
 	if err := validateKgPagesOutput(cmd, all); err != nil {
 		return err
-	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 	pos := ""
 	if len(args) > 0 {

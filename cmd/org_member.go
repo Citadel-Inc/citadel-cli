@@ -181,9 +181,6 @@ func runOrgMemberList(cmd *cobra.Command, args []string) error {
 	if all && output == "json" {
 		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson or omit --all")
 	}
-	if err := validateMemberCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
-	}
 
 	c, err := newAPIClient(cmd)
 	if err != nil {

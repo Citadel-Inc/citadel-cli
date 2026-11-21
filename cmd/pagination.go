@@ -31,27 +31,3 @@ func readPagination(cmd *cobra.Command) (limit int, cursor string, all bool, err
 	}
 	return limit, strings.TrimSpace(cursor), all, nil
 }
-
-func validateDescCursor(cur string) error {
-	if cur == "" {
-		return nil
-	}
-	_, err := pagination.DecodeDesc(cur)
-	return err
-}
-
-func validateMemberCursor(cur string) error {
-	if cur == "" {
-		return nil
-	}
-	_, err := pagination.DecodeMemberAsc(cur)
-	return err
-}
-
-func validateAuditCursor(cur string) error {
-	if cur == "" {
-		return nil
-	}
-	_, err := pagination.DecodeAuditDesc(cur)
-	return err
-}

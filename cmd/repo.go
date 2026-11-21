@@ -182,9 +182,6 @@ func runRepoList(cmd *cobra.Command, _ []string) error {
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
 	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
-	}
 
 	ns, _ := cmd.Flags().GetString("namespace")
 	c, err := newAPIClient(cmd)

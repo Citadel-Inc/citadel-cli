@@ -143,9 +143,6 @@ func runOAuthClientsList(cmd *cobra.Command, _ []string) error {
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
 	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
-	}
 
 	c, err := newAPIClient(cmd)
 	if err != nil {

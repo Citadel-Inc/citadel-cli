@@ -253,9 +253,6 @@ func runNsList(cmd *cobra.Command, _ []string) error {
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
 	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
-	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
@@ -346,9 +343,6 @@ func runNsMembers(cmd *cobra.Command, args []string) error {
 	}
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
-	}
-	if err := validateMemberCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 	slug := strings.TrimSpace(args[0])
 	if slug == "" {
@@ -450,9 +444,6 @@ func runNsTransferListPending(cmd *cobra.Command, _ []string) error {
 	}
 	if err := validateWatchOutput(cmd); err != nil {
 		return err
-	}
-	if err := validateDescCursor(cursor); err != nil {
-		return fmt.Errorf("invalid --cursor: %w", err)
 	}
 	c, err := newAPIClient(cmd)
 	if err != nil {

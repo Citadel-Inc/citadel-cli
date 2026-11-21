@@ -387,23 +387,6 @@ func TestRepoList_Empty(t *testing.T) {
 	}
 }
 
-func TestRepoList_InvalidCursor(t *testing.T) {
-	called := false
-	withServer(t, route(t, map[string]http.HandlerFunc{
-		"GET /namespaces/myorg/repos": func(w http.ResponseWriter, _ *http.Request) {
-			called = true
-			writeJSON(t, w, 200, map[string]any{"repos": []map[string]any{}})
-		},
-	}))
-	err := rootFor(cmd.RepoCmd, "list", "--namespace", "myorg", "--cursor", "not-valid-base64!!!").Execute()
-	if err == nil || !strings.Contains(err.Error(), "invalid --cursor") {
-		t.Fatalf("want invalid cursor error, got %v", err)
-	}
-	if called {
-		t.Fatal("server should not be called for malformed cursor")
-	}
-}
-
 func TestRepoList_OutputCSV(t *testing.T) {
 	withServer(t, route(t, map[string]http.HandlerFunc{
 		"GET /namespaces/myorg/repos": func(w http.ResponseWriter, _ *http.Request) {
@@ -1734,14 +1717,6 @@ func TestAuditList_continuationReturnsEmpty(t *testing.T) {
 		"--cursor", pagination.EncodeAuditDesc(time.Date(2026, 5, 5, 12, 0, 0, 0, time.UTC), 1),
 	).Execute(); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestAuditList_InvalidCursor(t *testing.T) {
-	withServer(t, route(t, map[string]http.HandlerFunc{}))
-	err := rootFor(cmd.AuditCmd, "list", "--cursor", "%%%").Execute()
-	if err == nil || !strings.Contains(err.Error(), "cursor") {
-		t.Fatalf("got %v", err)
 	}
 }
 

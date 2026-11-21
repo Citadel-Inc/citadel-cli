@@ -232,44 +232,6 @@ func TestKgExtendedRequiredFlagsHermetic(t *testing.T) {
 	}
 }
 
-func TestKgCursorValidationHermetic(t *testing.T) {
-	tests := []struct {
-		name string
-		args []string
-	}{
-		{
-			name: "search",
-			args: []string{"search", "needle", "--cursor", "not-base64!!!"},
-		},
-		{
-			name: "symbols",
-			args: []string{"symbols", "--q", "needle", "--cursor", "not-base64!!!", "--no-cwd-repo"},
-		},
-		{
-			name: "files",
-			args: []string{"files", "--cursor", "not-base64!!!", "--no-cwd-repo"},
-		},
-		{
-			name: "fulltext",
-			args: []string{"fulltext", "--q", "needle", "--cursor", "not-base64!!!", "--no-cwd-repo"},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			setKgHermeticEnv(t)
-
-			var output strings.Builder
-			err := kgRootForOut(&output, tt.args...).Execute()
-			if err == nil {
-				t.Fatal("error = nil, want invalid cursor error")
-			}
-			if got, want := err.Error(), "invalid --cursor: invalid_cursor: desc"; got != want {
-				t.Fatalf("error = %q, want %q", got, want)
-			}
-		})
-	}
-}
-
 func TestKgMissingRepoHermetic(t *testing.T) {
 	tests := []struct {
 		name string
