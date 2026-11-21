@@ -4,7 +4,7 @@ go 1.27.4
 
 require (
 	github.com/Rethunk-Tech/go-httpkit v0.3.1
-	github.com/Rethunk-Tech/go-safefs v0.9.1
+	github.com/Rethunk-Tech/go-safefs v0.10.0
 	github.com/Totative/go-keyring v0.3.0
 	github.com/aws/aws-sdk-go-v2 v1.48.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.21
