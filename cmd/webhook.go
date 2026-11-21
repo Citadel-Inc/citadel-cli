@@ -342,19 +342,13 @@ func runWebhookList(cmd *cobra.Command, namespacePath string) error {
 	if err := validateListOutput(output); err != nil {
 		return err
 	}
-	limit, cursor, all, err := readPagination(cmd)
-	if err != nil {
-		return err
-	}
-	if all && output == "json" {
-		return fmt.Errorf("--all cannot be used with --output json; use --output ndjson to stream all rows, or omit --all for a single JSON array page")
-	}
 	c, err := newAPIClient(cmd)
 	if err != nil {
 		return err
 	}
 
-	pg := newListPager(cmd, output, all,
+	// The server returns every webhook in one response, so there is nothing to page.
+	pg := newListPager(cmd, output, false,
 		func(w io.Writer) { _, _ = fmt.Fprintf(w, "No webhooks for namespace '%s'.\n", namespacePath) },
 		func(w *tabwriter.Writer, rows []webhookRow) {
 			_, _ = fmt.Fprintln(w, "ID\tNAME\tACTIVE\tEVENTS\tTARGET\tLAST")
@@ -373,27 +367,14 @@ func runWebhookList(cmd *cobra.Command, namespacePath string) error {
 				)
 			}
 		})
-	for {
-		q := url.Values{}
-		q.Set("limit", strconv.Itoa(limit))
-		if cursor != "" {
-			q.Set("cursor", cursor)
-		}
-		var payload struct {
-			Webhooks []webhookRow `json:"webhooks"`
-			Next     string       `json:"next_cursor"`
-		}
-		if err := c.Get(cmd.Context(), webhookAPIPath(namespacePath)+"?"+q.Encode(), &payload); err != nil {
-			return decorateWebhookError(err, namespacePath, "list")
-		}
-		rows := payload.Webhooks
-		next := strings.TrimSpace(payload.Next)
-
-		if stop, err := pg.page(rows, cursor, next); stop {
-			return err
-		}
-		cursor = next
+	var payload struct {
+		Webhooks []webhookRow `json:"webhooks"`
 	}
+	if err := c.Get(cmd.Context(), webhookAPIPath(namespacePath), &payload); err != nil {
+		return decorateWebhookError(err, namespacePath, "list")
+	}
+	_, err = pg.page(payload.Webhooks, "", "")
+	return err
 }
 
 func runRepoWebhookCreate(cmd *cobra.Command, args []string) error {
@@ -1196,7 +1177,7 @@ func registerWebhookCommands() {
 		repoWebhookDeliveryListCmd, repoWebhookDeliveryGetCmd, repoWebhookDeliveryRedeliverCmd,
 		namespaceWebhookDeliveryListCmd, namespaceWebhookDeliveryGetCmd, namespaceWebhookDeliveryRedeliverCmd,
 	)
-	addPaginationFlags(repoWebhookListCmd, namespaceWebhookListCmd, repoWebhookDeliveryListCmd, namespaceWebhookDeliveryListCmd)
+	addPaginationFlags(repoWebhookDeliveryListCmd, namespaceWebhookDeliveryListCmd)
 	addRepoFlag(repoWebhookListCmd, repoWebhookCreateCmd, repoWebhookGetCmd, repoWebhookEditCmd, repoWebhookDeleteCmd)
 	addDryRunFlag(repoWebhookDeleteCmd, namespaceWebhookDeleteCmd)
 	addDryRunFlag(repoWebhookEditCmd, namespaceWebhookEditCmd)

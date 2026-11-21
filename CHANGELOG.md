@@ -6,6 +6,7 @@ All notable changes to `citadel-cli` are documented here.
 
 ### Fixed
 
+- `repo webhook list` and `namespace webhook list` no longer take `--limit`, `--cursor` or `--all`. The server returns every webhook in one response, and the cursor was never sent.
 - List commands no longer reject `--cursor` values the server issued. `pr list`, `issue list` and `kg` failed before sending because the CLI checked cursors against one codec. Cursors are now passed through as the server gave them.
 
 ### Added
