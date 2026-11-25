@@ -26,7 +26,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: Rethunk-Tech/gh-actions/setup-go@346d9d280f6dfd86c9db02310039c90e2a6ddca4 # v1.31
+        uses: Rethunk-Tech/gh-actions/setup-go@ed6afe0e127f69c7da2c8178521fa0d049176a00 # v1.36
         with:
           run-lint: "true"
           run-govulncheck: "true"
