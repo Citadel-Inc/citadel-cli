@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"uuid"
 
 	"github.com/Citadel-Inc/citadel-cli/cmd"
-	"github.com/google/uuid"
 )
 
 // ── agent list: multi-page --all + misc branches ──────────────────────────────

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/apiclient"
@@ -74,7 +74,7 @@ type tokenWithCleartext struct {
 func findOrCreateAgent(ctx context.Context, c *apiclient.Client, name string) (uuid.UUID, error) {
 	rows, err := listAgentRows(ctx, c)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil(), err
 	}
 	for _, a := range rows {
 		if a.Name == name {
@@ -83,7 +83,7 @@ func findOrCreateAgent(ctx context.Context, c *apiclient.Client, name string) (u
 	}
 	var created agentRow
 	if err := c.Post(ctx, "/agents", map[string]string{"name": name}, &created); err != nil {
-		return uuid.Nil, fmt.Errorf("create agent: %w", err)
+		return uuid.Nil(), fmt.Errorf("create agent: %w", err)
 	}
 	return created.ID, nil
 }

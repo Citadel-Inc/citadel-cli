@@ -4,8 +4,7 @@ import (
 	"encoding/base64"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 func TestClampLimit(t *testing.T) {
@@ -53,8 +52,8 @@ func TestEncodersEmitVersionedCursors(t *testing.T) {
 		size int
 		ver  byte
 	}{
-		"desc":   {EncodeDesc(now, uuid.Nil), 25, cursorV1Desc},
-		"member": {EncodeMemberAsc(true, now, uuid.Nil), 26, cursorV2Mem},
+		"desc":   {EncodeDesc(now, uuid.Nil()), 25, cursorV1Desc},
+		"member": {EncodeMemberAsc(true, now, uuid.Nil()), 26, cursorV2Mem},
 		"audit":  {EncodeAuditDesc(now, 7), 17, cursorV3Audit},
 	} {
 		raw, err := base64.RawURLEncoding.DecodeString(c.got)

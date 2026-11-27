@@ -8,8 +8,8 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/Citadel-Inc/citadel-cli/internal/sseclient"
@@ -412,7 +412,7 @@ func (e *tableWatchEmitter) rowKey(raw json.RawMessage) string {
 		if x.Name != "" {
 			return x.Name
 		}
-		if x.ID != uuid.Nil {
+		if x.ID != uuid.Nil() {
 			return x.ID.String()
 		}
 	case watchOAuthClients:
@@ -455,7 +455,7 @@ func (e *tableWatchEmitter) rowKey(raw json.RawMessage) string {
 			ID uuid.UUID `json:"id"`
 		}
 		_ = json.Unmarshal(raw, &x)
-		if x.ID != uuid.Nil {
+		if x.ID != uuid.Nil() {
 			return x.ID.String()
 		}
 	case watchDeployTokens:

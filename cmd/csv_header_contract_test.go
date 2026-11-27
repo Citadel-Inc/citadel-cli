@@ -4,8 +4,7 @@ import (
 	"slices"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // Frozen CSV column contracts documented in README.md "Output formats".

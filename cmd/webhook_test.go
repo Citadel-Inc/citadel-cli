@@ -7,8 +7,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/Citadel-Inc/citadel-cli/cmd"
 	"github.com/Citadel-Inc/citadel-cli/internal/pagination"

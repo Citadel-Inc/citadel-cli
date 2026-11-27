@@ -3,8 +3,7 @@ package cmd
 import (
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 func TestFormatRFC3339PtrUTC_nil(t *testing.T) {

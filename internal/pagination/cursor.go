@@ -6,8 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 const (
